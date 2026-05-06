@@ -1,6 +1,6 @@
 # C2S Cyber Assurance Operating System (C2S-CIOP)
 
-Production-grade cyber intelligence command dashboard for CISOs — real-time posture, compliance, risk, asset, findings, telemetry, and graph intelligence built by ColorCode Solutions.
+Production-grade Cyber Assurance OS for CISOs — real-time posture, compliance achievement, risk intelligence, and AI executive briefings built by ColorCode Solutions.
 
 ## Run & Operate
 
@@ -10,6 +10,7 @@ Production-grade cyber intelligence command dashboard for CISOs — real-time po
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec (then fix `lib/api-zod/src/index.ts` to only export `./generated/api`)
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `npx tsx lib/db/src/seed-intelligence.ts` — re-seed intelligence data (mappings, POA&M, journeys, briefing)
 - Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET`
 
 ## Stack
@@ -26,41 +27,51 @@ Production-grade cyber intelligence command dashboard for CISOs — real-time po
 ## Where things live
 
 - `lib/api-spec/openapi.yaml` — OpenAPI spec, source of truth for all endpoints
-- `lib/api-spec/orval.config.ts` — codegen config (schemas section must NOT have `type` key)
-- `lib/api-zod/src/index.ts` — must only export `./generated/api` (orval overwrites this)
-- `lib/api-client-react/src/generated/api.ts` — all React Query hooks
-- `lib/db/src/schema/` — Drizzle table definitions (controls, frameworks, assets, risks, findings, telemetry, evidence, graph)
+- `lib/db/src/schema/` — Drizzle table definitions (controls, frameworks, assets, risks, findings, telemetry, evidence, graph, controlMappings)
+- `lib/db/src/schema/controlMappings.ts` — NEW: control_framework_mappings, poam_items, compliance_journeys, remediation_tasks, executive_briefings
+- `lib/db/src/seed-intelligence.ts` — seeds all new intelligence tables
 - `artifacts/api-server/src/routes/` — Express route handlers per domain
-- `artifacts/c2s-ciop/src/pages/` — Dashboard, Controls, Risks, Frameworks, Assets, Findings, Telemetry, Graph
-- `artifacts/c2s-ciop/src/components/layout/` — Sidebar, Header, Layout
+- `artifacts/api-server/src/routes/intelligence.ts` — NEW: gap analysis, POA&M, journeys, briefing, financial exposure
+- `artifacts/c2s-ciop/src/pages/` — Dashboard, Controls, Risks, Frameworks, Assets, Findings, Telemetry, Graph, GapAnalysis, POAM, ComplianceJourney, ExecutiveBrief
+- `artifacts/c2s-ciop/src/components/layout/` — Sidebar (OBSERVE/ACHIEVE/INTELLIGENCE sections), Header, Layout
 
 ## Architecture decisions
 
 - **Contract-first API**: OpenAPI spec drives code generation for both server Zod schemas and React Query client hooks — never hand-write these
 - **Numeric DB IDs → string API IDs**: All route handlers convert `r.id` to `String(r.id)` before Zod parse, since OpenAPI schema uses string IDs
 - **0 border-radius throughout**: CSS `--radius: 0px` enforces financial terminal / sharp borders aesthetic site-wide
-- **Dark mode default**: ThemeProvider defaults to `dark`, stored in `c2s-ciop-theme` localStorage key
-- **Bento tile grid**: Dashboard uses `grid-cols-12 gap-px bg-border` for seamless bento layout with 1px dividers
+- **Universal Control Graph (the moat)**: `control_framework_mappings` table maps one UCO canonical control to N framework control IDs simultaneously — implement once, validate once, output evidence for all frameworks
+- **FAIR-lite financial exposure**: `baseLoss(severity) × exploitability × blastRadius` gives defensible $ range without actuarial data. criticalAsset=$2M, high=$800K, medium=$250K, low=$50K
+- **Executive briefing is deterministic**: No external AI API — computed from live DB state (control failures, open findings, risk scores, framework gaps). Cached 5 min, refresh on demand
 
 ## Product
 
-- **Command Dashboard**: Executive posture score (0-100), trend chart, critical findings, attack paths, control effectiveness, framework overview, risk exposure, telemetry feed
-- **Control Validation**: UCO (Universal Control Ontology) with 12 controls; filter by status, maturity dots, drift detection, evidence freshness
-- **Risk & Attack Paths**: Risk registry ordered by score with exploitability bars and threat intel; attack path chains with likelihood/impact
-- **Compliance Frameworks**: 12 frameworks (NIST 800-53, FedRAMP, CMMC, ISO 27001, SOC 2, PCI DSS, etc.) with bar chart and cards
-- **Asset Intelligence**: 12 assets with risk score, exposure, CVE count, control coverage, crown jewel / internet exposed flags
-- **Security Findings**: 10 findings with SLA breach detection (highlights in red when overdue)
-- **Telemetry & Evidence**: 8 live sources with events/min and latency; scrollable event stream; evidence registry with freshness
-- **Cyber Graph**: Interactive SVG graph (pan/drag/zoom) showing 17 nodes + 16 edges with node type shapes, risk color coding, and click-to-highlight attack paths
+**OBSERVE** (existing)
+- Command Dashboard: Executive posture arc gauge (0-100), sparkline tiles, action-required panel, zone-banded trend chart
+- Control Validation: UCO 12 controls, drift detection, maturity dots, evidence freshness
+- Risk & Attack Paths: Exploitability bars, blast radius, attack chain visualization
+- Compliance Frameworks: 12 frameworks, bar chart, compliance scores
+- Asset Intelligence: Crown jewel flags, CVE counts, control coverage
+- Security Findings: SLA breach detection, dual filters
+- Telemetry & Evidence: 8 live sources, event stream, evidence registry
+- Cyber Graph: Interactive SVG, 17 nodes + 16 edges, click-to-highlight attack paths
+
+**ACHIEVE** (new — the moat)
+- Gap Analysis: One UCO control → all framework control IDs it satisfies; donut score, blocker panel, control-level table with expand-for-rationale; 7 frameworks supported
+- POA&M: FedRAMP-compliant Plan of Action & Milestones; milestone tracking, status updates, owner/team, original→residual risk, overdue highlighting
+- Compliance Journey: 6-phase ATO workflow (Scope→Gap→Roadmap→Validate→Package→Authorized); readiness gauge, remediation task board with inline status updates
+
+**INTELLIGENCE** (new)
+- Executive Brief: AI-derived board-ready narrative; financial exposure ($3.7M–$22M range), active threat vectors, recommended board actions, briefing confidence scores
 
 ## User preferences
 
 - Financial terminal + cyber ops aesthetic — no generic SaaS
-- High-contrast dark mode default (near-black #0a0a0a background)
+- Light mode default (white/slate-200/blue-600)
 - JetBrains Mono for all metrics and data, Inter for labels
-- 60-90px hero metric typography (responsive: text-5xl → text-7xl)
 - Sharp 0px border radius throughout
 - Executive-focused — every screen readable at a glance
+- 3px left-border severity accents on all table rows
 
 ## Gotchas
 
@@ -68,9 +79,12 @@ Production-grade cyber intelligence command dashboard for CISOs — real-time po
 - All numeric DB IDs must be `String(r.id)` before Zod parsing in route handlers
 - The Google Fonts `@import url(...)` must be the very first line in `index.css` (before tailwindcss imports)
 - Do NOT call services directly by port — always use `localhost:80/<path>` through the proxy
+- intelligence.ts routes bypass OpenAPI codegen — they call the DB directly and return plain JSON (new routes added post-codegen-setup)
+- React table rows with expandable detail: use `React.Fragment key={id}` not `<>` — tbody children need keys
 
 ## Pointers
 
 - See `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
 - API routes: `artifacts/api-server/src/routes/index.ts`
 - DB schema: `lib/db/src/schema/index.ts`
+- Architecture blueprint: `.local/architecture.md`

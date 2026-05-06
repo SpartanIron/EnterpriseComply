@@ -9,6 +9,7 @@ import findingsRouter from "./findings";
 import telemetryRouter from "./telemetry";
 import graphRouter from "./graph";
 import evidenceRouter from "./evidence";
+import intelligenceRouter from "./intelligence";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(findingsRouter);
 router.use(telemetryRouter);
 router.use(graphRouter);
 router.use(evidenceRouter);
+router.use(intelligenceRouter);
 
 export default router;

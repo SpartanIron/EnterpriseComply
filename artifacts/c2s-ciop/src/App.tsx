@@ -12,6 +12,10 @@ import Assets from "@/pages/Assets";
 import Findings from "@/pages/Findings";
 import Telemetry from "@/pages/Telemetry";
 import Graph from "@/pages/Graph";
+import GapAnalysis from "@/pages/GapAnalysis";
+import POAM from "@/pages/POAM";
+import ComplianceJourney from "@/pages/ComplianceJourney";
+import ExecutiveBrief from "@/pages/ExecutiveBrief";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -35,6 +39,10 @@ function Router() {
         <Route path="/findings" component={Findings} />
         <Route path="/telemetry" component={Telemetry} />
         <Route path="/graph" component={Graph} />
+        <Route path="/gap-analysis" component={GapAnalysis} />
+        <Route path="/poam" component={POAM} />
+        <Route path="/journey" component={ComplianceJourney} />
+        <Route path="/brief" component={ExecutiveBrief} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

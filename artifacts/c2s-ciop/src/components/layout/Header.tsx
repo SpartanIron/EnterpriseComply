@@ -10,6 +10,10 @@ const pageMeta: Record<string, { title: string; crumb: string; sub: string }> = 
   "/findings": { title: "Security Findings", crumb: "Findings", sub: "Alert feed — prioritized by impact" },
   "/telemetry": { title: "Telemetry & Evidence", crumb: "Telemetry", sub: "Ingestion fabric — live data sources" },
   "/graph": { title: "Cyber Graph", crumb: "Graph", sub: "Attack path & relationship visualization" },
+  "/gap-analysis": { title: "Gap Analysis", crumb: "Achievement", sub: "Control coverage — one UCO control, all framework outputs" },
+  "/poam": { title: "Plan of Action & Milestones", crumb: "POA&M", sub: "FedRAMP-compliant weakness tracking and milestone management" },
+  "/journey": { title: "Compliance Journey", crumb: "Journey", sub: "Framework authorization — Scope → Gap → Roadmap → ATO" },
+  "/brief": { title: "Executive Intelligence Brief", crumb: "Intel", sub: "AI-derived situational analysis — board-ready risk narrative" },
 };
 
 export function Header() {

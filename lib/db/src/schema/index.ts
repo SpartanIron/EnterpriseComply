@@ -6,3 +6,4 @@ export * from "./findings";
 export * from "./telemetry";
 export * from "./evidence";
 export * from "./graph";
+export * from "./controlMappings";
