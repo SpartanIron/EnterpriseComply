@@ -3,20 +3,38 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: C2S Cyber Assurance Operating System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: posture
+    description: Cyber posture overview
+  - name: controls
+    description: Control validation management
+  - name: frameworks
+    description: Compliance framework management
+  - name: assets
+    description: Asset intelligence
+  - name: risks
+    description: Risk and attack path management
+  - name: findings
+    description: Security findings and alerts
+  - name: telemetry
+    description: Telemetry events
+  - name: graph
+    description: Cyber graph intelligence
+  - name: evidence
+    description: Evidence automation
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +42,461 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── POSTURE ──────────────────────────────────────────────────────────────────
+  /posture/summary:
+    get:
+      operationId: getPostureSummary
+      tags: [posture]
+      summary: Get executive cyber posture summary
+      responses:
+        "200":
+          description: Posture summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostureSummary"
+
+  /posture/trend:
+    get:
+      operationId: getPostureTrend
+      tags: [posture]
+      summary: Get posture score trend over time
+      responses:
+        "200":
+          description: Trend data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrendPoint"
+
+  # ── CONTROLS ─────────────────────────────────────────────────────────────────
+  /controls:
+    get:
+      operationId: listControls
+      tags: [controls]
+      summary: List all canonical controls
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [effective, degraded, failed, unknown, inherited, compensating]
+        - name: framework
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of controls
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  controls:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Control"
+                  total:
+                    type: integer
+                required:
+                  - controls
+                  - total
+
+    post:
+      operationId: createControl
+      tags: [controls]
+      summary: Create a canonical control
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateControlBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Control"
+
+  /controls/summary:
+    get:
+      operationId: getControlsSummary
+      tags: [controls]
+      summary: Get control effectiveness summary counts
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ControlsSummary"
+
+  /controls/{controlId}:
+    get:
+      operationId: getControl
+      tags: [controls]
+      summary: Get a control by ID
+      parameters:
+        - name: controlId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Control
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Control"
+
+    patch:
+      operationId: updateControl
+      tags: [controls]
+      summary: Update a control
+      parameters:
+        - name: controlId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateControlBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Control"
+
+  # ── FRAMEWORKS ───────────────────────────────────────────────────────────────
+  /frameworks:
+    get:
+      operationId: listFrameworks
+      tags: [frameworks]
+      summary: List all compliance frameworks
+      responses:
+        "200":
+          description: Frameworks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Framework"
+
+  /frameworks/{frameworkId}/compliance:
+    get:
+      operationId: getFrameworkCompliance
+      tags: [frameworks]
+      summary: Get compliance score for a framework
+      parameters:
+        - name: frameworkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Compliance score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkCompliance"
+
+  /frameworks/compliance-overview:
+    get:
+      operationId: getComplianceOverview
+      tags: [frameworks]
+      summary: Get compliance overview across all active frameworks
+      responses:
+        "200":
+          description: Overview
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FrameworkComplianceOverview"
+
+  # ── ASSETS ───────────────────────────────────────────────────────────────────
+  /assets:
+    get:
+      operationId: listAssets
+      tags: [assets]
+      summary: List assets
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [server, cloud, endpoint, identity, network, container, database]
+        - name: risk_level
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Assets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Asset"
+                  total:
+                    type: integer
+                required:
+                  - assets
+                  - total
+
+  /assets/summary:
+    get:
+      operationId: getAssetsSummary
+      tags: [assets]
+      summary: Get assets breakdown by type and risk
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetsSummary"
+
+  # ── RISKS ─────────────────────────────────────────────────────────────────────
+  /risks:
+    get:
+      operationId: listRisks
+      tags: [risks]
+      summary: List risks and attack paths
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Risks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  risks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Risk"
+                  total:
+                    type: integer
+                required:
+                  - risks
+                  - total
+
+  /risks/attack-paths:
+    get:
+      operationId: listAttackPaths
+      tags: [risks]
+      summary: List active attack paths
+      responses:
+        "200":
+          description: Attack paths
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttackPath"
+
+  /risks/exposure-summary:
+    get:
+      operationId: getExposureSummary
+      tags: [risks]
+      summary: Get risk exposure breakdown
+      responses:
+        "200":
+          description: Exposure summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExposureSummary"
+
+  # ── FINDINGS ─────────────────────────────────────────────────────────────────
+  /findings:
+    get:
+      operationId: listFindings
+      tags: [findings]
+      summary: List security findings and alerts
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low, info]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, resolved, accepted]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Findings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  findings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Finding"
+                  total:
+                    type: integer
+                required:
+                  - findings
+                  - total
+
+  /findings/recent:
+    get:
+      operationId: getRecentFindings
+      tags: [findings]
+      summary: Get recent critical and high findings
+      responses:
+        "200":
+          description: Recent findings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Finding"
+
+  # ── TELEMETRY ─────────────────────────────────────────────────────────────────
+  /telemetry/events:
+    get:
+      operationId: listTelemetryEvents
+      tags: [telemetry]
+      summary: List recent telemetry events
+      parameters:
+        - name: source
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelemetryEvent"
+
+  /telemetry/sources:
+    get:
+      operationId: getTelemetrySources
+      tags: [telemetry]
+      summary: Get telemetry source status
+      responses:
+        "200":
+          description: Sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelemetrySource"
+
+  # ── GRAPH ─────────────────────────────────────────────────────────────────────
+  /graph/nodes:
+    get:
+      operationId: getGraphNodes
+      tags: [graph]
+      summary: Get cyber graph nodes for visualization
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Graph data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphData"
+
+  # ── EVIDENCE ─────────────────────────────────────────────────────────────────
+  /evidence:
+    get:
+      operationId: listEvidence
+      tags: [evidence]
+      summary: List evidence records
+      parameters:
+        - name: control_id
+          in: query
+          schema:
+            type: string
+        - name: freshness
+          in: query
+          schema:
+            type: string
+            enum: [fresh, stale, expired]
+      responses:
+        "200":
+          description: Evidence
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Evidence"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +507,668 @@ components:
       required:
         - status
 
+    PostureSummary:
+      type: object
+      properties:
+        overallScore:
+          type: number
+          description: 0-100 posture score
+        scoreChange:
+          type: number
+          description: Change from previous period
+        controlsEffective:
+          type: integer
+        controlsDegraded:
+          type: integer
+        controlsFailed:
+          type: integer
+        controlsTotal:
+          type: integer
+        criticalFindings:
+          type: integer
+        activeAttackPaths:
+          type: integer
+        assetsAtRisk:
+          type: integer
+        evidenceFreshness:
+          type: number
+          description: Percentage of fresh evidence
+        lastUpdated:
+          type: string
+          format: date-time
+      required:
+        - overallScore
+        - scoreChange
+        - controlsEffective
+        - controlsDegraded
+        - controlsFailed
+        - controlsTotal
+        - criticalFindings
+        - activeAttackPaths
+        - assetsAtRisk
+        - evidenceFreshness
+        - lastUpdated
+
+    TrendPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        score:
+          type: number
+        criticalFindings:
+          type: integer
+      required:
+        - date
+        - score
+        - criticalFindings
+
+    Control:
+      type: object
+      properties:
+        id:
+          type: string
+        controlId:
+          type: string
+          description: Canonical control ID e.g. UCO-001
+        name:
+          type: string
+        objective:
+          type: string
+        status:
+          type: string
+          enum: [effective, degraded, failed, unknown, inherited, compensating]
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        effectiveness:
+          type: number
+          description: 0-100 effectiveness score
+        frameworks:
+          type: array
+          items:
+            type: string
+        telemetrySources:
+          type: array
+          items:
+            type: string
+        lastValidated:
+          type: string
+          format: date-time
+        automationCapability:
+          type: string
+          enum: [full, partial, manual]
+        maturityLevel:
+          type: integer
+          minimum: 1
+          maximum: 5
+        driftDetected:
+          type: boolean
+        evidenceFresh:
+          type: boolean
+        remediationGuidance:
+          type: string
+      required:
+        - id
+        - controlId
+        - name
+        - objective
+        - status
+        - severity
+        - effectiveness
+        - frameworks
+        - telemetrySources
+        - lastValidated
+        - automationCapability
+        - maturityLevel
+        - driftDetected
+        - evidenceFresh
+
+    CreateControlBody:
+      type: object
+      properties:
+        controlId:
+          type: string
+        name:
+          type: string
+        objective:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        frameworks:
+          type: array
+          items:
+            type: string
+        automationCapability:
+          type: string
+          enum: [full, partial, manual]
+        maturityLevel:
+          type: integer
+        remediationGuidance:
+          type: string
+      required:
+        - controlId
+        - name
+        - objective
+        - severity
+        - frameworks
+        - automationCapability
+        - maturityLevel
+
+    UpdateControlBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [effective, degraded, failed, unknown, inherited, compensating]
+        effectiveness:
+          type: number
+        remediationGuidance:
+          type: string
+        maturityLevel:
+          type: integer
+
+    ControlsSummary:
+      type: object
+      properties:
+        effective:
+          type: integer
+        degraded:
+          type: integer
+        failed:
+          type: integer
+        unknown:
+          type: integer
+        inherited:
+          type: integer
+        compensating:
+          type: integer
+        totalControls:
+          type: integer
+        automatedControls:
+          type: integer
+        driftCount:
+          type: integer
+      required:
+        - effective
+        - degraded
+        - failed
+        - unknown
+        - inherited
+        - compensating
+        - totalControls
+        - automatedControls
+        - driftCount
+
+    Framework:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        version:
+          type: string
+        type:
+          type: string
+          enum: [federal, commercial, international, industry]
+        active:
+          type: boolean
+        controlCount:
+          type: integer
+        complianceScore:
+          type: number
+        status:
+          type: string
+          enum: [compliant, partial, non_compliant, not_assessed]
+      required:
+        - id
+        - name
+        - shortName
+        - version
+        - type
+        - active
+        - controlCount
+        - complianceScore
+        - status
+
+    FrameworkCompliance:
+      type: object
+      properties:
+        frameworkId:
+          type: string
+        score:
+          type: number
+        controlsMapped:
+          type: integer
+        controlsPassing:
+          type: integer
+        controlsFailing:
+          type: integer
+        gaps:
+          type: array
+          items:
+            type: string
+        lastAssessed:
+          type: string
+          format: date-time
+      required:
+        - frameworkId
+        - score
+        - controlsMapped
+        - controlsPassing
+        - controlsFailing
+        - gaps
+        - lastAssessed
+
+    FrameworkComplianceOverview:
+      type: object
+      properties:
+        frameworkId:
+          type: string
+        shortName:
+          type: string
+        score:
+          type: number
+        status:
+          type: string
+          enum: [compliant, partial, non_compliant, not_assessed]
+        trend:
+          type: string
+          enum: [up, down, stable]
+      required:
+        - frameworkId
+        - shortName
+        - score
+        - status
+        - trend
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [server, cloud, endpoint, identity, network, container, database]
+        riskLevel:
+          type: string
+          enum: [critical, high, medium, low]
+        riskScore:
+          type: number
+        exposureScore:
+          type: number
+        crownJewel:
+          type: boolean
+        internetExposed:
+          type: boolean
+        owner:
+          type: string
+        environment:
+          type: string
+          enum: [production, staging, development, air_gapped]
+        vulnerabilityCount:
+          type: integer
+        controlCoverage:
+          type: number
+        lastSeen:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - type
+        - riskLevel
+        - riskScore
+        - exposureScore
+        - crownJewel
+        - internetExposed
+        - owner
+        - environment
+        - vulnerabilityCount
+        - controlCoverage
+        - lastSeen
+
+    AssetsSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        byType:
+          type: object
+          additionalProperties:
+            type: integer
+        byRisk:
+          type: object
+          additionalProperties:
+            type: integer
+        crownJewels:
+          type: integer
+        internetExposed:
+          type: integer
+        unmanaged:
+          type: integer
+      required:
+        - total
+        - byType
+        - byRisk
+        - crownJewels
+        - internetExposed
+        - unmanaged
+
+    Risk:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        score:
+          type: number
+        exploitability:
+          type: number
+        blastRadius:
+          type: integer
+          description: Number of assets potentially impacted
+        attackVectors:
+          type: array
+          items:
+            type: string
+        affectedAssets:
+          type: array
+          items:
+            type: string
+        threatIntelligence:
+          type: string
+        status:
+          type: string
+          enum: [open, mitigating, accepted, resolved]
+        identifiedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - severity
+        - score
+        - exploitability
+        - blastRadius
+        - attackVectors
+        - affectedAssets
+        - status
+        - identifiedAt
+
+    AttackPath:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        steps:
+          type: array
+          items:
+            type: string
+        entryPoint:
+          type: string
+        targetAsset:
+          type: string
+        likelihood:
+          type: number
+        impact:
+          type: number
+        active:
+          type: boolean
+      required:
+        - id
+        - name
+        - severity
+        - steps
+        - entryPoint
+        - targetAsset
+        - likelihood
+        - impact
+        - active
+
+    ExposureSummary:
+      type: object
+      properties:
+        totalRiskScore:
+          type: number
+        criticalRisks:
+          type: integer
+        highRisks:
+          type: integer
+        mediumRisks:
+          type: integer
+        lowRisks:
+          type: integer
+        identityRisk:
+          type: number
+        networkExposure:
+          type: number
+        privilegeEscalationPaths:
+          type: integer
+        lateralMovementPaths:
+          type: integer
+      required:
+        - totalRiskScore
+        - criticalRisks
+        - highRisks
+        - mediumRisks
+        - lowRisks
+        - identityRisk
+        - networkExposure
+        - privilegeEscalationPaths
+        - lateralMovementPaths
+
+    Finding:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        status:
+          type: string
+          enum: [open, in_progress, resolved, accepted]
+        source:
+          type: string
+        affectedAsset:
+          type: string
+        controlId:
+          type: string
+        cveId:
+          type: string
+        remediationSla:
+          type: integer
+          description: SLA in days
+        daysOpen:
+          type: integer
+        detectedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - severity
+        - status
+        - source
+        - affectedAsset
+        - daysOpen
+        - detectedAt
+
+    TelemetryEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        eventType:
+          type: string
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        asset:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        processed:
+          type: boolean
+      required:
+        - id
+        - source
+        - eventType
+        - message
+        - severity
+        - timestamp
+        - processed
+
+    TelemetrySource:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [siem, edr, cloud_api, iam, vuln_scanner, devops, network]
+        status:
+          type: string
+          enum: [active, degraded, offline, configuring]
+        eventsPerMinute:
+          type: number
+        lastEvent:
+          type: string
+          format: date-time
+        latencyMs:
+          type: number
+      required:
+        - id
+        - name
+        - type
+        - status
+        - eventsPerMinute
+        - lastEvent
+        - latencyMs
+
+    GraphData:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+      required:
+        - nodes
+        - edges
+
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [asset, identity, vulnerability, control, risk, framework]
+        risk:
+          type: string
+          enum: [critical, high, medium, low, none]
+        x:
+          type: number
+        y:
+          type: number
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - id
+        - label
+        - type
+        - risk
+
+    GraphEdge:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        target:
+          type: string
+        type:
+          type: string
+          enum: [depends_on, exploits, controls, maps_to, lateral_move, privilege_escalation]
+        weight:
+          type: number
+      required:
+        - id
+        - source
+        - target
+        - type
+
+    Evidence:
+      type: object
+      properties:
+        id:
+          type: string
+        controlId:
+          type: string
+        source:
+          type: string
+        type:
+          type: string
+          enum: [automated, manual, screenshot, api_response, log_extract]
+        freshness:
+          type: string
+          enum: [fresh, stale, expired]
+        hash:
+          type: string
+        collectedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        verified:
+          type: boolean
+      required:
+        - id
+        - controlId
+        - source
+        - type
+        - freshness
+        - hash
+        - collectedAt
+        - verified

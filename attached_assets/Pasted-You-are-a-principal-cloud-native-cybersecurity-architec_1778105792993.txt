@@ -1,0 +1,520 @@
+You are a principal cloud-native cybersecurity architect, federal systems engineer, AI platform engineer, and enterprise product designer.
+
+Your task is to design and build a production-grade prototype called:
+
+C2S Cyber Assurance Operating System (CAOS)
+by ColorCode Solutions
+
+MISSION:
+Build a telemetry-native Cyber Assurance Operating System that continuously validates cybersecurity controls, automates evidence collection, normalizes compliance across major frameworks, performs attack-path-aware risk analysis, and provides AI-assisted governance intelligence.
+
+The platform MUST outperform traditional GRC systems by focusing on:
+- operational cyber truth
+- continuous validation
+- real-time telemetry
+- framework abstraction
+- graph intelligence
+- AI-assisted cyber reasoning
+- exposure-centric risk scoring
+
+The system must be architected to eventually support:
+- federal environments
+- FedRAMP
+- RMF
+- CMMC
+- air-gapped deployments
+- IL5/IL6 roadmap
+- enterprise multi-tenancy
+- cloud-native scalability
+
+====================================================
+NON-NEGOTIABLE ARCHITECTURAL PRINCIPLES
+====================================================
+
+1. TELEMETRY-FIRST ARCHITECTURE
+The platform must derive trust from live telemetry, APIs, and machine-verifiable evidence — NOT screenshots or manual attestations.
+
+2. CANONICAL CONTROL ABSTRACTION
+Do NOT build separate logic for each framework.
+Build one Universal Control Ontology (UCO) that maps to:
+- NIST 800-53
+- NIST CSF 2.0
+- ISO 27001
+- SOC 2
+- PCI DSS
+- HIPAA
+- CIS Controls
+- FedRAMP
+- CMMC
+- GDPR
+- DORA
+- CJIS
+- IRS 1075
+
+3. CONTINUOUS VALIDATION
+Controls must continuously evaluate:
+- effectiveness
+- enforcement
+- drift
+- exceptions
+- evidence freshness
+
+4. EXPOSURE-CENTRIC RISK
+Risk must consider:
+- attack paths
+- exploitability
+- privilege exposure
+- identity compromise
+- internet exposure
+- crown jewel proximity
+- blast radius
+- threat intelligence
+
+5. GRAPH-NATIVE INTELLIGENCE
+Use graph relationships for:
+- assets
+- identities
+- vulnerabilities
+- frameworks
+- controls
+- risks
+- evidence
+- attack paths
+- inheritance mapping
+
+6. AI ASSISTS — HUMANS GOVERN
+AI should:
+- summarize
+- explain
+- correlate
+- generate documentation
+- recommend remediation
+
+Humans remain final approvers for governance decisions.
+
+====================================================
+PLATFORM MODULES
+====================================================
+
+Build the following modules:
+
+1. TELEMETRY INGESTION FABRIC
+2. ASSET INTELLIGENCE ENGINE
+3. CYBER GRAPH ENGINE
+4. CONTINUOUS CONTROL VALIDATION ENGINE
+5. EVIDENCE AUTOMATION ENGINE
+6. FRAMEWORK MAPPING ENGINE
+7. ATTACK-PATH RISK ENGINE
+8. EXECUTIVE RISK INTELLIGENCE DASHBOARDS
+9. AI GOVERNANCE ASSISTANT
+10. REMEDIATION ORCHESTRATION ENGINE
+11. FEDERAL COMPLIANCE ENGINE
+12. AUDIT & REPORTING ENGINE
+13. MULTI-TENANT ORGANIZATION MANAGEMENT
+14. RBAC / ABAC AUTHORIZATION SYSTEM
+15. API GATEWAY + SDK LAYER
+
+====================================================
+REQUIRED TECHNOLOGY STACK
+====================================================
+
+Frontend:
+- Next.js
+- TypeScript
+- TailwindCSS
+- shadcn/ui
+- React Query
+- D3.js or Cytoscape.js for graph visualization
+
+Backend:
+- Python FastAPI
+- async architecture
+- REST + GraphQL APIs
+
+Databases:
+- PostgreSQL
+- Neo4j
+- Redis
+- Optional future: ClickHouse
+
+Messaging/Event Streaming:
+- Kafka or NATS
+
+Authentication:
+- Azure Entra ID
+- OAuth2/OIDC
+- JWT-based auth
+
+Infrastructure:
+- Docker
+- Kubernetes-ready architecture
+- Terraform-ready structure
+
+AI:
+- OpenAI APIs
+- RAG architecture
+- vector embeddings for framework intelligence
+- semantic control mapping
+
+Observability:
+- OpenTelemetry
+- Prometheus
+- Grafana
+
+====================================================
+CORE DATA MODEL
+====================================================
+
+Design normalized schemas and graph relationships for:
+
+- Organizations
+- Tenants
+- Users
+- Assets
+- Identities
+- Cloud Resources
+- Vulnerabilities
+- Controls
+- Frameworks
+- Evidence
+- Risks
+- Policies
+- Exceptions
+- Findings
+- POA&Ms
+- SSPs
+- Attack Paths
+- Telemetry Events
+- Compliance States
+
+====================================================
+CYBER GRAPH REQUIREMENTS
+====================================================
+
+The graph engine must support:
+- identity relationships
+- privilege escalation paths
+- lateral movement paths
+- asset dependencies
+- framework inheritance
+- control relationships
+- risk propagation
+- blast radius analysis
+
+Use Neo4j.
+
+====================================================
+UNIVERSAL CONTROL ONTOLOGY (UCO)
+====================================================
+
+Build a canonical control library.
+
+Each canonical control must include:
+- unique control ID
+- control objective
+- validation logic
+- telemetry sources
+- evidence requirements
+- remediation guidance
+- mapped frameworks
+- severity weighting
+- maturity level
+- automation capability
+
+Example controls:
+- MFA enforcement
+- privileged access management
+- encryption at rest
+- centralized logging
+- vulnerability remediation SLA
+- EDR deployment
+- backup validation
+- password policy enforcement
+- least privilege enforcement
+
+====================================================
+CONTINUOUS CONTROL VALIDATION ENGINE
+====================================================
+
+The validation engine must:
+- consume telemetry continuously
+- evaluate controls in real time
+- score control effectiveness
+- detect drift
+- detect stale evidence
+- identify exceptions
+- generate alerts
+
+Control states:
+- effective
+- degraded
+- failed
+- unknown
+- inherited
+- compensating control
+
+====================================================
+EVIDENCE AUTOMATION ENGINE
+====================================================
+
+Automatically:
+- collect evidence
+- timestamp evidence
+- hash evidence for integrity
+- version evidence
+- map evidence to controls
+- calculate evidence freshness
+
+Evidence sources:
+- cloud APIs
+- IAM systems
+- EDR/XDR
+- SIEM
+- vulnerability scanners
+- DevOps pipelines
+
+====================================================
+FRAMEWORK MAPPING ENGINE
+====================================================
+
+Build dynamic mappings between:
+- canonical controls
+- federal frameworks
+- commercial frameworks
+
+Support:
+- one-to-many mappings
+- inherited controls
+- compensating controls
+- partial compliance scoring
+
+====================================================
+FEDERAL COMPLIANCE CAPABILITIES
+====================================================
+
+Design for future support of:
+- OSCAL
+- eMASS integration
+- STIG validation
+- SCAP ingestion
+- FedRAMP SSP generation
+- POA&M automation
+- RMF workflows
+- continuous ATO readiness
+
+====================================================
+AI GOVERNANCE ASSISTANT
+====================================================
+
+The AI assistant must:
+- generate SSP narratives
+- summarize risks
+- explain control failures
+- generate executive reports
+- draft POA&Ms
+- recommend remediation
+- map controls across frameworks
+- explain attack paths
+- answer governance questions
+
+DO NOT build a generic chatbot.
+Build domain-aware cyber governance intelligence.
+
+====================================================
+EXECUTIVE DASHBOARD REQUIREMENTS
+====================================================
+
+Provide dashboards for:
+- real-time cyber posture
+- control effectiveness
+- framework compliance
+- attack path exposure
+- identity risk
+- vulnerability exposure
+- remediation trends
+- federal readiness
+- operational risk
+- business impact
+
+====================================================
+REMEDIATION ORCHESTRATION
+====================================================
+
+Support:
+- ticket generation
+- remediation workflows
+- integration with ServiceNow/Jira
+- Terraform remediation hooks
+- IaC validation
+- patch orchestration
+- rollback validation
+
+====================================================
+UI/UX REQUIREMENTS
+====================================================
+
+The interface must look:
+- modern
+- elite enterprise-grade
+- minimal
+- telemetry-centric
+- graph-native
+- executive friendly
+
+Avoid:
+- outdated GRC UI paradigms
+- spreadsheet-heavy interfaces
+- form-centric workflows
+
+====================================================
+SECURITY REQUIREMENTS
+====================================================
+
+Implement:
+- RBAC + ABAC
+- tenant isolation
+- encryption at rest
+- encryption in transit
+- audit logging
+- immutable evidence logs
+- secrets management
+- secure API design
+- rate limiting
+- SIEM integration
+- session monitoring
+
+====================================================
+DELIVERABLES
+====================================================
+
+Generate:
+
+1. Full system architecture
+2. Database schemas
+3. Graph schemas
+4. Backend APIs
+5. Frontend UI
+6. AI orchestration layer
+7. Control validation engine
+8. Evidence automation engine
+9. Risk scoring engine
+10. Framework mapping engine
+11. Authentication system
+12. Infrastructure templates
+13. Docker setup
+14. CI/CD pipeline
+15. Terraform structure
+16. GitHub repo structure
+17. Sample telemetry adapters
+18. Sample controls
+19. Demo dashboards
+20. Example executive reporting
+21. Example SSP generation
+22. Example FedRAMP workflows
+
+====================================================
+DEVELOPMENT STRATEGY
+====================================================
+
+Build incrementally in the following phases:
+
+PHASE 1:
+Core platform foundation
+- authentication
+- organizations
+- telemetry ingestion
+- PostgreSQL
+- Neo4j
+- dashboard shell
+
+PHASE 2:
+Universal control ontology
+- canonical controls
+- framework mappings
+- control engine
+
+PHASE 3:
+Evidence automation
+- evidence harvesting
+- evidence storage
+- integrity validation
+
+PHASE 4:
+Continuous validation engine
+- telemetry evaluation
+- control scoring
+- drift detection
+
+PHASE 5:
+Risk graph intelligence
+- attack path analysis
+- blast radius
+- identity risk
+
+PHASE 6:
+Executive dashboards
+- posture analytics
+- compliance analytics
+- operational exposure
+
+PHASE 7:
+AI governance assistant
+- SSP generation
+- POA&M generation
+- risk summaries
+
+PHASE 8:
+Federal readiness
+- OSCAL
+- RMF workflows
+- FedRAMP workflows
+- STIG automation
+
+PHASE 9:
+Remediation orchestration
+- ServiceNow
+- Jira
+- Terraform integrations
+
+====================================================
+ENGINEERING EXPECTATIONS
+====================================================
+
+Code must be:
+- modular
+- scalable
+- production-oriented
+- enterprise-grade
+- API-first
+- cloud-native
+- well documented
+- strongly typed where possible
+
+Avoid:
+- monolithic architecture
+- hardcoded framework logic
+- duplicated control logic
+- brittle integrations
+- UI-heavy/no-backend designs
+
+====================================================
+OUTPUT FORMAT
+====================================================
+
+Generate:
+- folder structure
+- repo structure
+- backend code
+- frontend code
+- schema definitions
+- graph models
+- API examples
+- Terraform examples
+- Docker setup
+- integration examples
+- dashboard examples
+- phased roadmap
+- testing strategy
+- deployment strategy
+
+Build this as an elite next-generation cyber assurance platform designed to become an industry leader over the next decade.
