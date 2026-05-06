@@ -1,49 +1,55 @@
 import { useLocation } from "wouter";
-import { Bell, User, Activity } from "lucide-react";
+import { Bell, User, Activity, ChevronRight } from "lucide-react";
 
-const pageTitles: Record<string, { title: string; sub: string }> = {
-  "/": { title: "COMMAND DASHBOARD", sub: "Executive Cyber Posture — Real-Time" },
-  "/controls": { title: "CONTROL VALIDATION", sub: "Universal Control Ontology — Continuous Assessment" },
-  "/risks": { title: "RISK & ATTACK PATHS", sub: "Exposure-Centric Risk Intelligence" },
-  "/frameworks": { title: "COMPLIANCE FRAMEWORKS", sub: "Framework Mapping Engine — Multi-Framework" },
-  "/assets": { title: "ASSET INTELLIGENCE", sub: "Asset Discovery & Risk Classification" },
-  "/findings": { title: "SECURITY FINDINGS", sub: "Alert Feed — Prioritized by Impact" },
-  "/telemetry": { title: "TELEMETRY & EVIDENCE", sub: "Ingestion Fabric — Live Data Sources" },
-  "/graph": { title: "CYBER GRAPH INTELLIGENCE", sub: "Attack Path & Relationship Visualization" },
+const pageMeta: Record<string, { title: string; crumb: string; sub: string }> = {
+  "/": { title: "Dashboard", crumb: "Command", sub: "Executive cyber posture — real-time" },
+  "/controls": { title: "Control Validation", crumb: "Controls", sub: "Universal Control Ontology — continuous assessment" },
+  "/risks": { title: "Risk & Attack Paths", crumb: "Risk", sub: "Exposure-centric risk intelligence" },
+  "/frameworks": { title: "Compliance Frameworks", crumb: "Frameworks", sub: "Multi-framework compliance mapping" },
+  "/assets": { title: "Asset Intelligence", crumb: "Assets", sub: "Asset discovery & risk classification" },
+  "/findings": { title: "Security Findings", crumb: "Findings", sub: "Alert feed — prioritized by impact" },
+  "/telemetry": { title: "Telemetry & Evidence", crumb: "Telemetry", sub: "Ingestion fabric — live data sources" },
+  "/graph": { title: "Cyber Graph", crumb: "Graph", sub: "Attack path & relationship visualization" },
 };
 
 export function Header() {
   const [location] = useLocation();
-  const page = pageTitles[location] ?? { title: "C2S-CIOP", sub: "Cyber Assurance Operating System" };
+  const page = pageMeta[location] ?? { title: "C2S-CIOP", crumb: "Home", sub: "Cyber Assurance Operating System" };
   const now = new Date();
 
   return (
-    <header className="h-14 border-b border-border bg-background flex items-center px-4 gap-4 sticky top-0 z-20">
+    <header className="h-14 border-b border-border bg-card flex items-center px-5 gap-4 sticky top-0 z-20 shadow-2xs">
+      {/* Breadcrumb + title */}
       <div className="flex-1 overflow-hidden">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-[11px] font-mono font-bold tracking-widest uppercase text-foreground whitespace-nowrap">{page.title}</h1>
-          <span className="hidden sm:block text-[10px] font-mono text-muted-foreground tracking-wider truncate">{page.sub}</span>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-0.5">
+          <span>C2S-CIOP</span>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-foreground font-medium">{page.crumb}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-sm font-semibold text-foreground whitespace-nowrap">{page.title}</h1>
+          <span className="hidden md:block text-xs text-muted-foreground truncate">{page.sub}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {/* Live indicator */}
-        <div className="hidden md:flex items-center gap-1.5 border border-border px-2 py-1 mr-2">
-          <Activity className="w-3 h-3 text-green-500" />
-          <span className="text-[10px] font-mono text-green-500 uppercase tracking-widest">Live</span>
-          <span className="text-[10px] font-mono text-muted-foreground">
+        <div className="hidden md:flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 rounded-md px-2.5 py-1 mr-1">
+          <Activity className="w-3 h-3" />
+          <span className="text-[11px] font-semibold">Live</span>
+          <span className="text-[11px] font-mono text-green-600">
             {now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
 
-        <button data-testid="header-alerts" className="p-2 border border-border hover:bg-muted transition-colors relative">
+        <button data-testid="header-alerts" className="p-2 rounded-md hover:bg-muted transition-colors relative text-muted-foreground hover:text-foreground">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full ring-1 ring-white" />
         </button>
 
-        <button data-testid="header-user" className="flex items-center gap-2 p-2 border border-border hover:bg-muted transition-colors">
-          <User className="w-4 h-4" />
-          <span className="hidden md:block text-[10px] font-mono uppercase tracking-wider">CISO</span>
+        <button data-testid="header-user" className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors text-sm font-medium text-foreground">
+          <User className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="hidden md:block">CISO</span>
         </button>
       </div>
     </header>

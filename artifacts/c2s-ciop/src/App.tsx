@@ -43,7 +43,7 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="c2s-ciop-theme">
+    <ThemeProvider defaultTheme="light" storageKey="c2s-ciop-theme-v2">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>

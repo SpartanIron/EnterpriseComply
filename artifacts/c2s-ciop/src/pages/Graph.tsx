@@ -1,48 +1,39 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useGetGraphNodes } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-const RISK_COLORS: Record<string, string> = {
-  critical: "#ef4444",
-  high: "#f59e0b",
-  medium: "#eab308",
-  low: "#60a5fa",
-  none: "#6b7280",
-};
-
-const TYPE_SHAPES: Record<string, string> = {
-  asset: "rect",
-  identity: "diamond",
-  vulnerability: "triangle",
-  control: "circle",
-  risk: "rect",
-  framework: "circle",
+const NODE_COLORS: Record<string, { fill: string; stroke: string; text: string }> = {
+  critical: { fill: "#fef2f2", stroke: "#ef4444", text: "#dc2626" },
+  high:     { fill: "#fffbeb", stroke: "#f59e0b", text: "#d97706" },
+  medium:   { fill: "#fefce8", stroke: "#eab308", text: "#ca8a04" },
+  low:      { fill: "#eff6ff", stroke: "#3b82f6", text: "#2563eb" },
+  none:     { fill: "#f0fdf4", stroke: "#22c55e", text: "#16a34a" },
 };
 
 const EDGE_COLORS: Record<string, string> = {
-  depends_on: "#374151",
-  exploits: "#ef4444",
-  controls: "#22c55e",
-  maps_to: "#60a5fa",
-  lateral_move: "#f59e0b",
+  depends_on:           "#94a3b8",
+  exploits:             "#ef4444",
+  controls:             "#22c55e",
+  maps_to:              "#3b82f6",
+  lateral_move:         "#f59e0b",
   privilege_escalation: "#f97316",
 };
 
-const LEGEND = [
-  { label: "Critical", color: "#ef4444" },
-  { label: "High", color: "#f59e0b" },
-  { label: "Medium", color: "#eab308" },
-  { label: "Low / Info", color: "#60a5fa" },
-  { label: "Safe", color: "#6b7280" },
+const LEGEND_NODES = [
+  { label: "Critical", color: "#ef4444", fill: "#fef2f2" },
+  { label: "High", color: "#f59e0b", fill: "#fffbeb" },
+  { label: "Medium", color: "#eab308", fill: "#fefce8" },
+  { label: "Low", color: "#3b82f6", fill: "#eff6ff" },
+  { label: "Safe", color: "#22c55e", fill: "#f0fdf4" },
 ];
 
-const EDGE_LEGEND = [
+const LEGEND_EDGES = [
   { label: "Exploits", color: "#ef4444" },
   { label: "Lateral Move", color: "#f59e0b" },
-  { label: "Priv Escalation", color: "#f97316" },
+  { label: "Priv. Escalation", color: "#f97316" },
   { label: "Controls", color: "#22c55e" },
-  { label: "Depends On", color: "#374151" },
+  { label: "Depends On", color: "#94a3b8" },
 ];
 
 function GraphCanvas({ nodes, edges }: { nodes: any[]; edges: any[] }) {
@@ -54,32 +45,30 @@ function GraphCanvas({ nodes, edges }: { nodes: any[]; edges: any[] }) {
 
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as SVGElement).tagName === "svg" || (e.target as SVGElement).tagName === "rect" && (e.target as SVGElement).getAttribute("data-bg")) {
-      setDragging(true);
-      setStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-    }
-  };
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragging) return;
-    setTransform((t) => ({ ...t, x: e.clientX - start.x, y: e.clientY - start.y }));
-  };
-  const handleMouseUp = () => setDragging(false);
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 0.9;
-    setTransform((t) => ({ ...t, scale: Math.min(2.5, Math.max(0.3, t.scale * factor)) }));
-  };
+  const isHighlighted = (nodeId: string) =>
+    !selected || selected === nodeId ||
+    edges.some((e) => (e.source === selected && e.target === nodeId) || (e.target === selected && e.source === nodeId));
+
+  const isEdgeHighlighted = (e: any) => !selected || e.source === selected || e.target === selected;
 
   return (
     <svg
       ref={svgRef}
       className="w-full h-full cursor-grab active:cursor-grabbing"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onWheel={handleWheel}
+      style={{ background: "hsl(var(--background))" }}
+      onMouseDown={(ev) => {
+        if ((ev.target as SVGElement).tagName === "svg" || (ev.target as SVGElement).getAttribute("data-bg")) {
+          setDragging(true);
+          setStart({ x: ev.clientX - transform.x, y: ev.clientY - transform.y });
+        }
+      }}
+      onMouseMove={(ev) => { if (dragging) setTransform((t) => ({ ...t, x: ev.clientX - start.x, y: ev.clientY - start.y })); }}
+      onMouseUp={() => setDragging(false)}
+      onMouseLeave={() => setDragging(false)}
+      onWheel={(ev) => {
+        ev.preventDefault();
+        setTransform((t) => ({ ...t, scale: Math.min(2.5, Math.max(0.3, t.scale * (ev.deltaY < 0 ? 1.1 : 0.9))) }));
+      }}
     >
       <rect width="100%" height="100%" fill="transparent" data-bg="true" />
       <g transform={`translate(${transform.x},${transform.y}) scale(${transform.scale})`}>
@@ -87,62 +76,45 @@ function GraphCanvas({ nodes, edges }: { nodes: any[]; edges: any[] }) {
         {edges.map((e) => {
           const src = nodeMap.get(e.source);
           const tgt = nodeMap.get(e.target);
-          if (!src || !tgt || !src.x || !tgt.x) return null;
-          const color = EDGE_COLORS[e.type] ?? "#374151";
-          const isHighlight = selected === e.source || selected === e.target;
+          if (!src?.x || !tgt?.x) return null;
+          const color = EDGE_COLORS[e.type] ?? "#94a3b8";
+          const highlighted = isEdgeHighlighted(e);
           return (
-            <g key={e.id}>
-              <line
-                x1={src.x} y1={src.y} x2={tgt.x} y2={tgt.y}
-                stroke={color}
-                strokeWidth={isHighlight ? 2 : 1}
-                strokeOpacity={selected && !isHighlight ? 0.2 : 0.7}
-                strokeDasharray={e.type === "depends_on" ? "4,3" : undefined}
-              />
-              {/* Arrow */}
-              <circle cx={tgt.x + (src.x - tgt.x) * 0.15} cy={tgt.y + (src.y - tgt.y) * 0.15} r={2} fill={color} opacity={isHighlight ? 0.9 : 0.5} />
-            </g>
+            <line
+              key={e.id}
+              x1={src.x} y1={src.y} x2={tgt.x} y2={tgt.y}
+              stroke={color}
+              strokeWidth={highlighted ? 2 : 1}
+              strokeOpacity={selected && !highlighted ? 0.15 : 0.7}
+              strokeDasharray={e.type === "depends_on" ? "5,3" : undefined}
+            />
           );
         })}
         {/* Nodes */}
         {nodes.map((n) => {
           if (!n.x) return null;
-          const color = RISK_COLORS[n.risk] ?? "#6b7280";
+          const colors = NODE_COLORS[n.risk] ?? NODE_COLORS.none;
           const isSelected = selected === n.id;
-          const isHighlighted = !selected || selected === n.id || edges.some((e) => (e.source === selected && e.target === n.id) || (e.target === selected && e.source === n.id));
+          const hl = isHighlighted(n.id);
           return (
             <g
               key={n.id}
               transform={`translate(${n.x},${n.y})`}
               onClick={() => setSelected(selected === n.id ? null : n.id)}
               className="cursor-pointer"
-              opacity={isHighlighted ? 1 : 0.3}
+              opacity={hl ? 1 : 0.25}
             >
               {n.type === "control" || n.type === "framework" ? (
-                <circle r={18} fill={color} fillOpacity={0.12} stroke={color} strokeWidth={isSelected ? 2.5 : 1.5} />
+                <circle r={20} fill={colors.fill} stroke={colors.stroke} strokeWidth={isSelected ? 2.5 : 1.5} />
               ) : n.type === "vulnerability" ? (
-                <polygon points="0,-18 16,14 -16,14" fill={color} fillOpacity={0.12} stroke={color} strokeWidth={isSelected ? 2.5 : 1.5} />
+                <polygon points="0,-21 18,16 -18,16" fill={colors.fill} stroke={colors.stroke} strokeWidth={isSelected ? 2.5 : 1.5} />
               ) : (
-                <rect x={-20} y={-12} width={40} height={24} fill={color} fillOpacity={0.12} stroke={color} strokeWidth={isSelected ? 2.5 : 1.5} />
+                <rect x={-22} y={-13} width={44} height={26} rx={3} fill={colors.fill} stroke={colors.stroke} strokeWidth={isSelected ? 2.5 : 1.5} />
               )}
-              <text
-                textAnchor="middle"
-                dy={32}
-                fontSize={9}
-                fill={color}
-                fontFamily="JetBrains Mono"
-                fontWeight={isSelected ? "700" : "500"}
-              >
+              <text textAnchor="middle" dy={34} fontSize={9} fill="hsl(var(--muted-foreground))" fontFamily="Inter, sans-serif" fontWeight={isSelected ? "700" : "500"}>
                 {n.label.length > 14 ? n.label.slice(0, 12) + "…" : n.label}
               </text>
-              <text
-                textAnchor="middle"
-                dy={-1}
-                fontSize={8}
-                fill="hsl(var(--background))"
-                fontFamily="JetBrains Mono"
-                fontWeight="700"
-              >
+              <text textAnchor="middle" dy={2} fontSize={7.5} fill={colors.text} fontFamily="Inter, sans-serif" fontWeight="700">
                 {n.type.slice(0, 3).toUpperCase()}
               </text>
             </g>
@@ -157,55 +129,56 @@ export default function Graph() {
   const graph = useGetGraphNodes();
 
   return (
-    <div data-testid="graph-page" className="flex flex-col h-[calc(100vh-7rem)]">
+    <div data-testid="graph-page" className="flex flex-col h-[calc(100vh-7rem)] bg-card border border-border rounded-lg shadow-xs overflow-hidden">
       {/* Legend */}
-      <div className="bg-background border-b border-border px-4 py-2 flex flex-wrap items-center gap-4 shrink-0">
-        <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mr-2">Risk</div>
-        {LEGEND.map((l) => (
-          <div key={l.label} className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground">
-            <div className="w-2 h-2" style={{ background: l.color }} />
-            {l.label}
-          </div>
-        ))}
-        <div className="w-px h-4 bg-border mx-1" />
-        <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mr-2">Edges</div>
-        {EDGE_LEGEND.map((l) => (
-          <div key={l.label} className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground">
-            <div className="w-4 h-px" style={{ background: l.color }} />
-            {l.label}
-          </div>
-        ))}
-        <div className="ml-auto text-[9px] font-mono text-muted-foreground">Drag to pan • Scroll to zoom • Click node to highlight paths</div>
+      <div className="border-b border-border px-5 py-3 flex flex-wrap items-center gap-5 bg-muted/30 shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Node Risk</span>
+          {LEGEND_NODES.map((l) => (
+            <div key={l.label} className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+              <div className="w-3 h-3 rounded-sm border" style={{ background: l.fill, borderColor: l.color }} />
+              {l.label}
+            </div>
+          ))}
+        </div>
+        <div className="w-px h-4 bg-border" />
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Edge Type</span>
+          {LEGEND_EDGES.map((l) => (
+            <div key={l.label} className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+              <div className="w-5 h-0.5 rounded-full" style={{ background: l.color }} />
+              {l.label}
+            </div>
+          ))}
+        </div>
+        <div className="ml-auto text-[10px] font-medium text-muted-foreground">Drag to pan · Scroll to zoom · Click node to highlight paths</div>
       </div>
 
-      {/* Graph canvas */}
-      <div className="flex-1 bg-background relative overflow-hidden" data-testid="graph-canvas">
+      {/* Canvas */}
+      <div className="flex-1 relative overflow-hidden" data-testid="graph-canvas">
         {graph.isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Skeleton className="w-[80%] h-[70%]" />
+            <Skeleton className="w-[80%] h-[70%] rounded-lg" />
           </div>
         ) : (
           <GraphCanvas nodes={graph.data?.nodes ?? []} edges={graph.data?.edges ?? []} />
         )}
 
         {/* Stats overlay */}
-        <div className="absolute top-4 right-4 bg-card border border-border p-3 font-mono text-[9px] space-y-1">
-          <div className="text-muted-foreground uppercase tracking-widest mb-2">Graph Stats</div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Nodes</span>
-            <span className="text-foreground font-bold">{graph.data?.nodes.length ?? 0}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Edges</span>
-            <span className="text-foreground font-bold">{graph.data?.edges.length ?? 0}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Critical Nodes</span>
-            <span className="text-red-500 font-bold">{graph.data?.nodes.filter((n) => n.risk === "critical").length ?? 0}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Exploit Edges</span>
-            <span className="text-red-500 font-bold">{graph.data?.edges.filter((e) => e.type === "exploits").length ?? 0}</span>
+        <div className="absolute top-4 right-4 bg-card border border-border rounded-lg p-4 shadow-sm">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Graph Stats</div>
+          <div className="space-y-1.5">
+            {[
+              { label: "Total Nodes", value: graph.data?.nodes.length ?? 0, color: "text-foreground" },
+              { label: "Total Edges", value: graph.data?.edges.length ?? 0, color: "text-foreground" },
+              { label: "Critical Nodes", value: graph.data?.nodes.filter((n) => n.risk === "critical").length ?? 0, color: "text-red-600" },
+              { label: "Exploit Edges", value: graph.data?.edges.filter((e) => e.type === "exploits").length ?? 0, color: "text-red-600" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="flex justify-between gap-6 text-xs">
+                <span className="text-muted-foreground font-medium">{label}</span>
+                <span className={cn("font-mono font-bold", color)}>{value}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

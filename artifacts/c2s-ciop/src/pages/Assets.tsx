@@ -4,29 +4,38 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Crown, Globe, Server, Cloud, Monitor, User, Network, Package, Database } from "lucide-react";
 
-const RISK_COLORS: Record<string, string> = {
-  critical: "text-red-500 border-red-500/40 bg-red-500/5",
-  high: "text-amber-500 border-amber-500/40 bg-amber-500/5",
-  medium: "text-yellow-500 border-yellow-500/40 bg-yellow-500/5",
-  low: "text-blue-400 border-blue-400/40 bg-blue-400/5",
+const RISK_BADGE: Record<string, string> = {
+  critical: "bg-red-100 text-red-700 ring-1 ring-inset ring-red-200",
+  high: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
+  medium: "bg-yellow-100 text-yellow-700 ring-1 ring-inset ring-yellow-200",
+  low: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
-  server: <Server className="w-3 h-3" />,
-  cloud: <Cloud className="w-3 h-3" />,
-  endpoint: <Monitor className="w-3 h-3" />,
-  identity: <User className="w-3 h-3" />,
-  network: <Network className="w-3 h-3" />,
-  container: <Package className="w-3 h-3" />,
-  database: <Database className="w-3 h-3" />,
+  server: <Server className="w-3.5 h-3.5" />,
+  cloud: <Cloud className="w-3.5 h-3.5" />,
+  endpoint: <Monitor className="w-3.5 h-3.5" />,
+  identity: <User className="w-3.5 h-3.5" />,
+  network: <Network className="w-3.5 h-3.5" />,
+  container: <Package className="w-3.5 h-3.5" />,
+  database: <Database className="w-3.5 h-3.5" />,
 };
 
 const ENV_COLORS: Record<string, string> = {
-  production: "text-foreground",
-  staging: "text-amber-500",
+  production: "text-foreground font-semibold",
+  staging: "text-amber-600 font-medium",
   development: "text-muted-foreground",
-  air_gapped: "text-blue-400",
+  air_gapped: "text-blue-600 font-medium",
 };
+
+function SummaryTile({ label, value, color, loading }: { label: string; value: number; color: string; loading: boolean }) {
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 shadow-xs">
+      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</div>
+      {loading ? <Skeleton className="h-8 w-10" /> : <div className={cn("text-3xl font-mono font-bold", color)}>{value}</div>}
+    </div>
+  );
+}
 
 export default function Assets() {
   const [filterRisk, setFilterRisk] = useState("");
@@ -35,117 +44,129 @@ export default function Assets() {
   const s = summary.data;
 
   return (
-    <div data-testid="assets-page">
-      {/* Summary strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-px bg-border mb-px">
+    <div data-testid="assets-page" className="space-y-4">
+      {/* Summary tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[
           { label: "Total Assets", value: s?.total ?? 0, color: "text-foreground" },
-          { label: "Critical Risk", value: s?.byRisk?.critical ?? 0, color: "text-red-500" },
-          { label: "High Risk", value: s?.byRisk?.high ?? 0, color: "text-amber-500" },
-          { label: "Crown Jewels", value: s?.crownJewels ?? 0, color: "text-yellow-400" },
-          { label: "Internet Exposed", value: s?.internetExposed ?? 0, color: "text-orange-500" },
-          { label: "Cloud Assets", value: s?.byType?.cloud ?? 0, color: "text-blue-400" },
-          { label: "Unmanaged", value: s?.unmanaged ?? 0, color: "text-muted-foreground" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-background p-3">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">{label}</div>
-            <div className={cn("text-2xl font-mono font-bold mt-1", color)}>{summary.isLoading ? <Skeleton className="h-7 w-8" /> : value}</div>
-          </div>
-        ))}
+          { label: "Critical Risk", value: s?.byRisk?.critical ?? 0, color: "text-red-600" },
+          { label: "High Risk", value: s?.byRisk?.high ?? 0, color: "text-amber-600" },
+          { label: "Crown Jewels", value: s?.crownJewels ?? 0, color: "text-yellow-500" },
+          { label: "Internet Exposed", value: s?.internetExposed ?? 0, color: "text-orange-600" },
+          { label: "Cloud Assets", value: s?.byType?.cloud ?? 0, color: "text-blue-600" },
+          { label: "Unmanaged", value: s?.unmanaged ?? 0, color: "text-slate-500" },
+        ].map((t) => <SummaryTile key={t.label} {...t} loading={summary.isLoading} />)}
       </div>
 
-      {/* Risk filter */}
-      <div className="bg-background border-b border-border flex items-center overflow-x-auto mb-px" data-testid="asset-filter-bar">
-        {["", "critical", "high", "medium", "low"].map((r) => (
-          <button
-            key={r || "all"}
-            data-testid={`asset-filter-${r || "all"}`}
-            onClick={() => setFilterRisk(r)}
-            className={cn(
-              "px-4 py-2 text-[10px] font-mono uppercase tracking-widest whitespace-nowrap border-r border-border transition-colors",
-              filterRisk === r ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            )}
-          >
-            {r || "All Assets"}
-          </button>
-        ))}
-      </div>
+      {/* Table card */}
+      <div className="bg-card border border-border rounded-lg shadow-xs overflow-hidden">
+        {/* Filter tabs */}
+        <div className="flex items-center border-b border-border overflow-x-auto" data-testid="asset-filter-bar">
+          {["", "critical", "high", "medium", "low"].map((r) => (
+            <button
+              key={r || "all"}
+              data-testid={`asset-filter-${r || "all"}`}
+              onClick={() => setFilterRisk(r)}
+              className={cn(
+                "px-4 py-2.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r border-border transition-colors",
+                filterRisk === r
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              {r || "All Assets"}
+            </button>
+          ))}
+        </div>
 
-      {/* Table */}
-      <div className="bg-background overflow-x-auto">
-        {assets.isLoading ? (
-          <div className="p-4 space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : (
-          <table className="w-full text-[10px] font-mono">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                {["Asset", "Type", "Risk Level", "Risk Score", "Exposure", "CVEs", "Control Cov.", "Environment", "Flags"].map((h) => (
-                  <th key={h} className="text-left text-muted-foreground uppercase tracking-widest py-2.5 px-3 font-normal whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(assets.data?.assets ?? []).map((a) => (
-                <tr key={a.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors" data-testid={`asset-row-${a.id}`}>
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-muted-foreground">{TYPE_ICONS[a.type]}</span>
-                      <span className="text-foreground font-bold">{a.name}</span>
-                    </div>
-                    <div className="text-[9px] text-muted-foreground mt-0.5">{a.owner}</div>
-                  </td>
-                  <td className="py-2.5 px-3 text-muted-foreground capitalize">{a.type}</td>
-                  <td className="py-2.5 px-3">
-                    <span className={cn("border text-[9px] uppercase tracking-widest px-1.5 py-0.5", RISK_COLORS[a.riskLevel] ?? "")}>
-                      {a.riskLevel}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-1 bg-muted">
-                        <div
-                          className={cn("h-full", a.riskScore >= 80 ? "bg-red-500" : a.riskScore >= 60 ? "bg-amber-500" : a.riskScore >= 40 ? "bg-yellow-500" : "bg-green-500")}
-                          style={{ width: `${a.riskScore}%` }}
-                        />
-                      </div>
-                      <span className="font-bold">{a.riskScore.toFixed(0)}</span>
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className={cn("font-bold", a.exposureScore >= 70 ? "text-red-500" : a.exposureScore >= 50 ? "text-amber-500" : "text-foreground")}>
-                      {a.exposureScore.toFixed(0)}%
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className={cn("font-bold", a.vulnerabilityCount > 15 ? "text-red-500" : a.vulnerabilityCount > 5 ? "text-amber-500" : "text-foreground")}>
-                      {a.vulnerabilityCount}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-1 bg-muted">
-                        <div
-                          className={cn("h-full", a.controlCoverage >= 80 ? "bg-green-500" : a.controlCoverage >= 60 ? "bg-amber-500" : "bg-red-500")}
-                          style={{ width: `${a.controlCoverage}%` }}
-                        />
-                      </div>
-                      <span>{a.controlCoverage.toFixed(0)}%</span>
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className={ENV_COLORS[a.environment] ?? "text-muted-foreground"}>{a.environment.replace("_", " ")}</span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-1.5">
-                      {a.crownJewel && <Crown className="w-3 h-3 text-yellow-400" title="Crown Jewel" />}
-                      {a.internetExposed && <Globe className="w-3 h-3 text-orange-500" title="Internet Exposed" />}
-                    </div>
-                  </td>
+        {/* Table */}
+        <div className="overflow-x-auto">
+          {assets.isLoading ? (
+            <div className="p-5 space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-11 w-full" />)}</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border">
+                  {["Asset", "Type", "Risk Level", "Risk Score", "Exposure", "CVEs", "Control Cov.", "Environment", "Flags"].map((h) => (
+                    <th key={h} className="text-left text-muted-foreground font-semibold uppercase tracking-wide py-2.5 px-4 whitespace-nowrap text-[10px]">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {(assets.data?.assets ?? []).map((a) => (
+                  <tr key={a.id} className="hover:bg-muted/20 transition-colors" data-testid={`asset-row-${a.id}`}>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">{TYPE_ICONS[a.type]}</span>
+                        <div>
+                          <div className="font-semibold text-foreground">{a.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{a.owner}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground font-medium capitalize">{a.type}</td>
+                    <td className="py-3 px-4">
+                      <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", RISK_BADGE[a.riskLevel] ?? "")}>
+                        {a.riskLevel}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-1.5 bg-muted rounded-full">
+                          <div
+                            className={cn("h-full rounded-full", a.riskScore >= 80 ? "bg-red-500" : a.riskScore >= 60 ? "bg-amber-500" : a.riskScore >= 40 ? "bg-yellow-500" : "bg-green-500")}
+                            style={{ width: `${a.riskScore}%` }}
+                          />
+                        </div>
+                        <span className="font-mono font-semibold text-foreground">{a.riskScore.toFixed(0)}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={cn("font-mono font-semibold", a.exposureScore >= 70 ? "text-red-600" : a.exposureScore >= 50 ? "text-amber-600" : "text-foreground")}>
+                        {a.exposureScore.toFixed(0)}%
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={cn("font-mono font-semibold", a.vulnerabilityCount > 15 ? "text-red-600" : a.vulnerabilityCount > 5 ? "text-amber-600" : "text-foreground")}>
+                        {a.vulnerabilityCount}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-1.5 bg-muted rounded-full">
+                          <div
+                            className={cn("h-full rounded-full", a.controlCoverage >= 80 ? "bg-green-500" : a.controlCoverage >= 60 ? "bg-amber-500" : "bg-red-500")}
+                            style={{ width: `${a.controlCoverage}%` }}
+                          />
+                        </div>
+                        <span className="font-mono font-semibold text-foreground">{a.controlCoverage.toFixed(0)}%</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={ENV_COLORS[a.environment] ?? "text-muted-foreground"}>
+                        {a.environment.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1.5">
+                        {a.crownJewel && (
+                          <span title="Crown Jewel" className="inline-flex items-center gap-1 rounded bg-yellow-100 text-yellow-700 ring-1 ring-inset ring-yellow-200 px-1.5 py-0.5 text-[9px] font-semibold">
+                            <Crown className="w-2.5 h-2.5" />CJ
+                          </span>
+                        )}
+                        {a.internetExposed && (
+                          <span title="Internet Exposed" className="inline-flex items-center gap-1 rounded bg-orange-100 text-orange-700 ring-1 ring-inset ring-orange-200 px-1.5 py-0.5 text-[9px] font-semibold">
+                            <Globe className="w-2.5 h-2.5" />Exp
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );
