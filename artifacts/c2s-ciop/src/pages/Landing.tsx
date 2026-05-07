@@ -100,15 +100,15 @@ function NavBar() {
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
   return (
-    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(3,7,18,0.9)", borderColor: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}>
+    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(255,255,255,0.96)", borderColor: "rgba(0,0,0,0.08)", backdropFilter: "blur(12px)" }}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
         <a href={BASE_PATH + "/"} className="flex items-center gap-3">
-          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/30">
+          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-600/30">
             <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" alt="" />
           </div>
           <div>
-            <span className="text-white font-bold text-sm tracking-tight">EnterpriseComply</span>
-            <span className="hidden sm:inline text-xs ml-2" style={{ color: "#334155" }}>by ColorCode Solutions</span>
+            <span className="font-bold text-sm tracking-tight" style={{ color: "#0f172a" }}>EnterpriseComply</span>
+            <span className="hidden sm:inline text-xs ml-2" style={{ color: "#94a3b8" }}>by ColorCode Solutions</span>
           </div>
         </a>
 
@@ -284,35 +284,30 @@ export default function Landing() {
       <NavBar />
 
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, #050d1a 0%, #030712 100%)", minHeight: 680 }}>
-        {/* Background grid pattern */}
+      <section className="relative overflow-hidden" style={{ background: "#ffffff", minHeight: 680 }}>
+        {/* Subtle dot grid */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
+          backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.06) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
         }} />
-        {/* Ambient glow */}
-        <div className="absolute pointer-events-none" style={{ top: -100, left: "10%", width: 600, height: 600, background: "radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%)", borderRadius: "50%" }} />
-        <div className="absolute pointer-events-none" style={{ top: 0, right: "5%", width: 400, height: 400, background: "radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%)", borderRadius: "50%" }} />
-        {/* Cool diagonal stripes - violet/blue/cyan/green spectrum */}
-        <div className="absolute pointer-events-none overflow-hidden" style={{ bottom: 0, left: "20%", right: 0, height: "60%", zIndex: 0 }}>
+        {/* Full-width edge-to-edge diagonal spectrum - violet → blue → cyan → teal → green */}
+        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "58%", zIndex: 0 }}>
           <div style={{
             position: "absolute",
             inset: 0,
             background: [
               "linear-gradient(38deg,",
-              "  transparent 0%,",
-              "  transparent 14%,",
-              "  rgba(109,40,217,0.38) 14%, rgba(109,40,217,0.38) 17%,",
-              "  rgba(37,99,235,0.42)  17%, rgba(37,99,235,0.42)  20.5%,",
-              "  rgba(14,165,233,0.40) 20.5%, rgba(14,165,233,0.40) 24%,",
-              "  rgba(6,182,212,0.36)  24%, rgba(6,182,212,0.36)  27.5%,",
-              "  rgba(16,185,129,0.32) 27.5%, rgba(16,185,129,0.32) 31%,",
-              "  rgba(132,204,22,0.26) 31%, rgba(132,204,22,0.26) 34.5%,",
-              "  transparent 34.5%",
+              "  rgba(109,40,217,0.28) 0%,   rgba(109,40,217,0.28) 8%,",
+              "  rgba(37,99,235,0.30)  8%,   rgba(37,99,235,0.30)  16%,",
+              "  rgba(14,165,233,0.27) 16%,  rgba(14,165,233,0.27) 24%,",
+              "  rgba(6,182,212,0.23)  24%,  rgba(6,182,212,0.23)  32%,",
+              "  rgba(16,185,129,0.18) 32%,  rgba(16,185,129,0.18) 40%,",
+              "  rgba(132,204,22,0.13) 40%,  rgba(132,204,22,0.13) 48%,",
+              "  transparent 48%",
               ")"
             ].join(""),
-            maskImage: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 55%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 55%, transparent 100%)",
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 45%, transparent 80%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 45%, transparent 80%)",
           }} />
         </div>
 
@@ -321,24 +316,24 @@ export default function Landing() {
             {/* Left */}
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-7 border"
-                style={{ background: "rgba(37,99,235,0.1)", borderColor: "rgba(37,99,235,0.25)", color: "#93c5fd" }}>
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                style={{ background: "rgba(37,99,235,0.06)", borderColor: "rgba(37,99,235,0.2)", color: "#1d4ed8" }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
                 ColorCode Solutions - by colorcodesolutions.com
               </div>
-              <h1 className="font-extrabold leading-tight tracking-tight mb-6" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)" }}>
+              <h1 className="font-extrabold leading-tight tracking-tight mb-6" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "#0f172a" }}>
                 Compliance<br />Intelligence.
                 <br />
-                <span style={{ background: "linear-gradient(135deg, #3b82f6 0%, #0ea5e9 50%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                <span style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 50%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   Built for What's Next.
                 </span>
               </h1>
-              <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#94a3b8" }}>
+              <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#475569" }}>
                 Unify risk, controls, policies, and obligations in one intelligent platform and turn compliance into a strategic advantage for your enterprise.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-10">
                 <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
                   className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-lg text-sm transition-all hover:scale-105"
-                  style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 24px rgba(37,99,235,0.4)" }}>
+                  style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 20px rgba(37,99,235,0.35)" }}>
                   Request a Demo
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -346,7 +341,7 @@ export default function Landing() {
                 </a>
                 <a href="#features"
                   className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg text-sm transition-all border"
-                  style={{ color: "#cbd5e1", borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)" }}>
+                  style={{ color: "#374151", borderColor: "rgba(15,23,42,0.18)", background: "rgba(15,23,42,0.03)" }}>
                   Explore Platform
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -361,7 +356,7 @@ export default function Landing() {
                   { icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "Audit Ready Always" },
                 ].map(({ icon, label }) => (
                   <div key={label} className="flex items-center gap-1.5 text-sm" style={{ color: "#64748b" }}>
-                    <svg className="h-4 w-4 flex-shrink-0" style={{ color: "#3b82f6" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                    <svg className="h-4 w-4 flex-shrink-0" style={{ color: "#2563eb" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                       <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
                     </svg>
                     {label}
@@ -370,20 +365,11 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Right - mockup with blue/cyan glow */}
+            {/* Right - mockup with clean elevation shadow */}
             <div className="relative">
-              {/* Outer glow layer */}
-              <div className="absolute -inset-1 rounded-3xl pointer-events-none" style={{
-                background: "linear-gradient(135deg, rgba(37,99,235,0.5) 0%, rgba(14,165,233,0.4) 50%, rgba(37,99,235,0.3) 100%)",
-                filter: "blur(20px)",
-                opacity: 0.6,
-              }} />
-              {/* Border gradient ring */}
-              <div className="absolute -inset-[2px] rounded-2xl pointer-events-none" style={{
-                background: "linear-gradient(135deg, rgba(59,130,246,0.8) 0%, rgba(14,165,233,0.6) 50%, rgba(99,102,241,0.5) 100%)",
-                zIndex: 1,
-              }} />
-              <div className="relative rounded-2xl overflow-hidden" style={{ zIndex: 2 }}>
+              <div className="relative rounded-2xl overflow-hidden" style={{
+                boxShadow: "0 32px 80px rgba(15,23,42,0.14), 0 8px 24px rgba(15,23,42,0.08), 0 0 0 1px rgba(15,23,42,0.06)",
+              }}>
                 <ProductMockup />
               </div>
             </div>
