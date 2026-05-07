@@ -10,3 +10,6 @@ export * from "./orgQuestionnaire";
 export * from "./orgAccessReview";
 export * from "./orgMonitoring";
 export * from "./orgCustomFramework";
+export * from "./orgScoreHistory";
+export * from "./notifications";
+export * from "./testRuns";

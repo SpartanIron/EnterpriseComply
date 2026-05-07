@@ -40,9 +40,9 @@ export class ControlsService {
     orgId: number,
     controlId: string,
     clerkUserId: string,
-    body: { status: string; remediationNotes?: string },
+    body: { status?: string; remediationNotes?: string; ownerName?: string; dueDate?: string },
   ) {
-    const { status, remediationNotes } = body;
+    const { status, remediationNotes, ownerName, dueDate } = body;
 
     const existing = await db.query.orgControlResultsTable.findFirst({
       where: and(
@@ -51,23 +51,35 @@ export class ControlsService {
       ),
     });
 
+    const updateFields: Record<string, unknown> = {
+      manualOverride: true,
+      manualOverrideBy: clerkUserId,
+      lastTestedAt: new Date(),
+    };
+    if (status !== undefined) updateFields.status = status;
+    if (remediationNotes !== undefined) updateFields.remediationNotes = remediationNotes;
+    if (ownerName !== undefined) updateFields.ownerName = ownerName;
+    if (dueDate !== undefined) updateFields.dueDate = dueDate ? new Date(dueDate) : null;
+
     let result;
     if (existing) {
       [result] = await db
         .update(orgControlResultsTable)
-        .set({ status, remediationNotes, manualOverride: true, manualOverrideBy: clerkUserId, lastTestedAt: new Date() })
+        .set(updateFields as any)
         .where(and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, controlId)))
         .returning();
     } else {
       [result] = await db.insert(orgControlResultsTable).values({
         orgId,
         ucoControlId: controlId,
-        status,
+        status: status ?? "not_tested",
         remediationNotes,
+        ownerName,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
         manualOverride: true,
         manualOverrideBy: clerkUserId,
         lastTestedAt: new Date(),
-      }).returning();
+      } as any).returning();
     }
 
     await this.updateFrameworkScores(orgId);

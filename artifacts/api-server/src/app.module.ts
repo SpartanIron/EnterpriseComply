@@ -21,6 +21,10 @@ import { TrustCenterModule } from "./modules/trust-center/trust-center.module";
 import { MonitoringModule } from "./modules/monitoring/monitoring.module";
 import { AccessReviewsModule } from "./modules/access-reviews/access-reviews.module";
 import { CustomFrameworksModule } from "./modules/custom-frameworks/custom-frameworks.module";
+import { ScoreHistoryModule } from "./modules/score-history/score-history.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { GapAnalysisModule } from "./modules/gap-analysis/gap-analysis.module";
+import { TestRunsModule } from "./modules/test-runs/test-runs.module";
 
 @Module({
   imports: [
@@ -44,6 +48,10 @@ import { CustomFrameworksModule } from "./modules/custom-frameworks/custom-frame
     MonitoringModule,
     AccessReviewsModule,
     CustomFrameworksModule,
+    ScoreHistoryModule,
+    NotificationsModule,
+    GapAnalysisModule,
+    TestRunsModule,
   ],
 })
 export class AppModule implements NestModule {

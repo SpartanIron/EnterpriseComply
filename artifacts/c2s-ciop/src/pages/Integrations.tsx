@@ -82,6 +82,7 @@ export default function Integrations() {
   const [location] = useLocation();
   const { orgId } = useOrg();
   const qc = useQueryClient();
+  const [tab, setTab] = useState<"catalog" | "health">("catalog");
   const connected = new URLSearchParams(location.split("?")[1] ?? "").get("connected");
 
   const { data, isLoading } = useQuery<{ integrations: any[] }>({
@@ -144,25 +145,124 @@ export default function Integrations() {
     ...extraComingSoon.filter(e => !apiComingSoon.some(a => a.key === e.key)),
   ];
 
+  const { data: healthData, isLoading: healthLoading } = useQuery<{ health: any[] }>({
+    queryKey: ["integration-health", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/integration-health`), { credentials: "include" })).json(),
+    enabled: !!orgId && tab === "health",
+  });
+  const health = healthData?.health ?? [];
+
   return (
     <div className="p-6 max-w-screen-xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Integrations</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Connect your tools to collect compliance evidence automatically</p>
+      <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Integrations</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Connect your tools to collect compliance evidence automatically</p>
+        </div>
       </div>
 
-      {connected && (
+      {/* Tabs */}
+      <div className="flex gap-1.5 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
+        {([["catalog", "Integration Catalog"], ["health", "Health Dashboard"]] as const).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${tab === id ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            {id === "health" && (
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            )}
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Health dashboard tab */}
+      {tab === "health" && (
+        <div className="space-y-4">
+          {healthLoading && (
+            <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+          )}
+          {!healthLoading && health.length === 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-14 text-center">
+              <svg className="h-10 w-10 text-slate-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+              <p className="text-sm font-bold text-slate-700">No connected integrations</p>
+              <p className="text-xs text-slate-400 mt-1 mb-4">Connect an integration to see health metrics here.</p>
+              <button onClick={() => setTab("catalog")} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Browse catalog</button>
+            </div>
+          )}
+          {!healthLoading && health.length > 0 && (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-2">
+                {[
+                  { label: "Connected", value: health.length, color: "text-slate-900" },
+                  { label: "Healthy", value: health.filter(h => h.lastSyncStatus === "healthy").length, color: "text-green-600" },
+                  { label: "Needs attention", value: health.filter(h => h.lastSyncStatus !== "healthy").length, color: "text-amber-600" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+                    <div className={`text-2xl font-extrabold ${color}`}>{value}</div>
+                    <div className="text-xs text-slate-500 font-medium mt-0.5">{label}</div>
+                  </div>
+                ))}
+              </div>
+              {health.map((h: any) => {
+                const statusMap: Record<string, { cls: string; dot: string; label: string }> = {
+                  healthy: { cls: "bg-green-50 text-green-700 ring-1 ring-green-200", dot: "bg-green-500", label: "Healthy" },
+                  stale:   { cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200", dot: "bg-amber-400", label: "Stale" },
+                  error:   { cls: "bg-red-50 text-red-700 ring-1 ring-red-200", dot: "bg-red-500", label: "Error" },
+                  never:   { cls: "bg-slate-100 text-slate-500 ring-1 ring-slate-200", dot: "bg-slate-300", label: "Never synced" },
+                };
+                const sc = statusMap[h.lastSyncStatus] ?? statusMap.never;
+                return (
+                  <div key={h.key} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        <IntegrationLogo name={h.key} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-slate-900 text-sm">{h.name}</p>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${sc.cls}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
+                              {sc.label}
+                            </span>
+                          </div>
+                          {h.accountLogin && <p className="text-xs text-slate-400 mt-0.5">@{h.accountLogin}</p>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: "Evidence Collected", value: h.evidenceCollected ?? 0, color: "text-blue-600" },
+                        { label: "Last Sync", value: h.lastSyncAt ? new Date(h.lastSyncAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never", color: "text-slate-700" },
+                        { label: "Sync Status", value: sc.label, color: h.lastSyncStatus === "healthy" ? "text-green-600" : "text-amber-600" },
+                        { label: "Next Sync", value: h.nextSyncAt ? new Date(h.nextSyncAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "Scheduled", color: "text-slate-500" },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="bg-slate-50 rounded-lg px-3 py-2.5">
+                          <div className={`text-sm font-bold ${color} leading-tight`}>{value}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === "catalog" && connected && (
         <div className="mb-5 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <svg className="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <p className="text-green-800 text-sm font-semibold capitalize">{connected} connected! Evidence collection has started.</p>
         </div>
       )}
 
-      {isLoading && (
+      {tab === "catalog" && isLoading && (
         <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       )}
 
-      {connectedList.length > 0 && (
+      {tab === "catalog" && connectedList.length > 0 && (
         <div className="mb-7">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Connected ({connectedList.length})</h2>
           <div className="space-y-3">
@@ -175,7 +275,7 @@ export default function Integrations() {
         </div>
       )}
 
-      {availableList.length > 0 && (
+      {tab === "catalog" && availableList.length > 0 && (
         <div className="mb-7">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Available to Connect ({availableList.length})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -188,7 +288,7 @@ export default function Integrations() {
         </div>
       )}
 
-      {comingSoon.length > 0 && (
+      {tab === "catalog" && comingSoon.length > 0 && (
         <div>
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Coming Soon ({comingSoon.length})</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

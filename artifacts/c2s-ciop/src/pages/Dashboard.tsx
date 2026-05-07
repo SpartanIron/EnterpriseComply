@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { apiUrl } from "@/lib/queryClient";
 import { useEffect } from "react";
 import { useUser } from "@clerk/react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 const CATEGORY_COLORS: Record<string, { badge: string; label: string }> = {
   commercial: { badge: "bg-blue-50 text-blue-700 ring-1 ring-blue-200", label: "Commercial" },
@@ -329,6 +330,9 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Compliance Score Trend */}
+        <ScoreTrendChart orgId={orgId} />
+
         {/* Framework Compliance */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -365,6 +369,103 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ScoreTrendChart({ orgId }: { orgId: number | undefined }) {
+  const { data, isLoading } = useQuery<{ history: any[] }>({
+    queryKey: ["score-history", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/score-history`), { credentials: "include" })).json(),
+    enabled: !!orgId,
+  });
+
+  const history = data?.history ?? [];
+
+  const chartData = history.map(h => ({
+    date: new Date(h.recordedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    score: Math.round(h.overallScore),
+    passing: h.passingControls,
+    failing: h.failingControls,
+  }));
+
+  if (isLoading) {
+    return <div className="h-52 bg-white border border-slate-200 rounded-xl shadow-sm animate-pulse" />;
+  }
+
+  if (chartData.length === 0) {
+    return null;
+  }
+
+  const latest = chartData[chartData.length - 1]?.score ?? 0;
+  const earliest = chartData[0]?.score ?? 0;
+  const delta = latest - earliest;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Compliance Score Trend</h2>
+          <p className="text-xs text-slate-400 mt-0.5">90-day history</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {delta !== 0 && (
+            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${delta > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {delta > 0 ? (
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+              ) : (
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+              )}
+              {Math.abs(delta)}pts over 90d
+            </span>
+          )}
+          <a href="/gap-analysis" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            AI Gap Analysis
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </a>
+        </div>
+      </div>
+      <div className="px-4 pt-4 pb-3">
+        <ResponsiveContainer width="100%" height={180}>
+          <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+              interval={Math.floor(chartData.length / 6)}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fontSize: 10, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={v => `${v}%`}
+            />
+            <Tooltip
+              contentStyle={{ border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 12, background: "white" }}
+              formatter={(val: any) => [`${val}%`, "Score"]}
+              labelStyle={{ color: "#475569", fontWeight: 600 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="score"
+              stroke="#2563eb"
+              strokeWidth={2.5}
+              fill="url(#scoreGrad)"
+              dot={false}
+              activeDot={{ r: 5, fill: "#2563eb", strokeWidth: 2, stroke: "white" }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

@@ -637,6 +637,124 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── PRICING ── */}
+      <section className="py-24 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3">Pricing</p>
+            <h2 className="text-3xl font-extrabold text-slate-900 mb-4">Simple, transparent pricing</h2>
+            <p className="text-slate-500 text-base max-w-xl mx-auto">Start free, scale as you grow. Every plan includes unlimited frameworks, automated evidence collection, and continuous monitoring.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 items-stretch">
+            {/* Startup */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 flex flex-col shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-6">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Startup</p>
+                <div className="flex items-end gap-1 mb-3">
+                  <span className="text-4xl font-extrabold text-slate-900">$299</span>
+                  <span className="text-slate-400 text-sm mb-1.5">/month</span>
+                </div>
+                <p className="text-sm text-slate-500">For early-stage companies starting their compliance journey.</p>
+              </div>
+              <ul className="space-y-3 flex-1 mb-8">
+                {[
+                  "Up to 3 compliance frameworks",
+                  "41 Universal Controls",
+                  "6 integration connectors",
+                  "Automated evidence collection",
+                  "Policy templates library",
+                  "Trust Center page",
+                  "Email support",
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm text-slate-600">
+                    <svg className="h-4 w-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href={BASE_PATH + "/sign-up"} className="block text-center px-6 py-3 border border-blue-600 text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors text-sm">
+                Start free trial
+              </a>
+            </div>
+
+            {/* Business - highlighted */}
+            <div className="bg-blue-600 rounded-2xl p-8 flex flex-col shadow-xl ring-2 ring-blue-500 relative">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <span className="px-4 py-1 bg-amber-400 text-amber-900 text-xs font-extrabold rounded-full shadow-sm uppercase tracking-wide">Most popular</span>
+              </div>
+              <div className="mb-6">
+                <p className="text-xs font-bold text-blue-200 uppercase tracking-widest mb-2">Business</p>
+                <div className="flex items-end gap-1 mb-3">
+                  <span className="text-4xl font-extrabold text-white">$799</span>
+                  <span className="text-blue-200 text-sm mb-1.5">/month</span>
+                </div>
+                <p className="text-sm text-blue-100">For growth-stage companies across commercial and federal markets.</p>
+              </div>
+              <ul className="space-y-3 flex-1 mb-8">
+                {[
+                  "Unlimited frameworks",
+                  "All 12 frameworks incl. FedRAMP",
+                  "25 integration connectors",
+                  "AI Gap Analysis + roadmap",
+                  "Risk Register + heat map",
+                  "Auditor Portal access",
+                  "POA&M + SPRS scoring",
+                  "SSP Generator",
+                  "Priority support + Slack",
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm text-blue-50">
+                    <svg className="h-4 w-4 text-blue-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href={BASE_PATH + "/sign-up"} className="block text-center px-6 py-3 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors text-sm shadow-sm">
+                Start free trial
+              </a>
+            </div>
+
+            {/* Enterprise */}
+            <div className="bg-slate-900 rounded-2xl p-8 flex flex-col shadow-sm hover:shadow-md transition-shadow">
+              <div className="mb-6">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Enterprise</p>
+                <div className="flex items-end gap-1 mb-3">
+                  <span className="text-4xl font-extrabold text-white">Custom</span>
+                </div>
+                <p className="text-sm text-slate-400">For large organizations with complex multi-framework requirements.</p>
+              </div>
+              <ul className="space-y-3 flex-1 mb-8">
+                {[
+                  "Everything in Business",
+                  "Unlimited users and orgs",
+                  "Custom framework builder",
+                  "SSO / SAML integration",
+                  "Dedicated CSM",
+                  "SLA guarantees",
+                  "Custom evidence workflows",
+                  "On-prem deployment option",
+                  "FedRAMP High support",
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm text-slate-300">
+                    <svg className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href="mailto:sales@enterprisecomply.com" className="block text-center px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-colors text-sm">
+                Talk to sales
+              </a>
+            </div>
+          </div>
+          <p className="text-center text-xs text-slate-400 mt-8">All plans include 14-day free trial. No credit card required to start.</p>
+        </div>
+      </section>
+
       {/* ── FINAL CTA ── */}
       <section className="py-20 bg-slate-900 border-t border-slate-200">
         <div className="max-w-3xl mx-auto px-6 text-center">

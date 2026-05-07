@@ -3,6 +3,78 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import { PageHeader, SectionLabel } from "@/components/ui/PageHeader";
 
+function OwnerAssignment({ orgId, control, onSuccess }: { orgId: number; control: any; onSuccess: () => void }) {
+  const [ownerName, setOwnerName] = useState(control.result?.ownerName ?? "");
+  const [dueDate, setDueDate] = useState(control.result?.dueDate ? control.result.dueDate.slice(0, 10) : "");
+  const [saving, setSaving] = useState(false);
+
+  const { data: peopleData } = useQuery<{ people: any[] }>({
+    queryKey: ["people", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/people`), { credentials: "include" })).json(),
+    enabled: !!orgId,
+  });
+  const people: any[] = peopleData?.people ?? [];
+
+  async function save() {
+    setSaving(true);
+    await fetch(apiUrl(`/orgs/${orgId}/controls/${control.controlId}/result`), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ ownerName: ownerName || null, dueDate: dueDate || null }),
+    });
+    setSaving(false);
+    onSuccess();
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <p className="text-sm font-bold text-slate-800">Owner Assignment</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">Owner</label>
+          {people.length > 0 ? (
+            <select
+              value={ownerName}
+              onChange={e => setOwnerName(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Unassigned</option>
+              {people.map((p: any) => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={ownerName}
+              onChange={e => setOwnerName(e.target.value)}
+              placeholder="Enter owner name"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          )}
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">Due Date</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={e => setDueDate(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+      <button
+        onClick={save}
+        disabled={saving}
+        className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+      >
+        {saving ? "Saving..." : "Save"}
+      </button>
+    </div>
+  );
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   passing: { label: "Passing", color: "text-green-700", bg: "bg-green-50 ring-1 ring-green-200", dot: "bg-green-500" },
   failing: { label: "Failing", color: "text-red-700", bg: "bg-red-50 ring-1 ring-red-200", dot: "bg-red-500" },
@@ -23,6 +95,7 @@ export default function Controls() {
   const [overrideId, setOverrideId] = useState<string | null>(null);
   const [overrideStatus, setOverrideStatus] = useState("passing");
   const [overrideNote, setOverrideNote] = useState("");
+  const [ownerPanelId, setOwnerPanelId] = useState<string | null>(null);
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -254,6 +327,39 @@ export default function Controls() {
                                 <div>
                                   <SectionLabel>Test Result</SectionLabel>
                                   <p className="text-sm text-slate-700">{c.result.result}</p>
+                                </div>
+                              )}
+
+                              {/* Owner assignment */}
+                              {ownerPanelId === c.controlId ? (
+                                <OwnerAssignment
+                                  orgId={orgId}
+                                  control={c}
+                                  onSuccess={() => {
+                                    setOwnerPanelId(null);
+                                    qc.invalidateQueries({ queryKey: ["org-controls"] });
+                                  }}
+                                />
+                              ) : (
+                                <div className="flex items-center gap-3">
+                                  {c.result?.ownerName && (
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                      <span className="font-medium">{c.result.ownerName}</span>
+                                    </div>
+                                  )}
+                                  {c.result?.dueDate && (
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                      <span>{new Date(c.result.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => setOwnerPanelId(c.controlId)}
+                                    className="text-xs text-slate-400 hover:text-blue-600 font-medium"
+                                  >
+                                    {c.result?.ownerName ? "Edit owner" : "Assign owner"}
+                                  </button>
                                 </div>
                               )}
 

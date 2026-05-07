@@ -27,6 +27,9 @@ import CustomFrameworks from "./pages/CustomFrameworks";
 import TrustCenter from "./pages/TrustCenter";
 import AuditLog from "./pages/AuditLog";
 import ComplianceReport from "./pages/ComplianceReport";
+import GapAnalysis from "./pages/GapAnalysis";
+import Remediation from "./pages/Remediation";
+import TestRunHistory from "./pages/TestRunHistory";
 import NotFound from "./pages/not-found";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -141,6 +144,9 @@ function AppRoutes() {
       <Route path="/audit-log" component={() => <AppShell><AuditLog /></AppShell>} />
 
       <Route path="/report" component={ComplianceReport} />
+      <Route path="/gap-analysis" component={() => <AppShell><GapAnalysis /></AppShell>} />
+      <Route path="/remediation" component={() => <AppShell><Remediation /></AppShell>} />
+      <Route path="/test-runs" component={() => <AppShell><TestRunHistory /></AppShell>} />
       <Route component={NotFound} />
     </Switch>
   );

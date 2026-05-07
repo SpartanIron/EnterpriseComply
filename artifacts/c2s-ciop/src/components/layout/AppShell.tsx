@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import type { ReactNode } from "react";
 
@@ -20,12 +20,15 @@ const NAV = [
       { path: "/frameworks", label: "Frameworks", icon: FrameworksIcon },
       { path: "/controls", label: "Controls", icon: ControlsIcon },
       { path: "/risks", label: "Risk Register", icon: RiskIcon },
+      { path: "/remediation", label: "Remediation Board", icon: RemediationIcon },
+      { path: "/gap-analysis", label: "AI Gap Analysis", icon: GapIcon },
     ],
   },
   {
     section: "Evidence",
     items: [
       { path: "/integrations", label: "Integrations", icon: IntegrationsIcon },
+      { path: "/test-runs", label: "Test Run History", icon: TestRunIcon },
       { path: "/evidence", label: "Evidence Vault", icon: EvidenceIcon },
       { path: "/monitoring", label: "Monitoring", icon: MonitoringIcon },
     ],
@@ -71,9 +74,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const qc = useQueryClient();
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const activeSection = getActiveSection(location);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([activeSection]));
+  const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     setOpenSections((prev) => {
@@ -82,6 +88,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
       return next;
     });
   }, [activeSection]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   function toggleSection(section: string) {
     setOpenSections((prev) => {
@@ -104,6 +120,38 @@ export default function AppShell({ children }: { children: ReactNode }) {
   });
 
   const org = orgData?.org;
+  const orgId = org?.id;
+
+  const { data: notifData } = useQuery<{ notifications: any[]; unreadCount: number }>({
+    queryKey: ["notifications", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/notifications`), { credentials: "include" })).json(),
+    enabled: !!orgId,
+    refetchInterval: 60000,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(apiUrl(`/orgs/${orgId}/notifications/${id}/read`), { method: "PATCH", credentials: "include" });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      await fetch(apiUrl(`/orgs/${orgId}/notifications/mark-all-read`), { method: "PATCH", credentials: "include" });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const notifications = notifData?.notifications ?? [];
+  const unreadCount = notifData?.unreadCount ?? 0;
+
+  const NOTIF_TYPE_STYLES: Record<string, { dot: string; icon: string }> = {
+    error:   { dot: "bg-red-500",    icon: "text-red-500" },
+    warning: { dot: "bg-amber-400",  icon: "text-amber-500" },
+    success: { dot: "bg-green-500",  icon: "text-green-500" },
+    info:    { dot: "bg-blue-500",   icon: "text-blue-500" },
+  };
 
   const currentLabel = (() => {
     if (location === "/settings") return "Settings";
@@ -293,11 +341,68 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {org && (
               <span className="text-xs text-slate-400 font-medium hidden md:block">{org.name}</span>
             )}
-            <button className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600" title="Notifications">
-              <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
+            {/* Notification bell */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen(v => !v)}
+                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600 relative"
+                title="Notifications"
+              >
+                <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 h-4 w-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-10 w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Notifications</p>
+                      {unreadCount > 0 && <p className="text-xs text-slate-400">{unreadCount} unread</p>}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={() => markAllReadMutation.mutate()}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-96 overflow-y-auto divide-y divide-slate-50">
+                    {notifications.length === 0 ? (
+                      <div className="py-10 text-center text-xs text-slate-400">No notifications</div>
+                    ) : notifications.map((n: any) => {
+                      const style = NOTIF_TYPE_STYLES[n.type] ?? NOTIF_TYPE_STYLES.info;
+                      return (
+                        <div
+                          key={n.id}
+                          className={`px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors ${n.read ? "opacity-60" : ""}`}
+                          onClick={() => {
+                            if (!n.read) markReadMutation.mutate(n.id);
+                            if (n.link) { navigate(n.link); setNotifOpen(false); }
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`h-2 w-2 rounded-full mt-1.5 flex-shrink-0 ${n.read ? "bg-slate-200" : style.dot}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-semibold ${n.read ? "text-slate-500" : "text-slate-900"}`}>{n.title}</p>
+                              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{n.body}</p>
+                              <p className="text-xs text-slate-400 mt-1">{new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="h-8 w-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-slate-100">
               {user?.imageUrl
                 ? <img src={user.imageUrl} className="h-full w-full object-cover" />
@@ -381,6 +486,15 @@ function SspIcon({ active }: { active: boolean }) {
 }
 function CustomFwIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />;
+}
+function RemediationIcon({ active }: { active: boolean }) {
+  return <Icon active={active} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />;
+}
+function GapIcon({ active }: { active: boolean }) {
+  return <Icon active={active} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />;
+}
+function TestRunIcon({ active }: { active: boolean }) {
+  return <Icon active={active} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />;
 }
 function SettingsIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />;
