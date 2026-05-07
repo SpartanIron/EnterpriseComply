@@ -11,7 +11,7 @@ const FEATURES = [
   {
     icon: "⚡",
     title: "Connect Once, Comply Everywhere",
-    desc: "Connect GitHub, AWS, Okta, and more. ColorComply maps one security control to every framework it satisfies — SOC 2, FedRAMP, ISO 27001, and beyond.",
+    desc: "Connect GitHub, AWS, Okta, and more. ColorComply maps one security control to every framework it satisfies: SOC 2, FedRAMP, ISO 27001, and beyond.",
   },
   {
     icon: "🛡",
@@ -53,10 +53,10 @@ export default function Landing() {
           Compliance automation for modern security teams
         </div>
         <h1 className="text-5xl font-bold text-slate-900 leading-tight max-w-3xl mb-6">
-          From first signup to <span className="text-blue-600">authorized</span> — in every framework
+          From first signup to <span className="text-blue-600">authorized</span>, in every framework
         </h1>
         <p className="text-xl text-slate-500 max-w-2xl mb-10">
-          Connect your tools once. ColorComply maps your security controls to SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and 8 more frameworks — automatically.
+          Connect your tools once. ColorComply maps your security controls to SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and 8 more frameworks, automatically.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <a href={`${BASE_PATH}/sign-up`} className="text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 px-8 py-3.5 rounded-lg transition-colors shadow-sm">

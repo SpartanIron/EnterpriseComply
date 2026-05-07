@@ -50,7 +50,7 @@ export default function Vendors() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Vendors</h1>
-          <p className="text-slate-500 mt-1">Third-party vendor risk management — {vendors.length} vendors tracked</p>
+          <p className="text-slate-500 mt-1">Third-party vendor risk management: {vendors.length} vendors tracked</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}

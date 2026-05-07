@@ -77,7 +77,7 @@ export default function Controls() {
     <div className="p-8 max-w-6xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Controls</h1>
-        <p className="text-slate-500 mt-1">Universal Control Objectives — mapped to all your active frameworks</p>
+        <p className="text-slate-500 mt-1">Universal Control Objectives mapped to all your active frameworks</p>
       </div>
 
       {/* Stats */}

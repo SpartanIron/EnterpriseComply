@@ -2,31 +2,28 @@ import { useLocation } from "wouter";
 import { Bell, User, Activity, ChevronRight } from "lucide-react";
 
 const pageMeta: Record<string, { title: string; crumb: string; sub: string }> = {
-  "/": { title: "Dashboard", crumb: "Command", sub: "Executive cyber posture — real-time" },
-  "/controls": { title: "Control Validation", crumb: "Controls", sub: "Universal Control Ontology — continuous assessment" },
-  "/risks": { title: "Risk & Attack Paths", crumb: "Risk", sub: "Exposure-centric risk intelligence" },
-  "/frameworks": { title: "Compliance Frameworks", crumb: "Frameworks", sub: "Multi-framework compliance mapping" },
-  "/assets": { title: "Asset Intelligence", crumb: "Assets", sub: "Asset discovery & risk classification" },
-  "/findings": { title: "Security Findings", crumb: "Findings", sub: "Alert feed — prioritized by impact" },
-  "/telemetry": { title: "Telemetry & Evidence", crumb: "Telemetry", sub: "Ingestion fabric — live data sources" },
-  "/graph": { title: "Cyber Graph", crumb: "Graph", sub: "Attack path & relationship visualization" },
-  "/gap-analysis": { title: "Gap Analysis", crumb: "Achievement", sub: "Control coverage — one UCO control, all framework outputs" },
+  "/": { title: "Dashboard", crumb: "Dashboard", sub: "Live compliance posture" },
+  "/controls": { title: "Controls", crumb: "Controls", sub: "Universal Control Objectives: continuous assessment" },
+  "/frameworks": { title: "Frameworks", crumb: "Frameworks", sub: "Multi-framework compliance mapping" },
+  "/integrations": { title: "Integrations", crumb: "Integrations", sub: "Connected data sources and evidence collectors" },
+  "/evidence": { title: "Evidence Vault", crumb: "Evidence", sub: "Collected and manual compliance evidence" },
+  "/policies": { title: "Policies", crumb: "Policies", sub: "Policy library and publication status" },
+  "/people": { title: "People", crumb: "People", sub: "Workforce compliance: MFA, training, and access reviews" },
+  "/vendors": { title: "Vendors", crumb: "Vendors", sub: "Third-party vendor risk management" },
   "/poam": { title: "Plan of Action & Milestones", crumb: "POA&M", sub: "FedRAMP-compliant weakness tracking and milestone management" },
-  "/journey": { title: "Compliance Journey", crumb: "Journey", sub: "Framework authorization — Scope → Gap → Roadmap → ATO" },
-  "/brief": { title: "Executive Intelligence Brief", crumb: "Intel", sub: "AI-derived situational analysis — board-ready risk narrative" },
+  "/settings": { title: "Settings", crumb: "Settings", sub: "Organization settings and plan management" },
 };
 
 export function Header() {
   const [location] = useLocation();
-  const page = pageMeta[location] ?? { title: "C2S-CIOP", crumb: "Home", sub: "Cyber Assurance Operating System" };
+  const page = pageMeta[location] ?? { title: "ColorComply", crumb: "Home", sub: "Compliance automation platform" };
   const now = new Date();
 
   return (
     <header className="h-14 border-b border-border bg-card flex items-center px-5 gap-4 sticky top-0 z-20 shadow-2xs">
-      {/* Breadcrumb + title */}
       <div className="flex-1 overflow-hidden">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-0.5">
-          <span>C2S-CIOP</span>
+          <span>ColorComply</span>
           <ChevronRight className="w-3 h-3" />
           <span className="text-foreground font-medium">{page.crumb}</span>
         </div>
@@ -37,7 +34,6 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Live indicator */}
         <div className="hidden md:flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 rounded-md px-2.5 py-1 mr-1">
           <Activity className="w-3 h-3" />
           <span className="text-[11px] font-semibold">Live</span>
@@ -53,7 +49,7 @@ export function Header() {
 
         <button data-testid="header-user" className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors text-sm font-medium text-foreground">
           <User className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="hidden md:block">CISO</span>
+          <span className="hidden md:block">Account</span>
         </button>
       </div>
     </header>

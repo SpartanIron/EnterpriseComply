@@ -20,7 +20,7 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-
 - API: NestJS 11 (port 8080, path `/api`), @clerk/express, modular controller/service/module pattern
 - DB: PostgreSQL + Drizzle ORM (multi-tenant schema)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- Build: esbuild (ESM bundle for API server)
+- Build: esbuild (ESM bundle for API server production); SWC (`@swc-node/register`) for dev runner
 - Fonts: Inter (all text)
 
 ## Where things live
@@ -76,6 +76,7 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-
 - `lib/db/src/migrate-fresh.ts` drops and recreates all tables — only run in dev
 - `artifacts/c2s-ciop/src/lib/queryClient.ts` exports `apiUrl()` and `apiFetch()` helpers — use these for all API calls
 - NestJS esbuild: externalize `@nestjs/websockets`, `@nestjs/microservices`, `class-transformer`, `class-validator` (lazy-loaded optional deps that esbuild cannot resolve)
+- **NestJS dev runner must use SWC, not tsx**: `tsx` uses esbuild under the hood and does NOT emit decorator metadata — NestJS DI silently fails (`this.service` is `undefined`). Dev script uses `node --import @swc-node/register/esm-register src/main.ts`; config in `artifacts/api-server/.swcrc`
 
 ## Pointers
 

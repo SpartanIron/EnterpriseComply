@@ -77,7 +77,7 @@ export default function Dashboard() {
     <div className="p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Compliance Dashboard</h1>
-        <p className="text-slate-500 mt-1">{org?.name ?? "Your organization"} — live compliance posture</p>
+        <p className="text-slate-500 mt-1">{org?.name ?? "Your organization"}: live compliance posture</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
@@ -100,7 +100,7 @@ export default function Dashboard() {
           </div>
           <div className="flex-1">
             <p className="font-semibold text-blue-900 text-sm">Connect an integration to start collecting evidence automatically</p>
-            <p className="text-blue-600 text-xs mt-0.5">Connect GitHub, AWS, Okta, and more — your controls start passing on their own.</p>
+            <p className="text-blue-600 text-xs mt-0.5">Connect GitHub, AWS, Okta, and more. Your controls start passing automatically.</p>
           </div>
           <button onClick={() => navigate("/integrations")} className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
             Connect now

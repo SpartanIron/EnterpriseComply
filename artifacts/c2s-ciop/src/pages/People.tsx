@@ -23,7 +23,7 @@ export default function People() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">People</h1>
-          <p className="text-slate-500 mt-1">Track workforce compliance — MFA, training, and access reviews</p>
+          <p className="text-slate-500 mt-1">Track workforce compliance: MFA, training, and access reviews</p>
         </div>
         <div className="flex gap-3">
           <button
