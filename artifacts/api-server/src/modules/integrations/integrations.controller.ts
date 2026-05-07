@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Param, Req, Res, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Body, Query, Param, Req, Res, UseGuards, BadRequestException } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { IntegrationsService } from "./integrations.service";
 import { ClerkAuthGuard, OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
@@ -54,9 +54,54 @@ export class IntegrationsController {
     return this.integrationsService.syncOrgGitHub(ctx.orgId);
   }
 
+  @Post("orgs/:orgId/integrations/aws/connect")
+  @UseGuards(OrgContextGuard)
+  connectAWS(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { accessKeyId: string; secretAccessKey: string; region: string },
+  ) {
+    if (!body.accessKeyId || !body.secretAccessKey || !body.region) {
+      throw new BadRequestException("accessKeyId, secretAccessKey, and region are required");
+    }
+    return this.integrationsService.connectAWS(ctx.orgId, body.accessKeyId, body.secretAccessKey, body.region);
+  }
+
+  @Post("orgs/:orgId/integrations/aws/sync")
+  @UseGuards(OrgContextGuard)
+  syncAWS(@OrgContext() ctx: OrgCtx) {
+    return this.integrationsService.syncOrgAWS(ctx.orgId);
+  }
+
+  @Post("orgs/:orgId/integrations/okta/connect")
+  @UseGuards(OrgContextGuard)
+  connectOkta(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { domain: string; apiToken: string },
+  ) {
+    if (!body.domain || !body.apiToken) {
+      throw new BadRequestException("domain and apiToken are required");
+    }
+    return this.integrationsService.connectOkta(ctx.orgId, body.domain, body.apiToken);
+  }
+
+  @Post("orgs/:orgId/integrations/okta/sync")
+  @UseGuards(OrgContextGuard)
+  syncOkta(@OrgContext() ctx: OrgCtx) {
+    return this.integrationsService.syncOrgOkta(ctx.orgId);
+  }
+
   @Post("orgs/:orgId/integrations/:key/demo-connect")
   @UseGuards(OrgContextGuard)
   demoConnect(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
     return this.integrationsService.connectDemo(ctx.orgId, key);
+  }
+
+  @Post("orgs/:orgId/integrations/:key/sync")
+  @UseGuards(OrgContextGuard)
+  syncIntegration(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
+    if (key === "github") return this.integrationsService.syncOrgGitHub(ctx.orgId);
+    if (key === "aws") return this.integrationsService.syncOrgAWS(ctx.orgId);
+    if (key === "okta") return this.integrationsService.syncOrgOkta(ctx.orgId);
+    return { success: true, message: "No sync available for this integration" };
   }
 }

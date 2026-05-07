@@ -86,6 +86,40 @@ export class ControlsService {
     return { result };
   }
 
+  async getFrameworkImpact(orgId: number, controlId: string) {
+    const [mappings, activeFrameworks] = await Promise.all([
+      db.query.ucoFrameworkMappingsTable.findMany({
+        where: eq(ucoFrameworkMappingsTable.ucoControlId, controlId),
+      }),
+      db.query.orgFrameworksTable.findMany({
+        where: and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.active, true)),
+      }),
+    ]);
+
+    const activeKeys = new Set(activeFrameworks.map((f) => f.frameworkKey));
+    const grouped: Record<string, { frameworkKey: string; frameworkName: string; isActive: boolean; requirements: { controlId: string; name: string; confidence: number }[] }> = {};
+
+    for (const m of mappings) {
+      if (!grouped[m.frameworkKey]) {
+        const fw = activeFrameworks.find((f) => f.frameworkKey === m.frameworkKey);
+        grouped[m.frameworkKey] = {
+          frameworkKey: m.frameworkKey,
+          frameworkName: fw?.name ?? m.frameworkKey,
+          isActive: activeKeys.has(m.frameworkKey),
+          requirements: [],
+        };
+      }
+      grouped[m.frameworkKey].requirements.push({
+        controlId: m.frameworkControlId,
+        name: m.frameworkControlName,
+        confidence: m.mappingConfidence,
+      });
+    }
+
+    const impact = Object.values(grouped).sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0));
+    return { impact, totalFrameworks: impact.length, activeFrameworks: impact.filter((i) => i.isActive).length };
+  }
+
   private async updateFrameworkScores(orgId: number) {
     try {
       const frameworks = await db.query.orgFrameworksTable.findMany({

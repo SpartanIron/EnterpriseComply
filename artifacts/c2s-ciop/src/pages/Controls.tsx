@@ -3,78 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import { PageHeader, SectionLabel } from "@/components/ui/PageHeader";
 
-function OwnerAssignment({ orgId, control, onSuccess }: { orgId: number; control: any; onSuccess: () => void }) {
-  const [ownerName, setOwnerName] = useState(control.result?.ownerName ?? "");
-  const [dueDate, setDueDate] = useState(control.result?.dueDate ? control.result.dueDate.slice(0, 10) : "");
-  const [saving, setSaving] = useState(false);
-
-  const { data: peopleData } = useQuery<{ people: any[] }>({
-    queryKey: ["people", orgId],
-    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/people`), { credentials: "include" })).json(),
-    enabled: !!orgId,
-  });
-  const people: any[] = peopleData?.people ?? [];
-
-  async function save() {
-    setSaving(true);
-    await fetch(apiUrl(`/orgs/${orgId}/controls/${control.controlId}/result`), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ ownerName: ownerName || null, dueDate: dueDate || null }),
-    });
-    setSaving(false);
-    onSuccess();
-  }
-
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-      <p className="text-sm font-bold text-slate-800">Owner Assignment</p>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-semibold text-slate-500 mb-1 block">Owner</label>
-          {people.length > 0 ? (
-            <select
-              value={ownerName}
-              onChange={e => setOwnerName(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Unassigned</option>
-              {people.map((p: any) => (
-                <option key={p.id} value={p.name}>{p.name}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={ownerName}
-              onChange={e => setOwnerName(e.target.value)}
-              placeholder="Enter owner name"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          )}
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-slate-500 mb-1 block">Due Date</label>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={e => setDueDate(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-      <button
-        onClick={save}
-        disabled={saving}
-        className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-      >
-        {saving ? "Saving..." : "Save"}
-      </button>
-    </div>
-  );
-}
-
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   passing: { label: "Passing", color: "text-green-700", bg: "bg-green-50 ring-1 ring-green-200", dot: "bg-green-500" },
   failing: { label: "Failing", color: "text-red-700", bg: "bg-red-50 ring-1 ring-red-200", dot: "bg-red-500" },
@@ -88,6 +16,221 @@ const AUTO_CONFIG: Record<string, { label: string; cls: string }> = {
   manual: { label: "Manual", cls: "bg-slate-100 text-slate-500 ring-1 ring-slate-200" },
 };
 
+const FRAMEWORK_COLORS: Record<string, string> = {
+  soc2: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+  iso27001: "bg-purple-50 text-purple-700 ring-1 ring-purple-200",
+  "nist-csf": "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
+  "nist-800-53": "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
+  "nist-800-171": "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+  hipaa: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",
+  pci: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
+  gdpr: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+  fedramp: "bg-slate-50 text-slate-700 ring-1 ring-slate-200",
+  cmmc: "bg-green-50 text-green-700 ring-1 ring-green-200",
+  ccpa: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+};
+
+interface CascadeImpact {
+  frameworkKey: string;
+  frameworkName: string;
+  isActive: boolean;
+  requirements: { controlId: string; name: string; confidence: number }[];
+}
+
+function CascadeModal({
+  controlName,
+  impact,
+  totalFrameworks,
+  activeFrameworks,
+  onClose,
+}: {
+  controlName: string;
+  impact: CascadeImpact[];
+  totalFrameworks: number;
+  activeFrameworks: number;
+  onClose: () => void;
+}) {
+  const active = impact.filter(f => f.isActive);
+  const inactive = impact.filter(f => !f.isActive);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg leading-tight">Control Marked Passing</p>
+                <p className="text-green-100 text-sm mt-0.5 leading-tight">{controlName}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white transition-colors mt-0.5">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <div className="bg-white/20 rounded-lg px-3 py-2 text-center">
+              <div className="text-white text-xl font-bold leading-none">{activeFrameworks}</div>
+              <div className="text-green-100 text-xs mt-0.5">Active frameworks satisfied</div>
+            </div>
+            <div className="bg-white/20 rounded-lg px-3 py-2 text-center">
+              <div className="text-white text-xl font-bold leading-none">{totalFrameworks}</div>
+              <div className="text-green-100 text-xs mt-0.5">Total frameworks mapped</div>
+            </div>
+            <div className="bg-white/20 rounded-lg px-3 py-2 text-center">
+              <div className="text-white text-xl font-bold leading-none">
+                {impact.reduce((sum, f) => sum + f.requirements.length, 0)}
+              </div>
+              <div className="text-green-100 text-xs mt-0.5">Requirements satisfied</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {active.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">Your active frameworks</p>
+              <div className="space-y-2.5">
+                {active.map(fw => (
+                  <div key={fw.frameworkKey} className="bg-green-50 border border-green-100 rounded-xl p-3.5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${FRAMEWORK_COLORS[fw.frameworkKey] ?? "bg-slate-100 text-slate-600"}`}>
+                        {fw.frameworkKey.toUpperCase()}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-800">{fw.frameworkName}</span>
+                      <span className="ml-auto text-xs text-green-600 font-semibold">{fw.requirements.length} req{fw.requirements.length !== 1 ? "s" : ""} satisfied</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fw.requirements.map(r => (
+                        <span key={r.controlId} className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-green-200 rounded-lg text-xs font-mono text-slate-700">
+                          <svg className="h-3 w-3 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                          {r.controlId}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {inactive.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Additional frameworks this covers (not yet active)</p>
+              <div className="space-y-2">
+                {inactive.map(fw => (
+                  <div key={fw.frameworkKey} className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 opacity-75">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${FRAMEWORK_COLORS[fw.frameworkKey] ?? "bg-slate-100 text-slate-600"}`}>
+                        {fw.frameworkKey.toUpperCase()}
+                      </span>
+                      <span className="text-sm font-medium text-slate-600">{fw.frameworkName}</span>
+                      <span className="ml-auto text-xs text-slate-400">{fw.requirements.length} req{fw.requirements.length !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {fw.requirements.slice(0, 6).map(r => (
+                        <span key={r.controlId} className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-xs font-mono rounded">{r.controlId}</span>
+                      ))}
+                      {fw.requirements.length > 6 && (
+                        <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 text-xs rounded">+{fw.requirements.length - 6} more</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {impact.length === 0 && (
+            <div className="text-center py-6 text-slate-400 text-sm">No framework mappings found for this control.</div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-100 p-4">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OwnerPanel({ orgId, controlId, defaultOwner, defaultDue, onSuccess, onCancel }: {
+  orgId: number;
+  controlId: string;
+  defaultOwner: string;
+  defaultDue: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [owner, setOwner] = useState(defaultOwner);
+  const [due, setDue] = useState(defaultDue);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/controls/${controlId}/result`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ownerName: owner, dueDate: due || undefined }),
+      });
+      return res.json();
+    },
+    onSuccess,
+  });
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <p className="text-sm font-bold text-slate-800">Assign Owner</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Owner name</label>
+          <input
+            type="text"
+            value={owner}
+            onChange={e => setOwner(e.target.value)}
+            placeholder="Jane Smith"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Due date</label>
+          <input
+            type="date"
+            value={due}
+            onChange={e => setDue(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {mutation.isPending ? "Saving..." : "Save"}
+        </button>
+        <button onClick={onCancel} className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Controls() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
@@ -96,6 +239,7 @@ export default function Controls() {
   const [overrideStatus, setOverrideStatus] = useState("passing");
   const [overrideNote, setOverrideNote] = useState("");
   const [ownerPanelId, setOwnerPanelId] = useState<string | null>(null);
+  const [cascadeModal, setCascadeModal] = useState<{ controlId: string; controlName: string; data: { impact: CascadeImpact[]; totalFrameworks: number; activeFrameworks: number } } | null>(null);
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -119,11 +263,30 @@ export default function Controls() {
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["org-controls"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+
+      const controlId = variables.controlId;
+      const savedStatus = variables.status;
+      const controlName = controls.find(c => c.controlId === controlId)?.name ?? controlId;
+
       setOverrideId(null);
       setOverrideNote("");
+
+      if (savedStatus === "passing" && orgId) {
+        try {
+          const res = await fetch(apiUrl(`/orgs/${orgId}/controls/${controlId}/framework-impact`), { credentials: "include" });
+          if (res.ok) {
+            const impactData = await res.json();
+            if (impactData.impact?.length > 0) {
+              setCascadeModal({ controlId, controlName, data: impactData });
+            }
+          }
+        } catch {
+          // Non-critical - don't block the UI
+        }
+      }
     },
   });
 
@@ -216,6 +379,16 @@ export default function Controls() {
 
   return (
     <div className="p-6 max-w-screen-xl">
+      {cascadeModal && (
+        <CascadeModal
+          controlName={cascadeModal.controlName}
+          impact={cascadeModal.data.impact}
+          totalFrameworks={cascadeModal.data.totalFrameworks}
+          activeFrameworks={cascadeModal.data.activeFrameworks}
+          onClose={() => setCascadeModal(null)}
+        />
+      )}
+
       <PageHeader
         title="Controls"
         subtitle="Universal Control Objectives mapped across all active frameworks"
@@ -332,13 +505,16 @@ export default function Controls() {
 
                               {/* Owner assignment */}
                               {ownerPanelId === c.controlId ? (
-                                <OwnerAssignment
+                                <OwnerPanel
                                   orgId={orgId}
-                                  control={c}
+                                  controlId={c.controlId}
+                                  defaultOwner={c.result?.ownerName ?? ""}
+                                  defaultDue={c.result?.dueDate ? new Date(c.result.dueDate).toISOString().slice(0, 10) : ""}
                                   onSuccess={() => {
                                     setOwnerPanelId(null);
                                     qc.invalidateQueries({ queryKey: ["org-controls"] });
                                   }}
+                                  onCancel={() => setOwnerPanelId(null)}
                                 />
                               ) : (
                                 <div className="flex items-center gap-3">

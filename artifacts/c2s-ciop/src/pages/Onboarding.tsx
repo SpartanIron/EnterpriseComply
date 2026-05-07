@@ -1,44 +1,79 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useUser } from "@clerk/react";
 import { apiUrl } from "@/lib/queryClient";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
+const INDUSTRIES = ["Technology", "Healthcare", "Finance", "Retail", "Manufacturing", "Government", "Education", "Other"];
+const SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
+
 const FRAMEWORKS = [
-  { key: "soc2", name: "SOC 2 Type II", category: "commercial", popular: true },
-  { key: "iso27001", name: "ISO 27001:2022", category: "commercial", popular: true },
-  { key: "hipaa", name: "HIPAA", category: "commercial", popular: true },
-  { key: "pci-dss", name: "PCI DSS v4.0", category: "commercial", popular: false },
-  { key: "gdpr", name: "EU GDPR", category: "commercial", popular: false },
-  { key: "dora", name: "EU DORA", category: "commercial", popular: false },
-  { key: "sox", name: "SOX ITGC", category: "commercial", popular: false },
-  { key: "ccpa", name: "CCPA", category: "commercial", popular: false },
-  { key: "fedramp", name: "FedRAMP Moderate", category: "federal", popular: false },
-  { key: "cmmc-l2", name: "CMMC Level 2", category: "federal", popular: false },
-  { key: "nist-800-53", name: "NIST SP 800-53 Rev 5", category: "federal", popular: false },
-  { key: "cis-controls", name: "CIS Controls v8", category: "best-practice", popular: false },
+  { key: "soc2", name: "SOC 2 Type II", category: "commercial" },
+  { key: "iso27001", name: "ISO 27001", category: "commercial" },
+  { key: "pci", name: "PCI DSS 4.0", category: "commercial" },
+  { key: "hipaa", name: "HIPAA", category: "commercial" },
+  { key: "gdpr", name: "GDPR", category: "commercial" },
+  { key: "ccpa", name: "CCPA", category: "commercial" },
+  { key: "fedramp", name: "FedRAMP Moderate", category: "federal" },
+  { key: "nist-800-53", name: "NIST SP 800-53", category: "federal" },
+  { key: "nist-800-171", name: "NIST SP 800-171", category: "federal" },
+  { key: "cmmc", name: "CMMC Level 2", category: "federal" },
+  { key: "nist-csf", name: "NIST CSF 2.0", category: "best-practice" },
+  { key: "cis", name: "CIS Controls v8", category: "best-practice" },
 ];
 
-const INDUSTRIES = ["Technology", "Healthcare", "Finance", "Government", "Retail", "Manufacturing", "Education", "Other"];
-const SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
+const FRAMEWORK_COLORS: Record<string, string> = {
+  soc2: "from-blue-500 to-blue-600",
+  iso27001: "from-purple-500 to-purple-600",
+  "nist-csf": "from-indigo-500 to-indigo-600",
+  "nist-800-53": "from-violet-500 to-violet-600",
+  "nist-800-171": "from-blue-600 to-blue-700",
+  hipaa: "from-teal-500 to-teal-600",
+  pci: "from-orange-500 to-orange-600",
+  gdpr: "from-rose-500 to-rose-600",
+  fedramp: "from-slate-500 to-slate-600",
+  cmmc: "from-green-500 to-green-600",
+  ccpa: "from-amber-500 to-amber-600",
+  cis: "from-cyan-500 to-cyan-600",
+};
+
+function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
+  const r = (size - 10) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={8} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth={8}
+        strokeDasharray={`${dash} ${circ}`}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: "stroke-dasharray 1s ease" }}
+      />
+      <text x={size / 2} y={size / 2 + 1} textAnchor="middle" dominantBaseline="middle" fontSize={size * 0.22} fontWeight="700" fill="#0f172a">
+        {score}%
+      </text>
+    </svg>
+  );
+}
 
 export default function Onboarding() {
   const [, navigate] = useLocation();
-  const { user } = useUser();
   const [step, setStep] = useState(1);
-  const [orgData, setOrgData] = useState({ name: "", industry: "Technology", size: "11-50", website: "" });
-  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(["soc2"]);
-  const [orgId, setOrgId] = useState<number | null>(null);
+  const [orgData, setOrgData] = useState({ name: "", industry: INDUSTRIES[0], size: SIZES[1], website: "" });
+  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([]);
+  const [createdOrgId, setCreatedOrgId] = useState<number | null>(null);
 
-  const { data: existingOrg } = useQuery({
+  const { data: existingOrg } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
-    queryFn: async () => {
-      const res = await fetch(apiUrl("/orgs/me"), { credentials: "include" });
-      return res.json();
-    },
+    queryFn: async () => (await fetch(apiUrl("/orgs/me"), { credentials: "include" })).json(),
   });
+
+  const orgId = createdOrgId ?? existingOrg?.org?.id;
 
   const createOrg = useMutation({
     mutationFn: async () => {
@@ -46,17 +81,12 @@ export default function Onboarding() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          ...orgData,
-          email: user?.primaryEmailAddress?.emailAddress,
-          firstName: user?.firstName,
-          lastName: user?.lastName,
-        }),
+        body: JSON.stringify(orgData),
       });
       return res.json();
     },
-    onSuccess: (data) => {
-      setOrgId(data.org.id);
+    onSuccess: (data: any) => {
+      if (data?.org?.id) setCreatedOrgId(data.org.id);
       setStep(2);
     },
   });
@@ -83,10 +113,8 @@ export default function Onboarding() {
         body: JSON.stringify({ step: 4, complete: true }),
       });
     },
-    onSuccess: () => navigate("/dashboard"),
+    onSuccess: () => setStep(4),
   });
-
-  const currentOrgId = orgId ?? existingOrg?.org?.id;
 
   const toggleFramework = (key: string) => {
     setSelectedFrameworks(prev =>
@@ -111,13 +139,18 @@ export default function Onboarding() {
             {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex items-center gap-2">
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${s < step ? "bg-blue-600 text-white" : s === step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-400"}`}>
-                  {s < step ? "✓" : s}
+                  {s < step ? (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : s}
                 </div>
                 {s < 4 && <div className={`h-0.5 w-12 transition-colors ${s < step ? "bg-blue-600" : "bg-slate-200"}`} />}
               </div>
             ))}
             <div className="ml-4 text-sm text-slate-500">
-              {step === 1 && "Company info"} {step === 2 && "Choose frameworks"} {step === 3 && "Connect integrations"} {step === 4 && "All set!"}
+              {step === 1 && "Company info"}
+              {step === 2 && "Choose frameworks"}
+              {step === 3 && "Connect integrations"}
+              {step === 4 && "Your baseline score"}
             </div>
           </div>
 
@@ -175,7 +208,7 @@ export default function Onboarding() {
                 disabled={!orgData.name.trim() || createOrg.isPending}
                 className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
               >
-                {createOrg.isPending ? "Creating..." : "Continue →"}
+                {createOrg.isPending ? "Creating..." : "Continue"}
               </button>
             </div>
           )}
@@ -184,7 +217,7 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
               <h1 className="text-2xl font-bold text-slate-900 mb-1">Choose your frameworks</h1>
-              <p className="text-slate-500 mb-6">Select the compliance frameworks you need to achieve. You can add more later.</p>
+              <p className="text-slate-500 mb-6">Select the compliance frameworks you need. Each control you pass satisfies requirements across all selected frameworks simultaneously.</p>
               <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                 {["commercial", "federal", "best-practice"].map(cat => (
                   <div key={cat} className="mb-3">
@@ -220,11 +253,11 @@ export default function Onboarding() {
                   Back
                 </button>
                 <button
-                  onClick={() => activateFrameworks.mutate(currentOrgId!)}
+                  onClick={() => activateFrameworks.mutate(orgId!)}
                   disabled={selectedFrameworks.length === 0 || activateFrameworks.isPending}
                   className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
                 >
-                  {activateFrameworks.isPending ? "Saving..." : "Continue →"}
+                  {activateFrameworks.isPending ? "Saving..." : `Continue with ${selectedFrameworks.length} framework${selectedFrameworks.length !== 1 ? "s" : ""}`}
                 </button>
               </div>
             </div>
@@ -236,7 +269,7 @@ export default function Onboarding() {
               <h1 className="text-2xl font-bold text-slate-900 mb-1">Connect your first integration</h1>
               <p className="text-slate-500 mb-6">Connect GitHub to automatically collect evidence for code security controls.</p>
               <a
-                href={apiUrl(`/integrations/github/connect?orgId=${currentOrgId}`)}
+                href={apiUrl(`/integrations/github/connect?orgId=${orgId}`)}
                 className="w-full flex items-center gap-4 p-4 border-2 border-slate-200 hover:border-blue-300 rounded-xl transition-colors group"
               >
                 <div className="h-12 w-12 bg-slate-900 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -257,16 +290,140 @@ export default function Onboarding() {
                   Back
                 </button>
                 <button
-                  onClick={() => completeOnboarding.mutate(currentOrgId!)}
+                  onClick={() => completeOnboarding.mutate(orgId!)}
                   disabled={completeOnboarding.isPending}
                   className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
                 >
-                  {completeOnboarding.isPending ? "Finishing..." : "Skip for now →"}
+                  {completeOnboarding.isPending ? "One moment..." : "Skip for now"}
                 </button>
               </div>
             </div>
           )}
+
+          {/* Step 4: Aha Moment - Initial compliance score */}
+          {step === 4 && orgId && (
+            <ScoreReveal orgId={orgId} selectedFrameworks={selectedFrameworks} onDone={() => navigate("/dashboard")} />
+          )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; selectedFrameworks: string[]; onDone: () => void }) {
+  const { data, isLoading } = useQuery<{ frameworks: any[] }>({
+    queryKey: ["onboarding-score", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/frameworks`), { credentials: "include" })).json(),
+    refetchOnWindowFocus: false,
+  });
+
+  const frameworks = data?.frameworks ?? [];
+  const totalControls = frameworks.reduce((sum, f) => sum + (f.totalControls ?? 0), 0);
+  const passingControls = frameworks.reduce((sum, f) => sum + (f.passingControls ?? 0), 0);
+  const overallScore = totalControls > 0 ? Math.round((passingControls / totalControls) * 100) : 0;
+
+  const FRAMEWORK_BADGE_COLORS: Record<string, string> = {
+    soc2: "bg-blue-100 text-blue-700",
+    iso27001: "bg-purple-100 text-purple-700",
+    "nist-csf": "bg-indigo-100 text-indigo-700",
+    "nist-800-53": "bg-violet-100 text-violet-700",
+    "nist-800-171": "bg-blue-100 text-blue-700",
+    hipaa: "bg-teal-100 text-teal-700",
+    pci: "bg-orange-100 text-orange-700",
+    gdpr: "bg-rose-100 text-rose-700",
+    fedramp: "bg-slate-100 text-slate-700",
+    cmmc: "bg-green-100 text-green-700",
+    ccpa: "bg-amber-100 text-amber-700",
+    cis: "bg-cyan-100 text-cyan-700",
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="h-8 w-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+          <p className="text-slate-700 font-semibold">Calculating your baseline compliance score...</p>
+        </div>
+        <p className="text-sm text-slate-400">Mapping {selectedFrameworks.length} framework{selectedFrameworks.length !== 1 ? "s" : ""} against your controls</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-8 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-white text-xs font-semibold mb-4">
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          Compliance program created
+        </div>
+        <div className="flex justify-center mb-3">
+          <div className="relative">
+            <ScoreRing score={overallScore} size={100} />
+          </div>
+        </div>
+        <p className="text-white text-2xl font-bold mb-1">Your baseline is ready</p>
+        <p className="text-blue-100 text-sm">
+          {passingControls} of {totalControls > 0 ? totalControls : "all"} controls passing across {frameworks.length} framework{frameworks.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+
+      {/* Framework breakdown */}
+      <div className="p-6">
+        {frameworks.length > 0 ? (
+          <>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Framework breakdown</p>
+            <div className="space-y-2.5 mb-6">
+              {frameworks.map((fw: any) => {
+                const score = fw.complianceScore ?? 0;
+                const passing = fw.passingControls ?? 0;
+                const total = fw.totalControls ?? 0;
+                return (
+                  <div key={fw.frameworkKey} className="flex items-center gap-3">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded flex-shrink-0 w-28 text-center truncate ${FRAMEWORK_BADGE_COLORS[fw.frameworkKey] ?? "bg-slate-100 text-slate-600"}`}>
+                      {fw.shortName ?? fw.frameworkKey.toUpperCase()}
+                    </span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${score >= 70 ? "bg-green-500" : score >= 40 ? "bg-amber-400" : "bg-red-400"}`}
+                        style={{ width: `${score}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-bold text-slate-600 w-10 text-right">{score}%</span>
+                    <span className="text-xs text-slate-400 w-16 text-right">{passing}/{total} passing</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="mb-6">
+            <p className="text-sm text-slate-500 text-center py-4">Your compliance score will update as you connect integrations and run checks.</p>
+          </div>
+        )}
+
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+          <p className="text-sm font-semibold text-blue-900 mb-1">What happens next?</p>
+          <ul className="space-y-1">
+            {[
+              "Connect AWS, Okta, and other integrations to auto-collect evidence",
+              "Review failing controls and assign owners for remediation",
+              "Invite your auditor to the Auditor Portal for evidence review",
+            ].map(item => (
+              <li key={item} className="flex items-start gap-2 text-xs text-blue-800">
+                <svg className="h-3.5 w-3.5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <button
+          onClick={onDone}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors"
+        >
+          Go to your dashboard
+        </button>
       </div>
     </div>
   );

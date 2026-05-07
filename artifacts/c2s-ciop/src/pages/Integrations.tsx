@@ -5,78 +5,279 @@ import { apiUrl, apiFetch } from "@/lib/queryClient";
 import { useOrg } from "@/hooks/useOrg";
 
 const COMING_SOON_CATALOG = [
-  // Cloud Infrastructure
   { key: "aws-security-hub", name: "AWS Security Hub", category: "Cloud Security" },
   { key: "aws-config", name: "AWS Config", category: "Cloud Security" },
   { key: "aws-guardduty", name: "AWS GuardDuty", category: "Cloud Security" },
-  { key: "aws-iam", name: "AWS IAM", category: "Cloud Infrastructure" },
   { key: "azure-defender", name: "Microsoft Defender for Cloud", category: "Cloud Security" },
   { key: "azure-entra", name: "Microsoft Entra ID", category: "Identity" },
   { key: "gcp-scc", name: "GCP Security Command Center", category: "Cloud Security" },
-  // CSPM
   { key: "wiz", name: "Wiz", category: "CSPM" },
   { key: "prisma-cloud", name: "Prisma Cloud", category: "CSPM" },
   { key: "orca", name: "Orca Security", category: "CSPM" },
   { key: "lacework", name: "Lacework", category: "CSPM" },
-  // CI/CD
   { key: "gitlab-ci", name: "GitLab CI", category: "CI/CD" },
   { key: "github-actions", name: "GitHub Actions", category: "CI/CD" },
   { key: "circleci", name: "CircleCI", category: "CI/CD" },
   { key: "jenkins", name: "Jenkins", category: "CI/CD" },
-  // Container / K8s
   { key: "amazon-ecr", name: "Amazon ECR", category: "Container Registry" },
   { key: "google-gcr", name: "Google Container Registry", category: "Container Registry" },
   { key: "kubernetes", name: "Kubernetes", category: "Container Orchestration" },
-  // Endpoint / MDM
   { key: "crowdstrike", name: "CrowdStrike Falcon", category: "Endpoint Security" },
   { key: "sentinelone", name: "SentinelOne", category: "Endpoint Security" },
   { key: "jamf", name: "Jamf Pro", category: "MDM" },
   { key: "intune", name: "Microsoft Intune", category: "MDM" },
-  // Identity
   { key: "duo", name: "Duo Security", category: "MFA / Identity" },
   { key: "ping", name: "PingIdentity", category: "Identity" },
   { key: "auth0", name: "Auth0", category: "Identity" },
-  // IGA / PAM
   { key: "sailpoint", name: "SailPoint", category: "IGA" },
   { key: "cyberark", name: "CyberArk", category: "PAM" },
   { key: "beyondtrust", name: "BeyondTrust", category: "PAM" },
-  // Secrets
   { key: "hashicorp-vault", name: "HashiCorp Vault", category: "Secrets Management" },
   { key: "aws-secrets-manager", name: "AWS Secrets Manager", category: "Secrets Management" },
   { key: "azure-key-vault", name: "Azure Key Vault", category: "Secrets Management" },
-  // SIEM / Monitoring
   { key: "splunk", name: "Splunk", category: "SIEM" },
   { key: "datadog", name: "Datadog", category: "Monitoring" },
   { key: "elastic-siem", name: "Elastic SIEM", category: "SIEM" },
-  // Vulnerability
   { key: "qualys", name: "Qualys VMDR", category: "Vulnerability Management" },
   { key: "tenable", name: "Tenable.io", category: "Vulnerability Management" },
   { key: "snyk", name: "Snyk", category: "Application Security" },
   { key: "veracode", name: "Veracode", category: "Application Security" },
   { key: "checkmarx", name: "Checkmarx", category: "Application Security" },
-  // HRIS
   { key: "workday", name: "Workday", category: "HRIS" },
   { key: "rippling", name: "Rippling", category: "HRIS" },
   { key: "bamboohr", name: "BambooHR", category: "HRIS" },
   { key: "adp", name: "ADP Workforce Now", category: "HRIS" },
   { key: "gusto", name: "Gusto", category: "HRIS" },
   { key: "greenhouse", name: "Greenhouse", category: "Recruiting" },
-  // Ticketing / ITSM
   { key: "jira", name: "Jira", category: "Ticketing" },
   { key: "linear", name: "Linear", category: "Ticketing" },
   { key: "servicenow", name: "ServiceNow", category: "ITSM" },
   { key: "pagerduty", name: "PagerDuty", category: "Incident Management" },
-  // Comms / Collab
   { key: "microsoft-teams", name: "Microsoft Teams", category: "Collaboration" },
   { key: "zoom", name: "Zoom", category: "Collaboration" },
-  // Training / Email Security
   { key: "knowbe4", name: "KnowBe4", category: "Security Training" },
   { key: "proofpoint", name: "Proofpoint", category: "Email Security" },
-  // Productivity / ERP
   { key: "microsoft-365", name: "Microsoft 365", category: "Productivity" },
   { key: "netsuite", name: "NetSuite", category: "ERP" },
   { key: "zendesk", name: "Zendesk", category: "Customer Support" },
 ];
+
+const AWS_REGIONS = [
+  "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+  "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1",
+  "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ca-central-1",
+];
+
+function AWSConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({ accessKeyId: "", secretAccessKey: "", region: "us-east-1" });
+  const [error, setError] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/aws/connect`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Connection failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      onSuccess();
+      onClose();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">AWS</span>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Connect Amazon Web Services</p>
+                <p className="text-orange-100 text-sm">Real-time IAM, CloudTrail, S3, and GuardDuty checks</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-sm text-amber-800">
+            <p className="font-semibold mb-1">Required IAM permissions</p>
+            <p className="text-xs text-amber-700">Create an IAM user with read-only access: <span className="font-mono">iam:GetAccountSummary, iam:GetAccountPasswordPolicy, iam:ListUsers, iam:ListMFADevices, cloudtrail:DescribeTrails, s3:ListBuckets, s3:GetBucketPublicAccessBlock, guardduty:ListDetectors, guardduty:GetDetector</span></p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Access Key ID</label>
+            <input
+              type="text"
+              value={form.accessKeyId}
+              onChange={e => setForm(f => ({ ...f, accessKeyId: e.target.value }))}
+              placeholder="AKIAIOSFODNN7EXAMPLE"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Secret Access Key</label>
+            <input
+              type="password"
+              value={form.secretAccessKey}
+              onChange={e => setForm(f => ({ ...f, secretAccessKey: e.target.value }))}
+              placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Primary Region</label>
+            <select
+              value={form.region}
+              onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+            >
+              {AWS_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>
+          )}
+          {mutation.isSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+              Connected! {(mutation.data as any)?.checksPassed ?? 0} of {(mutation.data as any)?.checksRun ?? 0} checks passed.
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={!form.accessKeyId || !form.secretAccessKey || mutation.isPending}
+              className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {mutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Running checks...
+                </span>
+              ) : "Connect and run checks"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({ domain: "", apiToken: "" });
+  const [error, setError] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/okta/connect`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Connection failed");
+      return data;
+    },
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">Ok</span>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Connect Okta</p>
+                <p className="text-blue-100 text-sm">MFA enrollment, password policy, and inactive users</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-sm text-blue-800">
+            <p className="font-semibold mb-1">Create a read-only API token</p>
+            <p className="text-xs text-blue-700">In Okta: Security &rarr; API &rarr; Tokens &rarr; Create Token. The token needs read access to users, factors, and policies.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Okta Domain</label>
+            <div className="flex">
+              <span className="flex items-center px-3 bg-slate-50 border border-r-0 border-slate-200 rounded-l-lg text-sm text-slate-500">https://</span>
+              <input
+                type="text"
+                value={form.domain}
+                onChange={e => setForm(f => ({ ...f, domain: e.target.value }))}
+                placeholder="yourcompany.okta.com"
+                className="flex-1 px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">API Token</label>
+            <input
+              type="password"
+              value={form.apiToken}
+              onChange={e => setForm(f => ({ ...f, apiToken: e.target.value }))}
+              placeholder="SSWS xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>
+          )}
+          {mutation.isSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+              Connected! {(mutation.data as any)?.checksPassed ?? 0} of {(mutation.data as any)?.checksRun ?? 0} checks passed.
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={!form.domain || !form.apiToken || mutation.isPending}
+              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {mutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Running checks...
+                </span>
+              ) : "Connect and run checks"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Integrations() {
   const [location] = useLocation();
@@ -84,6 +285,8 @@ export default function Integrations() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"catalog" | "health">("catalog");
   const connected = new URLSearchParams(location.split("?")[1] ?? "").get("connected");
+  const [showAWSModal, setShowAWSModal] = useState(false);
+  const [showOktaModal, setShowOktaModal] = useState(false);
 
   const { data, isLoading } = useQuery<{ integrations: any[] }>({
     queryKey: ["org-integrations", orgId],
@@ -114,7 +317,7 @@ export default function Integrations() {
 
   const [demoConnecting, setDemoConnecting] = useState<string | null>(null);
 
-  const handleDemoConnect = async (key: string) => {
+  const handleConnect = async (key: string) => {
     if (key === "github") {
       const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/${key}/demo-connect`), {
         method: "POST", credentials: "include",
@@ -125,12 +328,21 @@ export default function Integrations() {
       }
       return;
     }
+    if (key === "aws") { setShowAWSModal(true); return; }
+    if (key === "okta") { setShowOktaModal(true); return; }
     setDemoConnecting(key);
     try {
       await demoConnectMutation.mutateAsync(key);
     } finally {
       setDemoConnecting(null);
     }
+  };
+
+  const handleCredentialConnectSuccess = () => {
+    qc.invalidateQueries({ queryKey: ["org-integrations"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+    qc.invalidateQueries({ queryKey: ["org-controls"] });
+    qc.invalidateQueries({ queryKey: ["evidence"] });
   };
 
   const integrations = data?.integrations ?? [];
@@ -154,6 +366,13 @@ export default function Integrations() {
 
   return (
     <div className="p-6 max-w-screen-xl">
+      {showAWSModal && orgId && (
+        <AWSConnectModal orgId={orgId} onClose={() => setShowAWSModal(false)} onSuccess={handleCredentialConnectSuccess} />
+      )}
+      {showOktaModal && orgId && (
+        <OktaConnectModal orgId={orgId} onClose={() => setShowOktaModal(false)} onSuccess={handleCredentialConnectSuccess} />
+      )}
+
       <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Integrations</h1>
@@ -281,7 +500,7 @@ export default function Integrations() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {availableList.map((i: any) => (
               <AvailableCard key={i.key} integration={i} orgId={orgId}
-                onDemoConnect={() => handleDemoConnect(i.key)}
+                onConnect={() => handleConnect(i.key)}
                 connecting={demoConnecting === i.key} />
             ))}
           </div>
@@ -313,6 +532,8 @@ export default function Integrations() {
 function ConnectedCard({ integration, onSync, syncing }: { integration: any; onSync: () => void; syncing: boolean }) {
   const conn = integration.connection;
   const lastSync = conn?.lastSyncAt ? new Date(conn.lastSyncAt).toLocaleString() : "Never";
+  const isRealIntegration = ["github", "aws", "okta"].includes(integration.key);
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <div className="flex items-center gap-4">
@@ -324,6 +545,11 @@ function ConnectedCard({ integration, onSync, syncing }: { integration: any; onS
               <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
               Connected
             </span>
+            {isRealIntegration && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full ring-1 ring-blue-200">
+                Live
+              </span>
+            )}
           </div>
           {conn?.accountLogin && <p className="text-xs text-slate-500">@{conn.accountLogin}</p>}
           <p className="text-xs text-slate-400 mt-0.5">Last sync: {lastSync} &middot; {conn?.evidenceCollected ?? 0} evidence items</p>
@@ -347,17 +573,29 @@ function ConnectedCard({ integration, onSync, syncing }: { integration: any; onS
   );
 }
 
-function AvailableCard({ integration, orgId, onDemoConnect, connecting }: {
-  integration: any; orgId: number; onDemoConnect: () => void; connecting: boolean;
+function AvailableCard({ integration, orgId, onConnect, connecting }: {
+  integration: any; orgId: number; onConnect: () => void; connecting: boolean;
 }) {
   const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
   const isGitHub = integration.key === "github";
+  const isCredentials = integration.connectType === "credentials";
+
+  const btnLabel = isCredentials
+    ? `Connect ${integration.key === "aws" ? "AWS" : "Okta"}`
+    : connecting ? "Connecting..." : "Connect (Demo)";
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-200 hover:shadow-sm transition-all">
       <div className="flex items-center gap-3 mb-2">
         <IntegrationLogo name={integration.key} />
-        <p className="font-semibold text-slate-900">{integration.name}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-slate-900">{integration.name}</p>
+            {isCredentials && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded ring-1 ring-blue-200">Live checks</span>
+            )}
+          </div>
+        </div>
       </div>
       <p className="text-sm text-slate-500 mb-4 leading-relaxed">{integration.description}</p>
       {integration.controls?.length > 0 && (
@@ -365,6 +603,9 @@ function AvailableCard({ integration, orgId, onDemoConnect, connecting }: {
           {integration.controls.slice(0, 4).map((c: string) => (
             <span key={c} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs font-mono rounded">{c}</span>
           ))}
+          {integration.controls.length > 4 && (
+            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 text-xs rounded">+{integration.controls.length - 4} more</span>
+          )}
         </div>
       )}
       <div className="flex gap-2">
@@ -374,9 +615,13 @@ function AvailableCard({ integration, orgId, onDemoConnect, connecting }: {
             Connect with GitHub
           </a>
         ) : (
-          <button onClick={onDemoConnect} disabled={connecting}
-            className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
-            {connecting ? "Connecting..." : "Connect (Demo)"}
+          <button onClick={onConnect} disabled={connecting}
+            className={`flex-1 px-3 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-60 transition-colors ${
+              isCredentials
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}>
+            {btnLabel}
           </button>
         )}
       </div>

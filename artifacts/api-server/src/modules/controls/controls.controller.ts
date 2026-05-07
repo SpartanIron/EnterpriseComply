@@ -20,6 +20,12 @@ export class ControlsController {
     return this.controlsService.getOrgControls(ctx.orgId);
   }
 
+  @Get("orgs/:orgId/controls/:controlId/framework-impact")
+  @UseGuards(OrgContextGuard)
+  getFrameworkImpact(@OrgContext() ctx: OrgCtx, @Param("controlId") controlId: string) {
+    return this.controlsService.getFrameworkImpact(ctx.orgId, controlId);
+  }
+
   @Patch("orgs/:orgId/controls/:controlId/result")
   @UseGuards(OrgContextGuard)
   patchControlResult(

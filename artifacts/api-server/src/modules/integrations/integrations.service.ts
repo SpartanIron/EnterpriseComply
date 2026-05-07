@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { runAwsChecks } from "./providers/aws.provider";
+import { runOktaChecks } from "./providers/okta.provider";
 
 export const INTEGRATION_CATALOG = [
   {
@@ -17,15 +19,17 @@ export const INTEGRATION_CATALOG = [
   },
   {
     key: "aws", name: "Amazon Web Services", category: "cloud",
-    description: "IAM least-privilege audit, S3 bucket exposure, CloudTrail logging, and encryption at rest.",
+    description: "IAM root MFA, password policy, CloudTrail logging, S3 public access, GuardDuty, and user MFA coverage.",
     available: true,
-    controls: ["UCO-AC-001", "UCO-AC-002", "UCO-DP-002", "UCO-AL-001"],
+    connectType: "credentials",
+    controls: ["UCO-AI-001", "UCO-AI-002", "UCO-AC-001", "UCO-AL-001", "UCO-DP-001", "UCO-VM-001"],
   },
   {
     key: "okta", name: "Okta", category: "identity",
-    description: "SSO policy audit, MFA factor enforcement, user provisioning, and password policy controls.",
+    description: "SSO policy audit, MFA factor enrollment, inactive user detection, and password policy controls.",
     available: true,
-    controls: ["UCO-AI-001", "UCO-AI-003", "UCO-AI-004", "UCO-AC-005"],
+    connectType: "credentials",
+    controls: ["UCO-AI-001", "UCO-AI-003", "UCO-AC-001", "UCO-AC-003"],
   },
   {
     key: "azure-ad", name: "Microsoft Entra ID", category: "identity",
@@ -151,6 +155,188 @@ export class IntegrationsService {
     return { redirectUrl: `${protocol}://${host}${basePath}/integrations?connected=github` };
   }
 
+  async connectAWS(orgId: number, accessKeyId: string, secretAccessKey: string, region: string) {
+    const { controlResults, evidenceItems, checksRun, checksPassed } = await runAwsChecks(accessKeyId, secretAccessKey, region);
+
+    for (const cr of controlResults) {
+      const existing = await db.query.orgControlResultsTable.findFirst({
+        where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, cr.ucoControlId)),
+      });
+      if (existing) {
+        await db.update(orgControlResultsTable)
+          .set({ status: cr.status, result: cr.result, integrationKey: "aws", lastTestedAt: new Date() })
+          .where(eq(orgControlResultsTable.id, existing.id));
+      } else {
+        await db.insert(orgControlResultsTable).values({
+          orgId, ucoControlId: cr.ucoControlId, status: cr.status,
+          result: cr.result, integrationKey: "aws", lastTestedAt: new Date(),
+        });
+      }
+    }
+
+    for (const ev of evidenceItems) {
+      await db.insert(orgEvidenceTable).values({
+        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        description: ev.description, type: "auto", source: "aws", collectedAt: new Date(),
+      });
+    }
+
+    const credentials = JSON.stringify({ accessKeyId, secretAccessKey, region });
+    const existing = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "aws")),
+    });
+    if (existing) {
+      await db.update(orgIntegrationsTable)
+        .set({ accessToken: credentials, status: "connected", lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length, accountLogin: region })
+        .where(eq(orgIntegrationsTable.id, existing.id));
+    } else {
+      await db.insert(orgIntegrationsTable).values({
+        orgId, integrationKey: "aws", name: "Amazon Web Services",
+        status: "connected", accessToken: credentials,
+        lastSyncAt: new Date(), lastSyncStatus: "success",
+        evidenceCollected: evidenceItems.length, accountLogin: region,
+      });
+    }
+
+    return { success: true, checksRun, checksPassed, evidenceCollected: evidenceItems.length };
+  }
+
+  async syncAWS(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "aws")),
+    });
+    if (!integration?.accessToken) throw new BadRequestException("AWS not connected");
+
+    let creds: { accessKeyId: string; secretAccessKey: string; region: string };
+    try {
+      creds = JSON.parse(integration.accessToken);
+    } catch {
+      throw new BadRequestException("AWS credentials corrupted");
+    }
+
+    const { controlResults, evidenceItems, checksRun, checksPassed } = await runAwsChecks(creds.accessKeyId, creds.secretAccessKey, creds.region);
+
+    for (const cr of controlResults) {
+      const existing = await db.query.orgControlResultsTable.findFirst({
+        where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, cr.ucoControlId)),
+      });
+      if (existing) {
+        await db.update(orgControlResultsTable)
+          .set({ status: cr.status, result: cr.result, integrationKey: "aws", lastTestedAt: new Date() })
+          .where(eq(orgControlResultsTable.id, existing.id));
+      } else {
+        await db.insert(orgControlResultsTable).values({
+          orgId, ucoControlId: cr.ucoControlId, status: cr.status,
+          result: cr.result, integrationKey: "aws", lastTestedAt: new Date(),
+        });
+      }
+    }
+
+    for (const ev of evidenceItems) {
+      await db.insert(orgEvidenceTable).values({
+        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        description: ev.description, type: "auto", source: "aws", collectedAt: new Date(),
+      });
+    }
+
+    await db.update(orgIntegrationsTable)
+      .set({ lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length })
+      .where(eq(orgIntegrationsTable.id, integration.id));
+
+    return { success: true, checksRun, checksPassed };
+  }
+
+  async connectOkta(orgId: number, domain: string, apiToken: string) {
+    const { controlResults, evidenceItems, checksRun, checksPassed } = await runOktaChecks(domain, apiToken);
+
+    for (const cr of controlResults) {
+      const existing = await db.query.orgControlResultsTable.findFirst({
+        where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, cr.ucoControlId)),
+      });
+      if (existing) {
+        await db.update(orgControlResultsTable)
+          .set({ status: cr.status, result: cr.result, integrationKey: "okta", lastTestedAt: new Date() })
+          .where(eq(orgControlResultsTable.id, existing.id));
+      } else {
+        await db.insert(orgControlResultsTable).values({
+          orgId, ucoControlId: cr.ucoControlId, status: cr.status,
+          result: cr.result, integrationKey: "okta", lastTestedAt: new Date(),
+        });
+      }
+    }
+
+    for (const ev of evidenceItems) {
+      await db.insert(orgEvidenceTable).values({
+        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        description: ev.description, type: "auto", source: "okta", collectedAt: new Date(),
+      });
+    }
+
+    const credentials = JSON.stringify({ domain, apiToken });
+    const existing = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "okta")),
+    });
+    if (existing) {
+      await db.update(orgIntegrationsTable)
+        .set({ accessToken: credentials, status: "connected", lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length, accountLogin: domain })
+        .where(eq(orgIntegrationsTable.id, existing.id));
+    } else {
+      await db.insert(orgIntegrationsTable).values({
+        orgId, integrationKey: "okta", name: "Okta",
+        status: "connected", accessToken: credentials,
+        lastSyncAt: new Date(), lastSyncStatus: "success",
+        evidenceCollected: evidenceItems.length, accountLogin: domain,
+      });
+    }
+
+    return { success: true, checksRun, checksPassed, evidenceCollected: evidenceItems.length };
+  }
+
+  async syncOkta(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "okta")),
+    });
+    if (!integration?.accessToken) throw new BadRequestException("Okta not connected");
+
+    let creds: { domain: string; apiToken: string };
+    try {
+      creds = JSON.parse(integration.accessToken);
+    } catch {
+      throw new BadRequestException("Okta credentials corrupted");
+    }
+
+    const { controlResults, evidenceItems, checksRun, checksPassed } = await runOktaChecks(creds.domain, creds.apiToken);
+
+    for (const cr of controlResults) {
+      const existing = await db.query.orgControlResultsTable.findFirst({
+        where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, cr.ucoControlId)),
+      });
+      if (existing) {
+        await db.update(orgControlResultsTable)
+          .set({ status: cr.status, result: cr.result, integrationKey: "okta", lastTestedAt: new Date() })
+          .where(eq(orgControlResultsTable.id, existing.id));
+      } else {
+        await db.insert(orgControlResultsTable).values({
+          orgId, ucoControlId: cr.ucoControlId, status: cr.status,
+          result: cr.result, integrationKey: "okta", lastTestedAt: new Date(),
+        });
+      }
+    }
+
+    for (const ev of evidenceItems) {
+      await db.insert(orgEvidenceTable).values({
+        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        description: ev.description, type: "auto", source: "okta", collectedAt: new Date(),
+      });
+    }
+
+    await db.update(orgIntegrationsTable)
+      .set({ lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length })
+      .where(eq(orgIntegrationsTable.id, integration.id));
+
+    return { success: true, checksRun, checksPassed };
+  }
+
   async connectDemo(orgId: number, integrationKey: string) {
     const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === integrationKey);
     if (!catalogItem) throw new BadRequestException("Unknown integration");
@@ -217,6 +403,14 @@ export class IntegrationsService {
     if (!integration?.accessToken) throw new BadRequestException("GitHub not connected");
     await this.syncGitHub(orgId, integration.accessToken);
     return { success: true };
+  }
+
+  async syncOrgOkta(orgId: number) {
+    return this.syncOkta(orgId);
+  }
+
+  async syncOrgAWS(orgId: number) {
+    return this.syncAWS(orgId);
   }
 
   async syncGitHub(orgId: number, token: string) {
