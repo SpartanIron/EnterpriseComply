@@ -31,4 +31,16 @@ export class RisksController {
   deleteRisk(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.risksService.deleteRisk(ctx.orgId, Number(id));
   }
+
+  @Get("orgs/:orgId/risks/suggestions")
+  @UseGuards(OrgContextGuard)
+  suggestRisks(@OrgContext() ctx: OrgCtx) {
+    return this.risksService.suggestRisksFromControls(ctx.orgId);
+  }
+
+  @Post("orgs/:orgId/risks/import-suggestions")
+  @UseGuards(OrgContextGuard)
+  importSuggestions(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: { controlIds: string[] }) {
+    return this.risksService.importRiskSuggestions(ctx.orgId, userId, body.controlIds ?? []);
+  }
 }

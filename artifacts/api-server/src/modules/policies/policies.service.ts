@@ -34,6 +34,17 @@ export const POLICY_TEMPLATES = [
   { key: "backup-recovery", title: "Backup & Recovery Policy", category: "operations", description: "Requirements for data backup frequency, offsite storage, and tested recovery." },
   { key: "patch-management", title: "Patch Management Policy", category: "security", description: "SLAs and procedures for applying OS, application, and firmware patches." },
   { key: "identity-management", title: "Identity & Access Management Policy", category: "security", description: "Standards for user provisioning, deprovisioning, SSO, and privileged accounts." },
+  { key: "configuration-management", title: "Configuration Management Policy", category: "operations", description: "Baseline hardening standards, secure configuration, and configuration drift controls for all systems." },
+  { key: "supply-chain-risk", title: "Supply Chain Risk Management Policy", category: "risk", description: "Controls for assessing and managing cybersecurity risk from software and hardware supply chains. Required by NIST 800-161 and CMMC." },
+  { key: "contingency-planning", title: "Contingency Planning Policy", category: "risk", description: "Disaster recovery planning, system backup, and restoration procedures. Satisfies FedRAMP CP family requirements." },
+  { key: "personnel-security", title: "Personnel Security Policy", category: "hr", description: "Background screening, clearance management, and personnel security procedures for all employees and contractors." },
+  { key: "security-authorization", title: "Security Assessment & Authorization Policy", category: "operations", description: "Governs the authorization of information systems to operate. Required for FedRAMP CA family controls." },
+  { key: "api-security", title: "API Security Policy", category: "security", description: "Security standards for API design, authentication (OAuth, API keys), rate limiting, and versioning." },
+  { key: "responsible-disclosure", title: "Responsible Disclosure & Bug Bounty Policy", category: "security", description: "Process for external researchers to report security vulnerabilities. Satisfies SOC 2 CC7 and enterprise buyer requirements." },
+  { key: "zero-trust", title: "Zero Trust Architecture Policy", category: "security", description: "Governs implementation of never-trust-always-verify network access and identity verification principles." },
+  { key: "cookie-consent", title: "Cookie & Consent Management Policy", category: "data", description: "Cookie categories, consent banner requirements, and user rights under GDPR and CCPA. Legally distinct from Privacy Policy." },
+  { key: "iot-security", title: "IoT & OT Security Policy", category: "security", description: "Security controls for Internet of Things and Operational Technology devices. Required in manufacturing and healthcare environments." },
+  { key: "board-cybersecurity", title: "Board-Level Cybersecurity Governance Policy", category: "operations", description: "CISO reporting cadence, board oversight of cyber risk, and governance structure. Required for SOX, DORA, and enterprise due diligence." },
 ];
 
 @Injectable()

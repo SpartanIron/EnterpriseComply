@@ -26,6 +26,7 @@ import AccessReviews from "./pages/AccessReviews";
 import CustomFrameworks from "./pages/CustomFrameworks";
 import TrustCenter from "./pages/TrustCenter";
 import AuditLog from "./pages/AuditLog";
+import ComplianceReport from "./pages/ComplianceReport";
 import NotFound from "./pages/not-found";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -139,6 +140,7 @@ function AppRoutes() {
       <Route path="/settings" component={() => <AppShell><Settings /></AppShell>} />
       <Route path="/audit-log" component={() => <AppShell><AuditLog /></AppShell>} />
 
+      <Route path="/report" component={ComplianceReport} />
       <Route component={NotFound} />
     </Switch>
   );

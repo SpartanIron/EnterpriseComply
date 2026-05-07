@@ -1,0 +1,75 @@
+Critical gaps (deals you lose today):
+
+Framework	Why it matters
+NIST CSF 2.0	Most widely adopted voluntary framework worldwide. Every enterprise security team references it. Vanta and Drata both support it. This is probably your #1 missing framework.
+HITRUST CSF	Dominant in healthcare/health-tech. Covers HIPAA + ISO + NIST in one certification. If you sell to hospitals, insurers, or health-tech companies, they require HITRUST.
+NIST SP 800-171 Rev 3	Distinct from 800-53 — specifically protects CUI (Controlled Unclassified Information) for DoD contractors. Feeds directly into CMMC but is a standalone requirement.
+StateRAMP	Fast-growing state-level equivalent of FedRAMP. No good tool covers it well. Texas TX-RAMP and StateRAMP both have no dominant GRC platform. First-mover advantage here.
+23 NYCRR 500	Every NY-regulated financial company (banks, insurers, fintechs) must comply. Mandatory, not voluntary.
+ISO 27701	Privacy extension to 27001 — natural upsell for every GDPR/ISO customer. Many enterprise deals require it alongside 27001.
+FedRAMP Low / High	You have Moderate. Low gets more agencies; High covers sensitive data. These are separate authorizations with different control baselines.
+NIST AI RMF	The AI risk management framework. With EU AI Act coming into force, this will be table stakes within 12 months. No competitor owns this yet.
+UK Cyber Essentials Plus	Required for UK government contracts. Underserved in the US GRC market.
+CMMC Level 1	Simpler than L2 — 17 practices vs 110. Every single DoD contractor needs L1 minimum. Currently you go straight to L2.
+Integrations: 25 in catalog — critical gaps
+You're missing entire categories:
+
+Category	What to add
+Cloud infrastructure (biggest gap)	AWS Security Hub, AWS Config, AWS GuardDuty, AWS IAM — the #1 customer infrastructure. Azure Defender / Entra ID. GCP Security Command Center.
+CSPM tools	Wiz, Prisma Cloud, Orca Security — these are now in 40%+ of enterprise security stacks and auto-generate evidence
+CI/CD	GitLab CI, GitHub Actions (separate from GitHub), CircleCI, Jenkins — evidence for your code review and SAST controls
+Modern HRIS	Rippling, Gusto, ADP, TriNet — Workday is Fortune 500 only; most startups/SMBs use Rippling now
+PAM	BeyondTrust (you have CyberArk) — two-vendor category
+Container/K8s	Amazon ECR, Google GCR, Kubernetes audit logs — container controls are empty without these
+Comms/Collab	Microsoft Teams, Zoom — evidence for acceptable use and data handling controls
+Bug tracking	Linear, GitHub Issues — growing fast vs Jira in engineering-led companies
+The bigger issue: none of your integrations pull live evidence. They all do "demo connect" which simulates a connection. Real competitive advantage comes from actually querying the GitHub API to check branch protection, querying Okta to check MFA enforcement, querying AWS to verify encryption settings. That's what Vanta charges $20k+ for.
+
+Policies: 30 templates — gaps
+You have a solid 30. What's missing:
+
+Missing Policy	Why it's needed
+Configuration Management Policy	Baseline hardening standards, required explicitly in NIST 800-53 CM family and FedRAMP
+Supply Chain Risk Management Policy	NIST 800-161, CMMC SC.L2-3.1.20 — distinct from vendor management
+Contingency Planning Policy	DR-specific, separate from BCP — FedRAMP CP family requires it as its own document
+Personnel Security Policy	Background checks, clearances, separation procedures — required by NIST, FedRAMP, SOC 2 CC6
+Security Assessment & Authorization Policy	Required for FedRAMP CA family — governs who can authorize systems
+API Security Policy	Modern SaaS gap — covers API keys, OAuth scopes, rate limiting, versioning
+Responsible Disclosure / Bug Bounty Policy	Enterprise buyers ask for this; required for SOC 2 CC7
+Zero Trust Architecture Policy	Every enterprise is migrating to ZTA; documents your approach
+Cookie & Consent Policy	Required for GDPR — legally distinct from Privacy Policy
+IoT / OT Security Policy	Manufacturing, healthcare device customers need this
+Board-Level Cybersecurity Governance Policy	SOX, DORA, and enterprise buyers require evidence of board oversight
+Controls: 41 UCO — what's missing
+You have 11 domains. Missing entire domains:
+
+Missing Domain	Controls needed
+Physical Security	Physical access controls, visitor logs, clean desk enforcement, media destruction, server room access (required: ISO 27001 A.7, FedRAMP PE family, SOC 2 A1)
+Asset Management	Hardware/software inventory, asset lifecycle, unauthorized software prevention (SOC 2 CC6.1, ISO 27001 A.8, CIS Control 1-2)
+Endpoint Security	EDR deployment, device encryption, MDM compliance, USB blocking — currently no UCO control covers endpoint
+Application Security	OWASP Top 10 mitigation, WAF, API security, secrets in code detection — you have SAST/DAST but no AppSec domain
+Privacy Controls	DPIA/PIA process, consent management, data subject rights, DPA execution (GDPR/CCPA requirement)
+Cryptography	Key management lifecycle, certificate rotation, HSM usage, crypto algorithm standards
+Missing within existing domains:
+
+No Data Loss Prevention (DLP) control — a top-3 question in every enterprise security review
+No Web Application Firewall control — standard in PCI DSS, SOC 2
+No Threat Intelligence control — feeds into IR, required by NIST 800-53 SI-5
+No Just-In-Time (JIT) Access control — modern PAM approach replacing standing privileges
+No Secrets Management control — API keys, tokens, credentials rotation (distinct from encryption)
+Professional recommendations to take this to the next level
+Rank-ordered by revenue impact:
+
+1. Wire integrations to live evidence — This is the core product gap vs Vanta. When GitHub is connected, automatically mark UCO-CM-001 (Version Control) as passing. When Okta is connected, read MFA status for UCO-AI-001. This converts the platform from a documentation tool to a continuous monitoring platform. This is the $50k ACV feature.
+
+2. Add NIST CSF 2.0 — It's the most referenced framework in enterprise security conversations. Add it as framework #13 today. The control mappings overlap heavily with your existing UCO controls.
+
+3. Continuous automated testing — Schedule tests to run on a cadence (every 4-8 hours). Right now everything is point-in-time. Customers pay for "always-on" compliance, not a snapshot. This is Vanta's core differentiator.
+
+4. PDF reporting — An executive summary PDF, a SOC 2 readiness report, and a control gap report. Every board, every auditor, and every customer security review asks for a PDF. This is a conversion-critical feature.
+
+5. Risk-to-control auto-linking — When UCO-VM-001 (Vulnerability Management) is failing, automatically surface a suggested risk in the Risk Register: "Unpatched systems exposure — likelihood 4, impact 4." Close the loop between control posture and risk posture.
+
+6. HITRUST support — One HITRUST certification covers HIPAA + ISO + NIST simultaneously. Healthcare is a high-ACV vertical and HITRUST is mandatory. This opens a segment no current feature targets.
+
+7. Add Physical Security + Asset Management UCO domains — These are the two most frequently flagged gaps in enterprise security questionnaires. They're also required for SOC 2 Type II (A1 availability criteria) and every federal framework. Adding 8-10 controls here closes a visible hole.

@@ -5,31 +5,77 @@ import { apiUrl, apiFetch } from "@/lib/queryClient";
 import { useOrg } from "@/hooks/useOrg";
 
 const COMING_SOON_CATALOG = [
-  { key: "crowdstrike", name: "CrowdStrike", category: "Endpoint Security" },
-  { key: "jamf", name: "Jamf", category: "MDM" },
-  { key: "workday", name: "Workday", category: "HRIS" },
-  { key: "datadog", name: "Datadog", category: "Monitoring" },
-  { key: "pagerduty", name: "PagerDuty", category: "Incident Management" },
-  { key: "jira", name: "Jira", category: "Ticketing" },
-  { key: "servicenow", name: "ServiceNow", category: "ITSM" },
-  { key: "qualys", name: "Qualys", category: "Vulnerability Management" },
-  { key: "tenable", name: "Tenable", category: "Vulnerability Management" },
-  { key: "splunk", name: "Splunk", category: "SIEM" },
+  // Cloud Infrastructure
+  { key: "aws-security-hub", name: "AWS Security Hub", category: "Cloud Security" },
+  { key: "aws-config", name: "AWS Config", category: "Cloud Security" },
+  { key: "aws-guardduty", name: "AWS GuardDuty", category: "Cloud Security" },
+  { key: "aws-iam", name: "AWS IAM", category: "Cloud Infrastructure" },
+  { key: "azure-defender", name: "Microsoft Defender for Cloud", category: "Cloud Security" },
+  { key: "azure-entra", name: "Microsoft Entra ID", category: "Identity" },
+  { key: "gcp-scc", name: "GCP Security Command Center", category: "Cloud Security" },
+  // CSPM
+  { key: "wiz", name: "Wiz", category: "CSPM" },
+  { key: "prisma-cloud", name: "Prisma Cloud", category: "CSPM" },
+  { key: "orca", name: "Orca Security", category: "CSPM" },
+  { key: "lacework", name: "Lacework", category: "CSPM" },
+  // CI/CD
+  { key: "gitlab-ci", name: "GitLab CI", category: "CI/CD" },
+  { key: "github-actions", name: "GitHub Actions", category: "CI/CD" },
+  { key: "circleci", name: "CircleCI", category: "CI/CD" },
+  { key: "jenkins", name: "Jenkins", category: "CI/CD" },
+  // Container / K8s
+  { key: "amazon-ecr", name: "Amazon ECR", category: "Container Registry" },
+  { key: "google-gcr", name: "Google Container Registry", category: "Container Registry" },
+  { key: "kubernetes", name: "Kubernetes", category: "Container Orchestration" },
+  // Endpoint / MDM
+  { key: "crowdstrike", name: "CrowdStrike Falcon", category: "Endpoint Security" },
   { key: "sentinelone", name: "SentinelOne", category: "Endpoint Security" },
+  { key: "jamf", name: "Jamf Pro", category: "MDM" },
+  { key: "intune", name: "Microsoft Intune", category: "MDM" },
+  // Identity
   { key: "duo", name: "Duo Security", category: "MFA / Identity" },
   { key: "ping", name: "PingIdentity", category: "Identity" },
+  { key: "auth0", name: "Auth0", category: "Identity" },
+  // IGA / PAM
   { key: "sailpoint", name: "SailPoint", category: "IGA" },
   { key: "cyberark", name: "CyberArk", category: "PAM" },
+  { key: "beyondtrust", name: "BeyondTrust", category: "PAM" },
+  // Secrets
   { key: "hashicorp-vault", name: "HashiCorp Vault", category: "Secrets Management" },
+  { key: "aws-secrets-manager", name: "AWS Secrets Manager", category: "Secrets Management" },
+  { key: "azure-key-vault", name: "Azure Key Vault", category: "Secrets Management" },
+  // SIEM / Monitoring
+  { key: "splunk", name: "Splunk", category: "SIEM" },
+  { key: "datadog", name: "Datadog", category: "Monitoring" },
+  { key: "elastic-siem", name: "Elastic SIEM", category: "SIEM" },
+  // Vulnerability
+  { key: "qualys", name: "Qualys VMDR", category: "Vulnerability Management" },
+  { key: "tenable", name: "Tenable.io", category: "Vulnerability Management" },
   { key: "snyk", name: "Snyk", category: "Application Security" },
   { key: "veracode", name: "Veracode", category: "Application Security" },
+  { key: "checkmarx", name: "Checkmarx", category: "Application Security" },
+  // HRIS
+  { key: "workday", name: "Workday", category: "HRIS" },
+  { key: "rippling", name: "Rippling", category: "HRIS" },
+  { key: "bamboohr", name: "BambooHR", category: "HRIS" },
+  { key: "adp", name: "ADP Workforce Now", category: "HRIS" },
+  { key: "gusto", name: "Gusto", category: "HRIS" },
+  { key: "greenhouse", name: "Greenhouse", category: "Recruiting" },
+  // Ticketing / ITSM
+  { key: "jira", name: "Jira", category: "Ticketing" },
+  { key: "linear", name: "Linear", category: "Ticketing" },
+  { key: "servicenow", name: "ServiceNow", category: "ITSM" },
+  { key: "pagerduty", name: "PagerDuty", category: "Incident Management" },
+  // Comms / Collab
+  { key: "microsoft-teams", name: "Microsoft Teams", category: "Collaboration" },
+  { key: "zoom", name: "Zoom", category: "Collaboration" },
+  // Training / Email Security
   { key: "knowbe4", name: "KnowBe4", category: "Security Training" },
   { key: "proofpoint", name: "Proofpoint", category: "Email Security" },
+  // Productivity / ERP
   { key: "microsoft-365", name: "Microsoft 365", category: "Productivity" },
-  { key: "zendesk", name: "Zendesk", category: "Customer Support" },
-  { key: "bamboohr", name: "BambooHR", category: "HRIS" },
-  { key: "greenhouse", name: "Greenhouse", category: "Recruiting" },
   { key: "netsuite", name: "NetSuite", category: "ERP" },
+  { key: "zendesk", name: "Zendesk", category: "Customer Support" },
 ];
 
 export default function Integrations() {

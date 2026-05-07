@@ -15,6 +15,17 @@ export const FRAMEWORK_CATALOG = [
   { key: "cmmc-l2", name: "CMMC Level 2", shortName: "CMMC L2", category: "federal", controlCount: 110, description: "Cybersecurity Maturity Model Certification for DoD contractors." },
   { key: "nist-800-53", name: "NIST SP 800-53 Rev 5", shortName: "NIST 800-53", category: "federal", controlCount: 389, description: "Security and privacy controls for federal information systems." },
   { key: "cis-controls", name: "CIS Controls v8", shortName: "CIS Controls", category: "best-practice", controlCount: 153, description: "Center for Internet Security prioritized security actions." },
+  { key: "nist-csf", name: "NIST CSF 2.0", shortName: "NIST CSF", category: "best-practice", controlCount: 106, description: "NIST Cybersecurity Framework - the most widely adopted voluntary security framework worldwide." },
+  { key: "hitrust", name: "HITRUST CSF v11", shortName: "HITRUST", category: "commercial", controlCount: 156, description: "Healthcare industry trust framework covering HIPAA, ISO 27001, and NIST in a single certification." },
+  { key: "nist-800-171", name: "NIST SP 800-171 Rev 3", shortName: "NIST 800-171", category: "federal", controlCount: 110, description: "Protecting Controlled Unclassified Information (CUI) in non-federal systems. Required for DoD contractors." },
+  { key: "stateramp", name: "StateRAMP", shortName: "StateRAMP", category: "federal", controlCount: 148, description: "State-level cloud security authorization program - the FedRAMP equivalent for state and local government." },
+  { key: "nycrr-500", name: "23 NYCRR 500", shortName: "NYCRR 500", category: "commercial", controlCount: 44, description: "New York State cybersecurity regulation for financial services companies. Mandatory for NY-regulated entities." },
+  { key: "iso27701", name: "ISO/IEC 27701:2019", shortName: "ISO 27701", category: "commercial", controlCount: 114, description: "Privacy Information Management System (PIMS) - extension to ISO 27001 covering GDPR and CCPA requirements." },
+  { key: "fedramp-high", name: "FedRAMP High", shortName: "FedRAMP High", category: "federal", controlCount: 421, description: "FedRAMP authorization for systems processing sensitive federal data. Highest impact level." },
+  { key: "fedramp-low", name: "FedRAMP Low", shortName: "FedRAMP Low", category: "federal", controlCount: 125, description: "FedRAMP authorization for systems with low risk to federal operations. Entry-level authorization." },
+  { key: "nist-ai-rmf", name: "NIST AI RMF 1.0", shortName: "NIST AI RMF", category: "best-practice", controlCount: 72, description: "NIST AI Risk Management Framework - governs trustworthy AI system development and deployment." },
+  { key: "cyber-essentials", name: "UK Cyber Essentials Plus", shortName: "Cyber Essentials", category: "commercial", controlCount: 56, description: "UK government-backed certification required for government contracts. Covers 5 technical control areas." },
+  { key: "cmmc-l1", name: "CMMC Level 1", shortName: "CMMC L1", category: "federal", controlCount: 17, description: "Basic cyber hygiene - 17 practices required of ALL DoD contractors handling Federal Contract Information." },
 ];
 
 @Injectable()
