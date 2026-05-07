@@ -79,7 +79,7 @@ export default function Monitoring() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Continuous Monitoring</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Real-time compliance monitoring, drift alerts, and audit trail</p>
+          <p className="text-sm text-slate-500 mt-0.5">Real-time security and compliance monitoring, drift detection, and immutable audit trail</p>
         </div>
       </div>
 
