@@ -566,16 +566,16 @@ export default function Landing() {
         <div className="absolute pointer-events-none" style={{ bottom: "5%", left: "5%", width: 320, height: 320, background: "radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 65%)", filter: "blur(48px)", zIndex: 0 }} />
         <div className="absolute pointer-events-none" style={{ top: "50%", left: "35%", width: 260, height: 260, background: "radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 65%)", filter: "blur(40px)", zIndex: 0 }} />
         {/* Three-stripe diagonal - indigo / blue / cyan — bottom-RIGHT */}
-        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "52%", zIndex: 0 }}>
+        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "48%", zIndex: 0 }}>
           <div style={{
             position: "absolute",
             inset: 0,
             background: [
               "linear-gradient(158deg,",
-              "  transparent 51%,",
-              "  #06b6d4 51%, #06b6d4 67%,",
-              "  #2563eb 67%, #2563eb 83%,",
-              "  #4f46e5 83%",
+              "  transparent 62%,",
+              "  #06b6d4 62%, #06b6d4 72%,",
+              "  #2563eb 72%, #2563eb 82%,",
+              "  #4f46e5 82%",
               ")"
             ].join(""),
           }} />
@@ -745,8 +745,8 @@ export default function Landing() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
             </FadeUp>
-            {/* Right: 2x3 staggered grid */}
-            <StaggerGrid className="lg:col-span-2 grid sm:grid-cols-2 gap-5">
+            {/* Right: 3x2 staggered grid */}
+            <StaggerGrid className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4">
               {FEATURES.map((f, i) => {
                 const accent = FEATURE_ACCENTS[i % FEATURE_ACCENTS.length];
                 return (
@@ -795,8 +795,8 @@ export default function Landing() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
             </FadeUp>
-            {/* Right: staggered photo card grid */}
-            <StaggerGrid className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-3">
+            {/* Right: single-row 5-col photo cards */}
+            <StaggerGrid className="lg:col-span-2 grid grid-cols-3 lg:grid-cols-5 gap-3">
               {INDUSTRIES.map((ind) => (
                 <StaggerItem key={ind.name}>
                   <motion.div
@@ -832,16 +832,16 @@ export default function Landing() {
       {/* ── CTA ── dark, 2-col */}
       <section className="relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 60%, #0a1628 100%)" }}>
         {/* Three-stripe diagonal - orange / amber / indigo — bottom-RIGHT */}
-        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "65%", zIndex: 0 }}>
+        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "55%", zIndex: 0 }}>
           <div style={{
             position: "absolute",
             inset: 0,
             background: [
               "linear-gradient(158deg,",
-              "  transparent 51%,",
-              "  #f59e0b 51%, #f59e0b 67%,",
-              "  #ea580c 67%, #ea580c 83%,",
-              "  #4f46e5 83%",
+              "  transparent 58%,",
+              "  #f59e0b 58%, #f59e0b 69%,",
+              "  #ea580c 69%, #ea580c 80%,",
+              "  #4f46e5 80%",
               ")"
             ].join(""),
           }} />
