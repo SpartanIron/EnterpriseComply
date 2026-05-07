@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/react";
+import { useAuth, useClerk } from "@clerk/react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -98,37 +98,51 @@ const FOOTER_LINKS = {
 
 function NavBar() {
   const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   return (
-    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(3,7,18,0.85)", borderColor: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}>
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
-        <a href={BASE_PATH + "/"} className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/30">
-            <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" alt="" />
+    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(3,7,18,0.9)", borderColor: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}>
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
+        <a href={BASE_PATH + "/"} className="flex items-center gap-3">
+          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/30">
+            <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" alt="" />
           </div>
-          <span className="text-white font-bold text-base tracking-tight">EnterpriseComply</span>
+          <div>
+            <span className="text-white font-bold text-sm tracking-tight">EnterpriseComply</span>
+            <span className="hidden sm:inline text-xs ml-2" style={{ color: "#334155" }}>by ColorCode Solutions</span>
+          </div>
         </a>
 
-        <div className="hidden md:flex items-center gap-7">
-          {["Platform", "Solutions", "Industries", "Resources", "About Us"].map((label) => (
-            <a key={label} href="#" className="text-sm font-medium transition-colors" style={{ color: "rgba(148,163,184,1)" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "white")}
-              onMouseLeave={e => (e.currentTarget.style.color = "rgba(148,163,184,1)")}>
-              {label}
-            </a>
-          ))}
-        </div>
-
         <div className="flex items-center gap-3">
-          <a href={BASE_PATH + "/sign-in"} className="text-sm font-medium px-3 py-2 transition-colors" style={{ color: "rgba(148,163,184,1)" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "white")}
-            onMouseLeave={e => (e.currentTarget.style.color = "rgba(148,163,184,1)")}>
-            Log In
-          </a>
-          <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
-            className="px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all"
-            style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 20px rgba(37,99,235,0.35)" }}>
-            {isSignedIn ? "Go to App" : "Request a Demo"}
-          </a>
+          {isSignedIn ? (
+            <>
+              <button
+                onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+                style={{ color: "#64748b", borderColor: "rgba(255,255,255,0.08)", background: "transparent" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#64748b"; }}>
+                Sign out
+              </button>
+              <a href={BASE_PATH + "/dashboard"}
+                className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all"
+                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 16px rgba(37,99,235,0.3)" }}>
+                Go to App
+              </a>
+            </>
+          ) : (
+            <>
+              <a href={BASE_PATH + "/sign-in"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#64748b" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
+                Log In
+              </a>
+              <a href={BASE_PATH + "/sign-up"}
+                className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all"
+                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 16px rgba(37,99,235,0.3)" }}>
+                Request a Demo
+              </a>
+            </>
+          )}
         </div>
       </div>
     </nav>
@@ -279,29 +293,26 @@ export default function Landing() {
         {/* Ambient glow */}
         <div className="absolute pointer-events-none" style={{ top: -100, left: "10%", width: 600, height: 600, background: "radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%)", borderRadius: "50%" }} />
         <div className="absolute pointer-events-none" style={{ top: 0, right: "5%", width: 400, height: 400, background: "radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%)", borderRadius: "50%" }} />
-        {/* Rainbow diagonal stripes - bottom of hero */}
-        <div className="absolute pointer-events-none overflow-hidden" style={{ bottom: 0, left: "15%", right: 0, height: "55%", zIndex: 0 }}>
+        {/* Cool diagonal stripes - violet/blue/cyan/green spectrum */}
+        <div className="absolute pointer-events-none overflow-hidden" style={{ bottom: 0, left: "20%", right: 0, height: "60%", zIndex: 0 }}>
           <div style={{
             position: "absolute",
             inset: 0,
             background: [
               "linear-gradient(38deg,",
               "  transparent 0%,",
-              "  transparent 18%,",
-              "  rgba(99,0,255,0.55) 18%,  rgba(99,0,255,0.55) 21%,",
-              "  rgba(0,80,255,0.6) 21%,   rgba(0,80,255,0.6) 24.5%,",
-              "  rgba(0,160,255,0.65) 24.5%, rgba(0,160,255,0.65) 28%,",
-              "  rgba(0,220,220,0.6) 28%,  rgba(0,220,220,0.6) 31.5%,",
-              "  rgba(0,210,100,0.55) 31.5%, rgba(0,210,100,0.55) 35%,",
-              "  rgba(120,230,0,0.5) 35%,  rgba(120,230,0,0.5) 38.5%,",
-              "  rgba(255,220,0,0.55) 38.5%, rgba(255,220,0,0.55) 42%,",
-              "  rgba(255,140,0,0.6) 42%,  rgba(255,140,0,0.6) 45.5%,",
-              "  rgba(255,40,0,0.55) 45.5%, rgba(255,40,0,0.55) 49%,",
-              "  transparent 49%",
+              "  transparent 14%,",
+              "  rgba(109,40,217,0.38) 14%, rgba(109,40,217,0.38) 17%,",
+              "  rgba(37,99,235,0.42)  17%, rgba(37,99,235,0.42)  20.5%,",
+              "  rgba(14,165,233,0.40) 20.5%, rgba(14,165,233,0.40) 24%,",
+              "  rgba(6,182,212,0.36)  24%, rgba(6,182,212,0.36)  27.5%,",
+              "  rgba(16,185,129,0.32) 27.5%, rgba(16,185,129,0.32) 31%,",
+              "  rgba(132,204,22,0.26) 31%, rgba(132,204,22,0.26) 34.5%,",
+              "  transparent 34.5%",
               ")"
             ].join(""),
-            maskImage: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%), linear-gradient(to right, rgba(0,0,0,0.0) 0%, rgba(0,0,0,1) 30%)",
-            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%)",
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 55%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 55%, transparent 100%)",
           }} />
         </div>
 
@@ -399,10 +410,10 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { value: "23", label: "Compliance Frameworks", sub: "SOC 2 to FedRAMP" },
-              { value: "71", label: "Universal Controls", sub: "Across 16 domains" },
-              { value: "775+", label: "Framework Mappings", sub: "Authoritative mappings" },
-              { value: "10 min", label: "Setup to First Score", sub: "No services needed" },
+              { value: "23", label: "Compliance Frameworks", sub: "SOC 2 to FedRAMP High" },
+              { value: "71", label: "Universal Controls", sub: "Across 12 control domains" },
+              { value: "388+", label: "Framework Mappings", sub: "Authoritative mappings" },
+              { value: "10 min", label: "Setup to First Score", sub: "No professional services" },
             ].map(({ value, label, sub }) => (
               <div key={label}>
                 <div className="text-4xl font-extrabold tracking-tight mb-1.5" style={{ background: "linear-gradient(135deg, #3b82f6, #0ea5e9)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{value}</div>
@@ -410,6 +421,81 @@ export default function Landing() {
                 <div className="text-xs" style={{ color: "#475569" }}>{sub}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── UCO SECTION ── */}
+      <section style={{ background: "#050d1a", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <div className="max-w-7xl mx-auto px-6 py-20">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#3b82f6" }}>Universal Control Objectives</p>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-5">
+                <span className="text-white">Implement once.</span>
+                <br />
+                <span style={{ background: "linear-gradient(135deg, #3b82f6 0%, #0ea5e9 60%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                  Satisfy every framework simultaneously.
+                </span>
+              </h2>
+              <p className="text-base leading-relaxed mb-6" style={{ color: "#64748b" }}>
+                EnterpriseComply's UCO layer maps 71 canonical controls to all 23 frameworks at once. A single control implementation - like enforcing MFA - automatically satisfies SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and more in one action. No duplicated effort. No missed requirements.
+              </p>
+              <div className="space-y-3">
+                {[
+                  { label: "One control", detail: "satisfies requirements across multiple frameworks simultaneously" },
+                  { label: "388+ authoritative mappings", detail: "maintained and kept current by our compliance team" },
+                  { label: "12 control domains", detail: "from Identity to Federal - every obligation covered" },
+                ].map(({ label, detail }) => (
+                  <div key={label} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)" }}>
+                      <svg className="h-2.5 w-2.5" style={{ color: "#60a5fa" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-sm" style={{ color: "#94a3b8" }}>
+                      <span className="font-semibold text-white">{label}</span> {detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Framework grid visual */}
+            <div className="relative">
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { name: "SOC 2", cat: "commercial", color: "#2563eb" },
+                  { name: "ISO 27001", cat: "commercial", color: "#0891b2" },
+                  { name: "HIPAA", cat: "commercial", color: "#7c3aed" },
+                  { name: "PCI DSS", cat: "commercial", color: "#0d9488" },
+                  { name: "FedRAMP", cat: "federal", color: "#1d4ed8" },
+                  { name: "CMMC L2", cat: "federal", color: "#4338ca" },
+                  { name: "NIST 800-53", cat: "federal", color: "#1e40af" },
+                  { name: "NIST CSF", cat: "best-practice", color: "#0369a1" },
+                  { name: "GDPR", cat: "commercial", color: "#6d28d9" },
+                  { name: "HITRUST", cat: "commercial", color: "#0f766e" },
+                  { name: "CIS Controls", cat: "best-practice", color: "#1d4ed8" },
+                  { name: "ISO 27701", cat: "commercial", color: "#5b21b6" },
+                  { name: "NIST 800-171", cat: "federal", color: "#1e3a8a" },
+                  { name: "StateRAMP", cat: "federal", color: "#312e81" },
+                  { name: "NYCRR 500", cat: "commercial", color: "#164e63" },
+                  { name: "SOX ITGC", cat: "commercial", color: "#1e3a5f" },
+                  { name: "CCPA", cat: "commercial", color: "#3b0764" },
+                  { name: "FedRAMP High", cat: "federal", color: "#1e3a8a" },
+                  { name: "FedRAMP Low", cat: "federal", color: "#1e40af" },
+                  { name: "NIST AI RMF", cat: "best-practice", color: "#065f46" },
+                  { name: "CMMC L1", cat: "federal", color: "#3730a3" },
+                  { name: "Cyber Essentials", cat: "commercial", color: "#0c4a6e" },
+                  { name: "HITRUST CSF", cat: "commercial", color: "#134e4a" },
+                ].map((fw) => (
+                  <div key={fw.name} className="rounded-lg px-2 py-2 text-center" style={{ background: `${fw.color}22`, border: `1px solid ${fw.color}44` }}>
+                    <p className="text-white font-semibold leading-tight" style={{ fontSize: 9 }}>{fw.name}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Glow behind the grid */}
+              <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(37,99,235,0.08) 0%, transparent 70%)" }} />
+            </div>
           </div>
         </div>
       </section>
