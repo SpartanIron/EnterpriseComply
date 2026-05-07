@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "C2S Cyber Assurance Operating System"
+title = "ColorComply"
 version = "1.0.0"
 id = "artifacts/c2s-ciop"
 router = "path"

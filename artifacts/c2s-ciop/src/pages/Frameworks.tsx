@@ -1,124 +1,181 @@
-import { useListFrameworks, useGetComplianceOverview } from "@workspace/api-client-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Minus, CheckCircle, AlertCircle, XCircle, HelpCircle } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiUrl } from "@/lib/queryClient";
 
-const STATUS_CONFIG: Record<string, { icon: React.ReactNode; badge: string; label: string }> = {
-  compliant: { icon: <CheckCircle className="w-3.5 h-3.5" />, badge: "bg-green-100 text-green-700 ring-1 ring-inset ring-green-200", label: "Compliant" },
-  partial: { icon: <AlertCircle className="w-3.5 h-3.5" />, badge: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200", label: "Partial" },
-  non_compliant: { icon: <XCircle className="w-3.5 h-3.5" />, badge: "bg-red-100 text-red-700 ring-1 ring-inset ring-red-200", label: "Non-Compliant" },
-  not_assessed: { icon: <HelpCircle className="w-3.5 h-3.5" />, badge: "bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-200", label: "Not Assessed" },
+const CATALOG_CATEGORIES: Record<string, string> = {
+  commercial: "Commercial",
+  federal: "Federal (US Gov)",
+  "best-practice": "Best Practice",
 };
 
-const TYPE_BADGE: Record<string, string> = {
-  federal: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
-  commercial: "bg-green-100 text-green-700 ring-1 ring-inset ring-green-200",
-  international: "bg-purple-100 text-purple-700 ring-1 ring-inset ring-purple-200",
-  industry: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
-};
-
-const TOOLTIP_STYLE = {
-  contentStyle: {
-    background: "hsl(var(--card))",
-    border: "1px solid hsl(var(--border))",
-    borderRadius: "6px",
-    fontSize: 11,
-    fontFamily: "Inter, sans-serif",
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.07)",
-  },
-  labelStyle: { color: "hsl(var(--muted-foreground))", fontWeight: 500 },
+const CATEGORY_BADGE: Record<string, string> = {
+  commercial: "bg-blue-100 text-blue-700",
+  federal: "bg-purple-100 text-purple-700",
+  "best-practice": "bg-slate-100 text-slate-600",
 };
 
 export default function Frameworks() {
-  const frameworks = useListFrameworks();
-  const overview = useGetComplianceOverview();
+  const qc = useQueryClient();
+  const [showAdd, setShowAdd] = useState(false);
 
-  const chartData = (overview.data ?? [])
-    .filter((f) => f.score > 0)
-    .sort((a, b) => b.score - a.score);
+  const { data: orgData } = useQuery<{ org: any }>({
+    queryKey: ["orgs", "me"],
+    queryFn: async () => (await fetch(apiUrl("/orgs/me"), { credentials: "include" })).json(),
+  });
+  const orgId = orgData?.org?.id;
+
+  const { data: fwData, isLoading } = useQuery<{ frameworks: any[] }>({
+    queryKey: ["org-frameworks", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/frameworks`), { credentials: "include" })).json(),
+    enabled: !!orgId,
+  });
+
+  const { data: catalogData } = useQuery<{ frameworks: any[] }>({
+    queryKey: ["framework-catalog"],
+    queryFn: async () => (await fetch(apiUrl("/frameworks/catalog"), { credentials: "include" })).json(),
+    enabled: showAdd,
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: async (keys: string[]) => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/frameworks`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ frameworkKeys: keys }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-frameworks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      setShowAdd(false);
+    },
+  });
+
+  const frameworks = fwData?.frameworks ?? [];
+  const catalog = catalogData?.frameworks ?? [];
+  const activeKeys = new Set(frameworks.map(f => f.frameworkKey));
+  const available = catalog.filter(f => !activeKeys.has(f.key));
 
   return (
-    <div data-testid="frameworks-page" className="space-y-4">
-      {/* Chart card */}
-      <div className="bg-card border border-border rounded-lg p-5 shadow-xs">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Compliance Score — Active Frameworks</div>
-        {overview.isLoading ? (
-          <Skeleton className="h-40 w-full" />
-        ) : (
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={chartData} barSize={32}>
-              <XAxis dataKey="shortName" tick={{ fontSize: 10, fontFamily: "Inter, sans-serif", fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 10, fontFamily: "Inter, sans-serif", fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={24} />
-              <Tooltip {...TOOLTIP_STYLE} formatter={(val: number) => [`${val.toFixed(1)}%`, "Score"]} />
-              <Bar dataKey="score" radius={[3, 3, 0, 0]}>
-                {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.score >= 85 ? "#22c55e" : entry.score >= 70 ? "#f59e0b" : "#ef4444"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+    <div className="p-8 max-w-6xl">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Frameworks</h1>
+          <p className="text-slate-500 mt-1">Manage your active compliance frameworks</p>
+        </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          <span className="text-lg leading-none">+</span>
+          Add Framework
+        </button>
       </div>
 
-      {/* Framework cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="framework-grid">
-        {frameworks.isLoading
-          ? Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="bg-card border border-border rounded-lg p-5 shadow-xs"><Skeleton className="h-24 w-full" /></div>
-            ))
-          : (frameworks.data ?? []).map((f) => {
-              const sc = STATUS_CONFIG[f.status] ?? STATUS_CONFIG.not_assessed;
-              const ov = overview.data?.find((o) => o.frameworkId === f.id);
-              const passing = Math.round(f.controlCount * (f.complianceScore / 100));
-              return (
-                <div
-                  key={f.id}
-                  className={cn("bg-card border rounded-lg p-5 shadow-xs hover:shadow-sm transition-shadow", f.active ? "border-border" : "border-border opacity-55")}
-                  data-testid={`framework-card-${f.id}`}
-                >
-                  <div className="flex items-start justify-between mb-1">
-                    <div>
-                      <div className="text-sm font-bold text-foreground">{f.shortName}</div>
-                      <div className="text-[10px] text-muted-foreground font-medium mt-0.5">v{f.version}</div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {ov?.trend === "up" ? <TrendingUp className="w-3.5 h-3.5 text-green-500" /> : ov?.trend === "down" ? <TrendingDown className="w-3.5 h-3.5 text-red-500" /> : <Minus className="w-3.5 h-3.5 text-muted-foreground" />}
-                      <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide", TYPE_BADGE[f.type] ?? "")}>
-                        {f.type}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mb-3 truncate" title={f.name}>{f.name}</p>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => <div key={i} className="h-40 bg-slate-100 rounded-xl animate-pulse" />)}
+        </div>
+      ) : frameworks.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
+          <p className="text-3xl mb-4">🛡</p>
+          <p className="font-semibold text-slate-900 mb-2">No frameworks activated</p>
+          <p className="text-slate-500 text-sm mb-5">Add your first framework to start tracking compliance.</p>
+          <button onClick={() => setShowAdd(true)} className="px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+            Add a framework →
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {frameworks.map((fw: any) => <FrameworkDetailCard key={fw.id} fw={fw} />)}
+        </div>
+      )}
 
-                  {f.active && f.complianceScore > 0 ? (
-                    <>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full">
-                          <div
-                            className={cn("h-full rounded-full", f.complianceScore >= 85 ? "bg-green-500" : f.complianceScore >= 70 ? "bg-amber-500" : "bg-red-500")}
-                            style={{ width: `${f.complianceScore}%` }}
-                          />
-                        </div>
-                        <span className={cn("text-sm font-mono font-bold w-10 text-right", f.complianceScore >= 85 ? "text-green-600" : f.complianceScore >= 70 ? "text-amber-600" : "text-red-600")}>
-                          {f.complianceScore.toFixed(0)}%
-                        </span>
+      {/* Add Framework Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-slate-900">Add Frameworks</h2>
+                <button onClick={() => setShowAdd(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">✕</button>
+              </div>
+            </div>
+            <div className="overflow-y-auto p-6 flex-1">
+              {available.length === 0 ? (
+                <p className="text-center text-slate-500 py-8">All available frameworks are already activated.</p>
+              ) : (
+                Object.entries(CATALOG_CATEGORIES).map(([cat, label]) => {
+                  const catFrameworks = available.filter(f => f.category === cat);
+                  if (catFrameworks.length === 0) return null;
+                  return (
+                    <div key={cat} className="mb-6">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{label}</p>
+                      <div className="space-y-2">
+                        {catFrameworks.map((f: any) => (
+                          <button
+                            key={f.key}
+                            onClick={() => activateMutation.mutate([f.key])}
+                            disabled={activateMutation.isPending}
+                            className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-colors text-left group"
+                          >
+                            <div>
+                              <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">{f.name}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{f.description}</p>
+                            </div>
+                            <div className="flex items-center gap-3 ml-4">
+                              <span className="text-xs text-slate-400">{f.controlCount} controls</span>
+                              <span className="text-blue-600 font-semibold text-sm group-hover:translate-x-0.5 transition-transform">→</span>
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-muted-foreground font-medium"><span className="font-mono font-semibold text-foreground">{passing}</span> / <span className="font-mono">{f.controlCount}</span> controls passing</span>
-                        <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide", sc.badge)}>
-                          {sc.icon}{sc.label}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <span className={cn("inline-flex items-center gap-1.5 rounded px-2 py-1 text-[10px] font-semibold", sc.badge)}>
-                      {sc.icon}{f.active ? "Initializing..." : "Inactive — Not Assessed"}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FrameworkDetailCard({ fw }: { fw: any }) {
+  const score = fw.complianceScore ?? 0;
+  const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-600";
+  const barColor = score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <p className="font-bold text-slate-900">{fw.name}</p>
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1.5 ${CATEGORY_BADGE[fw.category] ?? "bg-slate-100 text-slate-600"}`}>
+            {CATALOG_CATEGORIES[fw.category] ?? fw.category}
+          </span>
+        </div>
+        <p className={`text-3xl font-bold ${scoreColor}`}>{Math.round(score)}%</p>
+      </div>
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
+        <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${score}%` }} />
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-green-50 rounded-lg p-2">
+          <p className="text-lg font-bold text-green-700">{fw.passingControls ?? 0}</p>
+          <p className="text-xs text-green-600">Passing</p>
+        </div>
+        <div className="bg-red-50 rounded-lg p-2">
+          <p className="text-lg font-bold text-red-700">{fw.failingControls ?? 0}</p>
+          <p className="text-xs text-red-600">Failing</p>
+        </div>
+        <div className="bg-slate-50 rounded-lg p-2">
+          <p className="text-lg font-bold text-slate-600">{fw.notTestedControls ?? 0}</p>
+          <p className="text-xs text-slate-500">Untested</p>
+        </div>
       </div>
     </div>
   );

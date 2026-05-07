@@ -1,6 +1,6 @@
-# C2S Cyber Assurance Operating System (C2S-CIOP)
+# ColorComply
 
-Production-grade Cyber Assurance OS for CISOs — real-time posture, compliance achievement, risk intelligence, and AI executive briefings built by ColorCode Solutions.
+Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-competitor with federal layer, covering 12 frameworks from SOC 2 to FedRAMP.
 
 ## Run & Operate
 
@@ -8,83 +8,74 @@ Production-grade Cyber Assurance OS for CISOs — real-time posture, compliance 
 - `pnpm --filter @workspace/c2s-ciop run dev` — run the frontend (port 19222, proxied via `/`)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec (then fix `lib/api-zod/src/index.ts` to only export `./generated/api`)
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `npx tsx lib/db/src/seed-intelligence.ts` — re-seed intelligence data (mappings, POA&M, journeys, briefing)
-- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET`
+- `npx tsx lib/db/src/seed-colorcomply.ts` — re-seed UCO controls, framework mappings, automated tests
+- Required env: `DATABASE_URL`, `SESSION_SECRET`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`
+- Optional: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` for GitHub OAuth integration
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- Frontend: React + Vite (port 19222), Tailwind CSS v4, Recharts, Wouter routing
-- API: Express 5 (port 8080, path `/api`)
-- DB: PostgreSQL + Drizzle ORM
+- Frontend: React + Vite (port 19222), Tailwind CSS v4, Wouter routing, @clerk/react
+- API: Express 5 (port 8080, path `/api`), @clerk/express
+- DB: PostgreSQL + Drizzle ORM (multi-tenant schema)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
-- Fonts: JetBrains Mono (metrics/data), Inter (labels)
+- Build: esbuild (CJS bundle for API server)
+- Fonts: Inter (all text)
 
 ## Where things live
 
-- `lib/api-spec/openapi.yaml` — OpenAPI spec, source of truth for all endpoints
-- `lib/db/src/schema/` — Drizzle table definitions (controls, frameworks, assets, risks, findings, telemetry, evidence, graph, controlMappings)
-- `lib/db/src/schema/controlMappings.ts` — NEW: control_framework_mappings, poam_items, compliance_journeys, remediation_tasks, executive_briefings
-- `lib/db/src/seed-intelligence.ts` — seeds all new intelligence tables
-- `artifacts/api-server/src/routes/` — Express route handlers per domain
-- `artifacts/api-server/src/routes/intelligence.ts` — NEW: gap analysis, POA&M, journeys, briefing, financial exposure
-- `artifacts/c2s-ciop/src/pages/` — Dashboard, Controls, Risks, Frameworks, Assets, Findings, Telemetry, Graph, GapAnalysis, POAM, ComplianceJourney, ExecutiveBrief
-- `artifacts/c2s-ciop/src/components/layout/` — Sidebar (OBSERVE/ACHIEVE/INTELLIGENCE sections), Header, Layout
+- `lib/db/src/schema/` — all Drizzle table definitions (organizations, ucoControls, orgCompliance, orgWorkforce, orgIntegrations, orgPoam)
+- `lib/db/src/seed-colorcomply.ts` — seeds UCO controls + framework mappings + automated tests
+- `artifacts/api-server/src/routes/` — orgs, frameworks, controls, integrations, evidence, people, vendors, poam, policies
+- `artifacts/c2s-ciop/src/pages/` — Landing, Onboarding, Dashboard, Frameworks, Controls, Integrations, Evidence, Policies, People, Vendors, POAM, Settings
+- `artifacts/c2s-ciop/src/components/layout/AppShell.tsx` — sidebar + layout shell
 
 ## Architecture decisions
 
-- **Contract-first API**: OpenAPI spec drives code generation for both server Zod schemas and React Query client hooks — never hand-write these
-- **Numeric DB IDs → string API IDs**: All route handlers convert `r.id` to `String(r.id)` before Zod parse, since OpenAPI schema uses string IDs
-- **0 border-radius throughout**: CSS `--radius: 0px` enforces financial terminal / sharp borders aesthetic site-wide
-- **Universal Control Graph (the moat)**: `control_framework_mappings` table maps one UCO canonical control to N framework control IDs simultaneously — implement once, validate once, output evidence for all frameworks
-- **FAIR-lite financial exposure**: `baseLoss(severity) × exploitability × blastRadius` gives defensible $ range without actuarial data. criticalAsset=$2M, high=$800K, medium=$250K, low=$50K
-- **Executive briefing is deterministic**: No external AI API — computed from live DB state (control failures, open findings, risk scores, framework gaps). Cached 5 min, refresh on demand
+- **Multi-tenant by orgId**: every table has `org_id`; all routes scoped to `/orgs/:orgId/...` with Clerk auth middleware
+- **UCO (Universal Control Objectives)**: 41 canonical controls mapped to 12 frameworks — implement once, satisfy all frameworks simultaneously
+- **Clerk proxy only in production**: `proxyUrl` on ClerkProvider is only set when `import.meta.env.PROD`; dev mode loads Clerk JS directly from CDN
+- **No OpenAPI codegen for new routes**: ColorComply routes call DB directly and return plain JSON — added post-codegen-setup, no spec file
+- **GitHub OAuth connector**: `GET /api/integrations/github/connect` → GitHub OAuth → callback stores token + syncs repos/members/MFA
 
 ## Product
 
-**OBSERVE** (existing)
-- Command Dashboard: Executive posture arc gauge (0-100), sparkline tiles, action-required panel, zone-banded trend chart
-- Control Validation: UCO 12 controls, drift detection, maturity dots, evidence freshness
-- Risk & Attack Paths: Exploitability bars, blast radius, attack chain visualization
-- Compliance Frameworks: 12 frameworks, bar chart, compliance scores
-- Asset Intelligence: Crown jewel flags, CVE counts, control coverage
-- Security Findings: SLA breach detection, dual filters
-- Telemetry & Evidence: 8 live sources, event stream, evidence registry
-- Cyber Graph: Interactive SVG, 17 nodes + 16 edges, click-to-highlight attack paths
+**Unauthenticated**
+- Landing page: hero, framework list, feature cards, CTA
 
-**ACHIEVE** (new — the moat)
-- Gap Analysis: One UCO control → all framework control IDs it satisfies; donut score, blocker panel, control-level table with expand-for-rationale; 7 frameworks supported
-- POA&M: FedRAMP-compliant Plan of Action & Milestones; milestone tracking, status updates, owner/team, original→residual risk, overdue highlighting
-- Compliance Journey: 6-phase ATO workflow (Scope→Gap→Roadmap→Validate→Package→Authorized); readiness gauge, remediation task board with inline status updates
+**Onboarding** (post-signup)
+- 4-step wizard: company info → framework selection (12 frameworks) → GitHub connect → done
 
-**INTELLIGENCE** (new)
-- Executive Brief: AI-derived board-ready narrative; financial exposure ($3.7M–$22M range), active threat vectors, recommended board actions, briefing confidence scores
+**App (authenticated)**
+- Dashboard: overall score ring, passing/failing/untested stats, per-framework cards
+- Frameworks: compliance scores per active framework, add from catalog modal
+- Controls: UCO control list grouped by domain, manual override, expand for remediation guidance
+- Integrations: connected/available/coming-soon integration catalog, sync button
+- Evidence Vault: auto-collected + manual evidence items
+- Policies: template library, activate to org, track publication status
+- People: workforce MFA/training/access-review compliance table
+- Vendors: third-party vendor risk table with DPA tracking
+- POA&M: FedRAMP-compliant Plan of Action & Milestones with inline status updates
+- Settings: org name/industry/size edit, plan info
 
 ## User preferences
 
-- Financial terminal + cyber ops aesthetic — no generic SaaS
-- Light mode default (white/slate-200/blue-600)
-- JetBrains Mono for all metrics and data, Inter for labels
-- Sharp 0px border radius throughout
-- Executive-focused — every screen readable at a glance
-- 3px left-border severity accents on all table rows
+- Clean enterprise SaaS aesthetic: white/blue-600/slate palette, Inter font, rounded-lg borders
+- Blue CTA buttons throughout
+- No old C2S/CIOP patterns — this is a fresh product
+- Sharp, information-dense tables and cards
 
 ## Gotchas
 
-- After running codegen, manually fix `lib/api-zod/src/index.ts` to only: `export * from "./generated/api";`
-- All numeric DB IDs must be `String(r.id)` before Zod parsing in route handlers
-- The Google Fonts `@import url(...)` must be the very first line in `index.css` (before tailwindcss imports)
-- Do NOT call services directly by port — always use `localhost:80/<path>` through the proxy
-- intelligence.ts routes bypass OpenAPI codegen — they call the DB directly and return plain JSON (new routes added post-codegen-setup)
-- React table rows with expandable detail: use `React.Fragment key={id}` not `<>` — tbody children need keys
+- Clerk proxy middleware (`/api/__clerk`) only activates in `NODE_ENV=production`; never set `proxyUrl` unconditionally
+- All DB tables use `org_id` for tenant isolation — never query across orgs
+- `lib/db/src/migrate-fresh.ts` drops and recreates all tables — only run in dev
+- `artifacts/c2s-ciop/src/lib/queryClient.ts` exports `apiUrl()` and `apiFetch()` helpers — use these for all API calls
+- Old C2S pages (Assets, Risks, GapAnalysis, etc.) remain in `pages/` but are not imported — safe to delete
 
 ## Pointers
 
-- See `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
-- API routes: `artifacts/api-server/src/routes/index.ts`
 - DB schema: `lib/db/src/schema/index.ts`
-- Architecture blueprint: `.local/architecture.md`
+- API routes: `artifacts/api-server/src/routes/index.ts`
+- Clerk setup: `.local/skills/clerk-auth/SKILL.md`

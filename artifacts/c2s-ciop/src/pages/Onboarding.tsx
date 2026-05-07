@@ -1,0 +1,273 @@
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useUser } from "@clerk/react";
+import { apiUrl } from "@/lib/queryClient";
+
+const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+
+const FRAMEWORKS = [
+  { key: "soc2", name: "SOC 2 Type II", category: "commercial", popular: true },
+  { key: "iso27001", name: "ISO 27001:2022", category: "commercial", popular: true },
+  { key: "hipaa", name: "HIPAA", category: "commercial", popular: true },
+  { key: "pci-dss", name: "PCI DSS v4.0", category: "commercial", popular: false },
+  { key: "gdpr", name: "EU GDPR", category: "commercial", popular: false },
+  { key: "dora", name: "EU DORA", category: "commercial", popular: false },
+  { key: "sox", name: "SOX ITGC", category: "commercial", popular: false },
+  { key: "ccpa", name: "CCPA", category: "commercial", popular: false },
+  { key: "fedramp", name: "FedRAMP Moderate", category: "federal", popular: false },
+  { key: "cmmc-l2", name: "CMMC Level 2", category: "federal", popular: false },
+  { key: "nist-800-53", name: "NIST SP 800-53 Rev 5", category: "federal", popular: false },
+  { key: "cis-controls", name: "CIS Controls v8", category: "best-practice", popular: false },
+];
+
+const INDUSTRIES = ["Technology", "Healthcare", "Finance", "Government", "Retail", "Manufacturing", "Education", "Other"];
+const SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
+
+export default function Onboarding() {
+  const [, navigate] = useLocation();
+  const { user } = useUser();
+  const [step, setStep] = useState(1);
+  const [orgData, setOrgData] = useState({ name: "", industry: "Technology", size: "11-50", website: "" });
+  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(["soc2"]);
+  const [orgId, setOrgId] = useState<number | null>(null);
+
+  const { data: existingOrg } = useQuery({
+    queryKey: ["orgs", "me"],
+    queryFn: async () => {
+      const res = await fetch(apiUrl("/orgs/me"), { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  const createOrg = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl("/orgs"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ...orgData,
+          email: user?.primaryEmailAddress?.emailAddress,
+          firstName: user?.firstName,
+          lastName: user?.lastName,
+        }),
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setOrgId(data.org.id);
+      setStep(2);
+    },
+  });
+
+  const activateFrameworks = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(apiUrl(`/orgs/${id}/frameworks`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ frameworkKeys: selectedFrameworks }),
+      });
+      return res.json();
+    },
+    onSuccess: () => setStep(3),
+  });
+
+  const completeOnboarding = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(apiUrl(`/orgs/${id}/onboarding`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ step: 4, complete: true }),
+      });
+    },
+    onSuccess: () => navigate("/dashboard"),
+  });
+
+  const currentOrgId = orgId ?? existingOrg?.org?.id;
+
+  const toggleFramework = (key: string) => {
+    setSelectedFrameworks(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 h-16 flex items-center px-8">
+        <div className="flex items-center gap-2">
+          <img src={`${BASE_PATH}/logo.svg`} className="h-7 w-7" />
+          <span className="font-semibold text-slate-900">ColorComply</span>
+        </div>
+      </header>
+
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-2xl">
+          {/* Progress */}
+          <div className="flex items-center gap-2 mb-8">
+            {[1, 2, 3, 4].map((s) => (
+              <div key={s} className="flex items-center gap-2">
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${s < step ? "bg-blue-600 text-white" : s === step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-400"}`}>
+                  {s < step ? "✓" : s}
+                </div>
+                {s < 4 && <div className={`h-0.5 w-12 transition-colors ${s < step ? "bg-blue-600" : "bg-slate-200"}`} />}
+              </div>
+            ))}
+            <div className="ml-4 text-sm text-slate-500">
+              {step === 1 && "Company info"} {step === 2 && "Choose frameworks"} {step === 3 && "Connect integrations"} {step === 4 && "All set!"}
+            </div>
+          </div>
+
+          {/* Step 1: Company Info */}
+          {step === 1 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+              <h1 className="text-2xl font-bold text-slate-900 mb-1">Tell us about your company</h1>
+              <p className="text-slate-500 mb-6">This helps us customize your compliance program.</p>
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Company name *</label>
+                  <input
+                    type="text"
+                    value={orgData.name}
+                    onChange={e => setOrgData({ ...orgData, name: e.target.value })}
+                    placeholder="Acme Corp"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Industry</label>
+                    <select
+                      value={orgData.industry}
+                      onChange={e => setOrgData({ ...orgData, industry: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Company size</label>
+                    <select
+                      value={orgData.size}
+                      onChange={e => setOrgData({ ...orgData, size: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {SIZES.map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Website (optional)</label>
+                  <input
+                    type="url"
+                    value={orgData.website}
+                    onChange={e => setOrgData({ ...orgData, website: e.target.value })}
+                    placeholder="https://acme.com"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => createOrg.mutate()}
+                disabled={!orgData.name.trim() || createOrg.isPending}
+                className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
+              >
+                {createOrg.isPending ? "Creating..." : "Continue →"}
+              </button>
+            </div>
+          )}
+
+          {/* Step 2: Frameworks */}
+          {step === 2 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+              <h1 className="text-2xl font-bold text-slate-900 mb-1">Choose your frameworks</h1>
+              <p className="text-slate-500 mb-6">Select the compliance frameworks you need to achieve. You can add more later.</p>
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {["commercial", "federal", "best-practice"].map(cat => (
+                  <div key={cat} className="mb-3">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                      {cat === "commercial" ? "Commercial" : cat === "federal" ? "Federal (US Government)" : "Best Practice"}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {FRAMEWORKS.filter(f => f.category === cat).map(fw => {
+                        const selected = selectedFrameworks.includes(fw.key);
+                        return (
+                          <button
+                            key={fw.key}
+                            onClick={() => toggleFramework(fw.key)}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${
+                              selected
+                                ? "border-blue-600 bg-blue-50 text-blue-700"
+                                : "border-slate-200 hover:border-slate-300 text-slate-700"
+                            }`}
+                          >
+                            <div className={`h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center ${selected ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
+                              {selected && <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                            </div>
+                            <span className="font-medium">{fw.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setStep(1)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-semibold rounded-lg text-sm hover:bg-slate-50 transition-colors">
+                  Back
+                </button>
+                <button
+                  onClick={() => activateFrameworks.mutate(currentOrgId!)}
+                  disabled={selectedFrameworks.length === 0 || activateFrameworks.isPending}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  {activateFrameworks.isPending ? "Saving..." : "Continue →"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Integrations */}
+          {step === 3 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+              <h1 className="text-2xl font-bold text-slate-900 mb-1">Connect your first integration</h1>
+              <p className="text-slate-500 mb-6">Connect GitHub to automatically collect evidence for code security controls.</p>
+              <a
+                href={apiUrl(`/integrations/github/connect?orgId=${currentOrgId}`)}
+                className="w-full flex items-center gap-4 p-4 border-2 border-slate-200 hover:border-blue-300 rounded-xl transition-colors group"
+              >
+                <div className="h-12 w-12 bg-slate-900 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">Connect GitHub</p>
+                  <p className="text-sm text-slate-500">MFA status, branch protection, code review policies</p>
+                </div>
+                <svg className="h-5 w-5 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setStep(2)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-semibold rounded-lg text-sm hover:bg-slate-50 transition-colors">
+                  Back
+                </button>
+                <button
+                  onClick={() => completeOnboarding.mutate(currentOrgId!)}
+                  disabled={completeOnboarding.isPending}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  {completeOnboarding.isPending ? "Finishing..." : "Skip for now →"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

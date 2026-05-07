@@ -1,134 +1,84 @@
-import { Router, type IRouter } from "express";
-import { db, controlsTable } from "@workspace/db";
-import { eq, sql, ilike, and, inArray } from "drizzle-orm";
-import {
-  ListControlsQueryParams,
-  ListControlsResponse,
-  GetControlResponse,
-  GetControlsSummaryResponse,
-  CreateControlBody,
-  UpdateControlBody,
-  UpdateControlParams,
-  GetControlParams,
-} from "@workspace/api-zod";
+import { Router } from "express";
+import { db, ucoControlsTable, orgControlResultsTable, ucoFrameworkMappingsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { requireAuth, requireOrg, type AuthRequest } from "../middlewares/auth";
 
-const router: IRouter = Router();
+const router = Router();
 
-router.get("/controls", async (req, res): Promise<void> => {
-  const parsed = ListControlsQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : { limit: 50, offset: 0 };
-
-  let query = db.select().from(controlsTable);
-  const conditions: ReturnType<typeof eq>[] = [];
-
-  if (params.status) {
-    conditions.push(eq(controlsTable.status, params.status));
-  }
-  if (params.framework) {
-    conditions.push(sql`${params.framework} = ANY(${controlsTable.frameworks})`);
-  }
-
-  const rows = await db
-    .select()
-    .from(controlsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .limit(params.limit ?? 50)
-    .offset(params.offset ?? 0);
-
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(controlsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined);
-
-  res.json(ListControlsResponse.parse({ controls: rows.map((r) => ({ ...r, id: String(r.id) })), total: Number(count) }));
+router.get("/controls/uco", requireAuth, async (_req, res, next) => {
+  try {
+    const controls = await db.query.ucoControlsTable.findMany({
+      orderBy: (t, { asc }) => [asc(t.domain), asc(t.controlId)],
+    });
+    res.json({ controls });
+  } catch (err) { next(err); }
 });
 
-router.get("/controls/summary", async (req, res): Promise<void> => {
-  const [stats] = await db
-    .select({
-      effective: sql<number>`count(*) filter (where ${controlsTable.status} = 'effective')`,
-      degraded: sql<number>`count(*) filter (where ${controlsTable.status} = 'degraded')`,
-      failed: sql<number>`count(*) filter (where ${controlsTable.status} = 'failed')`,
-      unknown: sql<number>`count(*) filter (where ${controlsTable.status} = 'unknown')`,
-      inherited: sql<number>`count(*) filter (where ${controlsTable.status} = 'inherited')`,
-      compensating: sql<number>`count(*) filter (where ${controlsTable.status} = 'compensating')`,
-      total: sql<number>`count(*)`,
-      automated: sql<number>`count(*) filter (where ${controlsTable.automationCapability} = 'full')`,
-      drift: sql<number>`count(*) filter (where ${controlsTable.driftDetected} = true)`,
-    })
-    .from(controlsTable);
+router.get("/orgs/:orgId/controls", requireOrg, async (req: AuthRequest, res, next) => {
+  try {
+    const [controls, results] = await Promise.all([
+      db.query.ucoControlsTable.findMany({ orderBy: (t, { asc }) => [asc(t.domain), asc(t.controlId)] }),
+      db.query.orgControlResultsTable.findMany({ where: eq(orgControlResultsTable.orgId, req.orgId!) }),
+    ]);
 
-  res.json(
-    GetControlsSummaryResponse.parse({
-      effective: Number(stats.effective),
-      degraded: Number(stats.degraded),
-      failed: Number(stats.failed),
-      unknown: Number(stats.unknown),
-      inherited: Number(stats.inherited),
-      compensating: Number(stats.compensating),
-      totalControls: Number(stats.total),
-      automatedControls: Number(stats.automated),
-      driftCount: Number(stats.drift),
-    })
-  );
+    const resultMap = new Map(results.map(r => [r.ucoControlId, r]));
+    const enriched = controls.map(c => ({
+      ...c,
+      result: resultMap.get(c.controlId) ?? { status: "not_tested", ucoControlId: c.controlId },
+    }));
+
+    res.json({ controls: enriched });
+  } catch (err) { next(err); }
 });
 
-router.get("/controls/:controlId", async (req, res): Promise<void> => {
-  const raw = Array.isArray(req.params.controlId) ? req.params.controlId[0] : req.params.controlId;
-  const [control] = await db
-    .select()
-    .from(controlsTable)
-    .where(eq(controlsTable.id, parseInt(raw, 10)));
+router.patch("/orgs/:orgId/controls/:controlId/result", requireOrg, async (req: AuthRequest, res, next) => {
+  try {
+    const { controlId } = req.params;
+    const { status, remediationNotes } = req.body;
+    const orgId = req.orgId!;
 
-  if (!control) {
-    res.status(404).json({ error: "Control not found" });
-    return;
-  }
+    const existing = await db.query.orgControlResultsTable.findFirst({
+      where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, controlId)),
+    });
 
-  res.json(GetControlResponse.parse(control));
+    let result;
+    if (existing) {
+      [result] = await db.update(orgControlResultsTable)
+        .set({ status, remediationNotes, manualOverride: true, manualOverrideBy: req.clerkUserId, lastTestedAt: new Date() })
+        .where(and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, controlId)))
+        .returning();
+    } else {
+      [result] = await db.insert(orgControlResultsTable).values({
+        orgId, ucoControlId: controlId, status, remediationNotes,
+        manualOverride: true, manualOverrideBy: req.clerkUserId, lastTestedAt: new Date(),
+      }).returning();
+    }
+
+    await updateFrameworkScores(orgId, controlId);
+    res.json({ result });
+  } catch (err) { next(err); }
 });
 
-router.post("/controls", async (req, res): Promise<void> => {
-  const parsed = CreateControlBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+async function updateFrameworkScores(orgId: number, ucoControlId: string) {
+  try {
+    const { orgFrameworksTable, orgControlResultsTable: ocr } = await import("@workspace/db");
+    const { db: database } = await import("@workspace/db");
+    const { eq: eq2 } = await import("drizzle-orm");
 
-  const [control] = await db
-    .insert(controlsTable)
-    .values({
-      ...parsed.data,
-      status: "unknown",
-      effectiveness: 0,
-      driftDetected: false,
-      evidenceFresh: true,
-    })
-    .returning();
-
-  res.status(201).json(GetControlResponse.parse(control));
-});
-
-router.patch("/controls/:controlId", async (req, res): Promise<void> => {
-  const rawId = Array.isArray(req.params.controlId) ? req.params.controlId[0] : req.params.controlId;
-  const parsed = UpdateControlBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const [control] = await db
-    .update(controlsTable)
-    .set(parsed.data)
-    .where(eq(controlsTable.id, parseInt(rawId, 10)))
-    .returning();
-
-  if (!control) {
-    res.status(404).json({ error: "Control not found" });
-    return;
-  }
-
-  res.json(GetControlResponse.parse(control));
-});
+    const frameworks = await database.query.orgFrameworksTable.findMany({ where: eq2(orgFrameworksTable.orgId, orgId) });
+    for (const fw of frameworks) {
+      const mappings = await database.query.ucoFrameworkMappingsTable.findMany({ where: eq2(ucoFrameworkMappingsTable.frameworkKey, fw.frameworkKey) });
+      const ucoIds = [...new Set(mappings.map(m => m.ucoControlId))];
+      const results = await database.query.orgControlResultsTable.findMany({ where: eq2(ocr.orgId, orgId) });
+      const resultMap = new Map(results.map(r => [r.ucoControlId, r.status]));
+      const passing = ucoIds.filter(id => resultMap.get(id) === "passing").length;
+      const failing = ucoIds.filter(id => resultMap.get(id) === "failing").length;
+      const score = ucoIds.length > 0 ? Math.round((passing / ucoIds.length) * 100) : 0;
+      await database.update(orgFrameworksTable)
+        .set({ complianceScore: score, passingControls: passing, failingControls: failing, notTestedControls: ucoIds.length - passing - failing })
+        .where(eq2(orgFrameworksTable.id, fw.id));
+    }
+  } catch (_) {}
+}
 
 export default router;

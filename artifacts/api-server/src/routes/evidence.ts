@@ -1,37 +1,29 @@
-import { Router, type IRouter } from "express";
-import { db, evidenceTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
-import {
-  ListEvidenceQueryParams,
-  ListEvidenceResponse,
-} from "@workspace/api-zod";
+import { Router } from "express";
+import { db, orgEvidenceTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { requireOrg, type AuthRequest } from "../middlewares/auth";
 
-const router: IRouter = Router();
+const router = Router();
 
-router.get("/evidence", async (req, res): Promise<void> => {
-  const parsed = ListEvidenceQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+router.get("/orgs/:orgId/evidence", requireOrg, async (req: AuthRequest, res, next) => {
+  try {
+    const items = await db.query.orgEvidenceTable.findMany({
+      where: eq(orgEvidenceTable.orgId, req.orgId!),
+      orderBy: (t, { desc }) => [desc(t.collectedAt)],
+    });
+    res.json({ evidence: items });
+  } catch (err) { next(err); }
+});
 
-  const conditions: ReturnType<typeof eq>[] = [];
-  if (params.control_id) conditions.push(eq(evidenceTable.controlId, params.control_id));
-  if (params.freshness) conditions.push(eq(evidenceTable.freshness, params.freshness));
-
-  const rows = await db
-    .select()
-    .from(evidenceTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .limit(50);
-
-  res.json(
-    ListEvidenceResponse.parse(
-      rows.map(r => ({
-        ...r,
-        id: String(r.id),
-        collectedAt: r.collectedAt.toISOString(),
-        expiresAt: r.expiresAt?.toISOString() ?? undefined,
-      }))
-    )
-  );
+router.post("/orgs/:orgId/evidence", requireOrg, async (req: AuthRequest, res, next) => {
+  try {
+    const { ucoControlId, title, description, type, url, filename } = req.body;
+    const [item] = await db.insert(orgEvidenceTable).values({
+      orgId: req.orgId!, ucoControlId, title, description, type: type ?? "document",
+      source: "manual", url, filename, uploadedBy: req.clerkUserId, collectedAt: new Date(),
+    }).returning();
+    res.json({ evidence: item });
+  } catch (err) { next(err); }
 });
 
 export default router;

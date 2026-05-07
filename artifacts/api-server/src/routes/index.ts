@@ -1,28 +1,26 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
-import postureRouter from "./posture";
-import controlsRouter from "./controls";
+import orgsRouter from "./orgs";
 import frameworksRouter from "./frameworks";
-import assetsRouter from "./assets";
-import risksRouter from "./risks";
-import findingsRouter from "./findings";
-import telemetryRouter from "./telemetry";
-import graphRouter from "./graph";
+import controlsRouter from "./controls";
+import integrationsRouter from "./integrations";
 import evidenceRouter from "./evidence";
-import intelligenceRouter from "./intelligence";
+import poamRouter from "./poam";
+import peopleRouter from "./people";
+import vendorsRouter from "./vendors";
+import policiesRouter from "./policies";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
-router.use(postureRouter);
-router.use(controlsRouter);
+router.use(orgsRouter);
 router.use(frameworksRouter);
-router.use(assetsRouter);
-router.use(risksRouter);
-router.use(findingsRouter);
-router.use(telemetryRouter);
-router.use(graphRouter);
+router.use(controlsRouter);
+router.use(integrationsRouter);
 router.use(evidenceRouter);
-router.use(intelligenceRouter);
+router.use(poamRouter);
+router.use(peopleRouter);
+router.use(vendorsRouter);
+router.use(policiesRouter);
 
 export default router;

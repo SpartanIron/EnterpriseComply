@@ -1,177 +1,207 @@
 import { useState } from "react";
-import { useListControls, useGetControlsSummary } from "@workspace/api-client-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { CheckCircle, AlertCircle, XCircle, HelpCircle, GitBranch, Zap, AlertTriangle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiUrl } from "@/lib/queryClient";
 
-const STATUS_ICONS: Record<string, React.ReactNode> = {
-  effective:    <CheckCircle className="w-3.5 h-3.5 text-green-600" />,
-  degraded:     <AlertCircle className="w-3.5 h-3.5 text-amber-600" />,
-  failed:       <XCircle className="w-3.5 h-3.5 text-red-600" />,
-  unknown:      <HelpCircle className="w-3.5 h-3.5 text-slate-400" />,
-  inherited:    <GitBranch className="w-3.5 h-3.5 text-blue-500" />,
-  compensating: <Zap className="w-3.5 h-3.5 text-purple-600" />,
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  passing: { label: "Passing", color: "text-green-700", bg: "bg-green-100" },
+  failing: { label: "Failing", color: "text-red-700", bg: "bg-red-100" },
+  not_tested: { label: "Not Tested", color: "text-slate-600", bg: "bg-slate-100" },
+  warning: { label: "Warning", color: "text-amber-700", bg: "bg-amber-100" },
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  effective:    "bg-green-100 text-green-700 ring-1 ring-inset ring-green-200",
-  degraded:     "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
-  failed:       "bg-red-100 text-red-700 ring-1 ring-inset ring-red-200",
-  unknown:      "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
-  inherited:    "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
-  compensating: "bg-purple-100 text-purple-700 ring-1 ring-inset ring-purple-200",
+const AUTO_CONFIG: Record<string, string> = {
+  full: "bg-green-100 text-green-700",
+  partial: "bg-amber-100 text-amber-700",
+  manual: "bg-slate-100 text-slate-600",
 };
-
-const SEV_BADGE: Record<string, string> = {
-  critical: "bg-red-100 text-red-700 ring-1 ring-inset ring-red-200",
-  high:     "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
-  medium:   "bg-yellow-100 text-yellow-700 ring-1 ring-inset ring-yellow-200",
-  low:      "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
-};
-
-// Left-border accent colors by severity
-const SEV_ACCENT: Record<string, string> = {
-  critical: "#ef4444",
-  high:     "#f59e0b",
-  medium:   "#eab308",
-  low:      "#cbd5e1",
-};
-
-const AUTO_COLORS: Record<string, string> = {
-  full:    "text-green-600 font-semibold",
-  partial: "text-amber-600 font-semibold",
-  manual:  "text-slate-500",
-};
-
-const STATUSES = ["", "effective", "degraded", "failed", "unknown", "inherited", "compensating"];
-
-function SummaryTile({ label, value, color, loading }: { label: string; value: number; color: string; loading: boolean }) {
-  return (
-    <div className="bg-card border border-border rounded-lg p-4 shadow-xs">
-      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{label}</div>
-      {loading ? <Skeleton className="h-8 w-10" /> : <div className={cn("text-3xl font-mono font-bold", color)}>{value}</div>}
-    </div>
-  );
-}
 
 export default function Controls() {
-  const [filterStatus, setFilterStatus] = useState("");
-  const summary = useGetControlsSummary();
-  const list = useListControls(filterStatus ? { status: filterStatus as any } : {});
-  const s = summary.data;
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<string>("all");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [overrideId, setOverrideId] = useState<string | null>(null);
+  const [overrideStatus, setOverrideStatus] = useState("passing");
+  const [overrideNote, setOverrideNote] = useState("");
+
+  const { data: orgData } = useQuery<{ org: any }>({
+    queryKey: ["orgs", "me"],
+    queryFn: async () => (await fetch(apiUrl("/orgs/me"), { credentials: "include" })).json(),
+  });
+  const orgId = orgData?.org?.id;
+
+  const { data, isLoading } = useQuery<{ controls: any[] }>({
+    queryKey: ["org-controls", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/controls`), { credentials: "include" })).json(),
+    enabled: !!orgId,
+  });
+
+  const overrideMutation = useMutation({
+    mutationFn: async ({ controlId, status, notes }: { controlId: string; status: string; notes: string }) => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/controls/${controlId}/result`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status, remediationNotes: notes }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-controls"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      setOverrideId(null);
+      setOverrideNote("");
+    },
+  });
+
+  const controls = data?.controls ?? [];
+  const domains = [...new Set(controls.map(c => c.domain))].sort();
+
+  const filtered = filter === "all"
+    ? controls
+    : filter === "passing" ? controls.filter(c => c.result?.status === "passing")
+    : filter === "failing" ? controls.filter(c => c.result?.status === "failing")
+    : controls.filter(c => c.result?.status === "not_tested" || !c.result?.status);
+
+  const groupedByDomain = domains.reduce<Record<string, any[]>>((acc, d) => {
+    acc[d] = filtered.filter(c => c.domain === d);
+    return acc;
+  }, {});
+
+  const stats = {
+    passing: controls.filter(c => c.result?.status === "passing").length,
+    failing: controls.filter(c => c.result?.status === "failing").length,
+    notTested: controls.filter(c => !c.result?.status || c.result?.status === "not_tested").length,
+  };
 
   return (
-    <div data-testid="controls-page" className="space-y-4">
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+    <div className="p-8 max-w-6xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Controls</h1>
+        <p className="text-slate-500 mt-1">Universal Control Objectives — mapped to all your active frameworks</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
         {[
-          { label: "Effective",      value: s?.effective ?? 0,   color: "text-green-600" },
-          { label: "Degraded",       value: s?.degraded ?? 0,    color: "text-amber-600" },
-          { label: "Failed",         value: s?.failed ?? 0,      color: "text-red-600" },
-          { label: "Unknown",        value: s?.unknown ?? 0,     color: "text-slate-500" },
-          { label: "Inherited",      value: s?.inherited ?? 0,   color: "text-blue-600" },
-          { label: "Compensating",   value: s?.compensating ?? 0, color: "text-purple-600" },
-          { label: "Drift Detected", value: s?.driftCount ?? 0,  color: "text-orange-600" },
-        ].map((t) => <SummaryTile key={t.label} {...t} loading={summary.isLoading} />)}
+          { label: "Passing", value: stats.passing, color: "green" },
+          { label: "Failing", value: stats.failing, color: "red" },
+          { label: "Not Tested", value: stats.notTested, color: "slate" },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <p className={`text-2xl font-bold ${s.color === "green" ? "text-green-600" : s.color === "red" ? "text-red-600" : "text-slate-600"}`}>{s.value}</p>
+            <p className="text-sm text-slate-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="bg-card border border-border rounded-lg shadow-xs overflow-hidden">
-        {/* Filter tabs */}
-        <div className="flex items-center border-b border-border overflow-x-auto" data-testid="filter-bar">
-          {STATUSES.map((s) => (
-            <button
-              key={s || "all"}
-              data-testid={`filter-${s || "all"}`}
-              onClick={() => setFilterStatus(s)}
-              className={cn(
-                "px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap border-r border-border transition-colors",
-                filterStatus === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >{s || "All Controls"}</button>
-          ))}
-        </div>
-
-        <div className="overflow-x-auto">
-          {list.isLoading ? (
-            <div className="p-5 space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-muted/40 border-b border-border">
-                  <th className="w-[3px] p-0" aria-hidden />
-                  {["ID", "Control Name", "Status", "Effectiveness", "Severity", "Frameworks", "Automation", "Maturity", "Drift", "Evidence"].map((h) => (
-                    <th key={h} className="text-left text-muted-foreground font-bold uppercase tracking-wide py-2.5 px-4 whitespace-nowrap text-[10px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {(list.data?.controls ?? []).map((c) => (
-                  <tr key={c.id} className="hover:bg-muted/20 transition-colors" data-testid={`control-row-${c.id}`}>
-                    <td className="p-0 w-[3px]" style={{ backgroundColor: SEV_ACCENT[c.severity] ?? "#cbd5e1" }} aria-hidden />
-                    <td className="py-3 px-4">
-                      <span className="font-mono font-semibold text-[11px] text-muted-foreground">{c.controlId}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-foreground max-w-[180px] truncate">{c.name}</div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1.5">
-                        {STATUS_ICONS[c.status]}
-                        <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide", STATUS_BADGE[c.status] ?? "")}>
-                          {c.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-14 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className={cn("h-full rounded-full", c.effectiveness >= 80 ? "bg-green-500" : c.effectiveness >= 60 ? "bg-amber-500" : "bg-red-500")}
-                            style={{ width: `${c.effectiveness}%` }} />
-                        </div>
-                        <span className={cn("font-mono font-bold text-xs", c.effectiveness >= 80 ? "text-green-600" : c.effectiveness >= 60 ? "text-amber-600" : "text-red-600")}>
-                          {c.effectiveness.toFixed(0)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide", SEV_BADGE[c.severity] ?? "")}>
-                        {c.severity}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap gap-1 max-w-[160px]">
-                        {c.frameworks.slice(0, 3).map((f) => (
-                          <span key={f} className="rounded bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap">{f}</span>
-                        ))}
-                        {c.frameworks.length > 3 && <span className="text-[10px] text-muted-foreground font-semibold">+{c.frameworks.length - 3}</span>}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={cn("text-[11px]", AUTO_COLORS[c.automationCapability])}>{c.automationCapability}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <div key={i} className={cn("w-2 h-2 rounded-sm", i < c.maturityLevel ? "bg-blue-500" : "bg-slate-200")} />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      {c.driftDetected
-                        ? <div className="flex items-center gap-1 text-orange-600 font-semibold text-[11px]"><AlertTriangle className="w-3 h-3" />Drift</div>
-                        : <span className="text-muted-foreground text-sm">—</span>}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={cn("text-[11px] font-bold", c.evidenceFresh ? "text-green-600" : "text-red-600")}>
-                        {c.evidenceFresh ? "Fresh" : "Stale"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {/* Filter */}
+      <div className="flex gap-2 mb-6">
+        {[["all", "All"], ["passing", "Passing"], ["failing", "Failing"], ["not_tested", "Not Tested"]].map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setFilter(val)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === val ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      {isLoading ? (
+        <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+      ) : (
+        <div className="space-y-6">
+          {domains.map(domain => {
+            const domainControls = groupedByDomain[domain];
+            if (!domainControls?.length) return null;
+            return (
+              <div key={domain}>
+                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{domain}</h2>
+                <div className="space-y-2">
+                  {domainControls.map((c: any) => {
+                    const status = c.result?.status ?? "not_tested";
+                    const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.not_tested;
+                    const isExpanded = expanded === c.controlId;
+                    return (
+                      <div key={c.controlId} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <button
+                          className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-slate-50 transition-colors"
+                          onClick={() => setExpanded(isExpanded ? null : c.controlId)}
+                        >
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${sc.bg} ${sc.color} flex-shrink-0`}>{sc.label}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono text-slate-400 flex-shrink-0">{c.controlId}</span>
+                              <span className="font-medium text-slate-900 text-sm truncate">{c.name}</span>
+                            </div>
+                            {c.result?.integrationKey && (
+                              <p className="text-xs text-slate-400 mt-0.5">Last tested via {c.result.integrationKey}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`hidden md:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${AUTO_CONFIG[c.automationLevel] ?? AUTO_CONFIG.manual}`}>
+                              {c.automationLevel}
+                            </span>
+                            <svg className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                          </div>
+                        </button>
+                        {isExpanded && (
+                          <div className="px-5 pb-5 border-t border-slate-100 bg-slate-50">
+                            <div className="pt-4 space-y-3">
+                              <div>
+                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Description</p>
+                                <p className="text-sm text-slate-700">{c.description}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Objective</p>
+                                <p className="text-sm text-slate-700">{c.objective}</p>
+                              </div>
+                              {c.remediationGuidance && (
+                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                                  <p className="text-xs font-semibold text-blue-700 mb-1">Remediation Guidance</p>
+                                  <p className="text-sm text-blue-900">{c.remediationGuidance}</p>
+                                </div>
+                              )}
+                              {c.result?.result && (
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Test Result</p>
+                                  <p className="text-sm text-slate-700">{c.result.result}</p>
+                                </div>
+                              )}
+                              {overrideId === c.controlId ? (
+                                <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
+                                  <p className="text-sm font-semibold text-slate-700">Manual Override</p>
+                                  <select value={overrideStatus} onChange={e => setOverrideStatus(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                    <option value="passing">Passing</option>
+                                    <option value="failing">Failing</option>
+                                    <option value="warning">Warning</option>
+                                    <option value="not_tested">Not Tested</option>
+                                  </select>
+                                  <textarea value={overrideNote} onChange={e => setOverrideNote(e.target.value)} placeholder="Notes / justification (optional)..." className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={3} />
+                                  <div className="flex gap-2">
+                                    <button onClick={() => overrideMutation.mutate({ controlId: c.controlId, status: overrideStatus, notes: overrideNote })} disabled={overrideMutation.isPending} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                      {overrideMutation.isPending ? "Saving..." : "Save"}
+                                    </button>
+                                    <button onClick={() => setOverrideId(null)} className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button onClick={() => { setOverrideId(c.controlId); setOverrideStatus(status); setOverrideNote(c.result?.remediationNotes ?? ""); }} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                  Manual override →
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
