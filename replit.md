@@ -69,6 +69,27 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-co
 - Sharp, information-dense tables and cards
 - No em dashes anywhere in the codebase (use hyphens instead)
 
+## Railway Deployment
+
+- **`railway.toml`** in repo root defines build + start commands for Railway
+- **Build**: `pnpm install && BASE_PATH=/ pnpm --filter @workspace/c2s-ciop run build && pnpm --filter @workspace/api-server run build`
+- **Start**: `node --enable-source-maps artifacts/api-server/dist/main.mjs`
+- **API serves frontend**: In production, NestJS uses `@nestjs/serve-static` to serve `artifacts/c2s-ciop/dist/public/` with SPA fallback, excluding `/api/*`
+- **Auto-migration on boot**: `StartupService` (`artifacts/api-server/src/startup/`) runs `CREATE TABLE IF NOT EXISTS` for all 32 tables and seeds UCO controls if empty - zero manual steps on first deploy
+- **Required Railway env vars**:
+  - `DATABASE_URL` - PostgreSQL connection string (Railway provides this automatically)
+  - `SESSION_SECRET` - random secret for sessions
+  - `CLERK_SECRET_KEY` - from Clerk production dashboard
+  - `VITE_CLERK_PUBLISHABLE_KEY` - from Clerk production dashboard (build-time)
+  - `NODE_ENV=production`
+- **Optional Railway env vars**:
+  - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` - GitHub OAuth app (callback URL: `https://<your-domain>/api/integrations/github/callback`)
+  - `OPENAI_API_KEY` - standard OpenAI key for AI gap analysis (Replit proxy env vars also work if set)
+  - `ALLOWED_ORIGIN` - restrict CORS to specific origin (e.g. `https://myapp.railway.app`); if unset, same-origin works fine
+- **Clerk setup for Railway**: Create a production Clerk application, set the domain to your Railway URL, enable Clerk proxy at `https://<your-domain>/api/__clerk`
+- **GitHub OAuth setup**: In GitHub Developer Settings, set callback URL to `https://<your-domain>/api/integrations/github/callback`
+- **BASE_PATH**: Always `/` on Railway (not path-routed like Replit)
+
 ## Gotchas
 
 - Clerk proxy middleware (`/api/__clerk`) only activates in `NODE_ENV=production`; never set `proxyUrl` unconditionally
@@ -79,6 +100,8 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-co
 - **NestJS dev runner must use SWC, not tsx**: `tsx` uses esbuild and does NOT emit decorator metadata; NestJS DI silently fails. Dev script: `node --import @swc-node/register/esm-register src/main.ts`
 - `npx tsx` (global) doesn't have access to `pg` - use absolute path: `/home/runner/workspace/artifacts/c2s-ciop/node_modules/.bin/tsx` from `lib/db/`
 - `drizzle-kit push` blocks on `organizations_slug_unique` constraint prompt in dev - use psql for new table additions
+- `lib/db/src/seed-colorcomply.ts` exports `seedColorComply()` - importable via `@workspace/db/seed`; `StartupService` calls it on first deploy if UCO table is empty
+- `BASE_PATH` and `PORT` are optional in `vite.config.ts` - both default gracefully (PORT to 5173, BASE_PATH to `/`) so Railway builds work without injecting Replit env vars
 
 ## Pointers
 

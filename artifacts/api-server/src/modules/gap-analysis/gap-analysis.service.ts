@@ -3,9 +3,18 @@ import { db, orgControlResultsTable, ucoControlsTable, orgFrameworksTable, ucoFr
 import { eq, and } from "drizzle-orm";
 import OpenAI from "openai";
 
+// Support both Replit AI proxy env vars and standard OpenAI env vars
+const openaiBaseURL =
+  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ||
+  process.env.OPENAI_BASE_URL;
+const openaiApiKey =
+  process.env.AI_INTEGRATIONS_OPENAI_API_KEY ||
+  process.env.OPENAI_API_KEY ||
+  "placeholder";
+
 const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "placeholder",
+  ...(openaiBaseURL ? { baseURL: openaiBaseURL } : {}),
+  apiKey: openaiApiKey,
 });
 
 @Injectable()

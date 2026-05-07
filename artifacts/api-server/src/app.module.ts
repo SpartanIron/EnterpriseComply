@@ -1,7 +1,10 @@
 import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ServeStaticModule } from "@nestjs/serve-static";
+import { join } from "path";
 import { clerkMiddleware } from "@clerk/express";
 import { ClerkProxyMiddleware, CLERK_PROXY_PATH } from "./middlewares/clerk-proxy.middleware";
+import { StartupModule } from "./startup/startup.module";
 import { HealthModule } from "./modules/health/health.module";
 import { OrgsModule } from "./modules/orgs/orgs.module";
 import { FrameworksModule } from "./modules/frameworks/frameworks.module";
@@ -29,6 +32,15 @@ import { TestRunsModule } from "./modules/test-runs/test-runs.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    StartupModule,
+    ...(process.env.NODE_ENV === "production"
+      ? [
+          ServeStaticModule.forRoot({
+            rootPath: join(__dirname, "..", "..", "c2s-ciop", "dist", "public"),
+            exclude: ["/api/(.*)"],
+          }),
+        ]
+      : []),
     HealthModule,
     OrgsModule,
     FrameworksModule,

@@ -557,7 +557,7 @@ const AUTOMATED_TESTS = [
   { ucoControlId: "UCO-AC-004", testKey: "github-team-membership-reviewed", name: "GitHub Team Access Reviewed", description: "Checks if teams and outside collaborators have been audited.", requiredIntegration: "github", testLogic: "GET /orgs/{org}/teams and /orgs/{org}/outside_collaborators", passCriteria: "Organization has defined teams with reviewed membership", severity: "medium" },
 ];
 
-async function seed() {
+export async function seedColorComply() {
   console.log("Seeding UCO controls...");
   for (const control of UCO_CONTROLS) {
     await db.insert(ucoControlsTable).values(control).onConflictDoNothing();
@@ -577,7 +577,13 @@ async function seed() {
   console.log(`Seeded ${AUTOMATED_TESTS.length} automated tests.`);
 
   console.log("Seed complete!");
-  process.exit(0);
 }
 
-seed().catch(err => { console.error(err); process.exit(1); });
+// Run directly when executed as a script
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith("seed-colorcomply.ts") ||
+  process.argv[1].endsWith("seed-colorcomply.js")
+);
+if (isMain) {
+  seedColorComply().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); });
+}

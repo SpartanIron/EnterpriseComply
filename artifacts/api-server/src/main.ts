@@ -21,7 +21,15 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({ credentials: true, origin: true });
+  const allowedOrigin = process.env.ALLOWED_ORIGIN;
+  app.enableCors({
+    credentials: true,
+    origin: allowedOrigin
+      ? [allowedOrigin]
+      : process.env.NODE_ENV === "production"
+        ? false
+        : true,
+  });
   app.setGlobalPrefix("api");
 
   const port = Number(process.env.PORT) || 8080;
