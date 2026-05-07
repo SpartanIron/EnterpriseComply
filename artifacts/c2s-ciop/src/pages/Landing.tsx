@@ -491,17 +491,17 @@ export default function Landing() {
           backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
         }} />
-        {/* Three-stripe diagonal - indigo / blue / cyan */}
+        {/* Three-stripe diagonal - indigo / blue / cyan — bottom-RIGHT */}
         <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "52%", zIndex: 0 }}>
           <div style={{
             position: "absolute",
             inset: 0,
             background: [
-              "linear-gradient(22deg,",
-              "  #4f46e5 0%,   #4f46e5 17%,",
-              "  #2563eb 17%,  #2563eb 33%,",
-              "  #06b6d4 33%,  #06b6d4 49%,",
-              "  transparent 49%",
+              "linear-gradient(158deg,",
+              "  transparent 51%,",
+              "  #06b6d4 51%, #06b6d4 67%,",
+              "  #2563eb 67%, #2563eb 83%,",
+              "  #4f46e5 83%",
               ")"
             ].join(""),
           }} />
@@ -599,8 +599,15 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURES ── white, 2-col */}
-      <section id="features" style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-        <div className="max-w-7xl mx-auto px-6 py-24">
+      <section id="features" className="relative overflow-hidden" style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+        {/* Small stripe accent — top-right corner */}
+        <div className="absolute top-0 right-0 pointer-events-none" style={{ width: 120, height: 120, zIndex: 0 }}>
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(225deg, transparent 51%, #06b6d4 51%, #06b6d4 67%, #2563eb 67%, #2563eb 83%, #4f46e5 83%)",
+          }} />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 py-24" style={{ zIndex: 1 }}>
           <div className="grid lg:grid-cols-3 gap-16 items-start">
             {/* Left sticky text */}
             <div className="lg:col-span-1 lg:sticky lg:top-24">
@@ -637,8 +644,15 @@ export default function Landing() {
       </section>
 
       {/* ── INDUSTRIES ── white, left text + right cards */}
-      <section style={{ background: "#ffffff", borderBottom: "1px solid #e2e8f0" }}>
-        <div className="max-w-7xl mx-auto px-6 py-20">
+      <section className="relative overflow-hidden" style={{ background: "#ffffff", borderBottom: "1px solid #e2e8f0" }}>
+        {/* Small stripe accent — bottom-right corner */}
+        <div className="absolute bottom-0 right-0 pointer-events-none" style={{ width: 100, height: 100, zIndex: 0 }}>
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(135deg, transparent 51%, #06b6d4 51%, #06b6d4 67%, #2563eb 67%, #2563eb 83%, #4f46e5 83%)",
+          }} />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 py-20" style={{ zIndex: 1 }}>
           <div className="grid lg:grid-cols-3 gap-12 items-start">
             {/* Left text */}
             <div>
@@ -676,8 +690,23 @@ export default function Landing() {
       </section>
 
       {/* ── CTA ── dark, 2-col */}
-      <section style={{ background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 60%, #0a1628 100%)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-24">
+      <section className="relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 60%, #0a1628 100%)" }}>
+        {/* Three-stripe diagonal - orange / amber / indigo — bottom-RIGHT */}
+        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "65%", zIndex: 0 }}>
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: [
+              "linear-gradient(158deg,",
+              "  transparent 51%,",
+              "  #f59e0b 51%, #f59e0b 67%,",
+              "  #ea580c 67%, #ea580c 83%,",
+              "  #4f46e5 83%",
+              ")"
+            ].join(""),
+          }} />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 py-24" style={{ zIndex: 1 }}>
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#3b82f6" }}>Turn compliance into competitive advantage</p>
