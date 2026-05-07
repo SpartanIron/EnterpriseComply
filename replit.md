@@ -17,17 +17,19 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - Frontend: React + Vite (port 19222), Tailwind CSS v4, Wouter routing, @clerk/react
-- API: Express 5 (port 8080, path `/api`), @clerk/express
+- API: NestJS 11 (port 8080, path `/api`), @clerk/express, modular controller/service/module pattern
 - DB: PostgreSQL + Drizzle ORM (multi-tenant schema)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- Build: esbuild (CJS bundle for API server)
+- Build: esbuild (ESM bundle for API server)
 - Fonts: Inter (all text)
 
 ## Where things live
 
 - `lib/db/src/schema/` — all Drizzle table definitions (organizations, ucoControls, orgCompliance, orgWorkforce, orgIntegrations, orgPoam)
 - `lib/db/src/seed-colorcomply.ts` — seeds UCO controls + framework mappings + automated tests
-- `artifacts/api-server/src/routes/` — orgs, frameworks, controls, integrations, evidence, people, vendors, poam, policies
+- `artifacts/api-server/src/modules/` — NestJS modules: orgs, frameworks, controls, integrations, evidence, poam, people, vendors, policies, health
+- `artifacts/api-server/src/guards/` — ClerkAuthGuard, OrgContextGuard, param decorators
+- `artifacts/api-server/src/middlewares/` — ClerkProxyMiddleware (production only)
 - `artifacts/c2s-ciop/src/pages/` — Landing, Onboarding, Dashboard, Frameworks, Controls, Integrations, Evidence, Policies, People, Vendors, POAM, Settings
 - `artifacts/c2s-ciop/src/components/layout/AppShell.tsx` — sidebar + layout shell
 
@@ -36,6 +38,7 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-
 - **Multi-tenant by orgId**: every table has `org_id`; all routes scoped to `/orgs/:orgId/...` with Clerk auth middleware
 - **UCO (Universal Control Objectives)**: 41 canonical controls mapped to 12 frameworks — implement once, satisfy all frameworks simultaneously
 - **Clerk proxy only in production**: `proxyUrl` on ClerkProvider is only set when `import.meta.env.PROD`; dev mode loads Clerk JS directly from CDN
+- **NestJS modular architecture**: each domain (orgs, controls, etc.) is a self-contained NestJS module with controller + service + module file; guards live in `src/guards/`
 - **No OpenAPI codegen for new routes**: ColorComply routes call DB directly and return plain JSON — added post-codegen-setup, no spec file
 - **GitHub OAuth connector**: `GET /api/integrations/github/connect` → GitHub OAuth → callback stores token + syncs repos/members/MFA
 
@@ -72,10 +75,11 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-
 - All DB tables use `org_id` for tenant isolation — never query across orgs
 - `lib/db/src/migrate-fresh.ts` drops and recreates all tables — only run in dev
 - `artifacts/c2s-ciop/src/lib/queryClient.ts` exports `apiUrl()` and `apiFetch()` helpers — use these for all API calls
-- Old C2S pages (Assets, Risks, GapAnalysis, etc.) remain in `pages/` but are not imported — safe to delete
+- NestJS esbuild: externalize `@nestjs/websockets`, `@nestjs/microservices`, `class-transformer`, `class-validator` (lazy-loaded optional deps that esbuild cannot resolve)
 
 ## Pointers
 
 - DB schema: `lib/db/src/schema/index.ts`
-- API routes: `artifacts/api-server/src/routes/index.ts`
+- API modules: `artifacts/api-server/src/modules/`
+- App entrypoint: `artifacts/api-server/src/main.ts`, `artifacts/api-server/src/app.module.ts`
 - Clerk setup: `.local/skills/clerk-auth/SKILL.md`

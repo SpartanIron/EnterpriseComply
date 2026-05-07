@@ -1,9 +1,8 @@
-import { Router } from "express";
+import { Injectable } from "@nestjs/common";
 import { db, orgPoliciesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireOrg, type AuthRequest } from "../middlewares/auth";
 
-const POLICY_TEMPLATES = [
+export const POLICY_TEMPLATES = [
   { key: "acceptable-use", title: "Acceptable Use Policy", category: "security", description: "Defines acceptable use of company systems and data." },
   { key: "access-control", title: "Access Control Policy", category: "security", description: "Governs how access to systems is granted, managed, and revoked." },
   { key: "incident-response", title: "Incident Response Policy", category: "security", description: "Procedures for detecting, reporting, and responding to security incidents." },
@@ -16,24 +15,21 @@ const POLICY_TEMPLATES = [
   { key: "vulnerability-management", title: "Vulnerability Management Policy", category: "security", description: "Process for identifying, prioritizing, and remediating vulnerabilities." },
 ];
 
-const router = Router();
+@Injectable()
+export class PoliciesService {
+  getTemplates() {
+    return { templates: POLICY_TEMPLATES };
+  }
 
-router.get("/policies/templates", async (_req, res) => {
-  res.json({ templates: POLICY_TEMPLATES });
-});
+  async getOrgPolicies(orgId: number) {
+    const policies = await db.query.orgPoliciesTable.findMany({
+      where: eq(orgPoliciesTable.orgId, orgId),
+    });
+    return { policies };
+  }
 
-router.get("/orgs/:orgId/policies", requireOrg, async (req: AuthRequest, res, next) => {
-  try {
-    const policies = await db.query.orgPoliciesTable.findMany({ where: eq(orgPoliciesTable.orgId, req.orgId!) });
-    res.json({ policies });
-  } catch (err) { next(err); }
-});
-
-router.post("/orgs/:orgId/policies", requireOrg, async (req: AuthRequest, res, next) => {
-  try {
-    const [policy] = await db.insert(orgPoliciesTable).values({ orgId: req.orgId!, ...req.body }).returning();
-    res.json({ policy });
-  } catch (err) { next(err); }
-});
-
-export default router;
+  async createPolicy(orgId: number, body: Record<string, unknown>) {
+    const [policy] = await db.insert(orgPoliciesTable).values({ orgId, ...body }).returning();
+    return { policy };
+  }
+}
