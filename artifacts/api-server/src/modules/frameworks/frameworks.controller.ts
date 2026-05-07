@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { FrameworksService } from "./frameworks.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
 
@@ -23,6 +23,12 @@ export class FrameworksController {
   @UseGuards(OrgContextGuard)
   addFrameworks(@OrgContext() ctx: OrgCtx, @Body() body: { frameworkKeys: string[] }) {
     return this.frameworksService.addFrameworks(ctx.orgId, body.frameworkKeys);
+  }
+
+  @Delete("orgs/:orgId/frameworks/:key")
+  @UseGuards(OrgContextGuard)
+  removeFramework(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
+    return this.frameworksService.removeFramework(ctx.orgId, key);
   }
 
   @Get("orgs/:orgId/frameworks/:key/controls")

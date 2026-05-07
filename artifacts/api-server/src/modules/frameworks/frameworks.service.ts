@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { db, orgFrameworksTable, ucoFrameworkMappingsTable, orgControlResultsTable, ucoControlsTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 
@@ -58,6 +58,17 @@ export class FrameworksService {
       where: eq(orgFrameworksTable.orgId, orgId),
     });
     return { frameworks };
+  }
+
+  async removeFramework(orgId: number, key: string) {
+    const existing = await db.query.orgFrameworksTable.findFirst({
+      where: and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.frameworkKey, key)),
+    });
+    if (!existing) throw new NotFoundException(`Framework "${key}" not found for this org`);
+    await db
+      .delete(orgFrameworksTable)
+      .where(and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.frameworkKey, key)));
+    return { success: true, removed: key };
   }
 
   async getFrameworkControls(orgId: number, key: string) {

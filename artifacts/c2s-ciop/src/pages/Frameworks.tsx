@@ -12,6 +12,7 @@ const CATEGORY_CONFIG: Record<string, { badge: string; label: string }> = {
 export default function Frameworks() {
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<{ key: string; name: string } | null>(null);
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -45,6 +46,21 @@ export default function Frameworks() {
       qc.invalidateQueries({ queryKey: ["org-frameworks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setShowAdd(false);
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (key: string) => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/frameworks/${key}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-frameworks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      setConfirmRemove(null);
     },
   });
 
@@ -93,16 +109,23 @@ export default function Frameworks() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {frameworks.map((fw: any) => <FrameworkDetailCard key={fw.id} fw={fw} />)}
+          {frameworks.map((fw: any) => (
+            <FrameworkDetailCard
+              key={fw.id}
+              fw={fw}
+              onRemove={() => setConfirmRemove({ key: fw.frameworkKey, name: fw.name })}
+            />
+          ))}
         </div>
       )}
 
+      {/* Add Framework Modal */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[82vh] flex flex-col">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold text-slate-900">Add Frameworks</h2>
+                <h2 className="text-base font-bold text-slate-900">Add Framework</h2>
                 <p className="text-xs text-slate-400 mt-0.5">Select a framework to start tracking compliance</p>
               </div>
               <button onClick={() => setShowAdd(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
@@ -148,11 +171,48 @@ export default function Frameworks() {
           </div>
         </div>
       )}
+
+      {/* Remove Confirmation Modal */}
+      {confirmRemove && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-red-50 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900">Remove framework?</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{confirmRemove.name}</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-500 mb-5 leading-relaxed">
+              This will remove <span className="font-semibold text-slate-700">{confirmRemove.name}</span> from your active frameworks. Your compliance data and evidence will not be deleted - you can re-add this framework at any time.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmRemove(null)}
+                className="flex-1 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => removeMutation.mutate(confirmRemove.key)}
+                disabled={removeMutation.isPending}
+                className="flex-1 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {removeMutation.isPending ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function FrameworkDetailCard({ fw }: { fw: any }) {
+function FrameworkDetailCard({ fw, onRemove }: { fw: any; onRemove: () => void }) {
   const score = fw.complianceScore ?? 0;
   const passing = fw.passingControls ?? 0;
   const failing = fw.failingControls ?? 0;
@@ -165,15 +225,26 @@ function FrameworkDetailCard({ fw }: { fw: any }) {
   const barColor = !hasActivity ? "bg-slate-200" : score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-400" : "bg-red-500";
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-blue-100 transition-all">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-blue-100 transition-all group">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0 flex-1">
           <p className="font-bold text-slate-900 text-sm leading-snug">{fw.name}</p>
           <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full mt-1.5 ${cat.badge}`}>{cat.label}</span>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className={`text-2xl font-bold leading-none ${scoreColor}`}>{Math.round(score)}%</p>
-          <p className="text-xs text-slate-400 mt-1 font-medium">{hasActivity ? "compliant" : "not started"}</p>
+        <div className="flex items-start gap-2">
+          <div className="text-right flex-shrink-0">
+            <p className={`text-2xl font-bold leading-none ${scoreColor}`}>{Math.round(score)}%</p>
+            <p className="text-xs text-slate-400 mt-1 font-medium">{hasActivity ? "compliant" : "not started"}</p>
+          </div>
+          <button
+            onClick={onRemove}
+            title="Remove framework"
+            className="mt-0.5 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
