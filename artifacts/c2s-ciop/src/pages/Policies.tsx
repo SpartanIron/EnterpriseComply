@@ -65,6 +65,7 @@ export default function Policies() {
           title: template.title,
           description: template.description,
           category: template.category,
+          content: template.content ?? null,
           status: "draft",
         }),
       });

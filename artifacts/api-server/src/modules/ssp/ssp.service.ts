@@ -64,8 +64,7 @@ export class SspService {
         notImplemented: controlSections.filter((c) => c.implementationStatus === "Not Implemented").length,
       },
       controlSections,
-      oscalReady: true,
-      exportFormats: ["docx", "pdf", "json", "oscal-json"],
+      exportFormats: ["pdf"],
     };
 
     return { ssp };
