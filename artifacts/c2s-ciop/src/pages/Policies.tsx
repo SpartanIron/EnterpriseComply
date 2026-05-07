@@ -166,36 +166,54 @@ export default function Policies() {
         }
       />
 
-      {policies.length > 0 && (
-        <div className="grid grid-cols-4 gap-3 mb-5">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className="text-2xl font-bold text-slate-900 leading-none">{policies.length}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Total Policies</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${byStatus.published.length > 0 ? "text-green-600" : "text-slate-400"}`}>{byStatus.published.length}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Published</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${byStatus.review_required.length > 0 ? "text-amber-500" : "text-slate-400"}`}>{byStatus.review_required.length}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Needs Review</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${byStatus.draft.length > 0 ? "text-slate-600" : "text-slate-400"}`}>{byStatus.draft.length}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Drafts</p>
-          </div>
+      <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${policies.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{policies.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Total Policies</p>
         </div>
-      )}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${byStatus.published.length > 0 ? "text-green-600" : "text-slate-300"}`}>{byStatus.published.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Published</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${byStatus.review_required.length > 0 ? "text-amber-500" : "text-slate-300"}`}>{byStatus.review_required.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Needs Review</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${byStatus.draft.length > 0 ? "text-slate-600" : "text-slate-300"}`}>{byStatus.draft.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Drafts</p>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : policies.length === 0 ? (
-        <EmptyState
-          icon={DocIcon}
-          title="No policies yet"
-          body="Add policies from our template library to satisfy framework requirements and demonstrate compliance."
-          action={<PrimaryButton onClick={() => setShowCreate(true)}>Browse templates</PrimaryButton>}
-        />
+        <div className="space-y-4">
+          <EmptyState
+            icon={DocIcon}
+            title="No policies yet"
+            body="Add policies from our template library to satisfy framework requirements and demonstrate compliance."
+            action={<PrimaryButton onClick={() => setShowCreate(true)}>Browse templates</PrimaryButton>}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { cat: "Security", count: 12, examples: "Information Security Policy, Acceptable Use Policy, Access Control Policy", color: "bg-blue-50 text-blue-700" },
+              { cat: "Privacy", count: 5, examples: "Data Classification Policy, Privacy Policy, Data Retention Policy", color: "bg-green-50 text-green-700" },
+              { cat: "Operations", count: 6, examples: "Change Management Policy, Incident Response Policy, Business Continuity Plan", color: "bg-amber-50 text-amber-700" },
+              { cat: "Human Resources", count: 4, examples: "Background Check Policy, Employee Security Awareness, Onboarding/Offboarding", color: "bg-purple-50 text-purple-700" },
+              { cat: "Compliance", count: 2, examples: "Risk Management Policy, Third-Party Risk Policy", color: "bg-slate-100 text-slate-600" },
+              { cat: "Federal", count: 1, examples: "System Security Plan Policy (FedRAMP/FISMA specific)", color: "bg-violet-50 text-violet-700" },
+            ].map(({ cat, count, examples, color }) => (
+              <div key={cat} className="bg-white border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${color}`}>{cat}</span>
+                  <span className="text-xs text-slate-400 font-medium">{count} templates</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">{examples}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <table className="w-full text-sm">

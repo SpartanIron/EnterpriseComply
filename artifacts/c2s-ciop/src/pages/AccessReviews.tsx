@@ -68,12 +68,27 @@ export default function AccessReviews() {
 
       {!selected ? (
         reviews.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-16 text-center">
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              </div>
+              <p className="text-slate-700 font-semibold">No access reviews yet</p>
+              <p className="text-sm text-slate-400 mt-1 mb-5">Create a review campaign to attest user access across your organization.</p>
+              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Launch first campaign</button>
             </div>
-            <p className="text-slate-600 font-medium">No access reviews yet</p>
-            <p className="text-sm text-slate-400 mt-1">Create a review campaign to attest user access across your organization.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { label: "SOC 2 CC6.2", body: "Requires periodic review of user access to verify that only authorized individuals retain access to systems." },
+                { label: "ISO 27001 A.9", body: "Access rights must be reviewed regularly - typically quarterly - and revoked when no longer needed." },
+                { label: "FedRAMP AC-2", body: "Account management reviews must occur at defined frequencies with documented approvals and attestations." },
+              ].map(({ label, body }) => (
+                <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
+                  <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md mb-2">{label}</span>
+                  <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="space-y-3">

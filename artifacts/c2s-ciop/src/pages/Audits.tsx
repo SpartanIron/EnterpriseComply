@@ -83,12 +83,37 @@ export default function Audits() {
       {!selected ? (
         <>
           {engagements.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-16 text-center">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            <div className="space-y-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </div>
+                <p className="text-slate-700 font-semibold">No audit engagements yet</p>
+                <p className="text-sm text-slate-400 mt-1 mb-5">Create an engagement to invite auditors and manage evidence requests in one place.</p>
+                <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create first engagement</button>
               </div>
-              <p className="text-slate-600 font-medium">No audit engagements yet</p>
-              <p className="text-sm text-slate-400 mt-1">Create an engagement to invite auditors and track evidence requests.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border border-slate-200 rounded-xl p-5">
+                  <p className="font-semibold text-slate-800 text-sm mb-2">How it works</p>
+                  <ol className="space-y-2">
+                    {["Create an engagement and assign a framework (SOC 2, ISO 27001, FedRAMP, etc.)", "An auditor access token is generated - share it securely with your auditor firm", "Track evidence requests from the auditor and mark them resolved as you provide documents", "Close the engagement when the audit is complete to archive evidence"].map((step, i) => (
+                      <li key={i} className="flex gap-3 text-xs text-slate-500">
+                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-xl p-5">
+                  <p className="font-semibold text-slate-800 text-sm mb-2">Supported frameworks</p>
+                  <div className="flex flex-wrap gap-2">
+                    {["SOC 2", "ISO 27001", "FedRAMP", "HIPAA", "PCI DSS", "CMMC L2", "NIST 800-53"].map(f => (
+                      <span key={f} className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg">{f}</span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-3 leading-relaxed">Each engagement generates an auditor access token providing read-only access to evidence you explicitly share. Revoked automatically when the engagement closes.</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">

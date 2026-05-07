@@ -118,32 +118,44 @@ export default function Vendors() {
         }
       />
 
-      {vendors.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className="text-2xl font-bold text-slate-900 leading-none">{vendors.length}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Total Vendors</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${(byRisk.critical + byRisk.high) > 0 ? "text-red-600" : "text-slate-400"}`}>{byRisk.critical + byRisk.high}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">High / Critical Risk</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${byRisk.missingDpa > 0 ? "text-amber-500" : "text-green-600"}`}>{byRisk.missingDpa}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Missing DPA</p>
-          </div>
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${vendors.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{vendors.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Total Vendors</p>
         </div>
-      )}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${(byRisk.critical + byRisk.high) > 0 ? "text-red-600" : vendors.length > 0 ? "text-green-600" : "text-slate-300"}`}>{byRisk.critical + byRisk.high}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">High / Critical Risk</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${byRisk.missingDpa > 0 ? "text-amber-500" : vendors.length > 0 ? "text-green-600" : "text-slate-300"}`}>{byRisk.missingDpa}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Missing DPA</p>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : vendors.length === 0 ? (
-        <EmptyState
-          icon={BuildingIcon}
-          title="No vendors tracked yet"
-          body="Add your third-party vendors to manage risk and demonstrate due diligence for auditors."
-          action={<PrimaryButton onClick={() => setShowAdd(true)}>Add vendor</PrimaryButton>}
-        />
+        <div className="space-y-4">
+          <EmptyState
+            icon={BuildingIcon}
+            title="No vendors tracked yet"
+            body="Add your third-party vendors to manage risk and demonstrate due diligence for auditors."
+            action={<PrimaryButton onClick={() => setShowAdd(true)}>Add vendor</PrimaryButton>}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: "SOC 2 CC9.2", body: "Requires identifying and assessing the risk of vendors who could affect the security and availability of your services." },
+              { label: "GDPR / DPA", body: "Data Processing Agreements are legally required for all vendors who process personal data on your behalf. Track DPA status here." },
+              { label: "Risk tiers", body: "Categorize vendors as critical, high, medium, or low risk. High-risk vendors typically require annual security assessments and SOC 2 reports." },
+            ].map(({ label, body }) => (
+              <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
+                <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md mb-2">{label}</span>
+                <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <table className="w-full text-sm">

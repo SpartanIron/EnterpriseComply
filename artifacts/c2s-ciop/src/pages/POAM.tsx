@@ -132,6 +132,25 @@ export default function POAM() {
         </div>
       </div>
 
+      <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${items.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{items.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Total Items</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${open.filter(i => i.status === "open").length > 0 ? "text-red-600" : "text-slate-300"}`}>{open.filter(i => i.status === "open").length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Open</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${open.filter(i => i.status === "in_progress").length > 0 ? "text-blue-600" : "text-slate-300"}`}>{open.filter(i => i.status === "in_progress").length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">In Progress</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${closed.length > 0 ? "text-green-600" : "text-slate-300"}`}>{closed.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Resolved</p>
+        </div>
+      </div>
+
       {importResult !== null && (
         <div className="mb-5 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <svg className="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -144,20 +163,49 @@ export default function POAM() {
       {isLoading ? (
         <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : items.length === 0 ? (
-        <div className="bg-white border border-dashed border-slate-300 rounded-xl p-12 text-center">
-          <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-slate-400">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
+        <div className="space-y-4">
+          <div className="bg-white border border-dashed border-slate-300 rounded-xl p-12 text-center">
+            <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </div>
+            <p className="font-semibold text-slate-700 text-sm">No POA&amp;M items yet</p>
+            <p className="text-slate-400 text-xs mt-1 mb-5">Create POA&amp;M items to track remediation of security weaknesses, or import from failing controls.</p>
+            <div className="flex items-center justify-center gap-2">
+              <button onClick={() => importFromFailingMutation.mutate()} disabled={importFromFailingMutation.isPending}
+                className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                Import from failing controls
+              </button>
+              <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">Create first item</button>
+            </div>
           </div>
-          <p className="font-semibold text-slate-700 text-sm">No POA&amp;M items yet</p>
-          <p className="text-slate-400 text-xs mt-1 mb-5">Create POA&amp;M items to track remediation of security weaknesses, or import from failing controls.</p>
-          <div className="flex items-center justify-center gap-2">
-            <button onClick={() => importFromFailingMutation.mutate()} disabled={importFromFailingMutation.isPending}
-              className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">
-              Import from failing controls
-            </button>
-            <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">Create first item</button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
+              <p className="font-semibold text-slate-800 text-sm mb-2">What is a POA&amp;M?</p>
+              <p className="text-xs text-slate-500 leading-relaxed mb-3">A Plan of Action and Milestones (POA&amp;M) documents known security weaknesses and your plan to remediate them. It is a required artifact for FedRAMP, FISMA, and CMMC assessments - showing assessors you are actively managing risk even when controls are not fully implemented.</p>
+              <div className="flex flex-wrap gap-2">
+                {["FedRAMP Required", "FISMA", "CMMC Level 2", "NIST 800-53 CA-5"].map(t => (
+                  <span key={t} className="px-2 py-0.5 bg-violet-50 text-violet-700 text-xs font-medium rounded-md">{t}</span>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
+              <p className="font-semibold text-slate-800 text-sm mb-2">Getting started quickly</p>
+              <ol className="space-y-2">
+                {[
+                  "Click \"Import from failing controls\" to auto-populate from your current control gaps",
+                  "Set milestones with target remediation dates for each weakness",
+                  "Assign responsible parties and track remediation progress over time",
+                  "Close items as resolved - the audit trail is preserved automatically",
+                ].map((step, i) => (
+                  <li key={i} className="flex gap-3 text-xs text-slate-500">
+                    <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         </div>
       ) : (

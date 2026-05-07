@@ -69,6 +69,32 @@ export default function TrustCenter() {
         </div>
       )}
 
+      {!preview && !settings && (
+        <div className="space-y-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <p className="text-slate-700 font-semibold">Setting up your Trust Center</p>
+            <p className="text-sm text-slate-400 mt-1">Your public trust page is created automatically. Add frameworks and published policies to populate it.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { step: "1", title: "Activate frameworks", body: "Go to Frameworks and activate SOC 2, ISO 27001, or any compliance standard to show your certifications.", link: "/frameworks" },
+              { step: "2", title: "Publish policies", body: "Go to Policies, create policies from templates, and publish them to surface them on your trust page.", link: "/policies" },
+              { step: "3", title: "Share the URL", body: "Share your Trust Center URL with customers, prospects, and auditors - it updates automatically.", link: null },
+            ].map(({ step, title, body, link }) => (
+              <div key={step} className="bg-white border border-slate-200 rounded-xl p-4">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold mb-2">{step}</span>
+                <p className="font-semibold text-slate-800 text-sm mb-1">{title}</p>
+                <p className="text-xs text-slate-500 leading-relaxed mb-2">{body}</p>
+                {link && <a href={link} className="text-xs text-blue-600 font-semibold hover:underline">Go to {title.split(" ")[1]} &rarr;</a>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {preview && (
         <div className="space-y-4">
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

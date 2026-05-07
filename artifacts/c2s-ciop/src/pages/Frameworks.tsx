@@ -61,7 +61,6 @@ export default function Frameworks() {
   const { data: catalogData } = useQuery<{ frameworks: any[] }>({
     queryKey: ["framework-catalog"],
     queryFn: async () => (await fetch(apiUrl("/frameworks/catalog"), { credentials: "include" })).json(),
-    enabled: showAdd,
   });
 
   const activateMutation = useMutation({
@@ -133,22 +132,79 @@ export default function Frameworks() {
           {[...Array(6)].map((_, i) => <div key={i} className="h-52 bg-slate-100 rounded-xl animate-pulse" />)}
         </div>
       ) : frameworks.length === 0 ? (
-        <EmptyState
-          icon={ShieldIcon}
-          title="No frameworks activated"
-          body="Add SOC 2, FedRAMP, CMMC, ISO 27001, or any of 12 supported frameworks to start tracking compliance."
-          action={<PrimaryButton onClick={() => setShowAdd(true)}>Add your first framework</PrimaryButton>}
-        />
+        <>
+          <EmptyState
+            icon={ShieldIcon}
+            title="No frameworks activated"
+            body="Add SOC 2, FedRAMP, CMMC, ISO 27001, or any of 12 supported frameworks to start tracking compliance."
+            action={<PrimaryButton onClick={() => setShowAdd(true)}>Add your first framework</PrimaryButton>}
+          />
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { icon: "shield", title: "Universal Control Objectives", body: "Add a framework and your 41 UCO controls automatically map to it. Implement once, satisfy all simultaneously." },
+              { icon: "chart", title: "Real-time Compliance Score", body: "Track your compliance posture with live scoring. Connect integrations to run automated tests against your controls." },
+              { icon: "check", title: "Audit-ready Evidence", body: "Every passing control generates evidence. Share your Trust Center URL with auditors instead of filling spreadsheets." },
+            ].map(({ icon, title, body }) => (
+              <div key={title} className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
+                  {icon === "shield" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
+                  {icon === "chart" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
+                  {icon === "check" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                </div>
+                <p className="font-semibold text-slate-800 text-sm mb-1">{title}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+        </>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {frameworks.map((fw: any) => (
-            <FrameworkDetailCard
-              key={fw.id}
-              fw={fw}
-              onRemove={() => setConfirmRemove({ key: fw.frameworkKey, name: fw.name })}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {frameworks.map((fw: any) => (
+              <FrameworkDetailCard
+                key={fw.id}
+                fw={fw}
+                onRemove={() => setConfirmRemove({ key: fw.frameworkKey, name: fw.name })}
+              />
+            ))}
+          </div>
+          {available.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">Available to add ({available.length})</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Adding any of these reuses your existing UCO control work - no duplicate effort</p>
+                </div>
+                <PrimaryButton onClick={() => setShowAdd(true)}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                  Add Framework
+                </PrimaryButton>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {available.slice(0, 6).map((f: any) => {
+                  const cat = CATEGORY_CONFIG[f.category] ?? { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", accent: "#64748b" };
+                  return (
+                    <button
+                      key={f.key}
+                      onClick={() => activateMutation.mutate([f.key])}
+                      disabled={activateMutation.isPending}
+                      className="bg-white border border-dashed border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-left group disabled:opacity-60"
+                    >
+                      <div className="h-[2px] -mt-4 -mx-4 mb-3 rounded-t-xl" style={{ background: cat.accent }} />
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-slate-700 text-sm group-hover:text-blue-700 transition-colors truncate">{f.name}</p>
+                          <p className="text-xs text-slate-400 mt-0.5 capitalize">{CATALOG_CATS[f.category] ?? f.category}</p>
+                        </div>
+                        <svg className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Add Framework Modal */}

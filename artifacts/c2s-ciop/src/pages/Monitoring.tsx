@@ -70,16 +70,37 @@ export default function Monitoring() {
   const settings = settingsData?.settings;
   const logs = logData?.logs ?? [];
 
+  const unread = notifData?.unreadCount ?? 0;
+  const critical = notifications.filter(n => n.severity === "critical" || n.severity === "high").length;
+  const driftJobs = jobs.filter(j => j.job?.driftDetected).length;
+
   return (
     <div className="p-6 max-w-screen-xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Continuous Monitoring</h1>
           <p className="text-sm text-slate-500 mt-0.5">Real-time compliance monitoring, drift alerts, and audit trail</p>
         </div>
-        {(notifData?.unreadCount ?? 0) > 0 && (
-          <span className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-full">{notifData?.unreadCount} unread</span>
-        )}
+      </div>
+
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${notifications.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{notifications.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Total Notifications</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${unread > 0 ? "text-blue-600" : "text-slate-300"}`}>{unread}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Unread</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${critical > 0 ? "text-red-600" : notifications.length > 0 ? "text-green-600" : "text-slate-300"}`}>{critical}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Critical / High</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${jobs.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{jobs.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Monitored Integrations</p>
+          {driftJobs > 0 && <p className="text-xs text-orange-500 font-semibold mt-1">{driftJobs} drift detected</p>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-slate-200 mb-6">
@@ -96,7 +117,7 @@ export default function Monitoring() {
 
       {tab === "notifications" && (
         <div>
-          {notifications.length > 0 && (
+          {notifications.length > 0 && unread > 0 && (
             <div className="flex justify-end mb-3">
               <button onClick={() => markReadMutation.mutate()} className="text-xs text-blue-600 hover:underline">Mark all read</button>
             </div>

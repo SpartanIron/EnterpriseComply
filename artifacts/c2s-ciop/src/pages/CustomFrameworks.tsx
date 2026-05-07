@@ -67,12 +67,29 @@ export default function CustomFrameworks() {
 
       {!selected ? (
         frameworks.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-16 text-center">
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+              </div>
+              <p className="text-slate-700 font-semibold">No custom frameworks yet</p>
+              <p className="text-sm text-slate-400 mt-1 mb-5">Build your own control framework for internal programs, overlays, or emerging regulations.</p>
+              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create first framework</button>
             </div>
-            <p className="text-slate-600 font-medium">No custom frameworks yet</p>
-            <p className="text-sm text-slate-400 mt-1">Create a framework for internal policies, HITRUST, NERC CIP, or any custom compliance program.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { tag: "Internal Policy", title: "Internal Security Program", body: "Define your own security controls beyond what standard frameworks require." },
+                { tag: "Overlay", title: "HITRUST / NERC CIP", body: "Map controls to niche frameworks that overlay on top of NIST, ISO, or SOC 2." },
+                { tag: "Contractual", title: "Customer Requirements", body: "Track controls required by specific enterprise customers or contract clauses." },
+                { tag: "Regulatory", title: "Emerging Regulations", body: "Stay ahead of new requirements like EU AI Act, DORA, or state-level privacy laws." },
+              ].map(({ tag, title, body }) => (
+                <div key={title} className="bg-white border border-slate-200 rounded-xl p-4">
+                  <span className="inline-block px-2 py-0.5 bg-purple-50 text-purple-700 text-xs font-semibold rounded-md mb-2">{tag}</span>
+                  <p className="font-semibold text-slate-800 text-sm mb-1">{title}</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">

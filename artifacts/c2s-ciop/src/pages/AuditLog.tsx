@@ -39,6 +39,10 @@ export default function AuditLog() {
         (l.actorEmail ?? "").toLowerCase().includes(filter.toLowerCase()))
     : logs;
 
+  const uniqueActors = new Set(logs.map(l => l.actorEmail).filter(Boolean)).size;
+  const today = logs.filter(l => new Date(l.createdAt).toDateString() === new Date().toDateString()).length;
+  const deletions = logs.filter(l => l.action.toLowerCase().includes("delete")).length;
+
   return (
     <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
@@ -50,6 +54,25 @@ export default function AuditLog() {
           <input value={filter} onChange={(e) => setFilter(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Filter logs..." />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${logs.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{logs.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Total Entries</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${today > 0 ? "text-blue-600" : "text-slate-300"}`}>{today}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Today</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${uniqueActors > 0 ? "text-slate-900" : "text-slate-300"}`}>{uniqueActors}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Unique Actors</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${deletions > 0 ? "text-red-500" : "text-slate-300"}`}>{deletions}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Deletions</p>
         </div>
       </div>
 

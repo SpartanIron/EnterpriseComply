@@ -123,6 +123,21 @@ export default function Evidence() {
         }
       />
 
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${items.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{items.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Total Items</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${autoItems.length > 0 ? "text-blue-600" : "text-slate-300"}`}>{autoItems.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Automated</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${staleItems.length > 0 ? "text-amber-500" : items.length > 0 ? "text-green-600" : "text-slate-300"}`}>{staleItems.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Expired</p>
+        </div>
+      </div>
+
       {staleItems.length > 0 && (
         <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
           <svg className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

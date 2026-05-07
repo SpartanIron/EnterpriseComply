@@ -133,38 +133,50 @@ export default function People() {
         }
       />
 
-      {people.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className="text-2xl font-bold text-slate-900 leading-none">{people.length}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Total People</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${mfaEnabled === people.length ? "text-green-600" : mfaEnabled > 0 ? "text-amber-500" : "text-slate-400"}`}>{mfaEnabled}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">MFA Enabled</p>
-            <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 rounded-full" style={{ width: `${people.length > 0 ? (mfaEnabled / people.length) * 100 : 0}%` }} />
-            </div>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${trainingDone === people.length ? "text-green-600" : trainingDone > 0 ? "text-amber-500" : "text-slate-400"}`}>{trainingDone}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Training Complete</p>
-            <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 rounded-full" style={{ width: `${people.length > 0 ? (trainingDone / people.length) * 100 : 0}%` }} />
-            </div>
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${people.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{people.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Total People</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${mfaEnabled === people.length && people.length > 0 ? "text-green-600" : mfaEnabled > 0 ? "text-amber-500" : "text-slate-300"}`}>{mfaEnabled}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">MFA Enabled</p>
+          <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 rounded-full" style={{ width: `${people.length > 0 ? (mfaEnabled / people.length) * 100 : 0}%` }} />
           </div>
         </div>
-      )}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <p className={`text-2xl font-bold leading-none ${trainingDone === people.length && people.length > 0 ? "text-green-600" : trainingDone > 0 ? "text-amber-500" : "text-slate-300"}`}>{trainingDone}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Training Complete</p>
+          <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 rounded-full" style={{ width: `${people.length > 0 ? (trainingDone / people.length) * 100 : 0}%` }} />
+          </div>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : people.length === 0 ? (
-        <EmptyState
-          icon={PeopleIcon}
-          title="No people added yet"
-          body="Connect an HR or identity integration to automatically sync your team, or add members manually."
-          action={<PrimaryButton onClick={() => navigate("/integrations")}>Connect integration</PrimaryButton>}
-        />
+        <div className="space-y-4">
+          <EmptyState
+            icon={PeopleIcon}
+            title="No people added yet"
+            body="Connect an HR or identity integration to automatically sync your team, or add members manually."
+            action={<PrimaryButton onClick={() => navigate("/integrations")}>Connect integration</PrimaryButton>}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: "Identity integrations", body: "Connect Okta, Azure AD, or Google Workspace to sync your team automatically, including MFA status and group memberships." },
+              { label: "GitHub sync", body: "Import developers from your GitHub organization. MFA enforcement status is read directly from the GitHub API." },
+              { label: "SOC 2 CC6.1", body: "Frameworks require tracking who has access to your systems. People records feed directly into access review campaigns." },
+            ].map(({ label, body }) => (
+              <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
+                <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md mb-2">{label}</span>
+                <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <table className="w-full text-sm">

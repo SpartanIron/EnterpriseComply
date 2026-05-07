@@ -141,15 +141,29 @@ export default function Questionnaires() {
       {tab === "incoming" && !selectedQ && (
         <div className="space-y-3">
           {questionnaires.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-              <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-slate-400">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
+            <div className="space-y-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+                <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </div>
+                <p className="text-slate-600 font-medium">No questionnaires yet</p>
+                <p className="text-slate-400 text-sm mt-1 mb-4">Create one to auto-fill responses from your compliance controls and evidence.</p>
+                <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create questionnaire</button>
               </div>
-              <p className="text-slate-600 font-medium">No questionnaires yet</p>
-              <p className="text-slate-400 text-sm mt-1 mb-4">Create one to auto-fill responses from your compliance controls and evidence.</p>
-              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create questionnaire</button>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { label: "SIG-Lite (20 questions)", body: "Standardized Information Gathering questionnaire used by enterprise procurement teams to assess vendor security posture during procurement." },
+                  { label: "CAIQ (15 questions)", body: "Cloud controls questions used by enterprises to assess cloud providers. Pre-mapped to CSA Cloud Controls Matrix - common in financial services procurement." },
+                  { label: "VSAQ (10 questions)", body: "Vendor Security Assessment Questionnaire for high-level risk triage. Used in early-stage enterprise deals before a full SIG-Lite is required." },
+                ].map(({ label, body }) => (
+                  <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
+                    <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md mb-2">{label}</span>
+                    <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : questionnaires.map((q) => (
             <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between hover:border-slate-300 transition-colors group">
@@ -240,8 +254,38 @@ export default function Questionnaires() {
             )}
           </div>
           {vendorAssessments.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-              <p className="text-slate-500 text-sm">No vendor assessments sent. Select a vendor above to send a SIG-Lite or CAIQ assessment.</p>
+            <div className="space-y-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-10 text-center">
+                <p className="text-slate-600 font-medium mb-1">No vendor assessments sent</p>
+                <p className="text-slate-400 text-sm">{vendors.length === 0 ? "Add vendors first, then send them a security assessment." : "Select a vendor from the dropdown above to send them a SIG-Lite or CAIQ assessment."}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border border-slate-200 rounded-xl p-5">
+                  <p className="font-semibold text-slate-800 text-sm mb-2">Why send vendor assessments?</p>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-3">SOC 2 CC9.2 and ISO 27001 A.15 require assessing the security posture of vendors who handle your data. A documented assessment - even a simple questionnaire - satisfies auditor requirements and protects you from supply chain risk.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {["SOC 2 CC9.2", "ISO 27001 A.15", "GDPR Art. 28"].map(t => (
+                      <span key={t} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-md">{t}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-xl p-5">
+                  <p className="font-semibold text-slate-800 text-sm mb-2">How it works</p>
+                  <ol className="space-y-2">
+                    {[
+                      "Add your vendors in the Vendors page",
+                      "Select a vendor from the dropdown above to send an assessment",
+                      "Responses are tracked per-question alongside your compliance data",
+                      "Share completed assessments with auditors as evidence of vendor due diligence",
+                    ].map((step, i) => (
+                      <li key={i} className="flex gap-3 text-xs text-slate-500">
+                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
