@@ -81,7 +81,7 @@ const INDUSTRIES = [
   {
     name: "Government",
     desc: "FedRAMP, CMMC, NIST 800-53, and StateRAMP - all native.",
-    photo: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=600&h=400&fit=crop&q=80",
+    photo: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=600&h=400&fit=crop&q=80",
   },
   {
     name: "Technology",
@@ -609,8 +609,8 @@ export default function Landing() {
                   alt={ind.name}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                {/* Dark gradient overlay */}
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(3,7,18,0.95) 0%, rgba(3,7,18,0.7) 50%, rgba(3,7,18,0.35) 100%)" }} />
+                {/* Light gradient overlay - bottom only for text readability */}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(3,7,18,0.78) 0%, rgba(3,7,18,0.38) 38%, transparent 62%)" }} />
                 {/* Blue tint on hover */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "rgba(37,99,235,0.18)" }} />
                 {/* Content */}
