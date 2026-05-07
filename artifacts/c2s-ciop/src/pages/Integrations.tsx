@@ -4,6 +4,34 @@ import { useLocation } from "wouter";
 import { apiUrl, apiFetch } from "@/lib/queryClient";
 import { useOrg } from "@/hooks/useOrg";
 
+const COMING_SOON_CATALOG = [
+  { key: "crowdstrike", name: "CrowdStrike", category: "Endpoint Security" },
+  { key: "jamf", name: "Jamf", category: "MDM" },
+  { key: "workday", name: "Workday", category: "HRIS" },
+  { key: "datadog", name: "Datadog", category: "Monitoring" },
+  { key: "pagerduty", name: "PagerDuty", category: "Incident Management" },
+  { key: "jira", name: "Jira", category: "Ticketing" },
+  { key: "servicenow", name: "ServiceNow", category: "ITSM" },
+  { key: "qualys", name: "Qualys", category: "Vulnerability Management" },
+  { key: "tenable", name: "Tenable", category: "Vulnerability Management" },
+  { key: "splunk", name: "Splunk", category: "SIEM" },
+  { key: "sentinelone", name: "SentinelOne", category: "Endpoint Security" },
+  { key: "duo", name: "Duo Security", category: "MFA / Identity" },
+  { key: "ping", name: "PingIdentity", category: "Identity" },
+  { key: "sailpoint", name: "SailPoint", category: "IGA" },
+  { key: "cyberark", name: "CyberArk", category: "PAM" },
+  { key: "hashicorp-vault", name: "HashiCorp Vault", category: "Secrets Management" },
+  { key: "snyk", name: "Snyk", category: "Application Security" },
+  { key: "veracode", name: "Veracode", category: "Application Security" },
+  { key: "knowbe4", name: "KnowBe4", category: "Security Training" },
+  { key: "proofpoint", name: "Proofpoint", category: "Email Security" },
+  { key: "microsoft-365", name: "Microsoft 365", category: "Productivity" },
+  { key: "zendesk", name: "Zendesk", category: "Customer Support" },
+  { key: "bamboohr", name: "BambooHR", category: "HRIS" },
+  { key: "greenhouse", name: "Greenhouse", category: "Recruiting" },
+  { key: "netsuite", name: "NetSuite", category: "ERP" },
+];
+
 export default function Integrations() {
   const [location] = useLocation();
   const { orgId } = useOrg();
@@ -61,12 +89,19 @@ export default function Integrations() {
   const integrations = data?.integrations ?? [];
   const connectedList = integrations.filter((i) => i.connection?.status === "connected");
   const availableList = integrations.filter((i) => !i.connection && i.available);
-  const comingSoon = integrations.filter((i) => !i.connection && !i.available);
+  const apiComingSoon = integrations.filter((i) => !i.connection && !i.available);
+
+  const connectedKeys = new Set(integrations.map(i => i.key));
+  const extraComingSoon = COMING_SOON_CATALOG.filter(c => !connectedKeys.has(c.key));
+  const comingSoon = [
+    ...apiComingSoon,
+    ...extraComingSoon.filter(e => !apiComingSoon.some(a => a.key === e.key)),
+  ];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">Integrations</h1>
+        <h1 className="text-xl font-bold text-slate-900">Integrations</h1>
         <p className="text-sm text-slate-500 mt-0.5">Connect your tools to collect compliance evidence automatically</p>
       </div>
 
@@ -109,15 +144,15 @@ export default function Integrations() {
 
       {comingSoon.length > 0 && (
         <div>
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Coming Soon</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Coming Soon ({comingSoon.length})</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {comingSoon.map((i: any) => (
               <div key={i.key} className="bg-white rounded-xl border border-slate-200 p-4 opacity-60">
                 <div className="flex items-center gap-3">
                   <IntegrationLogo name={i.key} size="sm" />
-                  <div>
-                    <p className="font-medium text-slate-700 text-sm">{i.name}</p>
-                    <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-400 text-xs rounded-full mt-0.5">Coming soon</span>
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-700 text-sm truncate">{i.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">{i.category}</p>
                   </div>
                 </div>
               </div>
@@ -217,6 +252,10 @@ function IntegrationLogo({ name, size = "md" }: { name: string; size?: "sm" | "m
   const labels: Record<string, string> = {
     aws: "AWS", okta: "Ok", jira: "Ji", slack: "Sl", crowdstrike: "CS", jamf: "Jm",
     workday: "Wd", "google-workspace": "GW", "azure-ad": "Az", datadog: "DD", pagerduty: "PD",
+    servicenow: "SN", qualys: "Ql", tenable: "Tn", splunk: "Sp", sentinelone: "S1",
+    duo: "Duo", ping: "PI", sailpoint: "SP", cyberark: "CA", "hashicorp-vault": "HV",
+    snyk: "Sk", veracode: "Ve", knowbe4: "KB", proofpoint: "PP", "microsoft-365": "M365",
+    zendesk: "Zd", bamboohr: "BH", greenhouse: "GH", netsuite: "NS",
   };
   const colors: Record<string, string> = {
     aws: "bg-orange-100 text-orange-700", okta: "bg-blue-100 text-blue-700",
@@ -224,7 +263,12 @@ function IntegrationLogo({ name, size = "md" }: { name: string; size?: "sm" | "m
     crowdstrike: "bg-red-100 text-red-700", jamf: "bg-slate-100 text-slate-600",
     workday: "bg-yellow-100 text-yellow-700", "google-workspace": "bg-blue-100 text-blue-700",
     "azure-ad": "bg-blue-100 text-blue-700", datadog: "bg-purple-100 text-purple-700",
-    pagerduty: "bg-green-100 text-green-700",
+    pagerduty: "bg-green-100 text-green-700", servicenow: "bg-green-100 text-green-700",
+    qualys: "bg-red-100 text-red-700", tenable: "bg-blue-100 text-blue-700",
+    splunk: "bg-orange-100 text-orange-700", sentinelone: "bg-indigo-100 text-indigo-700",
+    duo: "bg-green-100 text-green-700", sailpoint: "bg-blue-100 text-blue-700",
+    cyberark: "bg-red-100 text-red-700", snyk: "bg-violet-100 text-violet-700",
+    knowbe4: "bg-orange-100 text-orange-700", "microsoft-365": "bg-blue-100 text-blue-700",
   };
   const textSz = size === "sm" ? "text-xs" : "text-xs";
   return (

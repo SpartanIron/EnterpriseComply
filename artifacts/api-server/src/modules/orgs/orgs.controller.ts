@@ -20,8 +20,8 @@ export class OrgsController {
 
   @Post()
   @UseGuards(ClerkAuthGuard)
-  createOrg(@ClerkUserId() userId: string, @Body() body: Record<string, string>) {
-    return this.orgsService.createOrg(userId, body);
+  createOrg(@ClerkUserId() userId: string, @Body() body: Record<string, unknown>) {
+    return this.orgsService.createOrg(userId, body as any);
   }
 
   @Patch(":orgId/onboarding")

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { PoamService } from "./poam.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
 
@@ -20,6 +20,12 @@ export class PoamController {
     return this.poamService.createItem(ctx.orgId, body);
   }
 
+  @Post("bulk-from-failing")
+  @UseGuards(OrgContextGuard)
+  createFromFailingControls(@OrgContext() ctx: OrgCtx) {
+    return this.poamService.createFromFailingControls(ctx.orgId);
+  }
+
   @Patch(":id")
   @UseGuards(OrgContextGuard)
   updateItem(
@@ -28,5 +34,11 @@ export class PoamController {
     @Body() body: Record<string, unknown>,
   ) {
     return this.poamService.updateItem(ctx.orgId, Number(id), body);
+  }
+
+  @Delete(":id")
+  @UseGuards(OrgContextGuard)
+  deleteItem(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
+    return this.poamService.deleteItem(ctx.orgId, Number(id));
   }
 }

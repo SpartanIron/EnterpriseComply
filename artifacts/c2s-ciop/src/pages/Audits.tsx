@@ -14,6 +14,8 @@ export default function Audits() {
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<any>(null);
   const [showRequest, setShowRequest] = useState(false);
+  const [tokenModal, setTokenModal] = useState<{ token: string; name: string } | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
   const [form, setForm] = useState({ name: "", frameworkKey: "soc2", auditorFirm: "", auditorName: "", auditorEmail: "", startDate: "", endDate: "", notes: "" });
   const [reqForm, setReqForm] = useState({ title: "", description: "", ucoControlId: "", dueDate: "" });
 
@@ -31,7 +33,13 @@ export default function Audits() {
 
   const createMutation = useMutation({
     mutationFn: (body: typeof form) => apiFetch(`/orgs/${orgId}/audits`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["audits"] }); setShowNew(false); alert(`Engagement created. Auditor access token: ${d.engagement?.accessToken}`); },
+    onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ["audits"] });
+      setShowNew(false);
+      const token = d.engagement?.accessToken;
+      const name = d.engagement?.name ?? form.name;
+      if (token) setTokenModal({ token, name });
+    },
   });
 
   const closeMutation = useMutation({
@@ -51,6 +59,14 @@ export default function Audits() {
 
   const engagements = data?.engagements ?? [];
   const requests = requestsData?.requests ?? [];
+
+  const copyToken = () => {
+    if (!tokenModal) return;
+    navigator.clipboard.writeText(tokenModal.token).then(() => {
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="p-6 max-w-screen-xl">
@@ -111,9 +127,20 @@ export default function Audits() {
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selected.status === "active" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>{selected.status}</span>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5 text-sm">
-            <p className="font-medium text-blue-800">Auditor: {selected.auditorName} ({selected.auditorEmail})</p>
-            <p className="text-blue-600 mt-0.5">Framework: {FRAMEWORK_LABELS[selected.frameworkKey] ?? selected.frameworkKey}</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5 text-sm flex items-center justify-between">
+            <div>
+              <p className="font-medium text-blue-800">Auditor: {selected.auditorName} ({selected.auditorEmail})</p>
+              <p className="text-blue-600 mt-0.5">Framework: {FRAMEWORK_LABELS[selected.frameworkKey] ?? selected.frameworkKey}</p>
+            </div>
+            {selected.accessToken && (
+              <button
+                onClick={() => setTokenModal({ token: selected.accessToken, name: selected.name })}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-200 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                View access token
+              </button>
+            )}
           </div>
 
           <div className="flex items-center justify-between mb-4">
@@ -216,6 +243,35 @@ export default function Audits() {
                 className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {createRequestMutation.isPending ? "Sending..." : "Send Request"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tokenModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900">Auditor Access Token</h2>
+              <button onClick={() => setTokenModal(null)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-slate-600 mb-3">Share this token with the auditor for <span className="font-semibold">{tokenModal.name}</span>. It provides read-only access to requested evidence.</p>
+              <div className="flex gap-2 items-stretch">
+                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 font-mono text-sm text-slate-700 break-all select-all">
+                  {tokenModal.token}
+                </div>
+                <button onClick={copyToken}
+                  className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex-shrink-0 ${tokenCopied ? "bg-green-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
+                  {tokenCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mt-3">Keep this token confidential. It can be revoked by closing the engagement.</p>
+            </div>
+            <div className="p-5 border-t border-slate-100">
+              <button onClick={() => setTokenModal(null)} className="w-full py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Done</button>
             </div>
           </div>
         </div>

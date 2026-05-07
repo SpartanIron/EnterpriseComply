@@ -1,0 +1,108 @@
+P0 - Platform-Breaking (blocks real use)
+1. No evidence file upload
+The Evidence Vault only saves a URL string — there is no file picker, no multipart upload, no object storage (S3/R2/equivalent). In practice, every piece of GRC evidence is a PDF, screenshot, CSV export, or scan report. Practitioners cannot upload a pentest report, an HR onboarding checklist, a firewall config export, or an access review screenshot. This is the single most fundamental gap in the platform. The DB has filename and url columns but they're just text fields.
+
+2. Policy acknowledgment workflow is a ghost
+The DB schema has an org_policy_acknowledgments table with policyId, personId, acknowledgedAt, ipAddress — but there is zero API implementation: no endpoint to request acknowledgments, no endpoint to record one, no status rollup. The Policies page subtitle says "track acknowledgments" but it does nothing of the sort. SOC 2 CC1.2, ISO 27001 A.7.2.2, and HIPAA all explicitly require documented, signed policy acknowledgments. This is an audit-day blocker.
+
+3. Questionnaire "AI" is hardcoded keyword matching with fake confidence scores
+The auto-answer feature does question.toLowerCase().includes("mfa") and returns pre-written strings with hardcoded confidence: 0.92. This is not AI. Worse, if asked in a demo, a customer or auditor who looks closely will notice answers are identical across all questionnaires regardless of context. This needs either real LLM integration (OpenAI/Anthropic) or honest labeling as "suggested answers based on your control status."
+
+4. Vendor assessments send nothing
+POST /vendor-assessments sets a DB status to "sent" and that's it. No email, no portal link, no token-based response URL. The vendor never receives anything. There is no public-facing questionnaire response page. The entire vendor assessment workflow is UI theater.
+
+P1 - High (significant functional gaps)
+5. People: no edit or delete
+PeopleController only has GET and POST. Once a person is added, their MFA status, training completion, department, or employment type cannot be updated. There's no offboarding flow. For SOC 2 CC6.2 (logical access provisioning/deprovisioning) and HIPAA access management, this is a hard gap. MFA status should also auto-sync from GitHub/Okta/GWS integrations — currently it's a manually-typed boolean.
+
+6. Vendors: no edit or delete
+Same pattern. You can add a vendor but never update their risk level after a reassessment, never mark a DPA as signed, never record an annual review, never archive a terminated relationship. The hasDataProcessingAgreement field is set at creation and frozen.
+
+7. Only 4 automated tests — all GitHub
+The platform markets broad automation but the test engine has exactly four checks: org-level MFA enforcement, repos exist, branch protection, required PR reviews — all GitHub-specific. The six "connectable" integrations (AWS, GCP, Okta, Google Workspace, Azure AD, Slack) go through demo-connect which just inserts fake evidence rows. There are no real collectors for: S3 public access, IAM policy sprawl, Okta MFA enforcement, GWS admin 2FA, Azure AD Conditional Access, Slack Enterprise Grid controls. The 43 UCO controls claim automation but only 4 are actually tested.
+
+8. POAM has no auto-population from failing controls
+In every FedRAMP and CMMC program, POAM items are generated directly from failing controls. Currently the POAM is a completely manual register — you add items by hand. There's no "Create POAM from failing controls" button, no link between a failing org_control_results row and a new POAM item. This defeats most of the value of having unified controls.
+
+9. No evidence linking to audit evidence requests
+The org_audit_evidence_requests table has a linkedEvidenceIds array column — but there is no API endpoint or UI to actually link existing vault evidence to an auditor's request. The auditor portal shows requests with a status but the evidence linkage is completely unimplemented. An auditor receives a request list with no way to fulfill it by pointing to vault items.
+
+10. SSP export is plain text only
+FedRAMP Low/Moderate requires DOCX in the FedRAMP SSP template format. CMMC requires specific NIST SP 800-171 DoD Assessment format. A .txt file is not submittable to any accreditation body. The SSP content is actually good (dynamically generated from real control data) — it just needs a proper export format.
+
+11. Framework mapping coverage is thin
+43 UCO controls × 49 mappings = ~1.14 mappings per control on average. SOC 2 alone should produce 30-40 mappings. Several controls in the seed have zero framework mappings (particularly in Network Security and Vulnerability Management domains). Controls with no mappings show up in the controls list but never drive compliance scores for any framework.
+
+P2 - Medium (important for real GRC workflows)
+12. No bulk population of People from integrations
+When GitHub connects, org members sync — but those members don't auto-populate org_people. A real workforce module needs: CSV bulk import, sync from Okta/GWS directory, and automatic offboarding detection. Currently you manually type in each employee.
+
+13. Access reviews populate from nowhere
+When you create an access review and it generates items — where do those items come from? The service appears to pull from org_people but without integration-sourced access data (what systems each person has access to), the review items have no substantive content. A real access review needs: system, permission level, last used, justification for each item.
+
+14. Evidence has no staleness/expiration tracking
+A pentest from 14 months ago is stale for SOC 2 (annual requirement). Firewall rules screenshot from last quarter might be current. There's no validUntil or reviewBy date on evidence items, no staleness indicator in the vault, no automated alert when evidence ages past its required refresh window. Auditors look specifically for evidence dates.
+
+15. Risk register missing control linkage in the UI
+The DB has relatedControlId on org_risks but the risk creation/edit form doesn't include it. You can't say "this risk materializes because UCO-VM-001 (vulnerability scanning) is failing." The link between risk posture and control status should be bidirectional and visible.
+
+16. No compliance trend / history tracking
+The dashboard shows current score. There is no time-series of compliance posture. For continuous monitoring (CC9 in SOC 2, a FedRAMP ConMon requirement), you need to demonstrate that your posture is stable or improving over time. There's no org_compliance_snapshots table or anything equivalent.
+
+17. SPRS is read-only with no basis documentation
+The SPRS score is calculated from control status but the DoD self-assessment methodology requires you to document the basis for each score component — the assessor name, assessment date, method (interview/observe/test), and objective evidence reference. Currently it's just a calculated number with no documentation fields.
+
+18. Custom frameworks are siloed
+Custom frameworks live in their own separate page and never appear in the main Frameworks overview, dashboard score cards, or compliance percentage rollup. A HITRUST or NERC CIP custom framework should show up in the same compliance view as SOC 2 and FedRAMP.
+
+19. Trust center is not configurable
+No ability to choose which frameworks to display, upload actual certification PDFs, add a compliance statement, toggle sections on/off, or customize the public page's appearance. Every org's trust center looks identical.
+
+20. Policies: no PATCH or DELETE, no versioning workflow
+Policies can be created from templates but never edited, versioned, or retired. The version field in the DB is static. Real policy management requires: draft → review → approved → published lifecycle, version history, mandatory re-acknowledgment on new versions.
+
+P3 - UX / Practitioner Workflow
+21. No crosswalk / evidence mapping view
+GRC analysts spend significant time on crosswalks — showing how one piece of evidence or one control satisfies multiple frameworks simultaneously. The UCO model is designed for this but there's no UI surface that shows "this MFA policy satisfies SOC2 CC6.1 + FedRAMP IA-2(1) + CMMC IA.L2-3.5.3 + HIPAA 164.312(d)." This is the highest-leverage view in the product.
+
+22. No CSV/PDF compliance report export
+No way to export a "compliance posture report" for a board meeting, for a sales prospect, or for an internal stakeholder. Vanta and Drata both have one-click compliance reports. The platform has all the data, it just needs a report renderer.
+
+23. No bulk operations anywhere
+Can't bulk-assign controls to owners, bulk-acknowledge policies, bulk-update vendor risk tiers, or bulk-add people from a CSV. Enterprise teams manage hundreds of items.
+
+24. Filter state resets on navigation
+Navigating away from Controls (filtered to "failing") or Risks (filtered to "critical") and back loses the filter. This is frustrating when working through a backlog of 40+ failing controls.
+
+25. Dashboard empty state for new orgs is unclear
+A brand new organization sees 0% scores and no guidance on what to do first. There's no "getting started" checklist or onboarding flow continuation inside the dashboard that says "connect GitHub → run your first automated tests → review your 43 controls."
+
+26. No risk heat map visualization
+The Risk Register has likelihood × impact scores but only shows them as numbers. A 5×5 risk heat map matrix is standard in every GRC tool and instantly communicates risk distribution to executives.
+
+27. Audit engagements show access token in an alert() box
+When you create an audit engagement, the auditor access token appears in a window.alert(). This is a security and UX issue — tokens should be shown in a proper copy-to-clipboard modal and never in a browser alert.
+
+28. People MFA status is a checkbox, not evidence-backed
+The MFA field is a boolean you type in. It should be a status derived from integration data (GitHub org MFA enforcement, Okta MFA factors, GWS 2-step enrollment) with a "last verified" timestamp. Manual MFA tracking fails SOC 2 CC6.1 audit scrutiny.
+
+What "Production Grade" Requires — Priority Order
+Priority	Item	Effort
+P0	Evidence file upload (object storage)	Medium
+P0	Policy acknowledgment API + workflow	Medium
+P0	Real AI for questionnaire auto-answer	Medium
+P0	Vendor assessment response portal	High
+P1	People + Vendor PATCH/DELETE	Low
+P1	POAM auto-populate from failing controls	Low
+P1	Evidence → audit request linking	Low
+P1	SSP DOCX export	Medium
+P1	Expand automated tests (AWS, Okta, GWS)	High
+P2	Evidence expiration/staleness	Low
+P2	Risk-to-control linkage in UI	Low
+P2	Compliance score history snapshots	Medium
+P2	Custom frameworks in main overview	Low
+P2	Policy lifecycle (draft/review/publish)	Medium
+P3	Crosswalk view	Medium
+P3	Compliance report PDF export	Medium
+P3	Risk heat map	Low
+P3	Fix alert() → proper token modal	Low

@@ -20,6 +20,11 @@ const TEMPLATE_QUESTIONS: Record<string, string[]> = {
     "Do you have SOC 2, ISO 27001, or equivalent certification?",
     "Do you conduct background checks on employees with data access?",
     "Do you have a Business Continuity Plan (BCP)?",
+    "Do you maintain a formal vendor risk management program?",
+    "Is privileged access managed and monitored using PAM tools?",
+    "Do you enforce least privilege across all systems?",
+    "Do you have a written information security policy?",
+    "Do you have a documented data classification policy?",
   ],
   "caiq": [
     "Do you provide tenants with documentation detailing your data residency options?",
@@ -32,6 +37,23 @@ const TEMPLATE_QUESTIONS: Record<string, string[]> = {
     "Do you have a documented data breach notification procedure?",
     "Do you undergo annual third-party security audits?",
     "Do you maintain an asset inventory?",
+    "Do you use a SIEM or centralized log management system?",
+    "Is data wiped or destroyed securely when decommissioning hardware?",
+    "Do you have a formal software development lifecycle (SDLC) security process?",
+    "Do you perform code reviews and/or static analysis before releases?",
+    "Do you maintain a bug bounty or responsible disclosure program?",
+  ],
+  "vsaq": [
+    "What certifications does your organization hold (SOC 2, ISO 27001, FedRAMP, etc.)?",
+    "Do you have a dedicated security team or CISO?",
+    "How are security incidents escalated and communicated to customers?",
+    "Do you have cyber liability insurance?",
+    "What is your mean time to detect (MTTD) and mean time to respond (MTTR) for security incidents?",
+    "Do you perform regular tabletop exercises or incident response drills?",
+    "Are employees required to sign NDAs and acceptable use policies?",
+    "Do you have a formal offboarding process that revokes all access?",
+    "Do you use a password manager or enforce password complexity requirements?",
+    "How do you handle subprocessors and fourth-party risk?",
   ],
 };
 
@@ -88,13 +110,14 @@ export default function Questionnaires() {
   const vendorAssessments = vendorData?.assessments ?? [];
   const vendors = vendorsData?.vendors ?? [];
   const answeredCount = items.filter((i) => i.answer).length;
+  const autoAnsweredCount = items.filter((i) => i.answer && i.matchedControlId).length;
 
   return (
     <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Security Questionnaires</h1>
-          <p className="text-sm text-slate-500 mt-0.5">AI-assisted questionnaire response and vendor risk assessments</p>
+          <p className="text-sm text-slate-500 mt-0.5">Questionnaire response management and vendor risk assessments</p>
         </div>
         <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
           + New Questionnaire
@@ -114,10 +137,17 @@ export default function Questionnaires() {
         <div className="space-y-3">
           {questionnaires.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-              <p className="text-slate-500 text-sm">No questionnaires yet. Create one to auto-fill responses from your compliance data.</p>
+              <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+              <p className="text-slate-600 font-medium">No questionnaires yet</p>
+              <p className="text-slate-400 text-sm mt-1 mb-4">Create one to auto-fill responses from your compliance controls and evidence.</p>
+              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create questionnaire</button>
             </div>
           ) : questionnaires.map((q) => (
-            <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between cursor-pointer hover:border-blue-300" onClick={() => setSelectedQ(q)}>
+            <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between cursor-pointer hover:border-blue-300 transition-colors" onClick={() => setSelectedQ(q)}>
               <div>
                 <p className="font-medium text-slate-800">{q.title}</p>
                 <p className="text-sm text-slate-500 mt-0.5">{q.requesterCompany} {q.requesterEmail && `(${q.requesterEmail})`}</p>
@@ -139,21 +169,34 @@ export default function Questionnaires() {
             </button>
             <h2 className="font-semibold text-slate-900">{selectedQ.title}</h2>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm flex items-center justify-between">
-            <span className="text-blue-700">AI auto-answered {answeredCount} of {items.length} questions from your compliance data</span>
-            <span className="text-xs font-medium text-blue-600">{items.length > 0 ? Math.round((answeredCount / items.length) * 100) : 0}% complete</span>
-          </div>
+
+          {autoAnsweredCount > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="h-4 w-4 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <span className="text-blue-700">
+                  {autoAnsweredCount} of {items.length} questions pre-filled by keyword matching against your compliance data.
+                  <span className="text-blue-500 ml-1">Review and edit all answers before sending.</span>
+                </span>
+              </div>
+              <span className="text-xs font-medium text-blue-600 flex-shrink-0">{items.length > 0 ? Math.round((answeredCount / items.length) * 100) : 0}% complete</span>
+            </div>
+          )}
+
           <div className="space-y-3">
             {items.map((item, idx) => (
               <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
-                  <span className="text-xs font-mono font-semibold text-slate-400 pt-0.5">Q{idx + 1}</span>
+                  <span className="text-xs font-mono font-semibold text-slate-400 pt-0.5 flex-shrink-0">Q{idx + 1}</span>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-800 mb-2">{item.question}</p>
                     {item.matchedControlId && (
                       <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">AI matched: {item.matchedControlId}</span>
-                        {item.confidence && <span className="text-xs text-slate-400">{Math.round(item.confidence * 100)}% confidence</span>}
+                        <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                          Matched: {item.matchedControlId}
+                        </span>
+                        <span className="text-xs text-slate-400">keyword match - verify accuracy</span>
                       </div>
                     )}
                     <textarea
@@ -176,7 +219,7 @@ export default function Questionnaires() {
           <div className="flex justify-end mb-4">
             {vendors.length > 0 && (
               <select defaultValue="" onChange={(e) => { if (e.target.value) sendVendorMutation.mutate({ vendorId: Number(e.target.value), templateType: "sig-lite" }); }}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white">
                 <option value="">Send assessment to vendor...</option>
                 {vendors.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
@@ -208,7 +251,10 @@ export default function Questionnaires() {
       {showNew && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="p-5 border-b border-slate-100"><h2 className="font-semibold text-slate-900">New Security Questionnaire</h2></div>
+            <div className="p-5 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-900">New Security Questionnaire</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Responses will be pre-filled using keyword matching against your controls and evidence.</p>
+            </div>
             <div className="p-5 space-y-3">
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Acme Corp SIG-Lite 2025" /></div>
@@ -219,18 +265,24 @@ export default function Questionnaires() {
                   <input value={form.requesterCompany} onChange={(e) => setForm({ ...form, requesterCompany: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
               </div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Template</label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, questions: TEMPLATE_QUESTIONS[e.target.value] ?? TEMPLATE_QUESTIONS["sig-lite"] })}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                <select value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value, questions: TEMPLATE_QUESTIONS[e.target.value] ?? TEMPLATE_QUESTIONS["sig-lite"] })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white">
                   <option value="sig-lite">SIG-Lite ({TEMPLATE_QUESTIONS["sig-lite"].length} questions)</option>
                   <option value="caiq">CAIQ ({TEMPLATE_QUESTIONS["caiq"].length} questions)</option>
-                </select></div>
-              <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg p-2">AI will auto-answer questions matched to your compliance controls and evidence.</p>
+                  <option value="vsaq">VSAQ ({TEMPLATE_QUESTIONS["vsaq"].length} questions)</option>
+                </select>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500">
+                <p className="font-semibold text-slate-700 mb-1">How pre-filling works</p>
+                <p>Answers are generated by matching question keywords against your compliance controls and evidence. All answers are editable - review each one before sending.</p>
+              </div>
             </div>
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createMutation.mutate(form)} disabled={!form.title || createMutation.isPending}
                 className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {createMutation.isPending ? "Processing..." : "Create & Auto-Answer"}
+                {createMutation.isPending ? "Processing..." : "Create & Pre-fill"}
               </button>
             </div>
           </div>

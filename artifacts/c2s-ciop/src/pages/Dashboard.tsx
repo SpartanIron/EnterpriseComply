@@ -79,6 +79,49 @@ export default function Dashboard() {
 
   const firstName = user?.firstName ?? user?.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "";
 
+  const policiesCount = dashData?.policiesCount ?? 0;
+  const peopleCount = dashData?.peopleCount ?? 0;
+
+  const gettingStartedSteps = [
+    {
+      id: "framework",
+      label: "Add a compliance framework",
+      done: frameworks.length > 0,
+      href: "/frameworks",
+      icon: <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+    },
+    {
+      id: "integration",
+      label: "Connect an integration to collect evidence",
+      done: connectedIntegrations > 0,
+      href: "/integrations",
+      icon: <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+    },
+    {
+      id: "policy",
+      label: "Add your first security policy",
+      done: policiesCount > 0,
+      href: "/policies",
+      icon: <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+    },
+    {
+      id: "people",
+      label: "Add people to your workforce roster",
+      done: peopleCount > 0,
+      href: "/people",
+      icon: <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+    },
+    {
+      id: "controls",
+      label: "Review your control status",
+      done: cs.passing > 0,
+      href: "/controls",
+      icon: <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
+    },
+  ];
+  const completedSteps = gettingStartedSteps.filter(s => s.done).length;
+  const showChecklist = completedSteps < gettingStartedSteps.length;
+
   return (
     <div className="p-6 space-y-6">
 
@@ -176,6 +219,45 @@ export default function Dashboard() {
           <p className="text-xs text-slate-400 mt-0.5">of 12 available</p>
         </div>
       </div>
+
+      {/* Getting started checklist */}
+      {showChecklist && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Getting started</h2>
+              <p className="text-sm text-slate-400 mt-0.5">{completedSteps} of {gettingStartedSteps.length} steps complete</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                  style={{ width: `${(completedSteps / gettingStartedSteps.length) * 100}%` }} />
+              </div>
+              <span className="text-xs font-semibold text-slate-500">{Math.round((completedSteps / gettingStartedSteps.length) * 100)}%</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {gettingStartedSteps.map(step => (
+              <button key={step.id} onClick={() => navigate(step.href)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${step.done ? "border-green-200 bg-green-50/50" : "border-slate-200 hover:border-blue-200 hover:bg-blue-50/50"}`}>
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 ${step.done ? "bg-green-500" : "bg-slate-200"}`}>
+                  {step.done
+                    ? <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    : <span className="h-2 w-2 rounded-full bg-white opacity-60" />
+                  }
+                </div>
+                <div className={`flex items-center gap-2 flex-1 min-w-0 ${step.done ? "text-green-700" : "text-slate-700"}`}>
+                  <span className={`text-slate-400 flex-shrink-0 ${step.done ? "opacity-50" : ""}`}>{step.icon}</span>
+                  <span className={`text-sm font-medium ${step.done ? "line-through opacity-60" : ""}`}>{step.label}</span>
+                </div>
+                {!step.done && (
+                  <svg className="h-4 w-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Framework Compliance */}
       <div>

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { EvidenceService } from "./evidence.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
 
@@ -19,8 +19,14 @@ export class EvidenceController {
   addEvidence(
     @OrgContext() ctx: OrgCtx,
     @ClerkUserId() userId: string,
-    @Body() body: Record<string, string>,
+    @Body() body: Record<string, unknown>,
   ) {
-    return this.evidenceService.addEvidence(ctx.orgId, userId, body);
+    return this.evidenceService.addEvidence(ctx.orgId, userId, body as any);
+  }
+
+  @Delete(":id")
+  @UseGuards(OrgContextGuard)
+  deleteEvidence(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
+    return this.evidenceService.deleteEvidence(ctx.orgId, Number(id));
   }
 }

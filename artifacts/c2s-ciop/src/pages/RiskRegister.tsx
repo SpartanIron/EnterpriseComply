@@ -77,7 +77,7 @@ export default function RiskRegister() {
   const [form, setForm] = useState({
     title: "", description: "", category: "operational", asset: "",
     threat: "", likelihood: 3, impact: 3, treatment: "mitigate",
-    treatmentPlan: "", ownerName: "", ownerEmail: "", dueDate: "",
+    treatmentPlan: "", ownerName: "", ownerEmail: "", dueDate: "", ucoControlId: "",
   });
 
   const { data, isLoading } = useQuery<{ risks: any[]; summary: any }>({
@@ -257,6 +257,18 @@ export default function RiskRegister() {
                   <label className="block text-xs font-medium text-slate-600 mb-1">Due Date</label>
                   <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Related UCO Control</label>
+                  <input value={form.ucoControlId} onChange={(e) => setForm({ ...form, ucoControlId: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none font-mono" placeholder="UCO-AC-001" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Asset</label>
+                  <input value={form.asset} onChange={(e) => setForm({ ...form, asset: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Customer DB" />
                 </div>
               </div>
               <div>

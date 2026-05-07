@@ -37,10 +37,13 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   ),
 };
 
+const BLANK_FORM = { title: "", description: "", type: "document", url: "", ucoControlId: "", expiresAt: "" };
+
 export default function Evidence() {
   const qc = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", type: "document", url: "", ucoControlId: "" });
+  const [form, setForm] = useState({ ...BLANK_FORM });
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -56,22 +59,46 @@ export default function Evidence() {
 
   const addMutation = useMutation({
     mutationFn: async () => {
+      const body: Record<string, string> = {
+        title: form.title,
+        description: form.description,
+        type: form.type,
+        url: form.url,
+        ucoControlId: form.ucoControlId,
+      };
+      if (form.expiresAt) body.expiresAt = new Date(form.expiresAt).toISOString();
       const res = await fetch(apiUrl(`/orgs/${orgId}/evidence`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       });
       return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-evidence"] });
       setShowUpload(false);
-      setForm({ title: "", description: "", type: "document", url: "", ucoControlId: "" });
+      setForm({ ...BLANK_FORM });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/evidence/${id}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-evidence"] });
+      setConfirmDelete(null);
     },
   });
 
   const items = data?.evidence ?? [];
+  const now = new Date();
+  const staleItems = items.filter(e => e.expiresAt && new Date(e.expiresAt) < now);
   const autoItems = items.filter(e => e.source !== "manual");
   const manualItems = items.filter(e => e.source === "manual");
 
@@ -96,6 +123,18 @@ export default function Evidence() {
         }
       />
 
+      {staleItems.length > 0 && (
+        <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <svg className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-amber-800">{staleItems.length} evidence item{staleItems.length !== 1 ? "s" : ""} expired</p>
+            <p className="text-xs text-amber-600 mt-0.5">Review and refresh expired evidence to maintain audit readiness.</p>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : items.length === 0 ? (
@@ -103,22 +142,20 @@ export default function Evidence() {
           icon={FolderIcon}
           title="No evidence collected yet"
           body="Connect an integration to start collecting evidence automatically, or add evidence manually to map it to your controls."
-          action={
-            <PrimaryButton onClick={() => setShowUpload(true)}>Add evidence manually</PrimaryButton>
-          }
+          action={<PrimaryButton onClick={() => setShowUpload(true)}>Add evidence manually</PrimaryButton>}
         />
       ) : (
         <div className="space-y-6">
           {autoItems.length > 0 && (
             <div>
               <SectionLabel>Automated Evidence ({autoItems.length})</SectionLabel>
-              <EvidenceTable items={autoItems} />
+              <EvidenceTable items={autoItems} onDelete={setConfirmDelete} />
             </div>
           )}
           {manualItems.length > 0 && (
             <div>
               <SectionLabel>Manual Evidence ({manualItems.length})</SectionLabel>
-              <EvidenceTable items={manualItems} />
+              <EvidenceTable items={manualItems} onDelete={setConfirmDelete} />
             </div>
           )}
         </div>
@@ -136,21 +173,14 @@ export default function Evidence() {
             <div className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Title *</label>
-                <input
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="MFA configuration screenshot"
-                />
+                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="MFA configuration screenshot" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Type</label>
-                  <select
-                    value={form.type}
-                    onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
+                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     {["document", "screenshot", "log", "report"].map(t => (
                       <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
                     ))}
@@ -158,44 +188,49 @@ export default function Evidence() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Control ID</label>
-                  <input
-                    value={form.ucoControlId}
-                    onChange={e => setForm(f => ({ ...f, ucoControlId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="UCO-AI-001"
-                  />
+                  <input value={form.ucoControlId} onChange={e => setForm(f => ({ ...f, ucoControlId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="UCO-AI-001" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  rows={3}
-                  placeholder="Describe this evidence item..."
-                />
+                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={3} placeholder="Describe this evidence item..." />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">URL (optional)</label>
-                <input
-                  value={form.url}
-                  onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://..."
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">URL (optional)</label>
+                  <input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Expiry Date</label>
+                  <input type="date" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
               </div>
             </div>
             <div className="p-5 border-t border-slate-100 flex justify-end gap-2">
-              <button onClick={() => setShowUpload(false)} className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
-                Cancel
-              </button>
-              <button
-                onClick={() => addMutation.mutate()}
-                disabled={!form.title || addMutation.isPending}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
+              <button onClick={() => setShowUpload(false)} className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={() => addMutation.mutate()} disabled={!form.title || addMutation.isPending}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
                 {addMutation.isPending ? "Adding..." : "Add Evidence"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete !== null && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="font-bold text-slate-900 mb-2">Delete evidence?</h3>
+            <p className="text-sm text-slate-500 mb-5">This will permanently remove this evidence item from your vault.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Cancel</button>
+              <button onClick={() => deleteMutation.mutate(confirmDelete!)} disabled={deleteMutation.isPending}
+                className="flex-1 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50">
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
@@ -205,7 +240,8 @@ export default function Evidence() {
   );
 }
 
-function EvidenceTable({ items }: { items: any[] }) {
+function EvidenceTable({ items, onDelete }: { items: any[]; onDelete: (id: number) => void }) {
+  const now = new Date();
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
       <table className="w-full text-sm">
@@ -215,14 +251,18 @@ function EvidenceTable({ items }: { items: any[] }) {
             <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Control</th>
             <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Source</th>
             <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Collected</th>
+            <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Expires</th>
+            <th className="px-5 py-3" />
           </tr>
         </thead>
         <tbody>
           {items.map((e: any, idx: number) => {
             const src = SOURCE_LABEL[e.source] ?? SOURCE_LABEL.manual;
             const icon = TYPE_ICON[e.type] ?? TYPE_ICON.document;
+            const expired = e.expiresAt && new Date(e.expiresAt) < now;
+            const expiringSoon = e.expiresAt && !expired && new Date(e.expiresAt) < new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             return (
-              <tr key={e.id} className={`${idx > 0 ? "border-t border-slate-100" : ""} hover:bg-slate-50 transition-colors`}>
+              <tr key={e.id} className={`${idx > 0 ? "border-t border-slate-100" : ""} hover:bg-slate-50 transition-colors group ${expired ? "bg-amber-50/30" : ""}`}>
                 <td className="px-5 py-3.5">
                   <div className="flex items-start gap-3">
                     <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 flex-shrink-0 mt-0.5">
@@ -231,6 +271,7 @@ function EvidenceTable({ items }: { items: any[] }) {
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 text-sm leading-snug">{e.title}</p>
                       {e.description && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{e.description}</p>}
+                      {expired && <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 mt-0.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Expired</span>}
                     </div>
                   </div>
                 </td>
@@ -245,6 +286,18 @@ function EvidenceTable({ items }: { items: any[] }) {
                 </td>
                 <td className="px-5 py-3.5 hidden lg:table-cell">
                   <span className="text-xs text-slate-400">{e.collectedAt ? new Date(e.collectedAt).toLocaleDateString() : "-"}</span>
+                </td>
+                <td className="px-5 py-3.5 hidden lg:table-cell">
+                  {e.expiresAt ? (
+                    <span className={`text-xs font-medium ${expired ? "text-amber-600" : expiringSoon ? "text-orange-500" : "text-slate-400"}`}>
+                      {new Date(e.expiresAt).toLocaleDateString()}
+                    </span>
+                  ) : <span className="text-slate-300 text-xs">-</span>}
+                </td>
+                <td className="px-5 py-3.5">
+                  <button onClick={() => onDelete(e.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100">
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
                 </td>
               </tr>
             );

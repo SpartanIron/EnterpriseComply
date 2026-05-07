@@ -6,10 +6,10 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-co
 
 - `pnpm --filter @workspace/api-server run dev` - run the API server (port 8080, proxied via `/api`)
 - `pnpm --filter @workspace/c2s-ciop run dev` - run the frontend (port 19222, proxied via `/`)
-- `pnpm run typecheck` - full typecheck across all packages
+- `pnpm run typecheck` - full typecheck across all packages (all 4 packages pass clean)
 - `pnpm run build` - typecheck + build all packages
 - `psql "$DATABASE_URL" -f <sql-file>` - push schema changes (drizzle-kit push blocks interactively; use psql directly)
-- `npx tsx lib/db/src/seed-colorcomply.ts` - re-seed UCO controls, framework mappings, automated tests
+- `cd lib/db && /home/runner/workspace/artifacts/c2s-ciop/node_modules/.bin/tsx src/seed-colorcomply.ts` - re-seed UCO controls, 147 framework mappings, automated tests
 - Required env: `DATABASE_URL`, `SESSION_SECRET`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`
 - Optional: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` for GitHub OAuth integration
 
@@ -26,23 +26,25 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-co
 ## Where things live
 
 - `lib/db/src/schema/` - all Drizzle table definitions (13 schema files, 28 tables)
-- `lib/db/src/seed-colorcomply.ts` - seeds UCO controls + framework mappings + automated tests
-- `artifacts/api-server/src/modules/` - 19 NestJS modules (see list below)
+- `lib/db/src/seed-colorcomply.ts` - seeds 41 UCO controls + 147 framework mappings + 6 automated tests
+- `lib/db/src/seed-intelligence.ts` - stub/no-op (superseded by seed-colorcomply.ts)
+- `artifacts/api-server/src/modules/` - 19 NestJS modules
 - `artifacts/api-server/src/guards/` - ClerkAuthGuard, OrgContextGuard, param decorators
 - `artifacts/api-server/src/middlewares/` - ClerkProxyMiddleware (production only)
-- `artifacts/c2s-ciop/src/pages/` - 23 pages (see Product section)
+- `artifacts/c2s-ciop/src/pages/` - 23 pages
 - `artifacts/c2s-ciop/src/components/layout/AppShell.tsx` - sidebar + layout shell
 - `artifacts/c2s-ciop/src/hooks/useOrg.ts` - shared org hook
 
 ## Architecture decisions
 
 - **Multi-tenant by orgId**: every table has `org_id`; all routes scoped to `/orgs/:orgId/...` with Clerk auth middleware
-- **UCO (Universal Control Objectives)**: 41 canonical controls mapped to 12 frameworks - implement once, satisfy all frameworks simultaneously
+- **UCO (Universal Control Objectives)**: 41 canonical controls mapped to 147 framework entries across 12 frameworks - implement once, satisfy all simultaneously
 - **Clerk proxy only in production**: `proxyUrl` on ClerkProvider is only set when `import.meta.env.PROD`; dev mode loads Clerk JS directly from CDN
 - **NestJS modular architecture**: each domain is a self-contained module (controller + service + module); guards in `src/guards/`
 - **DB migrations via psql**: `drizzle-kit push` blocks interactively on existing constraints; use `psql "$DATABASE_URL" -c "CREATE TABLE IF NOT EXISTS..."` for new tables
 - **GitHub OAuth connector**: `GET /api/integrations/github/connect` - GitHub OAuth - callback stores token + syncs repos/members/MFA
 - **Demo connect**: non-GitHub integrations (GWS, AWS, Okta, Azure AD, Slack) use `POST /api/orgs/:orgId/integrations/:key/demo-connect` to simulate a connection and collect sample evidence
+- **Drizzle insert typing**: service methods accept `Record<string, unknown>` and spread with `as any` into Drizzle `.values()` - type-safe at the schema level but bypasses strict TS overload resolution
 
 ## Product
 
@@ -51,12 +53,12 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-co
 **Onboarding**: 4-step wizard: company info - framework selection (12 frameworks) - GitHub connect - done
 
 **App (authenticated) - 23 pages across 7 nav sections:**
-- Overview: Dashboard (score ring, per-framework cards, stats)
-- Compliance: Frameworks, Controls (UCO grouped by domain), Risk Register
-- Evidence: Integrations (12 integrations, 6 connectable), Evidence Vault, Monitoring (drift detection, notifications)
-- Workforce: Policies, People (MFA/training table), Access Reviews (attestation campaigns), Vendors
-- Audit & Sales: Auditor Portal (engagement management, evidence requests, access-token portal), Questionnaires (AI-assisted responses), Trust Center (public-facing page)
-- Federal: POA&M, SPRS Score (CMMC/NIST 800-171 scoring), SSP Generator, Custom Frameworks
+- Overview: Dashboard (score ring, per-framework cards, stats, getting-started checklist)
+- Compliance: Frameworks, Controls (UCO grouped by domain), Risk Register (heat map + UCO control linkage)
+- Evidence: Integrations (25-item catalog, 6 connectable), Evidence Vault (staleness badges + DELETE), Monitoring (drift detection, notifications)
+- Workforce: Policies (30 templates, lifecycle, acknowledgment tracking), People (edit/delete modals, MFA/training table), Access Reviews (attestation campaigns), Vendors (edit/delete modals)
+- Audit & Sales: Auditor Portal (engagement management, evidence requests, copy-token modal), Questionnaires (honest AI labeling + keyword matching), Trust Center (public-facing page)
+- Federal: POA&M (create-from-failing button, PATCH/DELETE), SPRS Score (CMMC/NIST 800-171 scoring), SSP Generator, Custom Frameworks
 - Settings + Audit Log
 
 ## User preferences
@@ -75,7 +77,7 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-co
 - `artifacts/c2s-ciop/src/lib/queryClient.ts` exports `apiUrl()` and `apiFetch()` helpers - use these for all API calls
 - NestJS esbuild: externalize `@nestjs/websockets`, `@nestjs/microservices`, `class-transformer`, `class-validator`
 - **NestJS dev runner must use SWC, not tsx**: `tsx` uses esbuild and does NOT emit decorator metadata; NestJS DI silently fails. Dev script: `node --import @swc-node/register/esm-register src/main.ts`
-- `npx tsx` (global) doesn't have access to `pg` - run DB scripts from `lib/db` where pg is installed, or use `psql` directly
+- `npx tsx` (global) doesn't have access to `pg` - use absolute path: `/home/runner/workspace/artifacts/c2s-ciop/node_modules/.bin/tsx` from `lib/db/`
 - `drizzle-kit push` blocks on `organizations_slug_unique` constraint prompt in dev - use psql for new table additions
 
 ## Pointers
