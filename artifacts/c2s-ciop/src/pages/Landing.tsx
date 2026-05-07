@@ -13,7 +13,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Unify & Standardize",
-    desc: "Centralize policies, controls, and obligations in a single source of truth across every framework.",
+    desc: "One canonical control set drives every framework simultaneously. Update it once - all 23 frameworks reflect it instantly.",
   },
   {
     icon: (
@@ -23,7 +23,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Identify & Mitigate Risk",
-    desc: "Proactively detect, assess, and prioritize risks before they become issues.",
+    desc: "Surface risks by severity, owner, and framework impact before they appear in your audit findings.",
   },
   {
     icon: (
@@ -33,7 +33,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Automate & Streamline",
-    desc: "Automate workflows, tests, and evidence collection to save time and reduce errors.",
+    desc: "Automate evidence collection, control testing, and workflow routing. Your team handles exceptions, not administration.",
   },
   {
     icon: (
@@ -43,7 +43,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Monitor & Measure",
-    desc: "Real-time dashboards and analytics to measure performance and prove compliance.",
+    desc: "Live posture scoring across every active framework. Walk into any audit with a defensible, timestamped evidence trail.",
   },
   {
     icon: (
@@ -53,7 +53,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Collaborate & Assign",
-    desc: "Drive accountability with role-based access, tasks, and approvals across your team.",
+    desc: "Assign controls, tasks, and approvals across teams. Every action is timestamped, attributed, and audit-logged.",
   },
   {
     icon: (
@@ -63,7 +63,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Adapt & Stay Ahead",
-    desc: "Maintain a continuous audit trail and be ready for anything with built-in intelligence.",
+    desc: "New frameworks and requirement changes propagate automatically. Your posture updates before your auditors ask.",
   },
 ];
 
@@ -321,17 +321,17 @@ export default function Landing() {
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-7 border"
                 style={{ background: "rgba(37,99,235,0.06)", borderColor: "rgba(37,99,235,0.2)", color: "#1d4ed8" }}>
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                ColorCode Solutions - by colorcodesolutions.com
+                by ColorCode Solutions
               </div>
               <h1 className="font-extrabold leading-tight tracking-tight mb-6" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "#0f172a" }}>
                 Compliance<br />Intelligence.
                 <br />
                 <span style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 50%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                  Built for What's Next.
+                  One Control. Every Framework.
                 </span>
               </h1>
               <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#475569" }}>
-                Unify risk, controls, policies, and obligations in one intelligent platform and turn compliance into a strategic advantage for your enterprise.
+                Map a single control implementation across SOC 2, FedRAMP, CMMC, ISO 27001, and 19 more frameworks - simultaneously. Stop doing compliance work three times.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-10">
                 <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
@@ -353,10 +353,10 @@ export default function Landing() {
               </div>
               <div className="flex items-center gap-6 flex-wrap">
                 {[
-                  { icon: "M13 10V3L4 14h7v7l9-11h-7z", label: "Enterprise Grade Security" },
-                  { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", label: "AI-Powered Insights" },
-                  { icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", label: "Automate & Scale" },
-                  { icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "Audit Ready Always" },
+                  { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", label: "Bank-Grade Encryption" },
+                  { icon: "M13 10V3L4 14h7v7l9-11h-7z", label: "Live in 10 Minutes" },
+                  { icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", label: "No Professional Services" },
+                  { icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "Continuous Monitoring" },
                 ].map(({ icon, label }) => (
                   <div key={label} className="flex items-center gap-1.5 text-sm" style={{ color: "#64748b" }}>
                     <svg className="h-4 w-4 flex-shrink-0" style={{ color: "#2563eb" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -401,7 +401,7 @@ export default function Landing() {
             {[
               { value: "23", label: "Compliance Frameworks", sub: "SOC 2 to FedRAMP High" },
               { value: "71", label: "Universal Controls", sub: "Across 12 control domains" },
-              { value: "388+", label: "Framework Mappings", sub: "Authoritative mappings" },
+              { value: "388+", label: "Framework Mappings", sub: "Curated and kept current" },
               { value: "10 min", label: "Setup to First Score", sub: "No professional services" },
             ].map(({ value, label, sub }) => (
               <div key={label}>
@@ -428,7 +428,7 @@ export default function Landing() {
                 </span>
               </h2>
               <p className="text-base leading-relaxed mb-6" style={{ color: "#64748b" }}>
-                EnterpriseComply's UCO layer maps 71 canonical controls to all 23 frameworks at once. A single control implementation - like enforcing MFA - automatically satisfies SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and more in one action. No duplicated effort. No missed requirements.
+                EnterpriseComply's UCO layer maps 71 canonical controls to all 23 frameworks at once. A single control implementation - like enforcing MFA - automatically satisfies SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and more in one action. No duplicated work. No gaps.
               </p>
               <div className="space-y-3">
                 {[
@@ -493,13 +493,13 @@ export default function Landing() {
       <section id="features" style={{ background: "#ffffff" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="max-w-xl mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#2563eb" }}>One platform. Complete control.</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#2563eb" }}>Precision-built for enterprise GRC.</p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-4 leading-tight">
-              Everything You Need to<br />
-              <span style={{ color: "#2563eb" }}>Operationalize Compliance</span>
+              The Operating System<br />
+              <span style={{ color: "#2563eb" }}>for Compliance.</span>
             </h2>
             <p className="text-base text-slate-500 leading-relaxed">
-              EnterpriseComply brings everything together - people, processes, and data - so you can manage risk, meet obligations, and drive continuous improvement with confidence.
+              From policy to evidence to audit, every workflow runs in one system. No spreadsheets, no siloed tools, no gaps between what you've done and what you can prove.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -530,7 +530,7 @@ export default function Landing() {
               Purpose-Built. Industry-Ready.
             </h2>
             <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: "#64748b" }}>
-              EnterpriseComply is designed to address the unique compliance requirements of your industry.
+              From Wall Street to the Pentagon. The only GRC platform with a native federal layer alongside full commercial framework coverage - one system for every obligation.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -572,18 +572,18 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#3b82f6" }}>Turn compliance into competitive advantage</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#3b82f6" }}>Stop treating compliance as overhead.</p>
               <h2 className="font-extrabold tracking-tight leading-tight" style={{ fontSize: "clamp(2rem, 4vw, 3rem)" }}>
-                <span className="text-white">Stronger Compliance.</span>
+                <span className="text-white">Stop Managing Compliance.</span>
                 <br />
                 <span style={{ background: "linear-gradient(135deg, #3b82f6 0%, #0ea5e9 60%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                  Smarter Business.
+                  Start Owning It.
                 </span>
               </h2>
             </div>
             <div>
               <p className="text-base leading-relaxed mb-8" style={{ color: "#64748b" }}>
-                Join forward-thinking organizations that trust EnterpriseComply to reduce risk, drive efficiency, and build a culture of accountability.
+                The organizations that win on compliance treat it as a system, not a project. EnterpriseComply gives your team that system - and the time to use it.
               </p>
               <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
                 className="inline-flex items-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl text-sm transition-all hover:scale-105"
@@ -601,10 +601,10 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-14">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: "Secure by Design", desc: "Enterprise-grade security, encryption, and controls to protect your data." },
-              { icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z", title: "Scalable by Nature", desc: "Built to scale with your organization - today and into the future." },
-              { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", title: "AI-Powered Insights", desc: "Use data and intelligence to make smarter decisions and stay ahead of risk." },
-              { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", title: "Always Audit Ready", desc: "Maintain a continuous audit trail and be ready for anything, always." },
+              { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: "Secure by Design", desc: "Zero-trust architecture, AES-256 encryption, and SOC 2-compliant infrastructure from day one." },
+              { icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z", title: "Scalable by Nature", desc: "From Series A to Fortune 500. Multi-tenant architecture built for the volume enterprise compliance demands." },
+              { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", title: "AI-Powered Insights", desc: "Control gap analysis, framework delta alerts, and risk prioritization - surfaced automatically, not after the audit." },
+              { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", title: "Always Audit Ready", desc: "Continuous evidence collection means your audit package is always current. No scramble. No gaps." },
             ].map(({ icon, title, desc }) => (
               <div key={title} className="flex flex-col gap-3">
                 <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.2)" }}>
@@ -635,7 +635,7 @@ export default function Landing() {
                 <span className="font-bold text-white">EnterpriseComply</span>
               </a>
               <p className="text-sm leading-relaxed mb-5" style={{ color: "#475569" }}>
-                EnterpriseComply is a next-generation GRC platform that helps organizations reduce risk, meet regulatory obligations, and drive operational excellence.
+                EnterpriseComply maps one control to 23 compliance frameworks simultaneously - giving security and compliance teams the leverage to do more with less.
               </p>
               <div className="flex gap-3">
                 {["M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"].map((d, i) => (
@@ -682,7 +682,7 @@ export default function Landing() {
           {/* Bottom bar */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
             <p className="text-xs" style={{ color: "#334155" }}>
-              &copy; 2025 ColorCodeSolutions. All rights reserved.
+              &copy; 2026 ColorCode Solutions. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((link) => (
