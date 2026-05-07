@@ -97,7 +97,7 @@ export default function TrustCenter() {
             </div>
             <div>
               <p className="text-white font-bold text-lg">{preview?.org?.name ?? "Your Organization"}</p>
-              <p className="text-blue-100 text-sm">Security and compliance overview - updated automatically</p>
+              <p className="text-blue-100 text-sm">Security and compliance overview, updated automatically</p>
             </div>
           </div>
           <div className="flex items-center gap-6">
@@ -133,7 +133,7 @@ export default function TrustCenter() {
                 {[
                   { step: "1", title: "Activate frameworks", body: "Go to Frameworks and activate SOC 2, ISO 27001, or any compliance standard to show your certifications.", link: "/frameworks" },
                   { step: "2", title: "Publish policies", body: "Go to Policies, create policies from templates, and publish them to surface them on your trust page.", link: "/policies" },
-                  { step: "3", title: "Share the URL", body: "Share your Trust Center URL with customers, prospects, and auditors - it updates automatically.", link: null },
+                  { step: "3", title: "Share the URL", body: "Share your Trust Center URL with customers, prospects, and auditors; it updates automatically.", link: null },
                 ].map(({ step, title, body, link }) => (
                   <div key={step} className="bg-white border border-blue-100 rounded-xl p-4">
                     <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold mb-2">{step}</span>
@@ -150,7 +150,7 @@ export default function TrustCenter() {
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <p className="font-semibold text-slate-800 text-sm">Framework compliance scores</p>
-                <span className="text-xs text-slate-400">Live data - updates as evidence is collected</span>
+                <span className="text-xs text-slate-400">Live data; updates as evidence is collected</span>
               </div>
               <div className="p-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {(preview.frameworks ?? []).map((f: any) => (
@@ -295,7 +295,7 @@ export default function TrustCenter() {
               <div>
                 <p className="font-bold text-lg mb-1">Your compliance program is yours. Not ours.</p>
                 <p className="text-blue-100 text-sm leading-relaxed max-w-2xl">
-                  We've seen what happens when a certified MSP closes or a GRC vendor gets acquired - customers are left rebuilding their evidence from scratch, re-documenting controls they already paid to implement, and starting over. EnterpriseComply is built on a different principle: you own your data, you always have access to it, and you can take it with you at any time - no questions asked.
+                  We've seen what happens when a certified MSP closes or a GRC vendor gets acquired. Customers are left rebuilding their evidence from scratch, re-documenting controls they already paid to implement, and starting over. EnterpriseComply is built on a different principle: you own your data, you always have access to it, and you can take it with you at any time, no questions asked.
                 </p>
               </div>
             </div>
@@ -305,17 +305,17 @@ export default function TrustCenter() {
             {[
               {
                 question: "What happens if we change providers?",
-                answer: "Export your full compliance program as structured data at any time - controls, evidence, POA&Ms, risks, policies, and assessments. Your new provider or internal team can import it directly. Nothing is rebuilt from zero.",
+                answer: "Export your full compliance program as structured data at any time: controls, evidence, POA&Ms, risks, policies, and assessments. Your new provider or internal team can import it directly. Nothing is rebuilt from zero.",
                 icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4",
               },
               {
                 question: "What happens if EnterpriseComply closes?",
-                answer: "Your data is stored in your own tenant partition. We provide 90-day advance notice of any service changes plus an immediate full export. Your evidence artifacts are stored at the URLs you provided - not locked inside our system.",
+                answer: "Your data is stored in your own tenant partition. We provide 90-day advance notice of any service changes plus an immediate full export. Your evidence artifacts are stored at the URLs you provided, not locked inside our system.",
                 icon: "M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z",
               },
               {
                 question: "How much of our program would have to be redone?",
-                answer: "Zero. Every control implementation, every evidence item, every POA&M entry, every risk - all exportable as open formats (CSV, JSON, PDF). Your CMMC program lives in your export, not in our database.",
+                answer: "Zero. Every control implementation, every evidence item, every POA&M entry, every risk, all exportable as open formats (CSV, JSON, PDF). Your CMMC program lives in your export, not in our database.",
                 icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
               },
             ].map((item) => (
@@ -369,10 +369,10 @@ export default function TrustCenter() {
                 {[
                   "Exports available on-demand, 24/7, from Settings",
                   "No support ticket, no waiting period, no approval process",
-                  "Evidence artifact URLs are your URLs - stored exactly as you provided them",
+                  "Evidence artifact URLs are your URLs, stored exactly as you provided them",
                   "90-day advance notice of any service termination",
                   "Immediate full export upon account cancellation request",
-                  "Open formats only - CSV, JSON, and PDF - no proprietary lock-in",
+                  "Open formats only: CSV, JSON, and PDF, with no proprietary lock-in",
                 ].map((c) => (
                   <li key={c} className="flex items-start gap-2 text-xs text-green-700">
                     <svg className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -386,7 +386,7 @@ export default function TrustCenter() {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
               <p className="font-semibold text-slate-800 text-sm mb-2">Choosing a certified MSP? Ask these first.</p>
               <p className="text-xs text-slate-500 leading-relaxed mb-3">
-                Whether you use EnterpriseComply directly or through an MSP partner, your compliance data should always be accessible to you - not just to the MSP. Before signing any GRC or managed compliance contract, ask:
+                Whether you use EnterpriseComply directly or through an MSP partner, your compliance data should always be accessible to you, not just to the MSP. Before signing any GRC or managed compliance contract, ask:
               </p>
               <ul className="space-y-1.5">
                 {[

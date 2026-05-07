@@ -13,7 +13,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Unify & Standardize",
-    desc: "One canonical control set drives every framework simultaneously. Update it once - all 12 frameworks reflect it instantly.",
+    desc: "One canonical control set drives every framework simultaneously. Update it once and all 12 frameworks reflect it instantly.",
     page: "/controls",
   },
   {
@@ -71,7 +71,7 @@ const FEATURES = [
 const INDUSTRIES = [
   {
     name: "Defense & Government",
-    desc: "FedRAMP Moderate/High, CMMC L2, NIST 800-53, NIST 800-171, and StateRAMP - all native, not add-ons.",
+    desc: "FedRAMP Moderate/High, CMMC L2, NIST 800-53, NIST 800-171, and StateRAMP, all native, not add-ons.",
     photo: "https://images.unsplash.com/photo-1587131110607-07f5be87b5ba?w=600&h=400&fit=crop&q=80",
   },
   {
@@ -298,7 +298,7 @@ function ControlsScreen() {
         <div className="flex items-center justify-between">
           <div>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#0f172a" }}>Universal Control Objectives</p>
-            <p style={{ fontSize: 7, color: "#64748b", marginTop: 1 }}>71 controls across 12 domains - mapped to all active frameworks</p>
+            <p style={{ fontSize: 7, color: "#64748b", marginTop: 1 }}>71 controls across 12 domains, mapped to all active frameworks</p>
           </div>
           <div className="flex gap-2">
             {[{ label: "52 Passing", color: "#15803d", bg: "#f0fdf4" }, { label: "19 Failing", color: "#dc2626", bg: "#fef2f2" }].map(b => (
@@ -358,7 +358,7 @@ function IntegrationsScreen() {
         <div className="flex items-center justify-between">
           <div>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#0f172a" }}>Evidence Integrations</p>
-            <p style={{ fontSize: 7, color: "#64748b", marginTop: 1 }}>4 of 6 connected - collecting evidence automatically</p>
+            <p style={{ fontSize: 7, color: "#64748b", marginTop: 1 }}>4 of 6 connected, collecting evidence automatically</p>
           </div>
           <div className="flex items-center gap-1.5 px-2 py-1 rounded" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
             <div className="h-1.5 w-1.5 rounded-full bg-green-500" style={{ boxShadow: "0 0 4px #22c55e" }} />
@@ -531,7 +531,7 @@ export default function Landing() {
                 </span>
               </h1>
               <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#475569" }}>
-                The only GRC platform built federal-first. Native POA&amp;M, SPRS score tracking, and SSP generation for FedRAMP, CMMC, and NIST 800-171 - with full commercial framework coverage for SOC 2, ISO 27001, HIPAA, and 19 more. One control. Every obligation.
+                The only GRC platform built federal-first. Native POA&amp;M, SPRS score tracking, and SSP generation for FedRAMP, CMMC, and NIST 800-171, with full commercial framework coverage for SOC 2, ISO 27001, HIPAA, and 19 more. One control. Every obligation.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-10">
                 <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
@@ -628,13 +628,13 @@ export default function Landing() {
                 </span>
               </h2>
               <p className="text-base leading-relaxed mb-6" style={{ color: "#64748b" }}>
-                EnterpriseComply's UCO controls are security controls first - not compliance checklists. When you enforce MFA, you're reducing actual risk. The fact that it simultaneously satisfies FedRAMP, CMMC, NIST 800-171, SOC 2, ISO 27001, HIPAA, and more is a consequence of implementing genuine security - not the goal of it. No duplicated work. No gaps.
+                EnterpriseComply's UCO controls are security controls first, not compliance checklists. When you enforce MFA, you're reducing actual risk. The fact that it simultaneously satisfies FedRAMP, CMMC, NIST 800-171, SOC 2, ISO 27001, HIPAA, and more is a consequence of implementing genuine security, not the goal of it. No duplicated work. No gaps.
               </p>
               <div className="space-y-3">
                 {[
                   { label: "Security controls first.", detail: "Framework satisfaction is a consequence, not the objective." },
                   { label: "388+ authoritative mappings", detail: "maintained and kept current by our compliance team" },
-                  { label: "12 control domains", detail: "from Identity to Federal - every security obligation covered" },
+                  { label: "12 control domains", detail: "from Identity to Federal, covering every security obligation" },
                 ].map(({ label, detail }) => (
                   <div key={label} className="flex items-start gap-3">
                     <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)" }}>
@@ -712,7 +712,7 @@ export default function Landing() {
                 ),
                 accent: "#4f46e5",
                 title: "Security Controls, Not Audit Artifacts",
-                body: "Every UCO control is a real security objective - MFA enforcement, access reviews, encryption at rest, incident response. The compliance framework mappings are a byproduct of implementing genuine security, not the starting point.",
+                body: "Every UCO control is a real security objective: MFA enforcement, access reviews, encryption at rest, incident response. The compliance framework mappings are a byproduct of implementing genuine security, not the starting point.",
               },
               {
                 icon: (
@@ -722,7 +722,7 @@ export default function Landing() {
                 ),
                 accent: "#2563eb",
                 title: "Drift Detection, Not Point-in-Time Snapshots",
-                body: "Compliance status changes the moment a configuration drifts. Continuous monitoring tracks every integrated system in real time - alerting you when a passing control starts to fail, before your next audit reveals it.",
+                body: "Compliance status changes the moment a configuration drifts. Continuous monitoring tracks every integrated system in real time, alerting you when a passing control starts to fail, before your next audit reveals it.",
               },
               {
                 icon: (
@@ -732,7 +732,7 @@ export default function Landing() {
                 ),
                 accent: "#0891b2",
                 title: "Remediation Workflows, Not Finding Documentation",
-                body: "When a gap is identified - through a risk assessment, a failing control test, or a drift alert - it becomes a tracked remediation item with an owner, a due date, and a POA&M entry. Gaps close. They don't sit in a spreadsheet.",
+                body: "When a gap is identified (through a risk assessment, a failing control test, or a drift alert) it becomes a tracked remediation item with an owner, a due date, and a POA&M entry. Gaps close. They don't sit in a spreadsheet.",
               },
             ].map((col) => (
               <div key={col.title} className="relative p-7 rounded-2xl border border-slate-100 bg-white">
@@ -750,7 +750,7 @@ export default function Landing() {
               We don't help you pass audits.
             </p>
             <p className="text-sm text-slate-500">
-              We help you deserve to pass them - then make the audit itself effortless.
+              We help you deserve to pass them, then make the audit itself effortless.
             </p>
           </div>
         </div>
@@ -805,15 +805,15 @@ export default function Landing() {
                 <span style={{ color: "#2563eb" }}>compliance program if things change?</span>
               </h2>
               <p className="text-base text-slate-500 leading-relaxed mb-6">
-                A CMMC Level 2 certified MSP closed recently and left dozens of defense contractors with a painful problem - they had to rebuild their entire compliance program from scratch. Re-collect evidence. Re-document controls. Find a new provider. Start over.
+                A CMMC Level 2 certified MSP closed recently and left dozens of defense contractors with a painful problem: they had to rebuild their entire compliance program from scratch. Re-collect evidence. Re-document controls. Find a new provider. Start over.
               </p>
               <p className="text-base text-slate-500 leading-relaxed mb-8">
-                EnterpriseComply is built on a different premise. Your compliance data - every control, every evidence artifact, every POA&amp;M entry - belongs to you. Export it any time. Certified provider or not, those answers matter.
+                EnterpriseComply is built on a different premise. Your compliance data (every control, every evidence artifact, every POA&amp;M entry) belongs to you. Export it any time. Certified provider or not, those answers matter.
               </p>
               <div className="space-y-3 mb-8">
                 {[
                   { q: "What if you change providers?", a: "Full export of controls, evidence, POA&Ms, risks, and policies. Your new provider starts from a complete program, not zero." },
-                  { q: "What if EnterpriseComply closes?", a: "90-day advance notice plus immediate full export. Your evidence artifacts live at the URLs you provided - not inside our system." },
+                  { q: "What if EnterpriseComply closes?", a: "90-day advance notice plus immediate full export. Your evidence artifacts live at the URLs you provided, not inside our system." },
                   { q: "How much would have to be rebuilt?", a: "Nothing. Every piece of your compliance program exports as open formats: CSV, JSON, and PDF." },
                 ].map(({ q, a }) => (
                   <div key={q} className="flex items-start gap-3">
@@ -846,7 +846,7 @@ export default function Landing() {
                   {[
                     { label: "All UCO control implementations + status history", format: "CSV + JSON" },
                     { label: "Evidence vault with artifact URLs + metadata", format: "CSV + JSON" },
-                    { label: "POA&M register - eMASS-compatible columns", format: "CSV" },
+                    { label: "POA&M register (eMASS-compatible columns)", format: "CSV" },
                     { label: "Risk register with ratings + linked controls", format: "CSV + JSON" },
                     { label: "Published policies as signed documents", format: "PDF" },
                     { label: "System Security Plan (SSP)", format: "PDF" },
@@ -900,7 +900,7 @@ export default function Landing() {
               </span>
             </h2>
             <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: "#94a3b8" }}>
-              FedRAMP, CMMC Level 2, and NIST 800-53 are not bolt-on modules. POA&amp;M management, SPRS score tracking, and SSP generation are native features - sharing the same evidence, controls, and infrastructure as your commercial frameworks.
+              FedRAMP, CMMC Level 2, and NIST 800-53 are not bolt-on modules. POA&amp;M management, SPRS score tracking, and SSP generation are native features, sharing the same evidence, controls, and infrastructure as your commercial frameworks.
             </p>
           </div>
 
@@ -986,7 +986,7 @@ export default function Landing() {
               Purpose-Built. Industry-Ready.
             </h2>
             <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: "#64748b" }}>
-              From the Pentagon to Wall Street. The only GRC platform with a native federal layer alongside full commercial framework coverage - one system for every obligation.
+              From the Pentagon to Wall Street. The only GRC platform with a native federal layer alongside full commercial framework coverage, one system for every obligation.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1039,7 +1039,7 @@ export default function Landing() {
             </div>
             <div>
               <p className="text-base leading-relaxed mb-8" style={{ color: "#64748b" }}>
-                The organizations that win on compliance treat it as a system, not a project. EnterpriseComply gives your team that system - and the time to use it.
+                The organizations that win on compliance treat it as a system, not a project. EnterpriseComply gives your team that system, and the time to use it.
               </p>
               <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
                 className="inline-flex items-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl text-sm transition-all hover:scale-105"
@@ -1059,7 +1059,7 @@ export default function Landing() {
             {[
               { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: "Secure by Design", desc: "Zero-trust architecture, AES-256 encryption, and SOC 2-compliant infrastructure from day one." },
               { icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z", title: "Scalable by Nature", desc: "From Series A to Fortune 500. Multi-tenant architecture built for the volume enterprise compliance demands." },
-              { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", title: "AI-Powered Insights", desc: "Control gap analysis, framework delta alerts, and risk prioritization - surfaced automatically, not after the audit." },
+              { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", title: "AI-Powered Insights", desc: "Control gap analysis, framework delta alerts, and risk prioritization surfaced automatically, not after the audit." },
               { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", title: "Always Audit Ready", desc: "Continuous evidence collection means your audit package is always current. No scramble. No gaps." },
             ].map(({ icon, title, desc }) => (
               <div key={title} className="flex flex-col gap-3">
@@ -1091,7 +1091,7 @@ export default function Landing() {
                 <span className="font-bold text-white">EnterpriseComply</span>
               </a>
               <p className="text-sm leading-relaxed mb-5" style={{ color: "#475569" }}>
-                The only GRC platform built federal-first. FedRAMP, CMMC, NIST 800-53, and NIST 800-171 are native - not add-ons. One control satisfies every federal and commercial obligation simultaneously.
+                The only GRC platform built federal-first. FedRAMP, CMMC, NIST 800-53, and NIST 800-171 are native, not add-ons. One control satisfies every federal and commercial obligation simultaneously.
               </p>
               <div className="flex gap-3">
                 {["M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"].map((d, i) => (

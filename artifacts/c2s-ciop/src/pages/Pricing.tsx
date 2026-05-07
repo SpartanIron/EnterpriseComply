@@ -74,7 +74,7 @@ const TIERS = [
     description: "For DoD contractors and defense suppliers requiring CMMC, NIST 800-171, and POA&M compliance.",
     highlight: true,
     badge: "Federal-native",
-    mspCallout: "CMMC MSPs charge $5k-15k/mo. EnterpriseComply Federal: $2,000/mo. Same outcome - your data, your program.",
+    mspCallout: "CMMC MSPs charge $5k-15k/mo. EnterpriseComply Federal: $2,000/mo. Same outcome: your data, your program.",
     cta: "Start free trial",
     ctaHref: "/sign-up",
     features: [
@@ -189,7 +189,7 @@ const COMPETITORS = [
     poam: true,
     sprs: true,
     ssp: true,
-    note: "No software - you own nothing",
+    note: "No software. You own nothing.",
   },
   {
     name: "EnterpriseComply",
@@ -215,11 +215,11 @@ const FAQS = [
   },
   {
     q: "Why do I need the Federal tier for CMMC?",
-    a: "CMMC Level 2 requires NIST SP 800-171 controls, a System Security Plan (SSP), a Plan of Action and Milestones (POA&M), and a SPRS score in the DoD portal. These are native to the Federal tier - not available as add-ons in Essentials or Professional.",
+    a: "CMMC Level 2 requires NIST SP 800-171 controls, a System Security Plan (SSP), a Plan of Action and Milestones (POA&M), and a SPRS score in the DoD portal. These are native to the Federal tier, not available as add-ons in Essentials or Professional.",
   },
   {
     q: "How does EnterpriseComply compare to hiring a CMMC MSP?",
-    a: "A CMMC MSP typically charges $5,000-15,000 per month to manage your compliance program - and when they close or you change providers, you may have to rebuild from scratch. EnterpriseComply Federal at $2,000/month gives you the same capability with full data ownership and portability. Export everything at any time.",
+    a: "A CMMC MSP typically charges $5,000-15,000 per month to manage your compliance program. When they close or you change providers, you may have to rebuild from scratch. EnterpriseComply Federal at $2,000/month gives you the same capability with full data ownership and portability. Export everything at any time.",
   },
   {
     q: "Can I upgrade or downgrade mid-year?",
@@ -239,7 +239,7 @@ const FAQS = [
   },
   {
     q: "Do you offer nonprofit or startup discounts?",
-    a: "Yes - 30% for verified nonprofits and 20% for pre-Series A startups. Contact sales with documentation and we will apply the discount immediately.",
+    a: "Yes. 30% for verified nonprofits and 20% for pre-Series A startups. Contact sales with documentation and we will apply the discount immediately.",
   },
 ];
 
@@ -302,7 +302,7 @@ export default function Pricing() {
           Compliance infrastructure,<br />not compliance overhead.
         </h1>
         <p className="text-lg text-slate-500 leading-relaxed mb-8">
-          The only GRC platform with a native federal layer. SOC 2, ISO 27001, HIPAA, CMMC, FedRAMP, and 8 more - all on the same evidence and control foundation. No per-framework fees.
+          The only GRC platform with a native federal layer. SOC 2, ISO 27001, HIPAA, CMMC, FedRAMP, and 8 more, all on the same evidence and control foundation. No per-framework fees.
         </p>
 
         <div className="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1">
@@ -413,7 +413,7 @@ export default function Pricing() {
           <div className="text-center mb-8">
             <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">Competitive landscape</p>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">The only platform with commercial and federal in one place</h2>
-            <p className="text-slate-500 text-sm max-w-xl mx-auto">Vanta and Drata cover commercial frameworks. CMMC MSPs cover federal. Only EnterpriseComply does both - at a fraction of the MSP cost.</p>
+            <p className="text-slate-500 text-sm max-w-xl mx-auto">Vanta and Drata cover commercial frameworks. CMMC MSPs cover federal. Only EnterpriseComply does both, at a fraction of the MSP cost.</p>
           </div>
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full text-sm">
@@ -500,7 +500,7 @@ export default function Pricing() {
             {
               icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
               label: "Federal-native, not bolted on",
-              desc: "POA&M, SPRS, and SSP generation are built into the core platform - not third-party modules. The same evidence powering your SOC 2 satisfies your CMMC controls.",
+              desc: "POA&M, SPRS, and SSP generation are built into the core platform, not third-party modules. The same evidence powering your SOC 2 satisfies your CMMC controls.",
             },
             {
               icon: "M13 10V3L4 14h7v7l9-11h-7z",
@@ -510,7 +510,7 @@ export default function Pricing() {
             {
               icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z",
               label: "You own your compliance data",
-              desc: "Export everything - evidence, POA&Ms, risk register - at any time in standard formats. No lock-in, no MSP dependency, no starting over if you change providers.",
+              desc: "Export everything (evidence, POA&Ms, risk register) at any time in standard formats. No lock-in, no MSP dependency, no starting over if you change providers.",
             },
           ].map((item) => (
             <div key={item.label} className="bg-white border border-slate-200 rounded-xl p-5 flex gap-4">

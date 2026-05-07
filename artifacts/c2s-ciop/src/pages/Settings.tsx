@@ -205,7 +205,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
 
   const EXPORTS = [
     { id: "evidence", label: "Evidence Vault", desc: "All evidence items with artifact URLs, control mappings, collection dates, and expiry", format: "CSV", action: exportEvidence },
-    { id: "poam", label: "POA&M Register", desc: "All plan of action items with FedRAMP-required fields - eMASS-compatible column format", format: "CSV", action: exportPoam },
+    { id: "poam", label: "POA&M Register", desc: "All plan of action items with FedRAMP-required fields (eMASS-compatible column format)", format: "CSV", action: exportPoam },
     { id: "risks", label: "Risk Register", desc: "All risk items with likelihood, impact, category, owner, and linked controls", format: "CSV", action: exportRisks },
   ];
 
@@ -234,7 +234,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
           </svg>
           <p className="text-xs text-blue-700 leading-relaxed">
-            Exports are available on-demand, 24/7. Evidence artifact URLs point to the external locations you provided - your artifacts live at those URLs, not inside our system. "Export All" produces a single JSON file containing all data sets. Use the individual exports for CSV format.
+            Exports are available on-demand, 24/7. Evidence artifact URLs point to the external locations you provided; your artifacts live at those URLs, not inside our system. "Export All" produces a single JSON file containing all data sets. Use the individual exports for CSV format.
           </p>
         </div>
 

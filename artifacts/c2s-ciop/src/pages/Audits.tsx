@@ -220,7 +220,7 @@ export default function Audits() {
                 <div className="bg-white border border-slate-200 rounded-xl p-5">
                   <p className="font-semibold text-slate-800 text-sm mb-2">How it works</p>
                   <ol className="space-y-2">
-                    {["Create an engagement and assign a framework (SOC 2, ISO 27001, FedRAMP, etc.)", "An auditor access token is generated - share it securely with your auditor firm", "Use bulk evidence request templates to pre-populate all required requests per framework", "Track and resolve requests as you provide documents, then close when audit completes"].map((step, i) => (
+                    {["Create an engagement and assign a framework (SOC 2, ISO 27001, FedRAMP, etc.)", "An auditor access token is generated; share it securely with your auditor firm", "Use bulk evidence request templates to pre-populate all required requests per framework", "Track and resolve requests as you provide documents, then close when audit completes"].map((step, i) => (
                       <li key={i} className="flex gap-3 text-xs text-slate-500">
                         <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
                         {step}
@@ -554,7 +554,7 @@ export default function Audits() {
                     "Read-only view of all evidence requests for this engagement",
                     "Submitted evidence artifacts and response notes",
                     "Control status for the selected framework",
-                    "No write access - cannot modify your data",
+                    "No write access; cannot modify your data",
                   ].map((item, i) => (
                     <li key={i} className="flex gap-2 text-xs text-blue-700">
                       <svg className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>

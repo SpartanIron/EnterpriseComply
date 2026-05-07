@@ -80,7 +80,7 @@ export default function AccessReviews() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 { label: "SOC 2 CC6.2", body: "Requires periodic review of user access to verify that only authorized individuals retain access to systems." },
-                { label: "ISO 27001 A.9", body: "Access rights must be reviewed regularly - typically quarterly - and revoked when no longer needed." },
+                { label: "ISO 27001 A.9", body: "Access rights must be reviewed regularly (typically quarterly) and revoked when no longer needed." },
                 { label: "FedRAMP AC-2", body: "Account management reviews must occur at defined frequencies with documented approvals and attestations." },
               ].map(({ label, body }) => (
                 <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">

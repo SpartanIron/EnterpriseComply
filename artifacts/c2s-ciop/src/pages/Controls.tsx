@@ -391,7 +391,7 @@ export default function Controls() {
 
       <PageHeader
         title="Controls"
-        subtitle="Security controls that satisfy every active framework - implement once, prove compliance continuously"
+        subtitle="Security controls that satisfy every active framework. Implement once, prove compliance continuously."
       />
 
       {/* Stats strip */}
