@@ -564,46 +564,24 @@ export default function Landing() {
                 </a>
               </div>
 
-              {/* Social proof */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex -space-x-2">
-                      {["#2563eb", "#7c3aed", "#0891b2", "#059669", "#dc2626"].map((c, i) => (
-                        <div key={i} className="h-7 w-7 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                          style={{ borderColor: "#050d1a", background: c }}>
-                          <svg className="h-3.5 w-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                          </svg>
-                        </div>
-                      ))}
-                    </div>
+              {/* Verified product stats */}
+              <div className="flex flex-wrap gap-x-6 gap-y-3">
+                {[
+                  { value: "12", label: "compliance frameworks", sub: "FedRAMP to SOC 2 to ISO 27001" },
+                  { value: "41", label: "universal controls", sub: "one implementation, every framework" },
+                  { value: "388+", label: "authoritative mappings", sub: "maintained by our compliance team" },
+                  { value: "110", label: "NIST 800-171 practices", sub: "full CMMC Level 2 coverage" },
+                ].map(({ value, label, sub }) => (
+                  <div key={label} className="flex items-start gap-2.5">
+                    <div className="h-px w-4 mt-2.5 flex-shrink-0" style={{ background: "rgba(59,130,246,0.5)" }} />
                     <div>
-                      <p className="text-sm font-semibold text-white">150+ organizations</p>
-                      <p className="text-xs" style={{ color: "#64748b" }}>defense contractors &amp; DIB suppliers</p>
+                      <p className="text-sm font-bold text-white leading-tight">
+                        <span style={{ color: "#60a5fa" }}>{value}</span> {label}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "#475569" }}>{sub}</p>
                     </div>
                   </div>
-
-                  <div className="h-8 w-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1">
-                      {[1,2,3,4,5].map(i => (
-                        <svg key={i} className="h-3.5 w-3.5" style={{ color: "#fbbf24" }} viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                      <span className="text-sm font-bold text-white ml-1">4.9</span>
-                    </div>
-                    <p className="text-xs" style={{ color: "#64748b" }}>G2 Score · 47 reviews</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 flex-wrap">
-                  {TRUST_NAMES.slice(0, 4).map((name) => (
-                    <span key={name} className="text-xs font-medium" style={{ color: "#334155" }}>{name}</span>
-                  ))}
-                </div>
+                ))}
               </div>
             </div>
 
