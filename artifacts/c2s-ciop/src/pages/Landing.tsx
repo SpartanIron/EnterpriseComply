@@ -175,53 +175,70 @@ const FOOTER_LINKS = {
   Company: ["About Us", "Careers", "Partners", "Newsroom", "Contact Us"],
 };
 
+const NAV_ITEMS = ["Platform", "Solutions", "Industries", "Resources", "About Us"];
+
 function NavBar() {
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
   return (
-    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(255,255,255,0.96)", borderColor: "rgba(0,0,0,0.08)", backdropFilter: "blur(12px)" }}>
+    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(255,255,255,0.97)", borderColor: "rgba(0,0,0,0.07)", backdropFilter: "blur(16px)" }}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
-        <a href={BASE_PATH + "/"} className="flex items-center gap-3">
+        {/* Logo */}
+        <a href={BASE_PATH + "/"} className="flex items-center gap-2.5 flex-shrink-0">
           <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-600/30">
             <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" alt="" />
           </div>
-          <div>
-            <span className="font-bold text-sm tracking-tight" style={{ color: "#0f172a" }}>EnterpriseComply</span>
-            <span className="hidden sm:inline text-xs ml-2" style={{ color: "#94a3b8" }}>by ColorCode Solutions</span>
-          </div>
+          <span className="font-bold text-sm tracking-tight" style={{ color: "#0f172a" }}>ColorCodeSolutions</span>
         </a>
 
-        <div className="flex items-center gap-3">
+        {/* Center nav */}
+        <div className="hidden lg:flex items-center gap-1">
+          {NAV_ITEMS.map((item) => {
+            const hasDropdown = item !== "About Us";
+            return (
+              <a key={item} href="#"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-slate-50"
+                style={{ color: "#374151" }}>
+                {item}
+                {hasDropdown && (
+                  <svg className="h-3 w-3 mt-px" style={{ color: "#9ca3af" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </a>
+            );
+          })}
+        </div>
+
+        {/* Right actions */}
+        <div className="flex items-center gap-2">
           {isSignedIn ? (
             <>
               <button
                 onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
-                style={{ color: "#64748b", borderColor: "rgba(255,255,255,0.08)", background: "transparent" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{ color: "#64748b", background: "transparent" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#374151"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#64748b"; }}>
                 Sign out
               </button>
               <a href={BASE_PATH + "/dashboard"}
-                className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all"
+                className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 16px rgba(37,99,235,0.3)" }}>
                 Go to App
               </a>
             </>
           ) : (
             <>
-              <a href={BASE_PATH + "/sign-in"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#64748b" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
+              <a href={BASE_PATH + "/sign-in"}
+                className="text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+                style={{ color: "#374151" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#0f172a")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#374151")}>
                 Log In
               </a>
-              <a href={BASE_PATH + "/pricing"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#64748b" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
-                Pricing
-              </a>
               <a href={BASE_PATH + "/sign-up"}
-                className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all"
+                className="px-4 py-2 text-white text-xs font-semibold rounded-lg transition-all hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 16px rgba(37,99,235,0.3)" }}>
                 Request a Demo
               </a>
@@ -565,17 +582,17 @@ export default function Landing() {
         <div className="absolute pointer-events-none" style={{ top: "15%", right: "5%", width: 480, height: 480, background: "radial-gradient(circle, rgba(79,70,229,0.18) 0%, transparent 65%)", filter: "blur(48px)", zIndex: 0 }} />
         <div className="absolute pointer-events-none" style={{ bottom: "5%", left: "5%", width: 320, height: 320, background: "radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 65%)", filter: "blur(48px)", zIndex: 0 }} />
         <div className="absolute pointer-events-none" style={{ top: "50%", left: "35%", width: 260, height: 260, background: "radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 65%)", filter: "blur(40px)", zIndex: 0 }} />
-        {/* Three-stripe diagonal - indigo / blue / cyan — bottom-RIGHT */}
-        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "48%", zIndex: 0 }}>
+        {/* Three-stripe diagonal - orange / purple / cyan — anchored bottom-right (matches reference) */}
+        <div className="absolute pointer-events-none" style={{ inset: 0, zIndex: 0, overflow: "hidden" }}>
           <div style={{
             position: "absolute",
             inset: 0,
             background: [
               "linear-gradient(158deg,",
-              "  transparent 62%,",
-              "  #06b6d4 62%, #06b6d4 72%,",
-              "  #2563eb 72%, #2563eb 82%,",
-              "  #4f46e5 82%",
+              "  transparent 68%,",
+              "  #f97316 68%, #f97316 76%,",
+              "  #7c3aed 76%, #7c3aed 84%,",
+              "  #06b6d4 84%",
               ")"
             ].join(""),
           }} />
@@ -795,8 +812,17 @@ export default function Landing() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
             </FadeUp>
-            {/* Right: single-row 5-col photo cards */}
-            <StaggerGrid className="lg:col-span-2 grid grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Right: header with arrows + single-row 5-col photo cards */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center justify-end gap-2 mb-3">
+                <button className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors" style={{ color: "#374151" }}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors" style={{ color: "#374151" }}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+            <StaggerGrid className="grid grid-cols-3 lg:grid-cols-5 gap-3">
               {INDUSTRIES.map((ind) => (
                 <StaggerItem key={ind.name}>
                   <motion.div
@@ -825,6 +851,7 @@ export default function Landing() {
                 </StaggerItem>
               ))}
             </StaggerGrid>
+            </div>
           </div>
         </div>
       </section>
