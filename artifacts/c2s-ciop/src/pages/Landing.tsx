@@ -500,63 +500,41 @@ function ProductMockup() {
     return () => clearInterval(timer);
   }, []);
 
-  const tab = MOCKUP_TABS[active];
   const sidebarActive = active === 0 ? "Dashboard" : active === 1 ? "Controls" : "Integrations";
 
   return (
-    <div>
-      {/* Tab pills above the mockup */}
-      <div className="flex items-center gap-1 mb-3 justify-center">
-        {MOCKUP_TABS.map((t, i) => (
-          <button
-            key={t.id}
-            onClick={() => setActive(i)}
-            className="px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200"
-            style={{
-              fontSize: 11,
-              background: active === i ? "#2563eb" : "rgba(255,255,255,0.08)",
-              color: active === i ? "white" : "rgba(255,255,255,0.45)",
-              border: active === i ? "1px solid #2563eb" : "1px solid rgba(255,255,255,0.08)",
-              cursor: "pointer",
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="rounded-2xl overflow-hidden" style={{ background: "#0f172a", boxShadow: "0 0 0 1px rgba(255,255,255,0.08)" }}>
+      {/* App top bar — no browser chrome, just app header */}
+      <div className="flex items-center gap-3 px-4 py-2.5 border-b" style={{ background: "#0f172a", borderColor: "rgba(255,255,255,0.06)" }}>
+        <div className="flex gap-1.5">
+          <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#ef4444", opacity: 0.7 }} />
+          <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#f59e0b", opacity: 0.7 }} />
+          <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#22c55e", opacity: 0.7 }} />
+        </div>
+        <div className="flex gap-1 ml-2">
+          {MOCKUP_TABS.map((t, i) => (
+            <button
+              key={t.id}
+              onClick={() => setActive(i)}
+              className="px-3 py-1 rounded text-xs font-semibold transition-all duration-200"
+              style={{
+                fontSize: 11,
+                background: active === i ? "rgba(37,99,235,0.25)" : "transparent",
+                color: active === i ? "#93c5fd" : "rgba(255,255,255,0.35)",
+                cursor: "pointer",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="flex gap-1 mb-3">
-        {MOCKUP_TABS.map((_, i) => (
-          <div key={i} className="flex-1 rounded-full overflow-hidden" style={{ height: 2, background: "rgba(255,255,255,0.1)" }}>
-            <div className="h-full rounded-full" style={{
-              background: "#3b82f6",
-              width: i < active ? "100%" : i === active ? "100%" : "0%",
-              transition: i === active ? "none" : "none",
-              opacity: i === active ? 1 : i < active ? 0.4 : 0,
-            }} />
-          </div>
-        ))}
-      </div>
-
-      {/* Browser mockup */}
-      <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.1)" }}>
-        <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ background: "#f8fafc", borderColor: "#e2e8f0" }}>
-          <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
-          <div className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <div className="h-2.5 w-2.5 rounded-full bg-green-400" />
-          <div className="flex-1 mx-3 h-5 rounded-md bg-white border border-slate-200 flex items-center px-3 gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
-            <span className="font-medium" style={{ color: "#94a3b8", fontSize: 10 }}>{tab.url}</span>
-          </div>
-        </div>
-
-        <div className="flex" style={{ minHeight: 340 }}>
-          <MockupSidebar activeItem={sidebarActive} />
-          {active === 0 && <DashboardScreen />}
-          {active === 1 && <ControlsScreen />}
-          {active === 2 && <IntegrationsScreen />}
-        </div>
+      <div className="flex" style={{ minHeight: 370 }}>
+        <MockupSidebar activeItem={sidebarActive} />
+        {active === 0 && <DashboardScreen />}
+        {active === 1 && <ControlsScreen />}
+        {active === 2 && <IntegrationsScreen />}
       </div>
     </div>
   );
@@ -589,48 +567,37 @@ export default function Landing() {
             inset: 0,
             background: [
               "linear-gradient(158deg,",
-              "  transparent 68%,",
-              "  #f97316 68%, #f97316 76%,",
-              "  #7c3aed 76%, #7c3aed 84%,",
-              "  #06b6d4 84%",
+              "  transparent 72%,",
+              "  #f97316 72%, #f97316 80%,",
+              "  #7c3aed 80%, #7c3aed 88%,",
+              "  #06b6d4 88%",
               ")"
             ].join(""),
           }} />
         </div>
-        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28" style={{ zIndex: 1 }}>
-          <div className="grid lg:grid-cols-2 gap-14 items-center">
+        <div className="relative max-w-7xl mx-auto px-6 py-16 lg:py-20" style={{ zIndex: 1 }}>
+          <div className="grid lg:grid-cols-2 gap-14 items-start">
             {/* Left */}
             <div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: EASE }}
-                className="flex flex-col gap-2 mb-7"
+                className="mb-5"
               >
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border self-start"
-                  style={{ background: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.3)", color: "#93c5fd" }}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-                  Federal-First GRC Platform
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001"].map((fw) => (
-                    <span key={fw} className="text-xs font-semibold px-2 py-0.5 rounded"
-                      style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.1)" }}>
-                      {fw}
-                    </span>
-                  ))}
-                </div>
+                <p className="text-sm font-semibold tracking-wide" style={{ color: "#60a5fa" }}>EnterpriseComply</p>
               </motion.div>
               <motion.h1
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
-                className="font-extrabold leading-tight tracking-tight mb-6"
-                style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "white" }}
+                className="font-extrabold leading-none tracking-tight mb-6"
+                style={{ fontSize: "clamp(3rem, 5.5vw, 4.75rem)", color: "white", lineHeight: 1.05 }}
               >
                 Federal Compliance.<br />
+                One Control.<br />
                 <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #38bdf8 50%, #34d399 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                  One Control. Every Framework.
+                  Every Framework.
                 </span>
               </motion.h1>
               <motion.p
@@ -769,8 +736,9 @@ export default function Landing() {
                 return (
                   <StaggerItem key={f.title}>
                     <motion.div
-                      className="p-5 rounded-2xl border border-slate-200 bg-white h-full"
-                      whileHover={{ y: -4, boxShadow: `0 12px 32px ${accent}18, 0 0 0 1.5px ${accent}30`, borderColor: `${accent}50` }}
+                      className="p-5 rounded-2xl bg-white h-full"
+                      style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)" }}
+                      whileHover={{ y: -4, boxShadow: `0 12px 32px ${accent}22, 0 4px 20px rgba(0,0,0,0.08)` }}
                       transition={{ duration: 0.22 }}
                     >
                       <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${accent}14`, color: accent }}>
