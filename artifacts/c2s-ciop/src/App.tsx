@@ -1,4 +1,4 @@
-import { ClerkProvider, SignIn, SignUp, useUser, useAuth } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -16,6 +16,16 @@ import People from "./pages/People";
 import Vendors from "./pages/Vendors";
 import POAM from "./pages/POAM";
 import Settings from "./pages/Settings";
+import RiskRegister from "./pages/RiskRegister";
+import Audits from "./pages/Audits";
+import SPRS from "./pages/SPRS";
+import SSP from "./pages/SSP";
+import Monitoring from "./pages/Monitoring";
+import Questionnaires from "./pages/Questionnaires";
+import AccessReviews from "./pages/AccessReviews";
+import CustomFrameworks from "./pages/CustomFrameworks";
+import TrustCenter from "./pages/TrustCenter";
+import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/not-found";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -71,7 +81,7 @@ function HomeRedirect() {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-3">
           <img src={`${BASE_PATH}/logo.svg`} className="h-10 w-10 animate-pulse" />
-          <p className="text-slate-500 text-sm">Loading ColorComply…</p>
+          <p className="text-slate-500 text-sm">Loading ColorComply...</p>
         </div>
       </div>
     );
@@ -82,8 +92,6 @@ function HomeRedirect() {
 }
 
 function AppRoutes() {
-  const { isSignedIn, isLoaded } = useAuth();
-
   return (
     <Switch>
       <Route path="/" component={HomeRedirect} />
@@ -98,16 +106,39 @@ function AppRoutes() {
         </div>
       )} />
       <Route path="/onboarding" component={Onboarding} />
+
+      {/* Core */}
       <Route path="/dashboard" component={() => <AppShell><Dashboard /></AppShell>} />
       <Route path="/frameworks" component={() => <AppShell><Frameworks /></AppShell>} />
       <Route path="/controls" component={() => <AppShell><Controls /></AppShell>} />
+
+      {/* Evidence */}
       <Route path="/integrations" component={() => <AppShell><Integrations /></AppShell>} />
       <Route path="/evidence" component={() => <AppShell><Evidence /></AppShell>} />
+      <Route path="/monitoring" component={() => <AppShell><Monitoring /></AppShell>} />
+
+      {/* Workforce */}
       <Route path="/policies" component={() => <AppShell><Policies /></AppShell>} />
       <Route path="/people" component={() => <AppShell><People /></AppShell>} />
+      <Route path="/access-reviews" component={() => <AppShell><AccessReviews /></AppShell>} />
       <Route path="/vendors" component={() => <AppShell><Vendors /></AppShell>} />
+
+      {/* Risk & Compliance */}
+      <Route path="/risks" component={() => <AppShell><RiskRegister /></AppShell>} />
+      <Route path="/questionnaires" component={() => <AppShell><Questionnaires /></AppShell>} />
+      <Route path="/audits" component={() => <AppShell><Audits /></AppShell>} />
+      <Route path="/trust-center" component={() => <AppShell><TrustCenter /></AppShell>} />
+      <Route path="/custom-frameworks" component={() => <AppShell><CustomFrameworks /></AppShell>} />
+
+      {/* Federal */}
       <Route path="/poam" component={() => <AppShell><POAM /></AppShell>} />
+      <Route path="/sprs" component={() => <AppShell><SPRS /></AppShell>} />
+      <Route path="/ssp" component={() => <AppShell><SSP /></AppShell>} />
+
+      {/* Settings */}
       <Route path="/settings" component={() => <AppShell><Settings /></AppShell>} />
+      <Route path="/audit-log" component={() => <AppShell><AuditLog /></AppShell>} />
+
       <Route component={NotFound} />
     </Switch>
   );

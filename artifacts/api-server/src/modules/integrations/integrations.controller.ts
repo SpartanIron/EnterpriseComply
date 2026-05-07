@@ -53,4 +53,10 @@ export class IntegrationsController {
   syncGitHub(@OrgContext() ctx: OrgCtx) {
     return this.integrationsService.syncOrgGitHub(ctx.orgId);
   }
+
+  @Post("orgs/:orgId/integrations/:key/demo-connect")
+  @UseGuards(OrgContextGuard)
+  demoConnect(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
+    return this.integrationsService.connectDemo(ctx.orgId, key);
+  }
 }

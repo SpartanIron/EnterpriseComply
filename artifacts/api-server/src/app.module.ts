@@ -12,6 +12,15 @@ import { PoamModule } from "./modules/poam/poam.module";
 import { PeopleModule } from "./modules/people/people.module";
 import { VendorsModule } from "./modules/vendors/vendors.module";
 import { PoliciesModule } from "./modules/policies/policies.module";
+import { RisksModule } from "./modules/risks/risks.module";
+import { AuditsModule } from "./modules/audits/audits.module";
+import { QuestionnairesModule } from "./modules/questionnaires/questionnaires.module";
+import { SprsModule } from "./modules/sprs/sprs.module";
+import { SspModule } from "./modules/ssp/ssp.module";
+import { TrustCenterModule } from "./modules/trust-center/trust-center.module";
+import { MonitoringModule } from "./modules/monitoring/monitoring.module";
+import { AccessReviewsModule } from "./modules/access-reviews/access-reviews.module";
+import { CustomFrameworksModule } from "./modules/custom-frameworks/custom-frameworks.module";
 
 @Module({
   imports: [
@@ -26,6 +35,15 @@ import { PoliciesModule } from "./modules/policies/policies.module";
     PeopleModule,
     VendorsModule,
     PoliciesModule,
+    RisksModule,
+    AuditsModule,
+    QuestionnairesModule,
+    SprsModule,
+    SspModule,
+    TrustCenterModule,
+    MonitoringModule,
+    AccessReviewsModule,
+    CustomFrameworksModule,
   ],
 })
 export class AppModule implements NestModule {
@@ -36,6 +54,6 @@ export class AppModule implements NestModule {
 
     consumer
       .apply(clerkMiddleware())
-      .forRoutes("*");
+      .forRoutes("*path");
   }
 }

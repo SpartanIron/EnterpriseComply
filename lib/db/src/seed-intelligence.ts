@@ -29,7 +29,7 @@ async function seedIntelligence() {
     { controlId: "UCO-002", frameworkKey: "pci-dss",      frameworkControlId: "7.2",        frameworkControlName: "Access Control Systems and Processes",             inherited: false, customerResponsibility: "full",    mappingConfidence: 0.93, mappingRationale: "PCI DSS requires access restricted to least privilege necessary" },
     { controlId: "UCO-002", frameworkKey: "iso-27001",    frameworkControlId: "A.9.2.3",    frameworkControlName: "Management of Privileged Access Rights",           inherited: false, customerResponsibility: "full",    mappingConfidence: 0.97, mappingRationale: "ISO directly addresses privileged access rights management" },
 
-    // UCO-003: Encryption at Rest — partially inherited from cloud provider
+    // UCO-003: Encryption at Rest - partially inherited from cloud provider
     { controlId: "UCO-003", frameworkKey: "fedramp",      frameworkControlId: "SC-28",      frameworkControlName: "Protection of Information at Rest",               inherited: true,  inheritedFrom: "AWS GovCloud", customerResponsibility: "partial", mappingConfidence: 0.92, mappingRationale: "AWS GovCloud provides FIPS 140-2 encryption; customer must configure key management" },
     { controlId: "UCO-003", frameworkKey: "nist-800-53",  frameworkControlId: "SC-28",      frameworkControlName: "Protection of Information at Rest",               inherited: false, customerResponsibility: "full",    mappingConfidence: 0.98, mappingRationale: "Encryption at rest directly satisfies NIST data protection requirements" },
     { controlId: "UCO-003", frameworkKey: "cmmc",         frameworkControlId: "SC.L2-3.13.16",frameworkControlName: "Protection of CUI at Rest",                    inherited: false, customerResponsibility: "full",    mappingConfidence: 0.97, mappingRationale: "CMMC requires CUI encrypted at rest on all systems" },
@@ -49,7 +49,7 @@ async function seedIntelligence() {
     { controlId: "UCO-005", frameworkKey: "cis-controls", frameworkControlId: "CIS-7.4",    frameworkControlName: "Perform Automated Application Patch Management",  inherited: false, customerResponsibility: "full",    mappingConfidence: 0.93, mappingRationale: "CIS requires automated patching with tracked remediation timelines" },
     { controlId: "UCO-005", frameworkKey: "pci-dss",      frameworkControlId: "6.3",        frameworkControlName: "Security Vulnerabilities are Identified and Addressed", inherited: false, customerResponsibility: "full", mappingConfidence: 0.95, mappingRationale: "PCI DSS requires critical vulnerability remediation within one month" },
 
-    // UCO-006 through UCO-012 — additional mappings
+    // UCO-006 through UCO-012 - additional mappings
     { controlId: "UCO-006", frameworkKey: "nist-800-53",  frameworkControlId: "SI-3",       frameworkControlName: "Malicious Code Protection",                       inherited: false, customerResponsibility: "full",    mappingConfidence: 0.96, mappingRationale: "EDR deployment satisfies malicious code protection requirements" },
     { controlId: "UCO-006", frameworkKey: "fedramp",      frameworkControlId: "SI-3",       frameworkControlName: "Malicious Code Protection",                       inherited: false, customerResponsibility: "full",    mappingConfidence: 0.95, mappingRationale: "FedRAMP requires EDR/endpoint protection on all managed devices" },
     { controlId: "UCO-006", frameworkKey: "cmmc",         frameworkControlId: "SI.L1-3.14.2",frameworkControlName: "Malicious Code Protection",                      inherited: false, customerResponsibility: "full",    mappingConfidence: 0.97, mappingRationale: "CMMC Level 1 requires malicious code protection on endpoints" },
@@ -68,7 +68,7 @@ async function seedIntelligence() {
     { controlId: "UCO-010", frameworkKey: "pci-dss",      frameworkControlId: "1.3",        frameworkControlName: "Network Access Controls",                         inherited: false, customerResponsibility: "full",    mappingConfidence: 0.95, mappingRationale: "PCI DSS requires firewall and network access control at all boundaries" },
 
     { controlId: "UCO-011", frameworkKey: "nist-800-53",  frameworkControlId: "PE-2",       frameworkControlName: "Physical Access Authorizations",                  inherited: true,  inheritedFrom: "AWS GovCloud", customerResponsibility: "none",    mappingConfidence: 0.99, mappingRationale: "Physical security fully inherited from AWS GovCloud data center controls" },
-    { controlId: "UCO-011", frameworkKey: "fedramp",      frameworkControlId: "PE-2",       frameworkControlName: "Physical Access Authorizations",                  inherited: true,  inheritedFrom: "AWS GovCloud", customerResponsibility: "none",    mappingConfidence: 0.99, mappingRationale: "FedRAMP physical controls fully inherited — AWS P-ATO covers PE family" },
+    { controlId: "UCO-011", frameworkKey: "fedramp",      frameworkControlId: "PE-2",       frameworkControlName: "Physical Access Authorizations",                  inherited: true,  inheritedFrom: "AWS GovCloud", customerResponsibility: "none",    mappingConfidence: 0.99, mappingRationale: "FedRAMP physical controls fully inherited - AWS P-ATO covers PE family" },
 
     { controlId: "UCO-012", frameworkKey: "nist-800-53",  frameworkControlId: "IR-4",       frameworkControlName: "Incident Handling",                               inherited: false, customerResponsibility: "full",    mappingConfidence: 0.93, mappingRationale: "Incident response procedures satisfy IR-4 handling requirements" },
     { controlId: "UCO-012", frameworkKey: "fedramp",      frameworkControlId: "IR-4",       frameworkControlName: "Incident Handling",                               inherited: false, customerResponsibility: "full",    mappingConfidence: 0.92, mappingRationale: "FedRAMP requires documented IR procedures with defined roles" },
@@ -98,7 +98,7 @@ async function seedIntelligence() {
     },
     {
       frameworkKey: "fedramp", controlId: "UCO-002",
-      title: "Privileged Account Management Gap — Service Accounts",
+      title: "Privileged Account Management Gap - Service Accounts",
       weakness: "Service accounts with excessive privileges not reviewed on required 90-day cycle",
       description: "svc-account-prod-admin holds Domain Admin rights and has not undergone quarterly access review. Violates FedRAMP AC-2 account management requirements.",
       severity: "high", status: "on_track",
@@ -203,20 +203,20 @@ async function seedIntelligence() {
 
   // ── Executive Briefing (initial) ──────────────────────────────────────────
   await db.insert(executiveBriefingsTable).values({
-    headline: "Cyber posture at-risk at 54/100 — 2 critical findings open, estimated exposure $1.4M–$8.6M",
+    headline: "Cyber posture at-risk at 54/100 - 2 critical findings open, estimated exposure $1.4M–$8.6M",
     postureDelta: "1 control failed validation this cycle (UCO-005 Vulnerability Remediation SLA), dragging posture below 60-point target. Root cause: CVE-2024-47892 exceeded 30-day remediation SLA on legacy-erp-server.",
-    situationSummary: "3 active critical threat vectors identified. FedRAMP and NIST 800-53 compliance below 75% threshold requiring attention before Q3 audit window. 2 findings breached remediation SLA — direct engineering leadership escalation required.",
+    situationSummary: "3 active critical threat vectors identified. FedRAMP and NIST 800-53 compliance below 75% threshold requiring attention before Q3 audit window. 2 findings breached remediation SLA - direct engineering leadership escalation required.",
     financialExposureLow: 1_400_000,
     financialExposureHigh: 8_600_000,
     topThreatsJson: JSON.stringify([
-      { title: "Privilege Escalation via Misconfigured Service Account", severity: "critical", context: "Exploitability 87% — Privilege Escalation, Lateral Movement" },
-      { title: "Unpatched Critical CVE in Legacy ERP Server", severity: "critical", context: "Exploitability 92% — Remote Code Execution, Lateral Movement" },
-      { title: "Internet-Exposed API Gateway Without WAF", severity: "critical", context: "Exploitability 78% — API Abuse, Injection" },
+      { title: "Privilege Escalation via Misconfigured Service Account", severity: "critical", context: "Exploitability 87% - Privilege Escalation, Lateral Movement" },
+      { title: "Unpatched Critical CVE in Legacy ERP Server", severity: "critical", context: "Exploitability 92% - Remote Code Execution, Lateral Movement" },
+      { title: "Internet-Exposed API Gateway Without WAF", severity: "critical", context: "Exploitability 78% - API Abuse, Injection" },
     ]),
     recommendedActionsJson: JSON.stringify([
       "Resolve 2 critical open findings before next board review",
-      "2 findings breached SLA — escalate to engineering leadership immediately",
-      "FedRAMP and NIST 800-53 compliance below 75% — review control gaps",
+      "2 findings breached SLA - escalate to engineering leadership immediately",
+      "FedRAMP and NIST 800-53 compliance below 75% - review control gaps",
       "1 failed control requires immediate remediation (UCO-005)",
     ]),
     frameworksAtRiskJson: JSON.stringify(["FedRAMP", "NIST 800-53"]),

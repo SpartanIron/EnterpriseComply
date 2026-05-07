@@ -1,15 +1,15 @@
 # ColorComply
 
-Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-competitor with federal layer, covering 12 frameworks from SOC 2 to FedRAMP.
+Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-competitor with federal layer, covering 12 frameworks from SOC 2 to FedRAMP.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, proxied via `/api`)
-- `pnpm --filter @workspace/c2s-ciop run dev` — run the frontend (port 19222, proxied via `/`)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `npx tsx lib/db/src/seed-colorcomply.ts` — re-seed UCO controls, framework mappings, automated tests
+- `pnpm --filter @workspace/api-server run dev` - run the API server (port 8080, proxied via `/api`)
+- `pnpm --filter @workspace/c2s-ciop run dev` - run the frontend (port 19222, proxied via `/`)
+- `pnpm run typecheck` - full typecheck across all packages
+- `pnpm run build` - typecheck + build all packages
+- `psql "$DATABASE_URL" -f <sql-file>` - push schema changes (drizzle-kit push blocks interactively; use psql directly)
+- `npx tsx lib/db/src/seed-colorcomply.ts` - re-seed UCO controls, framework mappings, automated tests
 - Required env: `DATABASE_URL`, `SESSION_SECRET`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`
 - Optional: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` for GitHub OAuth integration
 
@@ -18,65 +18,65 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions — Vanta-
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - Frontend: React + Vite (port 19222), Tailwind CSS v4, Wouter routing, @clerk/react
 - API: NestJS 11 (port 8080, path `/api`), @clerk/express, modular controller/service/module pattern
-- DB: PostgreSQL + Drizzle ORM (multi-tenant schema)
+- DB: PostgreSQL + Drizzle ORM (multi-tenant schema, 28 tables)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - Build: esbuild (ESM bundle for API server production); SWC (`@swc-node/register`) for dev runner
 - Fonts: Inter (all text)
 
 ## Where things live
 
-- `lib/db/src/schema/` — all Drizzle table definitions (organizations, ucoControls, orgCompliance, orgWorkforce, orgIntegrations, orgPoam)
-- `lib/db/src/seed-colorcomply.ts` — seeds UCO controls + framework mappings + automated tests
-- `artifacts/api-server/src/modules/` — NestJS modules: orgs, frameworks, controls, integrations, evidence, poam, people, vendors, policies, health
-- `artifacts/api-server/src/guards/` — ClerkAuthGuard, OrgContextGuard, param decorators
-- `artifacts/api-server/src/middlewares/` — ClerkProxyMiddleware (production only)
-- `artifacts/c2s-ciop/src/pages/` — Landing, Onboarding, Dashboard, Frameworks, Controls, Integrations, Evidence, Policies, People, Vendors, POAM, Settings
-- `artifacts/c2s-ciop/src/components/layout/AppShell.tsx` — sidebar + layout shell
+- `lib/db/src/schema/` - all Drizzle table definitions (13 schema files, 28 tables)
+- `lib/db/src/seed-colorcomply.ts` - seeds UCO controls + framework mappings + automated tests
+- `artifacts/api-server/src/modules/` - 19 NestJS modules (see list below)
+- `artifacts/api-server/src/guards/` - ClerkAuthGuard, OrgContextGuard, param decorators
+- `artifacts/api-server/src/middlewares/` - ClerkProxyMiddleware (production only)
+- `artifacts/c2s-ciop/src/pages/` - 23 pages (see Product section)
+- `artifacts/c2s-ciop/src/components/layout/AppShell.tsx` - sidebar + layout shell
+- `artifacts/c2s-ciop/src/hooks/useOrg.ts` - shared org hook
 
 ## Architecture decisions
 
 - **Multi-tenant by orgId**: every table has `org_id`; all routes scoped to `/orgs/:orgId/...` with Clerk auth middleware
-- **UCO (Universal Control Objectives)**: 41 canonical controls mapped to 12 frameworks — implement once, satisfy all frameworks simultaneously
+- **UCO (Universal Control Objectives)**: 41 canonical controls mapped to 12 frameworks - implement once, satisfy all frameworks simultaneously
 - **Clerk proxy only in production**: `proxyUrl` on ClerkProvider is only set when `import.meta.env.PROD`; dev mode loads Clerk JS directly from CDN
-- **NestJS modular architecture**: each domain (orgs, controls, etc.) is a self-contained NestJS module with controller + service + module file; guards live in `src/guards/`
-- **No OpenAPI codegen for new routes**: ColorComply routes call DB directly and return plain JSON — added post-codegen-setup, no spec file
-- **GitHub OAuth connector**: `GET /api/integrations/github/connect` → GitHub OAuth → callback stores token + syncs repos/members/MFA
+- **NestJS modular architecture**: each domain is a self-contained module (controller + service + module); guards in `src/guards/`
+- **DB migrations via psql**: `drizzle-kit push` blocks interactively on existing constraints; use `psql "$DATABASE_URL" -c "CREATE TABLE IF NOT EXISTS..."` for new tables
+- **GitHub OAuth connector**: `GET /api/integrations/github/connect` - GitHub OAuth - callback stores token + syncs repos/members/MFA
+- **Demo connect**: non-GitHub integrations (GWS, AWS, Okta, Azure AD, Slack) use `POST /api/orgs/:orgId/integrations/:key/demo-connect` to simulate a connection and collect sample evidence
 
 ## Product
 
-**Unauthenticated**
-- Landing page: hero, framework list, feature cards, CTA
+**Unauthenticated**: Landing page with hero, framework list, feature cards, CTA
 
-**Onboarding** (post-signup)
-- 4-step wizard: company info → framework selection (12 frameworks) → GitHub connect → done
+**Onboarding**: 4-step wizard: company info - framework selection (12 frameworks) - GitHub connect - done
 
-**App (authenticated)**
-- Dashboard: overall score ring, passing/failing/untested stats, per-framework cards
-- Frameworks: compliance scores per active framework, add from catalog modal
-- Controls: UCO control list grouped by domain, manual override, expand for remediation guidance
-- Integrations: connected/available/coming-soon integration catalog, sync button
-- Evidence Vault: auto-collected + manual evidence items
-- Policies: template library, activate to org, track publication status
-- People: workforce MFA/training/access-review compliance table
-- Vendors: third-party vendor risk table with DPA tracking
-- POA&M: FedRAMP-compliant Plan of Action & Milestones with inline status updates
-- Settings: org name/industry/size edit, plan info
+**App (authenticated) - 23 pages across 7 nav sections:**
+- Overview: Dashboard (score ring, per-framework cards, stats)
+- Compliance: Frameworks, Controls (UCO grouped by domain), Risk Register
+- Evidence: Integrations (12 integrations, 6 connectable), Evidence Vault, Monitoring (drift detection, notifications)
+- Workforce: Policies, People (MFA/training table), Access Reviews (attestation campaigns), Vendors
+- Audit & Sales: Auditor Portal (engagement management, evidence requests, access-token portal), Questionnaires (AI-assisted responses), Trust Center (public-facing page)
+- Federal: POA&M, SPRS Score (CMMC/NIST 800-171 scoring), SSP Generator, Custom Frameworks
+- Settings + Audit Log
 
 ## User preferences
 
 - Clean enterprise SaaS aesthetic: white/blue-600/slate palette, Inter font, rounded-lg borders
 - Blue CTA buttons throughout
-- No old C2S/CIOP patterns — this is a fresh product
+- No old C2S/CIOP patterns - this is a fresh product
 - Sharp, information-dense tables and cards
+- No em dashes anywhere in the codebase (use hyphens instead)
 
 ## Gotchas
 
 - Clerk proxy middleware (`/api/__clerk`) only activates in `NODE_ENV=production`; never set `proxyUrl` unconditionally
-- All DB tables use `org_id` for tenant isolation — never query across orgs
-- `lib/db/src/migrate-fresh.ts` drops and recreates all tables — only run in dev
-- `artifacts/c2s-ciop/src/lib/queryClient.ts` exports `apiUrl()` and `apiFetch()` helpers — use these for all API calls
-- NestJS esbuild: externalize `@nestjs/websockets`, `@nestjs/microservices`, `class-transformer`, `class-validator` (lazy-loaded optional deps that esbuild cannot resolve)
-- **NestJS dev runner must use SWC, not tsx**: `tsx` uses esbuild under the hood and does NOT emit decorator metadata — NestJS DI silently fails (`this.service` is `undefined`). Dev script uses `node --import @swc-node/register/esm-register src/main.ts`; config in `artifacts/api-server/.swcrc`
+- All DB tables use `org_id` for tenant isolation - never query across orgs
+- `lib/db/src/migrate-fresh.ts` drops and recreates all tables - only run in dev
+- `artifacts/c2s-ciop/src/lib/queryClient.ts` exports `apiUrl()` and `apiFetch()` helpers - use these for all API calls
+- NestJS esbuild: externalize `@nestjs/websockets`, `@nestjs/microservices`, `class-transformer`, `class-validator`
+- **NestJS dev runner must use SWC, not tsx**: `tsx` uses esbuild and does NOT emit decorator metadata; NestJS DI silently fails. Dev script: `node --import @swc-node/register/esm-register src/main.ts`
+- `npx tsx` (global) doesn't have access to `pg` - run DB scripts from `lib/db` where pg is installed, or use `psql` directly
+- `drizzle-kit push` blocks on `organizations_slug_unique` constraint prompt in dev - use psql for new table additions
 
 ## Pointers
 

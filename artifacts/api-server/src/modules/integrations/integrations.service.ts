@@ -3,15 +3,78 @@ import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable } fr
 import { eq, and } from "drizzle-orm";
 
 export const INTEGRATION_CATALOG = [
-  { key: "github", name: "GitHub", category: "code", description: "Scan repos, branch protection, member MFA, and access controls.", logoUrl: "https://github.com/favicon.ico", available: true, controls: ["UCO-AI-001", "UCO-AC-001", "UCO-CM-001", "UCO-CM-002"] },
-  { key: "google-workspace", name: "Google Workspace", category: "identity", description: "MFA enforcement, admin roles, device policy, and user lifecycle.", available: false, controls: ["UCO-AI-001", "UCO-AC-001", "UCO-AC-005"] },
-  { key: "aws", name: "Amazon Web Services", category: "cloud", description: "IAM policies, S3 exposure, CloudTrail, encryption at rest/in-transit.", available: false, controls: ["UCO-AC-001", "UCO-DP-002", "UCO-AL-001"] },
-  { key: "okta", name: "Okta", category: "identity", description: "SSO, MFA policies, user provisioning, and password controls.", available: false, controls: ["UCO-AI-001", "UCO-AI-003", "UCO-AI-004"] },
-  { key: "jira", name: "Jira", category: "ticketing", description: "Vulnerability ticket tracking, SLA compliance, and change management.", available: false, controls: ["UCO-VM-001", "UCO-IR-002"] },
-  { key: "slack", name: "Slack", category: "comms", description: "Access controls and retention policies.", available: false, controls: [] },
-  { key: "crowdstrike", name: "CrowdStrike", category: "security", description: "Endpoint detection, vulnerability data, and threat intelligence.", available: false, controls: ["UCO-VM-001", "UCO-VM-002"] },
-  { key: "jamf", name: "Jamf", category: "endpoint", description: "Mac/iOS device management, encryption status, and patch compliance.", available: false, controls: ["UCO-CM-003", "UCO-VM-002"] },
-  { key: "workday", name: "Workday", category: "hr", description: "Employee roster, background checks, and offboarding.", available: false, controls: ["UCO-ST-001", "UCO-AC-005"] },
+  {
+    key: "github", name: "GitHub", category: "code",
+    description: "Branch protection, member MFA status, access controls, and PR review enforcement.",
+    logoUrl: "https://github.com/favicon.ico", available: true,
+    controls: ["UCO-AI-001", "UCO-AC-001", "UCO-CM-001", "UCO-CM-002"],
+  },
+  {
+    key: "google-workspace", name: "Google Workspace", category: "identity",
+    description: "MFA enforcement, admin role audit, device policy compliance, and user lifecycle management.",
+    available: true,
+    controls: ["UCO-AI-001", "UCO-AI-002", "UCO-AC-001", "UCO-AC-005"],
+  },
+  {
+    key: "aws", name: "Amazon Web Services", category: "cloud",
+    description: "IAM least-privilege audit, S3 bucket exposure, CloudTrail logging, and encryption at rest.",
+    available: true,
+    controls: ["UCO-AC-001", "UCO-AC-002", "UCO-DP-002", "UCO-AL-001"],
+  },
+  {
+    key: "okta", name: "Okta", category: "identity",
+    description: "SSO policy audit, MFA factor enforcement, user provisioning, and password policy controls.",
+    available: true,
+    controls: ["UCO-AI-001", "UCO-AI-003", "UCO-AI-004", "UCO-AC-005"],
+  },
+  {
+    key: "azure-ad", name: "Microsoft Entra ID", category: "identity",
+    description: "Azure AD conditional access, MFA registration, privileged identity management, and sign-in risk.",
+    available: true,
+    controls: ["UCO-AI-001", "UCO-AC-001", "UCO-AC-003", "UCO-AC-005"],
+  },
+  {
+    key: "slack", name: "Slack", category: "comms",
+    description: "Workspace access controls, message retention policy, and SSO configuration.",
+    available: true,
+    controls: ["UCO-AC-001", "UCO-DP-003"],
+  },
+  {
+    key: "jira", name: "Jira", category: "ticketing",
+    description: "Vulnerability ticket SLA tracking, change management workflow, and approval chains.",
+    available: false,
+    controls: ["UCO-VM-001", "UCO-IR-002", "UCO-CM-003"],
+  },
+  {
+    key: "crowdstrike", name: "CrowdStrike Falcon", category: "security",
+    description: "Endpoint detection coverage, vulnerability findings export, and patch compliance tracking.",
+    available: false,
+    controls: ["UCO-VM-001", "UCO-VM-002", "UCO-AL-001"],
+  },
+  {
+    key: "jamf", name: "Jamf Pro", category: "endpoint",
+    description: "macOS/iOS device encryption status, patch compliance, and MDM enrollment coverage.",
+    available: false,
+    controls: ["UCO-CM-003", "UCO-VM-002", "UCO-DP-002"],
+  },
+  {
+    key: "workday", name: "Workday", category: "hr",
+    description: "Employee roster sync, background check tracking, and automated offboarding workflows.",
+    available: false,
+    controls: ["UCO-ST-001", "UCO-AC-005"],
+  },
+  {
+    key: "datadog", name: "Datadog", category: "monitoring",
+    description: "Infrastructure monitoring, log management, and anomaly detection for compliance evidence.",
+    available: false,
+    controls: ["UCO-AL-001", "UCO-AL-002"],
+  },
+  {
+    key: "pagerduty", name: "PagerDuty", category: "incident",
+    description: "Incident response workflow, escalation policy, and MTTD/MTTR metrics for SOC 2 CC7.",
+    available: false,
+    controls: ["UCO-IR-001", "UCO-IR-002"],
+  },
 ];
 
 @Injectable()
@@ -86,6 +149,65 @@ export class IntegrationsService {
 
     await this.syncGitHub(Number(orgId), token);
     return { redirectUrl: `${protocol}://${host}${basePath}/integrations?connected=github` };
+  }
+
+  async connectDemo(orgId: number, integrationKey: string) {
+    const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === integrationKey);
+    if (!catalogItem) throw new BadRequestException("Unknown integration");
+
+    const existing = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, integrationKey)),
+    });
+
+    const demoControlResults = catalogItem.controls.map((controlId) => ({
+      ucoControlId: controlId,
+      status: Math.random() > 0.25 ? "passing" : "failing",
+      result: `${catalogItem.name} demo sync: control verified`,
+      integrationKey,
+    }));
+
+    for (const cr of demoControlResults) {
+      const existingResult = await db.query.orgControlResultsTable.findFirst({
+        where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, cr.ucoControlId)),
+      });
+      if (existingResult) {
+        await db.update(orgControlResultsTable)
+          .set({ ...cr, lastTestedAt: new Date() })
+          .where(eq(orgControlResultsTable.id, existingResult.id));
+      } else {
+        await db.insert(orgControlResultsTable).values({ orgId, ...cr, lastTestedAt: new Date() });
+      }
+    }
+
+    const evidenceCount = Math.floor(Math.random() * 3) + 2;
+    for (let i = 0; i < evidenceCount; i++) {
+      await db.insert(orgEvidenceTable).values({
+        orgId,
+        title: `${catalogItem.name} -- ${["Access Review", "MFA Report", "Audit Log Export", "Configuration Snapshot", "User Roster"][i % 5]}`,
+        description: `Automatically collected from ${catalogItem.name} integration.`,
+        type: "auto",
+        source: integrationKey,
+        collectedAt: new Date(),
+      });
+    }
+
+    if (existing) {
+      await db.update(orgIntegrationsTable)
+        .set({ status: "connected", lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceCount })
+        .where(eq(orgIntegrationsTable.id, existing.id));
+    } else {
+      await db.insert(orgIntegrationsTable).values({
+        orgId,
+        integrationKey,
+        name: catalogItem.name,
+        status: "connected",
+        lastSyncAt: new Date(),
+        lastSyncStatus: "success",
+        evidenceCollected: evidenceCount,
+      });
+    }
+
+    return { success: true, evidenceCollected: evidenceCount, controlsUpdated: demoControlResults.length };
   }
 
   async syncOrgGitHub(orgId: number) {

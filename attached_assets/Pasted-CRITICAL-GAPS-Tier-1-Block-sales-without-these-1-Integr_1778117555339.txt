@@ -1,0 +1,108 @@
+CRITICAL GAPS (Tier 1 — Block sales without these)
+1. Integration Catalog Depth
+
+Vanta: 250+ integrations. Drata: 100+. Secureframe: 150+.
+ColorComply: 1 live (GitHub). 8 listed as "coming soon."
+The #1 complaint across every competitor on G2 is shallow integrations. A prospect's first question is always "do you connect to AWS/Okta/Google Workspace?" If the answer is no, they leave.
+Need: AWS, Google Workspace, Okta, Azure AD, Slack as priority 2-5. Each adds 4-8 automated control tests.
+2. Continuous Monitoring / Drift Alerts
+
+All Tier 1 competitors run background checks every 24-72 hours and alert on drift.
+ColorComply: no real-time monitoring, no alerting. Controls are point-in-time only.
+67% of production incidents trace back to config drift. Buyers need proof of continuous compliance, not a snapshot.
+Need: Background job runner, webhook listeners, per-integration polling, Slack/email notification system.
+3. Risk Register
+
+Required for ISO 27001 (clause 6.1), SOC 2 CC3, and virtually every other framework.
+ColorComply: missing entirely. No risk table, no risk owners, no likelihood/impact scoring, no treatment tracking.
+Vanta, Drata, Hyperproof all have full risk registers.
+Need: Risk table (asset, threat, likelihood 1-5, impact 1-5, inherent score, treatment, residual score, owner, due date).
+4. Auditor Collaboration Portal
+
+Auditors need a controlled workspace: request evidence, mark items accepted/rejected, leave comments, download packages.
+ColorComply: no auditor workflow. Evidence vault exists but there's no way to share it with an external auditor.
+Vanta and Drata both have dedicated auditor-facing portals. This is a deal-blocker at the point of actual audit.
+Need: Auditor invite flow, read-only scoped access, evidence request threads, audit package export.
+HIGH-VALUE GAPS (Tier 2 — Lose deals to Vanta/Drata without these)
+5. Trust Center (Public Security Page)
+
+A public-facing, branded portal where companies share their compliance posture with customers and prospects. Replaces the "fill out this 80-question SIG questionnaire" email chain.
+Vanta's Trust Center is one of its top selling features. Buyers pay for Vanta specifically to get the Trust Center URL they can share.
+ColorComply: not built.
+Need: Public /trust page per org showing active frameworks, passing %, certifications, redacted controls, NDA-gated document requests.
+6. Security Questionnaire Automation (SQA)
+
+Companies receive an average of 23% more vendor security questionnaires per quarter. Manual completion takes 3 weeks and 12-18 expert hours per request.
+All Tier 1 players offer AI-assisted questionnaire response using past answers and existing controls.
+ColorComply: not built.
+Need: Questionnaire intake (paste/upload SIG, VSA, custom), AI-match answers to existing controls and evidence, export completed questionnaire.
+7. SPRS Score Calculator
+
+For CMMC L2, every DoD contractor must have a valid SPRS (Supplier Performance Risk System) score. Average score is -12 (against a target of +110). Only 1% of the DIB feels prepared.
+No competitor has a clean SPRS scoring tool. This is a federal-layer gap that is ColorComply's home turf.
+ColorComply: CMMC L2 framework exists but no SPRS scoring.
+Need: SPRS calculator using the DoD's exact 110-control weighted scoring (-203 to +110), linked to UCO control results, downloadable SPRS assessment report.
+8. SSP (System Security Plan) Generator
+
+FedRAMP and CMMC both mandate a formal SSP. It's 80-300 pages of structured documentation.
+No tool generates a well-structured SSP. This is universally painful.
+ColorComply: not built.
+Need: SSP template wizard (system description, boundary diagram, control implementation statements per UCO control), export to DOCX/PDF.
+9. AI Policy Gap Analysis + Generation
+
+The market is moving fast here. Drata announced agentic compliance in Q2 2025. Secureframe added AI RMF and ISO 42001.
+Buyers are asking "can your AI generate a draft Password Policy for me?" and "what controls am I missing to be FedRAMP-ready?"
+ColorComply: no AI features at all.
+Need: AI gap analysis ("you're 74% FedRAMP ready — here are the 11 failing controls"), AI policy draft generation from templates using org context, AI control description generation.
+COMPETITIVE PARITY GAPS (Tier 3 — Table stakes, differentiated by quality)
+10. Outbound Vendor Risk Assessments
+
+ColorComply has a vendor list but can't send questionnaires TO vendors. This is a core part of third-party risk management (required in SOC 2 CC9.2, ISO 27001 A.15).
+Need: Assessment templates (SIG-Lite, CAIQ), send/track/score vendor responses.
+11. Access Review Workflows
+
+Structured, manager-approval access reviews for SOC 2 CC6.2 and ISO 27001 A.9.
+People page exists but there's no review workflow (approve/revoke, attestation record).
+Need: Scheduled access review campaigns, manager email approval links, export attestation records as evidence.
+12. Custom Framework Builder
+
+Large customers always have internal control frameworks or niche frameworks (NERC CIP, HITRUST, FedRAMP+ custom overlays) not in the catalog.
+All Tier 1 competitors allow custom frameworks. ColorComply has a hard-coded 12.
+Need: Custom framework editor: import control list, map to UCO, track separately.
+13. Notification System
+
+No Slack/email alerts for: control drift, evidence expiring, new findings, POA&M items overdue.
+This is table stakes for "continuous compliance."
+Need: Notification rules engine + Slack webhook + email digest.
+14. Audit Trail / Change Log
+
+SOC 2 and FedRAMP both require evidence of who changed what, when. Auditors ask for this.
+ColorComply: no change log surfaced in the UI.
+Need: Per-org audit log table, surfaced in Settings.
+The Federal Moat: ColorComply's Biggest Untapped Opportunity
+The Tier 1 tools (Vanta, Drata, Secureframe) are fundamentally commercial-sector tools that bolt on a FedRAMP checklist. None of them are purpose-built for the federal market. This creates a clear wedge:
+
+FedRAMP 20x (announced March 2025): The program is shifting to continuous validation, machine-readable evidence, and automated compliance pipelines instead of point-in-time audits. The PMO has explicitly said 80%+ of requirements should have automated validation. No vendor has built for this yet. ColorComply, with its UCO engine and federal-first design, is better positioned to own this than anyone.
+
+Specific federal-layer features that would be 6-18 months ahead of Vanta/Drata:
+
+SPRS scoring (critical now, CMMC Phase 2 mandatory from 2026)
+SSP auto-generation with machine-readable OSCAL format output (FedRAMP 20x requirement)
+ATO package builder (System Security Plan + SAP + SAR + CIS package)
+ConMon dashboard (FedRAMP continuous monitoring: monthly vulnerability scan uploads, POA&M aging, deviation requests)
+OSCAL import/export (the machine-readable standard FedRAMP 20x is mandating)
+Priority Build Roadmap
+Priority	Feature	Effort	Competitive Impact
+P0	More integrations (AWS, Google Workspace, Okta)	High	Existential — can't demo without
+P0	Continuous monitoring + drift alerts	Medium	Table stakes
+P1	Risk Register	Medium	Blocks ISO 27001 / SOC 2 deals
+P1	SPRS Score Calculator	Low-Medium	Federal moat, zero competition
+P1	Trust Center (public security page)	Medium	Revenue driver, viral loop
+P1	Auditor collaboration portal	Medium	Blocks actual audit usage
+P2	AI gap analysis + policy generation	High	Market moving fast here
+P2	SSP / OSCAL generator	High	Federal moat
+P2	Security questionnaire automation	Medium	Vanta's #2 selling feature
+P3	Outbound vendor assessments	Medium	SOC 2 / ISO completeness
+P3	Custom framework builder	Medium	Enterprise deals
+P3	Access review workflows	Low-Medium	SOC 2 completeness
+P3	Notification system	Low	Continuous compliance story
