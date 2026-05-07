@@ -55,13 +55,13 @@ export default function AccessReviews() {
   const revokedItems = items.filter((i) => i.decision === "revoked");
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Access Reviews</h1>
+          <h1 className="text-xl font-bold text-slate-900">Access Reviews</h1>
           <p className="text-sm text-slate-500 mt-0.5">SOC 2 CC6.2 / ISO 27001 A.9 - Periodic user access attestation</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
           + New Review Campaign
         </button>
       </div>

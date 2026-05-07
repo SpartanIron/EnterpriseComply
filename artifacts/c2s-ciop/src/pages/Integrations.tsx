@@ -214,21 +214,22 @@ function IntegrationLogo({ name, size = "md" }: { name: string; size?: "sm" | "m
       </div>
     );
   }
-  const emojis: Record<string, string> = {
-    aws: "☁", okta: "O", jira: "J", slack: "S", crowdstrike: "C", jamf: "J",
-    workday: "W", "google-workspace": "G", "azure-ad": "A", datadog: "D", pagerduty: "P",
+  const labels: Record<string, string> = {
+    aws: "AWS", okta: "Ok", jira: "Ji", slack: "Sl", crowdstrike: "CS", jamf: "Jm",
+    workday: "Wd", "google-workspace": "GW", "azure-ad": "Az", datadog: "DD", pagerduty: "PD",
   };
   const colors: Record<string, string> = {
-    aws: "bg-orange-100 text-orange-600", okta: "bg-blue-100 text-blue-600",
-    jira: "bg-blue-100 text-blue-700", slack: "bg-purple-100 text-purple-600",
-    crowdstrike: "bg-red-100 text-red-600", jamf: "bg-slate-100 text-slate-600",
-    workday: "bg-yellow-100 text-yellow-700", "google-workspace": "bg-blue-100 text-blue-600",
-    "azure-ad": "bg-blue-100 text-blue-700", datadog: "bg-purple-100 text-purple-600",
-    pagerduty: "bg-green-100 text-green-600",
+    aws: "bg-orange-100 text-orange-700", okta: "bg-blue-100 text-blue-700",
+    jira: "bg-blue-100 text-blue-700", slack: "bg-purple-100 text-purple-700",
+    crowdstrike: "bg-red-100 text-red-700", jamf: "bg-slate-100 text-slate-600",
+    workday: "bg-yellow-100 text-yellow-700", "google-workspace": "bg-blue-100 text-blue-700",
+    "azure-ad": "bg-blue-100 text-blue-700", datadog: "bg-purple-100 text-purple-700",
+    pagerduty: "bg-green-100 text-green-700",
   };
+  const textSz = size === "sm" ? "text-xs" : "text-xs";
   return (
-    <div className={`${sz} ${colors[name] ?? "bg-slate-100 text-slate-600"} rounded-xl flex items-center justify-center font-bold flex-shrink-0`}>
-      {emojis[name] ?? "?"}
+    <div className={`${sz} ${colors[name] ?? "bg-slate-100 text-slate-600"} rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${textSz}`}>
+      {labels[name] ?? name.slice(0, 2).toUpperCase()}
     </div>
   );
 }

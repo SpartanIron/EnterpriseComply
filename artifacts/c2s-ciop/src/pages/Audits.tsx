@@ -53,13 +53,13 @@ export default function Audits() {
   const requests = requestsData?.requests ?? [];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Auditor Portal</h1>
+          <h1 className="text-xl font-bold text-slate-900">Auditor Portal</h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage audit engagements, evidence requests, and auditor access</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
           + New Engagement
         </button>
       </div>

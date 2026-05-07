@@ -20,7 +20,7 @@ export default function SPRS() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="p-6 max-w-screen-xl">
         <div className="h-8 w-64 bg-slate-100 rounded animate-pulse mb-6" />
         <div className="grid grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-slate-100 rounded-xl animate-pulse" />)}
@@ -35,10 +35,10 @@ export default function SPRS() {
   const scorePercent = Math.max(0, Math.min(100, ((score + 203) / 313) * 100));
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">SPRS Score Calculator</h1>
+          <h1 className="text-xl font-bold text-slate-900">SPRS Score Calculator</h1>
           <p className="text-sm text-slate-500 mt-0.5">Supplier Performance Risk System - NIST SP 800-171 / CMMC Level 2</p>
         </div>
         <a href="https://www.nist.gov/system/files/documents/2021/11/01/NIST%20SP%20800-171%20DoD%20Assessment%20Methodology%20Version%201.2.1%20September%202020.pdf"

@@ -71,10 +71,10 @@ export default function Monitoring() {
   const logs = logData?.logs ?? [];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Continuous Monitoring</h1>
+          <h1 className="text-xl font-bold text-slate-900">Continuous Monitoring</h1>
           <p className="text-sm text-slate-500 mt-0.5">Real-time compliance monitoring, drift alerts, and audit trail</p>
         </div>
         {(notifData?.unreadCount ?? 0) > 0 && (

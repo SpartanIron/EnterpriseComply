@@ -107,13 +107,13 @@ export default function RiskRegister() {
   const inherentScore = form.likelihood * form.impact;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Risk Register</h1>
+          <h1 className="text-xl font-bold text-slate-900">Risk Register</h1>
           <p className="text-sm text-slate-500 mt-0.5">Identify, assess, and track organizational risks</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+        <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
           + Add Risk
         </button>
       </div>

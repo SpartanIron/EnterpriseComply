@@ -37,10 +37,10 @@ export default function AuditLog() {
     : logs;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Audit Log</h1>
+          <h1 className="text-xl font-bold text-slate-900">Audit Log</h1>
           <p className="text-sm text-slate-500 mt-0.5">Complete record of changes and actions across your organization</p>
         </div>
         <div className="flex items-center gap-2">

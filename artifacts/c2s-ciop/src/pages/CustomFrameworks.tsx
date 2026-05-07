@@ -54,13 +54,13 @@ export default function CustomFrameworks() {
   const controls = controlsData?.controls ?? [];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Custom Frameworks</h1>
+          <h1 className="text-xl font-bold text-slate-900">Custom Frameworks</h1>
           <p className="text-sm text-slate-500 mt-0.5">Build internal control frameworks, HITRUST overlays, or custom compliance programs</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
           + New Framework
         </button>
       </div>

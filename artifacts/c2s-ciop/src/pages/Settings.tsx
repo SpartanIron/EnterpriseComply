@@ -23,18 +23,18 @@ export default function Settings() {
   const saved = form?.name === org?.name && form?.industry === org?.industry && form?.size === org?.size && form?.website === (org?.website ?? "");
 
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-500 mt-1">Manage your organization settings</p>
+    <div className="p-6 max-w-2xl">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-slate-900 leading-tight">Settings</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Manage your organization settings</p>
       </div>
 
       {/* Org Settings */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">Organization</h2>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
+        <div className="px-5 py-3.5 border-b border-slate-100">
+          <h2 className="text-sm font-bold text-slate-800">Organization</h2>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="p-5 space-y-4">
           {form && (
             <>
               <div>
@@ -71,11 +71,11 @@ export default function Settings() {
       </div>
 
       {/* Plan */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">Plan</h2>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
+        <div className="px-5 py-3.5 border-b border-slate-100">
+          <h2 className="text-sm font-bold text-slate-800">Plan</h2>
         </div>
-        <div className="p-6">
+        <div className="p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-semibold text-slate-900 capitalize">{org?.plan ?? "Starter"} Plan</p>
@@ -88,10 +88,10 @@ export default function Settings() {
 
       {/* Org ID */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">Organization Details</h2>
+        <div className="px-5 py-3.5 border-b border-slate-100">
+          <h2 className="text-sm font-bold text-slate-800">Organization Details</h2>
         </div>
-        <div className="p-6 space-y-3 text-sm">
+        <div className="p-5 space-y-3 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-slate-500">Organization ID</span>
             <span className="font-mono text-slate-700 text-xs bg-slate-100 px-2 py-1 rounded">{org?.id}</span>

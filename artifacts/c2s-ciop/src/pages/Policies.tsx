@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
+import { PageHeader, EmptyState, PrimaryButton, SectionLabel } from "@/components/ui/PageHeader";
 
-const STATUS_BADGE: Record<string, string> = {
-  published: "bg-green-100 text-green-700",
-  draft: "bg-slate-100 text-slate-600",
-  review_required: "bg-amber-100 text-amber-700",
+const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
+  published: { label: "Published", cls: "bg-green-50 text-green-700 ring-1 ring-green-200" },
+  draft: { label: "Draft", cls: "bg-slate-100 text-slate-500 ring-1 ring-slate-200" },
+  review_required: { label: "Review Required", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" },
 };
+
+const DocIcon = (
+  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
 
 export default function Policies() {
   const qc = useQueryClient();
@@ -57,76 +64,157 @@ export default function Policies() {
   const templates = templatesData?.templates ?? [];
   const existingKeys = new Set(policies.map((p: any) => p.templateKey));
 
+  const byStatus = {
+    published: policies.filter(p => p.status === "published"),
+    review_required: policies.filter(p => p.status === "review_required"),
+    draft: policies.filter(p => p.status === "draft"),
+  };
+
+  const CATS: Record<string, string> = {
+    "security": "Security",
+    "privacy": "Privacy",
+    "hr": "Human Resources",
+    "operations": "Operations",
+    "compliance": "Compliance",
+  };
+
   return (
-    <div className="p-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Policies</h1>
-          <p className="text-slate-500 mt-1">Manage your security policies and track acknowledgments</p>
+    <div className="p-6 max-w-screen-xl">
+      <PageHeader
+        title="Policies"
+        subtitle="Manage your security policies and track acknowledgments"
+        actions={
+          <PrimaryButton onClick={() => setShowCreate(true)}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Policy
+          </PrimaryButton>
+        }
+      />
+
+      {policies.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <p className="text-2xl font-bold text-slate-900 leading-none">{policies.length}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Total Policies</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <p className={`text-2xl font-bold leading-none ${byStatus.published.length > 0 ? "text-green-600" : "text-slate-400"}`}>{byStatus.published.length}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Published</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <p className={`text-2xl font-bold leading-none ${byStatus.review_required.length > 0 ? "text-amber-500" : "text-slate-400"}`}>{byStatus.review_required.length}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Needs Review</p>
+          </div>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-        >
-          <span className="text-lg leading-none">+</span>
-          Add Policy
-        </button>
-      </div>
+      )}
 
       {isLoading ? (
-        <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+        <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : policies.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
-          <p className="text-4xl mb-4">📝</p>
-          <p className="font-semibold text-slate-900 mb-2">No policies yet</p>
-          <p className="text-slate-500 text-sm mb-5">Add policies from our template library to satisfy framework requirements.</p>
-          <button onClick={() => setShowCreate(true)} className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">Browse templates</button>
-        </div>
+        <EmptyState
+          icon={DocIcon}
+          title="No policies yet"
+          body="Add policies from our template library to satisfy framework requirements and demonstrate compliance."
+          action={<PrimaryButton onClick={() => setShowCreate(true)}>Browse templates</PrimaryButton>}
+        />
       ) : (
-        <div className="space-y-3">
-          {policies.map((p: any) => (
-            <div key={p.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center gap-4">
-              <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-xl flex-shrink-0">📄</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-slate-900 text-sm">{p.title}</p>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[p.status] ?? STATUS_BADGE.draft}`}>{p.status.replace("_", " ")}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">{p.category} · v{p.version}</p>
-              </div>
-              <div className="text-xs text-slate-400 flex-shrink-0">
-                {p.publishedAt ? `Published ${new Date(p.publishedAt).toLocaleDateString()}` : "Draft"}
-              </div>
-            </div>
-          ))}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Policy</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Category</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Version</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {policies.map((p: any, idx: number) => {
+                const st = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.draft;
+                return (
+                  <tr key={p.id} className={`${idx > 0 ? "border-t border-slate-100" : ""} hover:bg-slate-50 transition-colors`}>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 flex-shrink-0">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <p className="font-semibold text-slate-900">{p.title}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md font-medium capitalize">{p.category}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${st.cls}`}>{st.label}</span>
+                    </td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell">
+                      <span className="text-xs font-mono text-slate-500">v{p.version ?? "1.0"}</span>
+                    </td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell">
+                      <span className="text-xs text-slate-400">
+                        {p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : "-"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">Policy Templates</h2>
-              <button onClick={() => setShowCreate(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">✕</button>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[82vh] flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Policy Templates</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Select a template to add to your policy library</p>
+              </div>
+              <button onClick={() => setShowCreate(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-            <div className="overflow-y-auto p-6 flex-1 space-y-3">
-              {templates.filter(t => !existingKeys.has(t.key)).map((t: any) => (
-                <button
-                  key={t.key}
-                  onClick={() => createMutation.mutate(t)}
-                  disabled={createMutation.isPending}
-                  className="w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-colors text-left group"
-                >
-                  <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-blue-100 transition-colors">📄</div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">{t.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{t.description}</p>
+            <div className="overflow-y-auto p-5 flex-1">
+              {Object.entries(CATS).map(([cat, catLabel]) => {
+                const catTemplates = templates.filter(t => t.category === cat && !existingKeys.has(t.key));
+                if (catTemplates.length === 0) return null;
+                return (
+                  <div key={cat} className="mb-4">
+                    <SectionLabel>{catLabel}</SectionLabel>
+                    <div className="space-y-1.5">
+                      {catTemplates.map((t: any) => (
+                        <button
+                          key={t.key}
+                          onClick={() => createMutation.mutate(t)}
+                          disabled={createMutation.isPending}
+                          className="w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left group disabled:opacity-60"
+                        >
+                          <div className="h-9 w-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 flex-shrink-0 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">{t.title}</p>
+                            {t.description && <p className="text-xs text-slate-400 mt-0.5 truncate">{t.description}</p>}
+                          </div>
+                          <svg className="h-4 w-4 text-slate-300 group-hover:text-blue-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <span className="text-blue-600 font-semibold text-sm">+ Add →</span>
-                </button>
-              ))}
-              {templates.filter(t => existingKeys.has(t.key)).length === templates.length && (
-                <p className="text-center text-slate-500 text-sm py-4">All templates are already added.</p>
+                );
+              })}
+              {templates.length > 0 && templates.every(t => existingKeys.has(t.key)) && (
+                <p className="text-center text-slate-500 text-sm py-8">All templates have been added to your policy library.</p>
               )}
             </div>
           </div>

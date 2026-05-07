@@ -41,10 +41,10 @@ export default function TrustCenter() {
   const trustUrl = settings ? `${window.location.origin}${settings.trustCenterUrl}` : null;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-screen-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Trust Center</h1>
+          <h1 className="text-xl font-bold text-slate-900">Trust Center</h1>
           <p className="text-sm text-slate-500 mt-0.5">Your public-facing security and compliance page</p>
         </div>
         {trustUrl && (

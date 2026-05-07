@@ -1,19 +1,40 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
+import { PageHeader, EmptyState, PrimaryButton, SectionLabel } from "@/components/ui/PageHeader";
 
-const SOURCE_BADGE: Record<string, string> = {
-  auto: "bg-blue-100 text-blue-700",
-  manual: "bg-slate-100 text-slate-600",
-  github: "bg-gray-100 text-gray-700",
+const SOURCE_LABEL: Record<string, { label: string; cls: string }> = {
+  auto: { label: "Automated", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
+  manual: { label: "Manual", cls: "bg-slate-100 text-slate-600 ring-1 ring-slate-200" },
+  github: { label: "GitHub", cls: "bg-slate-900 text-white" },
 };
 
-const TYPE_ICON: Record<string, string> = {
-  document: "📄",
-  screenshot: "🖼",
-  log: "📋",
-  auto: "⚡",
-  report: "📊",
+const TYPE_ICON: Record<string, React.ReactNode> = {
+  document: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  screenshot: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  ),
+  log: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  auto: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+  report: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  ),
 };
 
 export default function Evidence() {
@@ -54,92 +75,127 @@ export default function Evidence() {
   const autoItems = items.filter(e => e.source !== "manual");
   const manualItems = items.filter(e => e.source === "manual");
 
+  const FolderIcon = (
+    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+    </svg>
+  );
+
   return (
-    <div className="p-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Evidence Vault</h1>
-          <p className="text-slate-500 mt-1">{items.length} evidence items collected</p>
-        </div>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-        >
-          <span className="text-lg leading-none">+</span>
-          Add Evidence
-        </button>
-      </div>
+    <div className="p-6 max-w-screen-xl">
+      <PageHeader
+        title="Evidence Vault"
+        subtitle={items.length > 0 ? `${items.length} evidence item${items.length !== 1 ? "s" : ""} collected` : "Collect and manage compliance evidence"}
+        actions={
+          <PrimaryButton onClick={() => setShowUpload(true)}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Evidence
+          </PrimaryButton>
+        }
+      />
 
       {isLoading ? (
-        <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+        <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : items.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
-          <p className="text-4xl mb-4">📁</p>
-          <p className="font-semibold text-slate-900 mb-2">No evidence collected yet</p>
-          <p className="text-slate-500 text-sm mb-5">Connect an integration to start collecting evidence automatically, or add evidence manually.</p>
-          <button onClick={() => setShowUpload(true)} className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">Add evidence manually</button>
-        </div>
+        <EmptyState
+          icon={FolderIcon}
+          title="No evidence collected yet"
+          body="Connect an integration to start collecting evidence automatically, or add evidence manually to map it to your controls."
+          action={
+            <PrimaryButton onClick={() => setShowUpload(true)}>Add evidence manually</PrimaryButton>
+          }
+        />
       ) : (
         <div className="space-y-6">
           {autoItems.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Automatically Collected ({autoItems.length})</h2>
-              <div className="space-y-2">
-                {autoItems.map((e: any) => <EvidenceRow key={e.id} item={e} />)}
-              </div>
+              <SectionLabel>Automated Evidence ({autoItems.length})</SectionLabel>
+              <EvidenceTable items={autoItems} />
             </div>
           )}
           {manualItems.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Manually Added ({manualItems.length})</h2>
-              <div className="space-y-2">
-                {manualItems.map((e: any) => <EvidenceRow key={e.id} item={e} />)}
-              </div>
+              <SectionLabel>Manual Evidence ({manualItems.length})</SectionLabel>
+              <EvidenceTable items={manualItems} />
             </div>
           )}
         </div>
       )}
 
       {showUpload && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">Add Evidence</h2>
-              <button onClick={() => setShowUpload(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">✕</button>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900">Add Evidence</h2>
+              <button onClick={() => setShowUpload(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Title *</label>
-                <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="MFA Policy Screenshot" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
-                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={3} />
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Title *</label>
+                <input
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="MFA configuration screenshot"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Type</label>
-                  <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="document">Document</option>
-                    <option value="screenshot">Screenshot</option>
-                    <option value="log">Log</option>
-                    <option value="report">Report</option>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Type</label>
+                  <select
+                    value={form.type}
+                    onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    {["document", "screenshot", "log", "report"].map(t => (
+                      <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Control ID (optional)</label>
-                  <input value={form.ucoControlId} onChange={e => setForm({ ...form, ucoControlId: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="UCO-AI-001" />
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Control ID</label>
+                  <input
+                    value={form.ucoControlId}
+                    onChange={e => setForm(f => ({ ...f, ucoControlId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="UCO-AI-001"
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">URL (optional)</label>
-                <input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={3}
+                  placeholder="Describe this evidence item..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">URL (optional)</label>
+                <input
+                  value={form.url}
+                  onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://..."
+                />
               </div>
             </div>
-            <div className="p-6 border-t border-slate-100 flex gap-3">
-              <button onClick={() => setShowUpload(false)} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={() => addMutation.mutate()} disabled={!form.title || addMutation.isPending} className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {addMutation.isPending ? "Saving..." : "Add Evidence"}
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-2">
+              <button onClick={() => setShowUpload(false)} className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => addMutation.mutate()}
+                disabled={!form.title || addMutation.isPending}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {addMutation.isPending ? "Adding..." : "Add Evidence"}
               </button>
             </div>
           </div>
@@ -149,26 +205,52 @@ export default function Evidence() {
   );
 }
 
-function EvidenceRow({ item }: { item: any }) {
-  const date = new Date(item.collectedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+function EvidenceTable({ items }: { items: any[] }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4 shadow-sm">
-      <div className="h-10 w-10 bg-slate-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0">
-        {TYPE_ICON[item.type] ?? "📄"}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-medium text-slate-900 text-sm">{item.title}</p>
-          {item.ucoControlId && (
-            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs font-mono rounded">{item.ucoControlId}</span>
-          )}
-          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${SOURCE_BADGE[item.source] ?? SOURCE_BADGE.manual}`}>
-            {item.source === "auto" ? "⚡ auto" : item.source}
-          </span>
-        </div>
-        {item.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.description}</p>}
-      </div>
-      <p className="text-xs text-slate-400 flex-shrink-0">{date}</p>
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-100 bg-slate-50">
+            <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Evidence</th>
+            <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Control</th>
+            <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Source</th>
+            <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Collected</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((e: any, idx: number) => {
+            const src = SOURCE_LABEL[e.source] ?? SOURCE_LABEL.manual;
+            const icon = TYPE_ICON[e.type] ?? TYPE_ICON.document;
+            return (
+              <tr key={e.id} className={`${idx > 0 ? "border-t border-slate-100" : ""} hover:bg-slate-50 transition-colors`}>
+                <td className="px-5 py-3.5">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 flex-shrink-0 mt-0.5">
+                      {icon}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 text-sm leading-snug">{e.title}</p>
+                      {e.description && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{e.description}</p>}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-3.5 hidden md:table-cell">
+                  {e.ucoControlId
+                    ? <span className="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{e.ucoControlId}</span>
+                    : <span className="text-slate-300 text-xs">-</span>
+                  }
+                </td>
+                <td className="px-5 py-3.5">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${src.cls}`}>{src.label}</span>
+                </td>
+                <td className="px-5 py-3.5 hidden lg:table-cell">
+                  <span className="text-xs text-slate-400">{e.collectedAt ? new Date(e.collectedAt).toLocaleDateString() : "-"}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

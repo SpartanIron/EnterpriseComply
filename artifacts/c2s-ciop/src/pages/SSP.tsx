@@ -34,10 +34,10 @@ export default function SSP() {
   const f = (field: string, val: string) => setForm({ ...form, [field]: val });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">SSP Generator</h1>
+          <h1 className="text-xl font-bold text-slate-900">SSP Generator</h1>
           <p className="text-sm text-slate-500 mt-0.5">Generate a System Security Plan for FedRAMP, CMMC, or NIST 800-53</p>
         </div>
       </div>
