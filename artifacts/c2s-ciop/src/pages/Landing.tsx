@@ -297,17 +297,17 @@ export default function Landing() {
             inset: 0,
             background: [
               "linear-gradient(38deg,",
-              "  rgba(109,40,217,0.28) 0%,   rgba(109,40,217,0.28) 8%,",
-              "  rgba(37,99,235,0.30)  8%,   rgba(37,99,235,0.30)  16%,",
-              "  rgba(14,165,233,0.27) 16%,  rgba(14,165,233,0.27) 24%,",
-              "  rgba(6,182,212,0.23)  24%,  rgba(6,182,212,0.23)  32%,",
-              "  rgba(16,185,129,0.18) 32%,  rgba(16,185,129,0.18) 40%,",
-              "  rgba(132,204,22,0.13) 40%,  rgba(132,204,22,0.13) 48%,",
+              "  rgba(109,40,217,0.72) 0%,   rgba(109,40,217,0.72) 8%,",
+              "  rgba(37,99,235,0.78)  8%,   rgba(37,99,235,0.78)  16%,",
+              "  rgba(14,165,233,0.74) 16%,  rgba(14,165,233,0.74) 24%,",
+              "  rgba(6,182,212,0.68)  24%,  rgba(6,182,212,0.68)  32%,",
+              "  rgba(16,185,129,0.60) 32%,  rgba(16,185,129,0.60) 40%,",
+              "  rgba(132,204,22,0.48) 40%,  rgba(132,204,22,0.48) 48%,",
               "  transparent 48%",
               ")"
             ].join(""),
-            maskImage: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 45%, transparent 80%)",
-            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 45%, transparent 80%)",
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 75%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 75%)",
           }} />
         </div>
 
