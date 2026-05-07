@@ -142,26 +142,37 @@ function StatCard({ label, value, total, color, icon }: { label: string; value: 
 
 function FrameworkCard({ fw, onClick }: { fw: any; onClick: () => void }) {
   const score = fw.complianceScore ?? 0;
-  const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-600";
-  const barColor = score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+  const passing = fw.passingControls ?? 0;
+  const failing = fw.failingControls ?? 0;
+  const untested = fw.notTestedControls ?? 0;
+  const hasActivity = passing > 0 || failing > 0;
+
+  const scoreColor = !hasActivity ? "text-slate-400" : score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-500" : "text-red-600";
+  const barColor = !hasActivity ? "bg-slate-200" : score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+
   return (
-    <div onClick={onClick} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer">
+    <div onClick={onClick} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group">
       <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="font-semibold text-slate-900 text-sm">{fw.shortName ?? fw.name}</p>
-          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${CATEGORY_COLORS[fw.category] ?? "bg-slate-100 text-slate-600"}`}>{fw.category}</span>
+        <div className="min-w-0 pr-3">
+          <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">{fw.shortName ?? fw.name}</p>
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold mt-1.5 ${CATEGORY_COLORS[fw.category] ?? "bg-slate-100 text-slate-600"}`}>
+            {fw.category === "best-practice" ? "Best Practice" : fw.category === "federal" ? "Federal" : "Commercial"}
+          </span>
         </div>
-        <p className={`text-2xl font-bold ${scoreColor}`}>{Math.round(score)}%</p>
+        <div className="text-right flex-shrink-0">
+          <p className={`text-2xl font-bold leading-none ${scoreColor}`}>{Math.round(score)}%</p>
+          <p className="text-xs text-slate-400 mt-0.5">{hasActivity ? "compliant" : "not started"}</p>
+        </div>
       </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${score}%` }} />
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-3">
+        <div className={`h-full ${barColor} rounded-full transition-all duration-700`} style={{ width: `${score}%` }} />
       </div>
-      <div className="flex gap-3 mt-3 text-xs text-slate-500">
-        <span className="text-green-600 font-medium">{fw.passingControls ?? 0} passing</span>
-        <span>·</span>
-        <span className="text-red-600 font-medium">{fw.failingControls ?? 0} failing</span>
-        <span>·</span>
-        <span>{fw.notTestedControls ?? 0} untested</span>
+      <div className="flex gap-3 text-xs">
+        <span className={`font-semibold ${passing > 0 ? "text-green-600" : "text-slate-400"}`}>{passing} passing</span>
+        <span className="text-slate-200">|</span>
+        <span className={`font-semibold ${failing > 0 ? "text-red-500" : "text-slate-400"}`}>{failing} failing</span>
+        <span className="text-slate-200">|</span>
+        <span className="text-slate-400">{untested} untested</span>
       </div>
     </div>
   );

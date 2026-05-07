@@ -146,35 +146,44 @@ export default function Frameworks() {
 
 function FrameworkDetailCard({ fw }: { fw: any }) {
   const score = fw.complianceScore ?? 0;
-  const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-600";
-  const barColor = score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+  const passing = fw.passingControls ?? 0;
+  const failing = fw.failingControls ?? 0;
+  const untested = fw.notTestedControls ?? 0;
+  const total = passing + failing + untested;
+  const hasActivity = total > 0 && (passing > 0 || failing > 0);
+
+  const scoreColor = !hasActivity ? "text-slate-400" : score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-500" : "text-red-600";
+  const barColor = !hasActivity ? "bg-slate-200" : score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <p className="font-bold text-slate-900">{fw.name}</p>
-          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1.5 ${CATEGORY_BADGE[fw.category] ?? "bg-slate-100 text-slate-600"}`}>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md hover:border-blue-100 transition-all">
+      <div className="flex items-start justify-between mb-3">
+        <div className="min-w-0 flex-1 pr-3">
+          <p className="font-bold text-slate-900 text-base leading-snug">{fw.name}</p>
+          <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold mt-2 ${CATEGORY_BADGE[fw.category] ?? "bg-slate-100 text-slate-600"}`}>
             {CATALOG_CATEGORIES[fw.category] ?? fw.category}
           </span>
         </div>
-        <p className={`text-3xl font-bold ${scoreColor}`}>{Math.round(score)}%</p>
+        <div className="text-right flex-shrink-0">
+          <p className={`text-3xl font-bold leading-none ${scoreColor}`}>{Math.round(score)}%</p>
+          <p className="text-xs text-slate-400 mt-1">{hasActivity ? "compliant" : "not started"}</p>
+        </div>
       </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-        <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${score}%` }} />
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-4">
+        <div className={`h-full ${barColor} rounded-full transition-all duration-700`} style={{ width: `${Math.max(score, score > 0 ? 2 : 0)}%` }} />
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-green-50 rounded-lg p-2">
-          <p className="text-lg font-bold text-green-700">{fw.passingControls ?? 0}</p>
-          <p className="text-xs text-green-600">Passing</p>
+        <div className={`rounded-lg p-2.5 ${passing > 0 ? "bg-green-50" : "bg-slate-50"}`}>
+          <p className={`text-lg font-bold ${passing > 0 ? "text-green-700" : "text-slate-400"}`}>{passing}</p>
+          <p className={`text-xs font-medium ${passing > 0 ? "text-green-600" : "text-slate-400"}`}>Passing</p>
         </div>
-        <div className="bg-red-50 rounded-lg p-2">
-          <p className="text-lg font-bold text-red-700">{fw.failingControls ?? 0}</p>
-          <p className="text-xs text-red-600">Failing</p>
+        <div className={`rounded-lg p-2.5 ${failing > 0 ? "bg-red-50" : "bg-slate-50"}`}>
+          <p className={`text-lg font-bold ${failing > 0 ? "text-red-600" : "text-slate-400"}`}>{failing}</p>
+          <p className={`text-xs font-medium ${failing > 0 ? "text-red-500" : "text-slate-400"}`}>Failing</p>
         </div>
-        <div className="bg-slate-50 rounded-lg p-2">
-          <p className="text-lg font-bold text-slate-600">{fw.notTestedControls ?? 0}</p>
-          <p className="text-xs text-slate-500">Untested</p>
+        <div className="bg-slate-50 rounded-lg p-2.5">
+          <p className="text-lg font-bold text-slate-500">{untested}</p>
+          <p className="text-xs font-medium text-slate-400">Untested</p>
         </div>
       </div>
     </div>

@@ -105,12 +105,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const org = orgData?.org;
 
+  const currentLabel = (() => {
+    if (location === "/settings") return "Settings";
+    if (location === "/audit-log") return "Audit Log";
+    for (const group of NAV) {
+      for (const item of group.items) {
+        if (location === item.path || location.startsWith(item.path + "/")) return item.label;
+      }
+    }
+    return "Dashboard";
+  })();
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
         {/* Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-slate-100">
+        <div className="h-16 flex items-center px-5 border-b border-slate-100">
           <div className="flex items-center gap-3 min-w-0">
             <img src={`${BASE_PATH}/logo.svg`} className="h-7 w-7 flex-shrink-0" />
             <div className="min-w-0">
@@ -217,10 +228,40 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      {/* Right column: topbar + page content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top header bar */}
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs text-slate-400 font-medium hidden sm:block">{activeSection}</span>
+            <svg className="h-3 w-3 text-slate-300 flex-shrink-0 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="text-sm font-semibold text-slate-800 truncate">{currentLabel}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {org && (
+              <span className="text-xs text-slate-400 font-medium hidden md:block">{org.name}</span>
+            )}
+            <button className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600" title="Notifications">
+              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </button>
+            <div className="h-8 w-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-slate-100">
+              {user?.imageUrl
+                ? <img src={user.imageUrl} className="h-full w-full object-cover" />
+                : <div className="h-full w-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">{user?.firstName?.[0] ?? "U"}</div>
+              }
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
