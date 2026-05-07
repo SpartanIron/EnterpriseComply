@@ -24,7 +24,7 @@ const FEATURES = [
     ),
     title: "Identify & Mitigate Risk",
     desc: "Surface risks by severity, owner, and framework impact before they appear in your audit findings.",
-    page: "/risk-register",
+    page: "/risks",
   },
   {
     icon: (
@@ -54,7 +54,7 @@ const FEATURES = [
     ),
     title: "Collaborate & Assign",
     desc: "Assign controls, tasks, and approvals across teams. Every action is timestamped, attributed, and audit-logged.",
-    page: "/people",
+    page: "/audits",
   },
   {
     icon: (
