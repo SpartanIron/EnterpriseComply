@@ -284,7 +284,19 @@ function EvidenceTable({ items, onDelete }: { items: any[]; onDelete: (id: numbe
                       {icon}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 text-sm leading-snug">{e.title}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-slate-900 text-sm leading-snug">{e.title}</p>
+                        {e.url && (
+                          <a href={e.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors flex-shrink-0"
+                            title={e.url}>
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            View artifact
+                          </a>
+                        )}
+                      </div>
                       {e.description && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{e.description}</p>}
                       {expired && <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 mt-0.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Expired</span>}
                     </div>

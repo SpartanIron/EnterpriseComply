@@ -788,6 +788,103 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── DATA PORTABILITY ── */}
+      <section style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
+        <div className="max-w-7xl mx-auto px-6 py-20">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
+                style={{ background: "rgba(37,99,235,0.06)", borderColor: "rgba(37,99,235,0.2)", color: "#1d4ed8" }}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Your Data. Your Program. Always.
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-5">
+                What happens to your<br />
+                <span style={{ color: "#2563eb" }}>compliance program if things change?</span>
+              </h2>
+              <p className="text-base text-slate-500 leading-relaxed mb-6">
+                A CMMC Level 2 certified MSP closed recently and left dozens of defense contractors with a painful problem - they had to rebuild their entire compliance program from scratch. Re-collect evidence. Re-document controls. Find a new provider. Start over.
+              </p>
+              <p className="text-base text-slate-500 leading-relaxed mb-8">
+                EnterpriseComply is built on a different premise. Your compliance data - every control, every evidence artifact, every POA&amp;M entry - belongs to you. Export it any time. Certified provider or not, those answers matter.
+              </p>
+              <div className="space-y-3 mb-8">
+                {[
+                  { q: "What if you change providers?", a: "Full export of controls, evidence, POA&Ms, risks, and policies. Your new provider starts from a complete program, not zero." },
+                  { q: "What if EnterpriseComply closes?", a: "90-day advance notice plus immediate full export. Your evidence artifacts live at the URLs you provided - not inside our system." },
+                  { q: "How much would have to be rebuilt?", a: "Nothing. Every piece of your compliance program exports as open formats: CSV, JSON, and PDF." },
+                ].map(({ q, a }) => (
+                  <div key={q} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)" }}>
+                      <svg className="h-2.5 w-2.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{q}</p>
+                      <p className="text-sm text-slate-500 mt-0.5">{a}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <a href={BASE_PATH + "/sign-up"}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-lg"
+                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 16px rgba(37,99,235,0.3)" }}>
+                See the full portability guarantee
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </a>
+            </div>
+
+            <div className="space-y-3">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">What you can always export</p>
+                <div className="space-y-3">
+                  {[
+                    { label: "All UCO control implementations + status history", format: "CSV + JSON" },
+                    { label: "Evidence vault with artifact URLs + metadata", format: "CSV + JSON" },
+                    { label: "POA&M register - eMASS-compatible columns", format: "CSV" },
+                    { label: "Risk register with ratings + linked controls", format: "CSV + JSON" },
+                    { label: "Published policies as signed documents", format: "PDF" },
+                    { label: "System Security Plan (SSP)", format: "PDF" },
+                    { label: "Vendor register + questionnaire responses", format: "CSV + JSON" },
+                    { label: "Full platform audit log", format: "CSV + JSON" },
+                  ].map(({ label, format }) => (
+                    <div key={label} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                        <span className="text-sm text-slate-700">{label}</span>
+                      </div>
+                      <span className="text-xs font-medium text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded flex-shrink-0">{format}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-blue-600 rounded-2xl p-5 text-white">
+                <p className="font-bold text-sm mb-1">Before signing any GRC contract, ask:</p>
+                <ul className="space-y-1.5 mt-3">
+                  {[
+                    "Who owns the compliance data if the relationship ends?",
+                    "Can I export my evidence and controls at any time?",
+                    "What happens to my CMMC program if you close?",
+                    "Is my data in my account or yours?",
+                  ].map((q) => (
+                    <li key={q} className="flex items-start gap-2 text-sm text-blue-100">
+                      <span className="text-blue-300 font-bold flex-shrink-0">?</span>
+                      {q}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-blue-200 mt-4 border-t border-blue-500 pt-3">EnterpriseComply answers all four before you sign.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FEDERAL GTM WEDGE ── */}
       <section id="federal" style={{ background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 60%, #0a1628 100%)", borderTop: "1px solid rgba(59,130,246,0.12)" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">

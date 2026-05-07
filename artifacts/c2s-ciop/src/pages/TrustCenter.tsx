@@ -49,7 +49,7 @@ const CERTIFICATIONS = [
 
 export default function TrustCenter() {
   const { orgId } = useOrg();
-  const [activeTab, setActiveTab] = useState<"overview" | "security" | "subprocessors" | "certifications">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "security" | "subprocessors" | "certifications" | "portability">("overview");
   const [showSetup, setShowSetup] = useState(false);
 
   const { data: preview, isLoading } = useQuery<any>({
@@ -63,6 +63,7 @@ export default function TrustCenter() {
     { id: "security", label: "Security Practices" },
     { id: "subprocessors", label: "Sub-processors" },
     { id: "certifications", label: "Certifications" },
+    { id: "portability", label: "Data Portability" },
   ] as const;
 
   return (
@@ -278,6 +279,139 @@ export default function TrustCenter() {
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-500 leading-relaxed">
             <p className="font-semibold text-slate-700 mb-1">Data Processing Agreements</p>
             <p>All sub-processors listed above have executed Data Processing Agreements (DPAs) with ColorCode Solutions. Customer data is not sold or shared with third parties for advertising or marketing purposes. To request our DPA or a list of updated sub-processors, contact <a href="mailto:privacy@colorcodesolutions.com" className="text-blue-600 hover:underline">privacy@colorcodesolutions.com</a>.</p>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "portability" && (
+        <div className="space-y-5">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 bg-white/15 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-lg mb-1">Your compliance program is yours. Not ours.</p>
+                <p className="text-blue-100 text-sm leading-relaxed max-w-2xl">
+                  We've seen what happens when a certified MSP closes or a GRC vendor gets acquired - customers are left rebuilding their evidence from scratch, re-documenting controls they already paid to implement, and starting over. EnterpriseComply is built on a different principle: you own your data, you always have access to it, and you can take it with you at any time - no questions asked.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              {
+                question: "What happens if we change providers?",
+                answer: "Export your full compliance program as structured data at any time - controls, evidence, POA&Ms, risks, policies, and assessments. Your new provider or internal team can import it directly. Nothing is rebuilt from zero.",
+                icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4",
+              },
+              {
+                question: "What happens if EnterpriseComply closes?",
+                answer: "Your data is stored in your own tenant partition. We provide 90-day advance notice of any service changes plus an immediate full export. Your evidence artifacts are stored at the URLs you provided - not locked inside our system.",
+                icon: "M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z",
+              },
+              {
+                question: "How much of our program would have to be redone?",
+                answer: "Zero. Every control implementation, every evidence item, every POA&M entry, every risk - all exportable as open formats (CSV, JSON, PDF). Your CMMC program lives in your export, not in our database.",
+                icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+              },
+            ].map((item) => (
+              <div key={item.question} className="bg-white border border-slate-200 rounded-xl p-5">
+                <div className="h-9 w-9 bg-blue-50 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                  </svg>
+                </div>
+                <p className="font-semibold text-slate-900 text-sm mb-2">{item.question}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{item.answer}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
+              <p className="font-semibold text-slate-800 text-sm">What you can export, always</p>
+              <p className="text-xs text-slate-500 mt-0.5">All exports are available on-demand from Settings. No support ticket required.</p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {[
+                { item: "All UCO control implementations and status history", format: "CSV + JSON", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
+                { item: "Complete evidence vault with artifact URLs and metadata", format: "CSV + JSON", icon: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" },
+                { item: "POA&M register with all FedRAMP-required fields", format: "CSV (eMASS-compatible)", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7l-3-3m0 0l-3 3m3-3v8" },
+                { item: "Risk register with heat map ratings and control links", format: "CSV + JSON", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" },
+                { item: "Published policies as signed PDFs", format: "PDF", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+                { item: "Vendor register with risk ratings and questionnaire responses", format: "CSV + JSON", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
+                { item: "System Security Plan (SSP) as formatted PDF", format: "PDF (print-ready)", icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" },
+                { item: "Full audit log of all platform activity", format: "CSV + JSON", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+              ].map((row) => (
+                <div key={row.item} className="px-5 py-3.5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-7 w-7 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d={row.icon} />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-slate-700">{row.item}</p>
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg flex-shrink-0">{row.format}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+              <p className="font-semibold text-green-800 text-sm mb-2">Our portability commitments</p>
+              <ul className="space-y-2">
+                {[
+                  "Exports available on-demand, 24/7, from Settings",
+                  "No support ticket, no waiting period, no approval process",
+                  "Evidence artifact URLs are your URLs - stored exactly as you provided them",
+                  "90-day advance notice of any service termination",
+                  "Immediate full export upon account cancellation request",
+                  "Open formats only - CSV, JSON, and PDF - no proprietary lock-in",
+                ].map((c) => (
+                  <li key={c} className="flex items-start gap-2 text-xs text-green-700">
+                    <svg className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+              <p className="font-semibold text-slate-800 text-sm mb-2">Choosing a certified MSP? Ask these first.</p>
+              <p className="text-xs text-slate-500 leading-relaxed mb-3">
+                Whether you use EnterpriseComply directly or through an MSP partner, your compliance data should always be accessible to you - not just to the MSP. Before signing any GRC or managed compliance contract, ask:
+              </p>
+              <ul className="space-y-1.5">
+                {[
+                  "Who owns the compliance data if the relationship ends?",
+                  "Can I export my evidence and controls at any time?",
+                  "What happens to my CMMC program if you close?",
+                  "Is my data stored in my account or the MSP's account?",
+                ].map((q) => (
+                  <li key={q} className="flex items-start gap-2 text-xs text-slate-600">
+                    <span className="text-blue-500 font-bold flex-shrink-0 mt-0.5">?</span>
+                    {q}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-slate-900 text-sm">Ready to export your compliance program?</p>
+              <p className="text-xs text-slate-500 mt-0.5">Full export available in Settings. Download all controls, evidence, POA&Ms, risks, and policies in one click.</p>
+            </div>
+            <a href="/settings" className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0 transition-colors">
+              Go to Settings
+            </a>
           </div>
         </div>
       )}
