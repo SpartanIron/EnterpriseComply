@@ -121,7 +121,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Sidebar - dark */}
       <aside className="w-64 flex flex-col flex-shrink-0" style={{ background: "#0f172a" }}>
         {/* Logo */}
-        <div className="h-16 flex items-center px-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="h-16 flex items-center px-5 w-full transition-colors"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        >
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg">
               <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" />
@@ -131,7 +137,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               {org && <p className="text-xs truncate leading-tight mt-0.5" style={{ color: "rgba(148,163,184,0.9)" }}>{org.name}</p>}
             </div>
           </div>
-        </div>
+        </button>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
