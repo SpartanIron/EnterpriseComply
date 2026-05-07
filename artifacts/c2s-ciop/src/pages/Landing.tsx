@@ -63,52 +63,27 @@ const INDUSTRIES = [
   {
     name: "Financial Services",
     desc: "SOC 2, PCI DSS, and GLBA compliance built in from day one.",
-    gradient: "from-blue-900 to-blue-700",
-    icon: (
-      <svg className="h-7 w-7 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
+    photo: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=400&fit=crop&q=80",
   },
   {
     name: "Healthcare",
     desc: "HIPAA, HITRUST CSF, and FDA 21 CFR Part 11 support.",
-    gradient: "from-cyan-900 to-cyan-700",
-    icon: (
-      <svg className="h-7 w-7 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-      </svg>
-    ),
+    photo: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop&q=80",
   },
   {
     name: "Government",
     desc: "FedRAMP, CMMC, NIST 800-53, and StateRAMP - all native.",
-    gradient: "from-indigo-900 to-indigo-700",
-    icon: (
-      <svg className="h-7 w-7 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-      </svg>
-    ),
+    photo: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=600&h=400&fit=crop&q=80",
   },
   {
     name: "Technology",
     desc: "SOC 2 Type II, ISO 27001, and GDPR from a single platform.",
-    gradient: "from-violet-900 to-violet-700",
-    icon: (
-      <svg className="h-7 w-7 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-    ),
+    photo: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&h=400&fit=crop&q=80",
   },
   {
     name: "Manufacturing",
     desc: "CMMC, ITAR, and supply chain risk management, unified.",
-    gradient: "from-slate-800 to-slate-700",
-    icon: (
-      <svg className="h-7 w-7 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
+    photo: "https://images.unsplash.com/photo-1565793298595-6a879b1d9492?w=600&h=400&fit=crop&q=80",
   },
 ];
 
@@ -304,6 +279,31 @@ export default function Landing() {
         {/* Ambient glow */}
         <div className="absolute pointer-events-none" style={{ top: -100, left: "10%", width: 600, height: 600, background: "radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%)", borderRadius: "50%" }} />
         <div className="absolute pointer-events-none" style={{ top: 0, right: "5%", width: 400, height: 400, background: "radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%)", borderRadius: "50%" }} />
+        {/* Rainbow diagonal stripes - bottom of hero */}
+        <div className="absolute pointer-events-none overflow-hidden" style={{ bottom: 0, left: "15%", right: 0, height: "55%", zIndex: 0 }}>
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: [
+              "linear-gradient(38deg,",
+              "  transparent 0%,",
+              "  transparent 18%,",
+              "  rgba(99,0,255,0.55) 18%,  rgba(99,0,255,0.55) 21%,",
+              "  rgba(0,80,255,0.6) 21%,   rgba(0,80,255,0.6) 24.5%,",
+              "  rgba(0,160,255,0.65) 24.5%, rgba(0,160,255,0.65) 28%,",
+              "  rgba(0,220,220,0.6) 28%,  rgba(0,220,220,0.6) 31.5%,",
+              "  rgba(0,210,100,0.55) 31.5%, rgba(0,210,100,0.55) 35%,",
+              "  rgba(120,230,0,0.5) 35%,  rgba(120,230,0,0.5) 38.5%,",
+              "  rgba(255,220,0,0.55) 38.5%, rgba(255,220,0,0.55) 42%,",
+              "  rgba(255,140,0,0.6) 42%,  rgba(255,140,0,0.6) 45.5%,",
+              "  rgba(255,40,0,0.55) 45.5%, rgba(255,40,0,0.55) 49%,",
+              "  transparent 49%",
+              ")"
+            ].join(""),
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%), linear-gradient(to right, rgba(0,0,0,0.0) 0%, rgba(0,0,0,1) 30%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%)",
+          }} />
+        </div>
 
         <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28">
           <div className="grid lg:grid-cols-2 gap-14 items-center">
@@ -460,20 +460,24 @@ export default function Landing() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {INDUSTRIES.map((ind) => (
-              <div key={ind.name} className="relative rounded-2xl overflow-hidden group cursor-pointer" style={{ minHeight: 200 }}>
-                <div className={`absolute inset-0 bg-gradient-to-b ${ind.gradient}`} />
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(37,99,235,0.2)" }} />
-                <div className="relative p-5 flex flex-col justify-between h-full" style={{ minHeight: 200 }}>
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(255,255,255,0.08)" }}>
-                    {ind.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-sm mb-1.5">{ind.name}</h3>
-                    <p className="text-xs leading-relaxed" style={{ color: "rgba(148,163,184,0.75)" }}>{ind.desc}</p>
-                    <div className="flex items-center gap-1 mt-3 text-xs font-semibold" style={{ color: "#60a5fa" }}>
-                      Learn more
-                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                    </div>
+              <div key={ind.name} className="relative rounded-2xl overflow-hidden group cursor-pointer" style={{ minHeight: 240 }}>
+                {/* Real photo background */}
+                <img
+                  src={ind.photo}
+                  alt={ind.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                {/* Dark gradient overlay */}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(3,7,18,0.95) 0%, rgba(3,7,18,0.7) 50%, rgba(3,7,18,0.35) 100%)" }} />
+                {/* Blue tint on hover */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "rgba(37,99,235,0.18)" }} />
+                {/* Content */}
+                <div className="relative flex flex-col justify-end h-full p-5" style={{ minHeight: 240 }}>
+                  <h3 className="font-bold text-white text-sm mb-1.5">{ind.name}</h3>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(148,163,184,0.85)" }}>{ind.desc}</p>
+                  <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#60a5fa" }}>
+                    Learn more
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                   </div>
                 </div>
               </div>
