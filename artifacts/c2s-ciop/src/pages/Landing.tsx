@@ -491,7 +491,22 @@ export default function Landing() {
           backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
         }} />
-        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28">
+        {/* Three-stripe diagonal - indigo / blue / cyan */}
+        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "52%", zIndex: 0 }}>
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: [
+              "linear-gradient(22deg,",
+              "  #4f46e5 0%,   #4f46e5 17%,",
+              "  #2563eb 17%,  #2563eb 33%,",
+              "  #06b6d4 33%,  #06b6d4 49%,",
+              "  transparent 49%",
+              ")"
+            ].join(""),
+          }} />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28" style={{ zIndex: 1 }}>
           <div className="grid lg:grid-cols-2 gap-14 items-center">
             {/* Left */}
             <div>
