@@ -70,6 +70,16 @@ const FEATURES = [
 
 const INDUSTRIES = [
   {
+    name: "Defense & Government",
+    desc: "FedRAMP Moderate/High, CMMC L2, NIST 800-53, NIST 800-171, and StateRAMP - all native, not add-ons.",
+    photo: "https://images.unsplash.com/photo-1587131110607-07f5be87b5ba?w=600&h=400&fit=crop&q=80",
+  },
+  {
+    name: "Aerospace & Defense Contractors",
+    desc: "CMMC, ITAR, DFARS 7012, and supply chain risk management in one platform. SPRS score tracking built in.",
+    photo: "https://images.unsplash.com/photo-1565793298595-6a879b1d9492?w=600&h=400&fit=crop&q=80",
+  },
+  {
     name: "Financial Services",
     desc: "SOC 2, PCI DSS, and GLBA compliance built in from day one.",
     photo: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=400&fit=crop&q=80",
@@ -80,23 +90,13 @@ const INDUSTRIES = [
     photo: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop&q=80",
   },
   {
-    name: "Government",
-    desc: "FedRAMP, CMMC, NIST 800-53, and StateRAMP - all native.",
-    photo: "https://images.unsplash.com/photo-1587131110607-07f5be87b5ba?w=600&h=400&fit=crop&q=80",
-  },
-  {
     name: "Technology",
     desc: "SOC 2 Type II, ISO 27001, and GDPR from a single platform.",
     photo: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&h=400&fit=crop&q=80",
   },
-  {
-    name: "Manufacturing",
-    desc: "CMMC, ITAR, and supply chain risk management, unified.",
-    photo: "https://images.unsplash.com/photo-1565793298595-6a879b1d9492?w=600&h=400&fit=crop&q=80",
-  },
 ];
 
-const TRUST_NAMES = ["TechNova", "FinEdge Capital", "HealthPlus Network", "Vertex Systems", "BlueStone Group", "NorthBridge"];
+const TRUST_NAMES = ["Apex Defense Systems", "NorthBridge Federal", "HealthPlus Network", "TechNova", "Vertex Systems", "BlueStone Group"];
 
 const FOOTER_LINKS = {
   Platform: ["Overview", "Features", "Integrations", "Security", "Pricing"],
@@ -509,20 +509,29 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-14 items-center">
             {/* Left */}
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-7 border"
-                style={{ background: "rgba(37,99,235,0.06)", borderColor: "rgba(37,99,235,0.2)", color: "#1d4ed8" }}>
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                by ColorCode Solutions
+              <div className="flex flex-col gap-2 mb-7">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border self-start"
+                  style={{ background: "rgba(37,99,235,0.06)", borderColor: "rgba(37,99,235,0.2)", color: "#1d4ed8" }}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  Federal-First GRC Platform
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001"].map((fw) => (
+                    <span key={fw} className="text-xs font-semibold px-2 py-0.5 rounded"
+                      style={{ background: "rgba(15,23,42,0.06)", color: "#475569", border: "1px solid rgba(15,23,42,0.1)" }}>
+                      {fw}
+                    </span>
+                  ))}
+                </div>
               </div>
               <h1 className="font-extrabold leading-tight tracking-tight mb-6" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "#0f172a" }}>
-                Compliance<br />Intelligence.
-                <br />
+                Federal Compliance.<br />
                 <span style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 50%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   One Control. Every Framework.
                 </span>
               </h1>
               <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#475569" }}>
-                Implement security controls that satisfy 23 compliance frameworks simultaneously. Because real compliance is proof of real security - not a substitute for it.
+                The only GRC platform built federal-first. Native POA&amp;M, SPRS score tracking, and SSP generation for FedRAMP, CMMC, and NIST 800-171 - with full commercial framework coverage for SOC 2, ISO 27001, HIPAA, and 19 more. One control. Every obligation.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-10">
                 <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
@@ -533,10 +542,10 @@ export default function Landing() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 </a>
-                <a href="#features"
+                <a href="#federal"
                   className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg text-sm transition-all border"
                   style={{ color: "#374151", borderColor: "rgba(15,23,42,0.18)", background: "rgba(15,23,42,0.03)" }}>
-                  Explore Platform
+                  See the Federal Layer
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
@@ -544,10 +553,10 @@ export default function Landing() {
               </div>
               <div className="flex items-center gap-6 flex-wrap">
                 {[
-                  { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", label: "Bank-Grade Encryption" },
-                  { icon: "M13 10V3L4 14h7v7l9-11h-7z", label: "Live in 10 Minutes" },
+                  { icon: "M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "FedRAMP + CMMC Native" },
+                  { icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4", label: "Native POA&M + SPRS + SSP" },
                   { icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", label: "No Professional Services" },
-                  { icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "Continuous Monitoring" },
+                  { icon: "M13 10V3L4 14h7v7l9-11h-7z", label: "Live in 10 Minutes" },
                 ].map(({ icon, label }) => (
                   <div key={label} className="flex items-center gap-1.5 text-sm" style={{ color: "#64748b" }}>
                     <svg className="h-4 w-4 flex-shrink-0" style={{ color: "#2563eb" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -575,7 +584,7 @@ export default function Landing() {
       <section style={{ background: "#050d1a", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="max-w-7xl mx-auto px-6 py-10">
           <p className="text-center text-xs font-semibold uppercase tracking-widest mb-8" style={{ color: "#334155" }}>
-            Trusted by leading organizations worldwide
+            Trusted by defense contractors, federal agencies, and enterprise security teams
           </p>
           <div className="flex items-center justify-center flex-wrap gap-10">
             {TRUST_NAMES.map((name) => (
@@ -590,9 +599,9 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { value: "23", label: "Compliance Frameworks", sub: "SOC 2 to FedRAMP High" },
-              { value: "71", label: "Universal Controls", sub: "Across 12 control domains" },
-              { value: "388+", label: "Framework Mappings", sub: "Curated and kept current" },
+              { value: "110", label: "NIST 800-171 Practices", sub: "Full CMMC L2 coverage, native" },
+              { value: "12", label: "Compliance Frameworks", sub: "FedRAMP to SOC 2 to ISO 27001" },
+              { value: "388+", label: "Framework Mappings", sub: "Authoritative, kept current" },
               { value: "10 min", label: "Setup to First Score", sub: "No professional services" },
             ].map(({ value, label, sub }) => (
               <div key={label}>
@@ -619,7 +628,7 @@ export default function Landing() {
                 </span>
               </h2>
               <p className="text-base leading-relaxed mb-6" style={{ color: "#64748b" }}>
-                EnterpriseComply's 71 UCO controls are security controls first - not compliance checklists. When you enforce MFA, you're reducing actual risk. The fact that it simultaneously satisfies SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and more is a consequence of implementing genuine security - not the goal of it. No duplicated work. No gaps.
+                EnterpriseComply's UCO controls are security controls first - not compliance checklists. When you enforce MFA, you're reducing actual risk. The fact that it simultaneously satisfies FedRAMP, CMMC, NIST 800-171, SOC 2, ISO 27001, HIPAA, and more is a consequence of implementing genuine security - not the goal of it. No duplicated work. No gaps.
               </p>
               <div className="space-y-3">
                 {[
@@ -780,7 +789,7 @@ export default function Landing() {
       </section>
 
       {/* ── FEDERAL GTM WEDGE ── */}
-      <section style={{ background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 60%, #0a1628 100%)", borderTop: "1px solid rgba(59,130,246,0.12)" }}>
+      <section id="federal" style={{ background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 60%, #0a1628 100%)", borderTop: "1px solid rgba(59,130,246,0.12)" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="text-center mb-14">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border mb-5" style={{ background: "rgba(59,130,246,0.08)", borderColor: "rgba(59,130,246,0.25)" }}>
@@ -880,7 +889,7 @@ export default function Landing() {
               Purpose-Built. Industry-Ready.
             </h2>
             <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: "#64748b" }}>
-              From Wall Street to the Pentagon. The only GRC platform with a native federal layer alongside full commercial framework coverage - one system for every obligation.
+              From the Pentagon to Wall Street. The only GRC platform with a native federal layer alongside full commercial framework coverage - one system for every obligation.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -985,7 +994,7 @@ export default function Landing() {
                 <span className="font-bold text-white">EnterpriseComply</span>
               </a>
               <p className="text-sm leading-relaxed mb-5" style={{ color: "#475569" }}>
-                EnterpriseComply maps one control to 23 compliance frameworks simultaneously - giving security and compliance teams the leverage to do more with less.
+                The only GRC platform built federal-first. FedRAMP, CMMC, NIST 800-53, and NIST 800-171 are native - not add-ons. One control satisfies every federal and commercial obligation simultaneously.
               </p>
               <div className="flex gap-3">
                 {["M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"].map((d, i) => (
