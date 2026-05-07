@@ -1,5 +1,75 @@
 import { useAuth, useClerk } from "@clerk/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { motion, useInView } from "framer-motion";
+
+const EASE = [0.21, 0.47, 0.32, 0.98] as const;
+
+function FadeUp({
+  children,
+  delay = 0,
+  className,
+  style,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-8% 0px" });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 28 }}
+      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 28 }}
+      transition={{ duration: 0.6, delay, ease: EASE }}
+      className={className}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function StaggerGrid({
+  children,
+  className,
+  style,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-8% 0px" });
+  return (
+    <motion.div
+      ref={ref}
+      initial="hidden"
+      animate={inView ? "visible" : "hidden"}
+      variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
+      className={className}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function StaggerItem({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 24 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE } },
+      }}
+      className={className}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -491,6 +561,10 @@ export default function Landing() {
           backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
         }} />
+        {/* Ambient glow orbs */}
+        <div className="absolute pointer-events-none" style={{ top: "15%", right: "5%", width: 480, height: 480, background: "radial-gradient(circle, rgba(79,70,229,0.18) 0%, transparent 65%)", filter: "blur(48px)", zIndex: 0 }} />
+        <div className="absolute pointer-events-none" style={{ bottom: "5%", left: "5%", width: 320, height: 320, background: "radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 65%)", filter: "blur(48px)", zIndex: 0 }} />
+        <div className="absolute pointer-events-none" style={{ top: "50%", left: "35%", width: 260, height: 260, background: "radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 65%)", filter: "blur(40px)", zIndex: 0 }} />
         {/* Three-stripe diagonal - indigo / blue / cyan — bottom-RIGHT */}
         <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "52%", zIndex: 0 }}>
           <div style={{
@@ -510,7 +584,12 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-14 items-center">
             {/* Left */}
             <div>
-              <div className="flex flex-col gap-2 mb-7">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: EASE }}
+                className="flex flex-col gap-2 mb-7"
+              >
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border self-start"
                   style={{ background: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.3)", color: "#93c5fd" }}>
                   <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -524,36 +603,68 @@ export default function Landing() {
                     </span>
                   ))}
                 </div>
-              </div>
-              <h1 className="font-extrabold leading-tight tracking-tight mb-6" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "white" }}>
+              </motion.div>
+              <motion.h1
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
+                className="font-extrabold leading-tight tracking-tight mb-6"
+                style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "white" }}
+              >
                 Federal Compliance.<br />
                 <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #38bdf8 50%, #34d399 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   One Control. Every Framework.
                 </span>
-              </h1>
-              <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#94a3b8" }}>
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2, ease: EASE }}
+                className="text-lg leading-relaxed mb-9 max-w-lg"
+                style={{ color: "#94a3b8" }}
+              >
                 The only GRC platform built federal-first. Native POA&amp;M, SPRS score tracking, and SSP generation for FedRAMP, CMMC, and NIST 800-171, with full commercial framework coverage for SOC 2, ISO 27001, HIPAA, and 19 more. One control. Every obligation.
-              </p>
-              <div className="flex items-center gap-3 flex-wrap mb-10">
-                <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
-                  className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-lg text-sm transition-all hover:scale-105"
-                  style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 20px rgba(37,99,235,0.45)" }}>
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
+                className="flex items-center gap-3 flex-wrap mb-10"
+              >
+                <motion.a
+                  href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
+                  className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-lg text-sm"
+                  style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 20px rgba(37,99,235,0.45)" }}
+                  whileHover={{ scale: 1.04, boxShadow: "0 6px 28px rgba(37,99,235,0.6)" }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.18 }}
+                >
                   Request a Demo
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
-                </a>
-                <a href="#features"
-                  className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg text-sm transition-all border"
-                  style={{ color: "#e2e8f0", borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.05)" }}>
+                </motion.a>
+                <motion.a
+                  href="#features"
+                  className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg text-sm border"
+                  style={{ color: "#e2e8f0", borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.05)" }}
+                  whileHover={{ scale: 1.04, background: "rgba(255,255,255,0.09)" }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.18 }}
+                >
                   Explore Platform
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
-                </a>
-              </div>
+                </motion.a>
+              </motion.div>
               {/* 4 icon badges */}
-              <div className="grid grid-cols-2 gap-3">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.42, ease: EASE }}
+                className="grid grid-cols-2 gap-3"
+              >
                 {[
                   { icon: "M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "Enterprise Grade Security" },
                   { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", label: "AI-Powered Insights" },
@@ -569,33 +680,43 @@ export default function Landing() {
                     <span className="text-xs font-semibold" style={{ color: "#cbd5e1" }}>{label}</span>
                   </div>
                 ))}
-              </div>
+              </motion.div>
             </div>
 
-            {/* Right - mockup */}
-            <div className="relative">
-              <div className="relative rounded-2xl overflow-hidden" style={{
-                boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06)",
-              }}>
+            {/* Right - floating mockup */}
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, x: 32 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.75, delay: 0.2, ease: EASE }}
+            >
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="relative rounded-2xl overflow-hidden"
+                style={{ boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06)" }}
+              >
                 <ProductMockup />
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* ── TRUST BAR ── white */}
       <section style={{ background: "#ffffff", borderBottom: "1px solid #e2e8f0" }}>
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <p className="text-center text-xs font-bold uppercase tracking-widest mb-8" style={{ color: "#94a3b8" }}>
-            Trusted by leading organizations worldwide
-          </p>
-          <div className="flex items-center justify-center flex-wrap gap-10">
-            {TRUST_NAMES.map((name) => (
-              <span key={name} className="text-sm font-bold tracking-wide" style={{ color: "#cbd5e1" }}>{name}</span>
-            ))}
+        <FadeUp>
+          <div className="max-w-7xl mx-auto px-6 py-10">
+            <p className="text-center text-xs font-bold uppercase tracking-widest mb-8" style={{ color: "#94a3b8" }}>
+              Trusted by leading organizations worldwide
+            </p>
+            <div className="flex items-center justify-center flex-wrap gap-10">
+              {TRUST_NAMES.map((name) => (
+                <span key={name} className="text-sm font-bold tracking-wide" style={{ color: "#cbd5e1" }}>{name}</span>
+              ))}
+            </div>
           </div>
-        </div>
+        </FadeUp>
       </section>
 
       {/* ── FEATURES ── white, 2-col */}
@@ -610,7 +731,7 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-6 py-24" style={{ zIndex: 1 }}>
           <div className="grid lg:grid-cols-3 gap-16 items-start">
             {/* Left sticky text */}
-            <div className="lg:col-span-1 lg:sticky lg:top-24">
+            <FadeUp className="lg:col-span-1 lg:sticky lg:top-24">
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#2563eb" }}>One platform. Complete control.</p>
               <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 leading-tight" style={{ color: "#0f172a" }}>
                 Everything You Need to{" "}
@@ -623,22 +744,28 @@ export default function Landing() {
                 Explore all capabilities
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
-            </div>
-            {/* Right: 2x3 grid */}
-            <div className="lg:col-span-2 grid sm:grid-cols-2 gap-5">
+            </FadeUp>
+            {/* Right: 2x3 staggered grid */}
+            <StaggerGrid className="lg:col-span-2 grid sm:grid-cols-2 gap-5">
               {FEATURES.map((f, i) => {
                 const accent = FEATURE_ACCENTS[i % FEATURE_ACCENTS.length];
                 return (
-                  <div key={f.title} className="p-5 rounded-2xl border border-slate-200 bg-white hover:shadow-md hover:border-slate-300 transition-all">
-                    <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${accent}14`, color: accent }}>
-                      {f.icon}
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-900 mb-2">{f.title}</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
-                  </div>
+                  <StaggerItem key={f.title}>
+                    <motion.div
+                      className="p-5 rounded-2xl border border-slate-200 bg-white h-full"
+                      whileHover={{ y: -4, boxShadow: `0 12px 32px ${accent}18, 0 0 0 1.5px ${accent}30`, borderColor: `${accent}50` }}
+                      transition={{ duration: 0.22 }}
+                    >
+                      <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${accent}14`, color: accent }}>
+                        {f.icon}
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-900 mb-2">{f.title}</h3>
+                      <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+                    </motion.div>
+                  </StaggerItem>
                 );
               })}
-            </div>
+            </StaggerGrid>
           </div>
         </div>
       </section>
@@ -655,7 +782,7 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-6 py-20" style={{ zIndex: 1 }}>
           <div className="grid lg:grid-cols-3 gap-12 items-start">
             {/* Left text */}
-            <div>
+            <FadeUp>
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#2563eb" }}>Built for highly regulated industries</p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">
                 Purpose-Built.<br />Industry-Ready.
@@ -667,24 +794,37 @@ export default function Landing() {
                 View all industries
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
-            </div>
-            {/* Right: photo card grid */}
-            <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-3">
+            </FadeUp>
+            {/* Right: staggered photo card grid */}
+            <StaggerGrid className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-3">
               {INDUSTRIES.map((ind) => (
-                <div key={ind.name} className="relative rounded-2xl overflow-hidden group cursor-pointer" style={{ minHeight: 180 }}>
-                  <img src={ind.photo} alt={ind.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(3,7,18,0.82) 0%, rgba(3,7,18,0.18) 55%, transparent 75%)" }} />
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "rgba(37,99,235,0.15)" }} />
-                  <div className="relative flex flex-col justify-end h-full p-4" style={{ minHeight: 180 }}>
-                    <h3 className="font-bold text-white text-xs mb-1.5 leading-tight">{ind.name}</h3>
-                    <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#60a5fa" }}>
-                      Learn more
-                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                <StaggerItem key={ind.name}>
+                  <motion.div
+                    className="relative rounded-2xl overflow-hidden cursor-pointer"
+                    style={{ minHeight: 180 }}
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <img src={ind.photo} alt={ind.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(3,7,18,0.82) 0%, rgba(3,7,18,0.18) 55%, transparent 75%)" }} />
+                    <motion.div
+                      className="absolute inset-0"
+                      initial={{ opacity: 0 }}
+                      whileHover={{ opacity: 1 }}
+                      transition={{ duration: 0.25 }}
+                      style={{ background: "rgba(37,99,235,0.18)" }}
+                    />
+                    <div className="relative flex flex-col justify-end h-full p-4" style={{ minHeight: 180 }}>
+                      <h3 className="font-bold text-white text-xs mb-1.5 leading-tight">{ind.name}</h3>
+                      <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#60a5fa" }}>
+                        Learn more
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </motion.div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerGrid>
           </div>
         </div>
       </section>
@@ -708,7 +848,7 @@ export default function Landing() {
         </div>
         <div className="relative max-w-7xl mx-auto px-6 py-24" style={{ zIndex: 1 }}>
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
+            <FadeUp>
               <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#3b82f6" }}>Turn compliance into competitive advantage</p>
               <h2 className="font-extrabold tracking-tight leading-tight" style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}>
                 <span className="text-white">Stop Managing Compliance.</span>
@@ -717,18 +857,23 @@ export default function Landing() {
                   Start Owning It.
                 </span>
               </h2>
-            </div>
-            <div>
+            </FadeUp>
+            <FadeUp delay={0.15}>
               <p className="text-base leading-relaxed mb-8" style={{ color: "#94a3b8" }}>
                 The organizations that win on compliance treat it as a system, not a project. EnterpriseComply gives your team that system, and the time to use it.
               </p>
-              <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
-                className="inline-flex items-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl text-sm transition-all hover:scale-105"
-                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 32px rgba(37,99,235,0.4)" }}>
+              <motion.a
+                href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
+                className="inline-flex items-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl text-sm"
+                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 32px rgba(37,99,235,0.4)" }}
+                whileHover={{ scale: 1.05, boxShadow: "0 0 48px rgba(37,99,235,0.65)" }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ duration: 0.18 }}
+              >
                 Request a Demo
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-              </a>
-            </div>
+              </motion.a>
+            </FadeUp>
           </div>
         </div>
       </section>
@@ -736,26 +881,28 @@ export default function Landing() {
       {/* ── BOTTOM BADGES ── white */}
       <section style={{ background: "#ffffff", borderTop: "1px solid #e2e8f0" }}>
         <div className="max-w-7xl mx-auto px-6 py-16">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+          <StaggerGrid className="grid grid-cols-2 md:grid-cols-4 gap-10">
             {[
               { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: "Secure by Design", desc: "Zero-trust architecture, AES-256 encryption, and SOC 2-compliant infrastructure from day one." },
               { icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z", title: "Scalable by Nature", desc: "From Series A to Fortune 500. Multi-tenant architecture built for the volume enterprise compliance demands." },
               { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", title: "AI-Powered Insights", desc: "Control gap analysis, framework delta alerts, and risk prioritization surfaced automatically, not after the audit." },
               { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", title: "Always Audit Ready", desc: "Continuous evidence collection means your audit package is always current. No scramble. No gaps." },
             ].map(({ icon, title, desc }) => (
-              <div key={title} className="flex flex-col gap-4">
-                <div className="h-11 w-11 rounded-xl flex items-center justify-center" style={{ background: "#eff6ff" }}>
-                  <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
-                  </svg>
+              <StaggerItem key={title}>
+                <div className="flex flex-col gap-4">
+                  <div className="h-11 w-11 rounded-xl flex items-center justify-center" style={{ background: "#eff6ff" }}>
+                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 text-sm mb-1">{title}</p>
+                    <p className="text-xs leading-relaxed text-slate-500">{desc}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-slate-900 text-sm mb-1">{title}</p>
-                  <p className="text-xs leading-relaxed text-slate-500">{desc}</p>
-                </div>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerGrid>
         </div>
       </section>
 

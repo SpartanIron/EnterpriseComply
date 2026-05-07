@@ -1,0 +1,180 @@
+You are a senior frontend engineer and elite SaaS product designer.
+
+Your task is to reproduce the EXACT visual layout, styling system, spacing architecture, aesthetics, animations, and component structure of the provided EnterpriseComply landing page reference image.
+
+CRITICAL INSTRUCTIONS:
+- DO NOT replace, modify, remove, rewrite, or alter ANY existing content currently on the website.
+- DO NOT change current business copy, text, branding, routes, logic, APIs, forms, or functionality.
+- ONLY transform the VISUAL PRESENTATION and STRUCTURE of the existing landing page.
+- Preserve all current content dynamically.
+- The result should look visually identical in style and structure to the provided design reference while using existing website content/data.
+
+OBJECTIVE:
+Create a modern enterprise-grade compliance SaaS landing page with:
+- executive-level aesthetics
+- futuristic enterprise UI
+- strong visual hierarchy
+- premium spacing
+- diagonal color strike effects
+- glowing gradients
+- dark-to-light contrast sections
+- modern compliance dashboard styling
+- large typography
+- luxury enterprise SaaS feel
+
+TECH STACK:
+- React
+- TailwindCSS
+- Framer Motion
+- Responsive Design
+- Component-based architecture
+- Optimized for Replit deployment
+
+GLOBAL DESIGN SYSTEM:
+Use:
+- Deep navy backgrounds (#050816, #071226)
+- Electric blue gradients
+- Purple-magenta accent glows
+- Diagonal multi-color light streaks
+- Frosted glass effects
+- Soft shadows
+- Large border radii
+- Ultra-clean whitespace
+- Smooth transitions
+- Enterprise dashboard aesthetic
+
+MAIN PAGE STRUCTURE:
+
+1. HERO SECTION
+- Full viewport height
+- Dark gradient background
+- Large left-aligned typography
+- Massive bold heading
+- Gradient-highlighted words
+- Supporting paragraph
+- Two CTA buttons
+- Compliance dashboard mockup on right
+- Add diagonal glowing color bars across hero section
+- Bars should intersect from lower left to upper right
+- Use layered gradients:
+  - electric blue
+  - cyan
+  - purple
+  - magenta
+  - orange
+- Add subtle animated glow effects
+- Add floating ambient blur elements
+
+2. TRUST BAR
+- White/light section
+- Enterprise logos horizontally aligned
+- Minimal elegant spacing
+- Soft divider
+
+3. FEATURE GRID SECTION
+- White/light background
+- Left intro text
+- Right feature cards grid
+- Cards with:
+  - soft shadows
+  - rounded corners
+  - icon
+  - heading
+  - paragraph
+- Hover animation:
+  - slight lift
+  - glow border
+  - subtle scale
+
+4. INDUSTRIES SECTION
+- Horizontal industry cards
+- Large image tiles
+- Dark overlay
+- Hover zoom effect
+- Arrow interaction
+- Premium enterprise feel
+
+5. DARK CTA BAND
+- Full-width dark section
+- Massive typography
+- Gradient-highlighted text
+- Diagonal color strikes on corners
+- Strong enterprise CTA styling
+
+6. VALUE PROPS SECTION
+- White/light section
+- Four-column enterprise capability layout
+- Minimal iconography
+- Spacious typography
+
+7. FOOTER
+- Dark enterprise footer
+- Multi-column navigation
+- Newsletter field
+- Executive SaaS styling
+- Gradient glow background accents
+
+VISUAL EFFECT REQUIREMENTS:
+- Add diagonal RGB-style streaks throughout page
+- Use layered blurred gradients
+- Use modern glassmorphism selectively
+- Use subtle grid texture overlays
+- Add ambient glow effects behind sections
+- Smooth scroll behavior
+- Smooth reveal animations on scroll
+- Use premium SaaS spacing proportions
+
+TYPOGRAPHY:
+- Use Inter or Satoshi
+- Extremely clean enterprise typography
+- Large bold hero fonts
+- Tight letter spacing
+- Strong contrast hierarchy
+
+RESPONSIVENESS:
+- Must be fully responsive
+- Mobile optimized
+- Tablet optimized
+- Preserve executive look on all screen sizes
+
+ANIMATION:
+Use Framer Motion for:
+- fade-up entrances
+- staggered cards
+- dashboard float animation
+- glow pulse effects
+- smooth hover transitions
+- button interactions
+
+IMPORTANT:
+- DO NOT create placeholder lorem ipsum content
+- DO NOT overwrite existing page text/content
+- ONLY remap existing content into this premium structure/layout
+- Reuse existing content dynamically
+- Maintain SEO structure
+- Maintain routing
+- Maintain functionality
+
+IMPLEMENTATION REQUIREMENTS:
+- Create reusable components
+- Use clean production-grade code
+- Use Tailwind utility architecture
+- Keep sections modular
+- Optimize performance
+- Avoid bloated dependencies
+
+SPECIAL DESIGN EMPHASIS:
+The diagonal color strike elements are CRITICAL.
+They must feel:
+- premium
+- cinematic
+- elegant
+- executive
+- futuristic
+- enterprise-grade
+
+The page should feel like:
+“Palantir meets Stripe meets ServiceNow meets Vercel enterprise.”
+
+FINAL GOAL:
+Transform the current landing page into a visually elite enterprise compliance SaaS experience WITHOUT changing any existing content or business logic.
