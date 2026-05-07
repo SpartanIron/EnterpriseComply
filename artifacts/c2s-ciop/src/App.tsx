@@ -109,6 +109,7 @@ function AppRoutes() {
           <SignUp routing="path" path={`${BASE_PATH}/sign-up`} signInUrl={`${BASE_PATH}/sign-in`} forceRedirectUrl={`${BASE_PATH}/`} appearance={clerkAppearance} />
         </div>
       )} />
+      <Route path="/landing" component={Landing} />
       <Route path="/onboarding" component={Onboarding} />
 
       {/* Core */}
