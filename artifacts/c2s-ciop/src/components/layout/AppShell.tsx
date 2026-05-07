@@ -313,7 +313,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate leading-tight" style={{ color: "#e2e8f0" }}>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
               <button
-                onClick={() => signOut()}
+                onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
                 className="text-xs leading-tight transition-colors"
                 style={{ color: "rgba(100,116,139,0.8)" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#94a3b8"; }}
