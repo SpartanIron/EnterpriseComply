@@ -57,8 +57,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-5 gap-4">
           {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />)}
         </div>
-        <div className="grid grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => <div key={i} className="h-36 bg-slate-100 rounded-xl animate-pulse" />)}
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+          {[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-slate-100 rounded-xl animate-pulse" />)}
         </div>
       </div>
     );
@@ -80,7 +80,7 @@ export default function Dashboard() {
   const firstName = user?.firstName ?? user?.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "";
 
   return (
-    <div className="p-6 max-w-screen-2xl space-y-6">
+    <div className="p-6 space-y-6">
 
       {/* Context row */}
       <div className="flex items-center justify-between">
@@ -208,7 +208,7 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
             {frameworks.map((fw: any) => <FrameworkCard key={fw.id} fw={fw} onClick={() => navigate("/frameworks")} />)}
           </div>
         )}
