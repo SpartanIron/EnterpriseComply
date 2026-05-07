@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { QuestionnairesService } from "./questionnaires.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
 
@@ -36,6 +36,12 @@ export class QuestionnairesController {
   @UseGuards(OrgContextGuard)
   getVendorAssessments(@OrgContext() ctx: OrgCtx) {
     return this.questionnairesService.getVendorAssessments(ctx.orgId);
+  }
+
+  @Delete("orgs/:orgId/questionnaires/:id")
+  @UseGuards(OrgContextGuard)
+  deleteQuestionnaire(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
+    return this.questionnairesService.deleteQuestionnaire(ctx.orgId, Number(id));
   }
 
   @Post("orgs/:orgId/vendor-assessments")

@@ -94,6 +94,11 @@ export default function Questionnaires() {
     onSuccess: (d) => { qc.invalidateQueries({ queryKey: ["questionnaires"] }); setShowNew(false); setSelectedQ(d.questionnaire); },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiFetch(`/orgs/${orgId}/questionnaires/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["questionnaires"] }),
+  });
+
   const updateItemMutation = useMutation({
     mutationFn: ({ id, answer }: { id: number; answer: string }) =>
       apiFetch(`/orgs/${orgId}/questionnaires/items/${id}`, { method: "PATCH", body: JSON.stringify({ answer }) }),
@@ -147,14 +152,23 @@ export default function Questionnaires() {
               <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create questionnaire</button>
             </div>
           ) : questionnaires.map((q) => (
-            <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between cursor-pointer hover:border-blue-300 transition-colors" onClick={() => setSelectedQ(q)}>
-              <div>
+            <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between hover:border-slate-300 transition-colors group">
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedQ(q)}>
                 <p className="font-medium text-slate-800">{q.title}</p>
                 <p className="text-sm text-slate-500 mt-0.5">{q.requesterCompany} {q.requesterEmail && `(${q.requesterEmail})`}</p>
               </div>
               <div className="flex items-center gap-4 text-sm">
-                <div className="text-center"><p className="font-bold text-blue-600">{q.answeredItems}/{q.totalItems}</p><p className="text-xs text-slate-400">Answered</p></div>
+                <div className="text-center cursor-pointer" onClick={() => setSelectedQ(q)}>
+                  <p className="font-bold text-blue-600">{q.answeredItems}/{q.totalItems}</p>
+                  <p className="text-xs text-slate-400">Answered</p>
+                </div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${q.status === "completed" ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-600"}`}>{q.status}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(q.id); }}
+                  disabled={deleteMutation.isPending}
+                  className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
               </div>
             </div>
           ))}

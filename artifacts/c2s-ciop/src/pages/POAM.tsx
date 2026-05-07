@@ -223,9 +223,27 @@ export default function POAM() {
                   )}
                 </div>
               ))}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Framework</label>
+                  <select value={form.frameworkKey} onChange={e => setForm({ ...form, frameworkKey: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="fedramp">FedRAMP</option>
+                    <option value="cmmc-l2">CMMC Level 2</option>
+                    <option value="nist-800-53">NIST 800-53</option>
+                    <option value="nist-800-171">NIST 800-171</option>
+                    <option value="soc2">SOC 2</option>
+                    <option value="iso27001">ISO 27001</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Severity</label>
+                  <select value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    {["critical", "high", "medium", "low"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Severity", field: "severity", options: ["critical", "high", "medium", "low"] },
                   { label: "Original Risk", field: "originalRisk", options: ["critical", "high", "medium", "low"] },
                   { label: "Residual Risk", field: "residualRisk", options: ["high", "medium", "low", "minimal"] },
                 ].map(s => (

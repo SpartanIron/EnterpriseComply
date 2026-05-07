@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   db, orgQuestionnairesTable, orgQuestionnaireItemsTable,
   orgControlResultsTable, orgEvidenceTable, ucoControlsTable,
@@ -98,6 +98,20 @@ export class QuestionnairesService {
       ))
       .returning();
     return { item };
+  }
+
+  async deleteQuestionnaire(orgId: number, id: number) {
+    const existing = await db.query.orgQuestionnairesTable.findFirst({
+      where: and(eq(orgQuestionnairesTable.orgId, orgId), eq(orgQuestionnairesTable.id, id)),
+    });
+    if (!existing) throw new NotFoundException("Questionnaire not found");
+    await db.delete(orgQuestionnaireItemsTable).where(
+      and(eq(orgQuestionnaireItemsTable.orgId, orgId), eq(orgQuestionnaireItemsTable.questionnaireId, id)),
+    );
+    await db.delete(orgQuestionnairesTable).where(
+      and(eq(orgQuestionnairesTable.orgId, orgId), eq(orgQuestionnairesTable.id, id)),
+    );
+    return { success: true };
   }
 
   async getVendorAssessments(orgId: number) {

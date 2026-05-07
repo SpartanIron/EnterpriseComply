@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiUrl } from "@/lib/queryClient";
+import { apiUrl, apiFetch } from "@/lib/queryClient";
+import { useOrg } from "@/hooks/useOrg";
 
 const INDUSTRIES = ["Technology", "Healthcare", "Finance", "Government", "Retail", "Manufacturing", "Education", "Other"];
 const SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
 export default function Settings() {
   const qc = useQueryClient();
+  const { orgId } = useOrg();
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -15,12 +17,27 @@ export default function Settings() {
 
   const org = orgData?.org;
   const [form, setForm] = useState<any>(null);
+  const [saved, setSaved] = useState(false);
 
   if (org && !form) {
     setForm({ name: org.name, industry: org.industry, size: org.size, website: org.website ?? "" });
   }
 
-  const saved = form?.name === org?.name && form?.industry === org?.industry && form?.size === org?.size && form?.website === (org?.website ?? "");
+  const isDirty = form && (
+    form.name !== org?.name ||
+    form.industry !== org?.industry ||
+    form.size !== org?.size ||
+    form.website !== (org?.website ?? "")
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: () => apiFetch(`/orgs/${orgId}`, { method: "PATCH", body: JSON.stringify(form) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orgs", "me"] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+  });
 
   return (
     <div className="p-6 max-w-2xl">
@@ -29,7 +46,6 @@ export default function Settings() {
         <p className="text-sm text-slate-500 mt-0.5">Manage your organization settings</p>
       </div>
 
-      {/* Org Settings */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
         <div className="px-5 py-3.5 border-b border-slate-100">
           <h2 className="text-sm font-bold text-slate-800">Organization</h2>
@@ -44,13 +60,15 @@ export default function Settings() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Industry</label>
-                  <select value={form.industry} onChange={e => setForm({ ...form, industry: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select value={form.industry ?? ""} onChange={e => setForm({ ...form, industry: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select industry</option>
                     {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Company size</label>
-                  <select value={form.size} onChange={e => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select value={form.size ?? ""} onChange={e => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select size</option>
                     {SIZES.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
@@ -60,17 +78,17 @@ export default function Settings() {
                 <input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
               </div>
               <button
-                disabled={saved}
+                onClick={() => saveMutation.mutate()}
+                disabled={!isDirty || saveMutation.isPending}
                 className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {saved ? "Saved" : "Save changes"}
+                {saveMutation.isPending ? "Saving..." : saved ? "Saved" : "Save changes"}
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Plan */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
         <div className="px-5 py-3.5 border-b border-slate-100">
           <h2 className="text-sm font-bold text-slate-800">Plan</h2>
@@ -86,7 +104,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Org ID */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-5 py-3.5 border-b border-slate-100">
           <h2 className="text-sm font-bold text-slate-800">Organization Details</h2>

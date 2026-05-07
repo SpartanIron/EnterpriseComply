@@ -10,7 +10,27 @@ const PeopleIcon = (
   </svg>
 );
 
-const BLANK_FORM = { name: "", email: "", role: "", department: "", mfaEnabled: false, trainingComplete: false };
+const BLANK_FORM = { name: "", email: "", title: "", department: "", mfaEnabled: false, trainingComplete: false };
+
+function toApiBody(form: typeof BLANK_FORM) {
+  const parts = form.name.trim().split(/\s+/);
+  const firstName = parts[0] ?? "";
+  const lastName = parts.slice(1).join(" ") || undefined;
+  return {
+    firstName,
+    lastName,
+    email: form.email,
+    title: form.title || undefined,
+    department: form.department || undefined,
+    mfaEnabled: form.mfaEnabled,
+    trainingStatus: form.trainingComplete ? "completed" : "not_started",
+  };
+}
+
+function displayName(p: any): string {
+  const full = [p.firstName, p.lastName].filter(Boolean).join(" ");
+  return full || p.login || "";
+}
 
 export default function People() {
   const [, navigate] = useLocation();
@@ -38,7 +58,7 @@ export default function People() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify(toApiBody(form)),
       });
       return res.json();
     },
@@ -55,7 +75,7 @@ export default function People() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify(toApiBody(data)),
       });
       return res.json();
     },
@@ -81,17 +101,17 @@ export default function People() {
 
   const people = data?.people ?? [];
   const mfaEnabled = people.filter(p => p.mfaEnabled).length;
-  const trainingDone = people.filter(p => p.trainingComplete || p.trainingStatus === "completed").length;
+  const trainingDone = people.filter(p => p.trainingStatus === "completed").length;
 
   const openEdit = (p: any) => {
     setEditing(p);
     setForm({
-      name: p.name ?? "",
+      name: displayName(p),
       email: p.email ?? "",
-      role: p.role ?? "",
+      title: p.title ?? "",
       department: p.department ?? "",
       mfaEnabled: p.mfaEnabled ?? false,
-      trainingComplete: p.trainingComplete ?? false,
+      trainingComplete: p.trainingStatus === "completed",
     });
   };
 
@@ -151,7 +171,7 @@ export default function People() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Person</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">MFA</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Training</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Access Review</th>
@@ -160,48 +180,51 @@ export default function People() {
               </tr>
             </thead>
             <tbody>
-              {people.map((p: any, idx: number) => (
-                <tr key={p.id} className={`${idx > 0 ? "border-t border-slate-100" : ""} hover:bg-slate-50 transition-colors group`}>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 flex-shrink-0">
-                        {(p.name ?? p.login ?? "?").charAt(0).toUpperCase()}
+              {people.map((p: any, idx: number) => {
+                const name = displayName(p);
+                return (
+                  <tr key={p.id} className={`${idx > 0 ? "border-t border-slate-100" : ""} hover:bg-slate-50 transition-colors group`}>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 flex-shrink-0">
+                          {(name || "?").charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 leading-snug">{name || <span className="text-slate-400 italic">No name</span>}</p>
+                          {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 leading-snug">{p.name ?? p.login}</p>
-                        {p.email && <p className="text-xs text-slate-400 truncate">{p.email}</p>}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600">
+                      {p.title ? <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">{p.title}</span> : <span className="text-slate-300">-</span>}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusPill value={p.mfaEnabled} trueLabel="Enabled" falseLabel="Disabled" />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusPill value={p.trainingStatus === "completed"} trueLabel="Complete" falseLabel="Pending" />
+                    </td>
+                    <td className="px-5 py-3.5 hidden md:table-cell">
+                      <StatusPill value={p.accessReviewStatus === "approved"} trueLabel="Reviewed" falseLabel="Pending" neutral />
+                    </td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell">
+                      {p.integrationKey ? (
+                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-mono">{p.integrationKey}</span>
+                      ) : <span className="text-slate-300 text-xs">manual</span>}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEdit(p)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors">
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
+                        <button onClick={() => setConfirmDelete(p.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600">
-                    {p.role ? <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">{p.role}</span> : <span className="text-slate-300">-</span>}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <StatusPill value={p.mfaEnabled} trueLabel="Enabled" falseLabel="Disabled" />
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <StatusPill value={p.trainingComplete || p.trainingStatus === "completed"} trueLabel="Complete" falseLabel="Pending" />
-                  </td>
-                  <td className="px-5 py-3.5 hidden md:table-cell">
-                    <StatusPill value={p.accessReviewComplete} trueLabel="Reviewed" falseLabel="Pending" neutral />
-                  </td>
-                  <td className="px-5 py-3.5 hidden lg:table-cell">
-                    {p.source ? (
-                      <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-mono">{p.source}</span>
-                    ) : <span className="text-slate-300 text-xs">-</span>}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(p)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors">
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      </button>
-                      <button onClick={() => setConfirmDelete(p.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -231,9 +254,9 @@ export default function People() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Role</label>
-                  <input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Engineer" />
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Title</label>
+                  <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Software Engineer" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Department</label>

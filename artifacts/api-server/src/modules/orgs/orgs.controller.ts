@@ -24,6 +24,12 @@ export class OrgsController {
     return this.orgsService.createOrg(userId, body as any);
   }
 
+  @Patch(":orgId")
+  @UseGuards(OrgContextGuard)
+  updateOrg(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {
+    return this.orgsService.updateOrg(ctx.orgId, body);
+  }
+
   @Patch(":orgId/onboarding")
   @UseGuards(OrgContextGuard)
   patchOnboarding(

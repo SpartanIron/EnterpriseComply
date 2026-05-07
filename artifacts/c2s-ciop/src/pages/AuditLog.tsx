@@ -11,6 +11,9 @@ const ACTION_COLORS: Record<string, string> = {
   LOGIN: "bg-purple-100 text-purple-700",
   CONNECT: "bg-emerald-100 text-emerald-700",
   SYNC: "bg-sky-100 text-sky-700",
+  PUBLISH: "bg-violet-100 text-violet-700",
+  IMPORT: "bg-amber-100 text-amber-700",
+  EXPORT: "bg-orange-100 text-orange-700",
 };
 
 function getActionColor(action: string) {

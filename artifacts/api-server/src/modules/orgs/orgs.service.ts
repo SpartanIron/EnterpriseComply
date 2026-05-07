@@ -6,6 +6,8 @@ import {
   orgFrameworksTable,
   orgControlResultsTable,
   orgIntegrationsTable,
+  orgPoliciesTable,
+  orgPeopleTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
@@ -64,6 +66,19 @@ export class OrgsService {
     return { org };
   }
 
+  async updateOrg(orgId: number, body: Record<string, unknown>) {
+    const allowed = ["name", "industry", "size", "website"] as const;
+    const updates: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) updates[key] = body[key];
+    }
+    const [org] = await db.update(organizationsTable)
+      .set(updates as any)
+      .where(eq(organizationsTable.id, orgId))
+      .returning();
+    return { org };
+  }
+
   async patchOnboarding(orgId: number, step: number, complete?: boolean) {
     const [org] = await db.update(organizationsTable)
       .set({ onboardingStep: step, onboardingComplete: complete ?? false })
@@ -73,12 +88,14 @@ export class OrgsService {
   }
 
   async getDashboard(orgId: number, org: typeof organizationsTable.$inferSelect) {
-    const [frameworks, controls, integrations] = await Promise.all([
+    const [frameworks, controls, integrations, policies, people] = await Promise.all([
       db.query.orgFrameworksTable.findMany({
         where: and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.active, true)),
       }),
       db.query.orgControlResultsTable.findMany({ where: eq(orgControlResultsTable.orgId, orgId) }),
       db.query.orgIntegrationsTable.findMany({ where: eq(orgIntegrationsTable.orgId, orgId) }),
+      db.query.orgPoliciesTable.findMany({ where: eq(orgPoliciesTable.orgId, orgId) }),
+      db.query.orgPeopleTable.findMany({ where: eq(orgPeopleTable.orgId, orgId) }),
     ]);
 
     const connected = integrations.filter((i) => i.status === "connected");
@@ -93,6 +110,8 @@ export class OrgsService {
       frameworks,
       controlSummary: { passing, failing, notTested: total - passing - failing, total },
       connectedIntegrations: connected.length,
+      policiesCount: policies.length,
+      peopleCount: people.length,
       recentActivity: [],
     };
   }
