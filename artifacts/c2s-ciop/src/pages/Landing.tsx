@@ -25,7 +25,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Federal-grade, built in",
-    desc: "FedRAMP Moderate, CMMC Level 2, and NIST 800-53 are first-class citizens. POA&M tracking, SPRS scoring, and System Security Plan generation are included — not sold separately.",
+    desc: "FedRAMP Moderate, CMMC Level 2, and NIST 800-53 are first-class citizens. POA&M tracking, SPRS scoring, and System Security Plan generation are included, not sold separately.",
   },
   {
     icon: (
@@ -34,7 +34,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Live compliance posture",
-    desc: "Real-time scores across every active framework. See exactly which controls are passing, which are failing, and what evidence is going stale — before your auditor notices.",
+    desc: "Real-time scores across every active framework. See exactly which controls are passing, which are failing, and what evidence is going stale before your auditor notices.",
   },
   {
     icon: (
@@ -52,7 +52,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Sales enablement, built in",
-    desc: "A public Trust Center, AI-assisted security questionnaire responses, and a dedicated auditor portal — turn your compliance program into a competitive sales asset.",
+    desc: "A public Trust Center, AI-assisted security questionnaire responses, and a dedicated auditor portal to turn your compliance program into a competitive sales asset.",
   },
   {
     icon: (
@@ -61,7 +61,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Policy and workforce management",
-    desc: "44 policy templates, employee acknowledgment tracking, security training records, access reviews, and vendor risk management — your entire compliance program, unified.",
+    desc: "44 policy templates, employee acknowledgment tracking, security training records, access reviews, and vendor risk management. Your entire compliance program, unified.",
   },
 ];
 
@@ -291,7 +291,7 @@ export default function Landing() {
                 <span className="text-blue-600">Every framework.</span>
               </h1>
               <p className="text-lg text-slate-600 leading-relaxed mb-8 max-w-lg">
-                EnterpriseComply automates SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and 18 more frameworks. Implement one control — satisfy every framework it maps to, simultaneously.
+                EnterpriseComply automates SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and 18 more frameworks. Implement one control and satisfy every framework it maps to, simultaneously.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-8">
                 <a
@@ -409,7 +409,7 @@ export default function Landing() {
                 One control.<br />Every framework it covers.
               </h2>
               <p className="text-slate-600 leading-relaxed mb-6 text-base">
-                Traditional GRC tools make you map the same control to every framework manually. EnterpriseComply's UCO system does this automatically — implement MFA once and it satisfies IA-2 in FedRAMP, CC6.1 in SOC 2, 3.5.3 in CMMC, and A.9.4.2 in ISO 27001 at the same time.
+                Traditional GRC tools make you map the same control to every framework manually. EnterpriseComply's UCO system does this automatically: implement MFA once and it satisfies IA-2 in FedRAMP, CC6.1 in SOC 2, 3.5.3 in CMMC, and A.9.4.2 in ISO 27001 at the same time.
               </p>
               <ul className="space-y-3">
                 {[
@@ -762,7 +762,7 @@ export default function Landing() {
             Your compliance program starts today.
           </h2>
           <p className="text-slate-400 text-lg mb-8">
-            Connect your tools, get your score, and start closing gaps — in under 10 minutes. No credit card required.
+            Connect your tools, get your score, and start closing gaps in under 10 minutes. No credit card required.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <a
