@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { db, orgPeopleTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { writeAuditLog } from "../../lib/audit-log.js";
 
 @Injectable()
 export class PeopleService {
@@ -14,6 +15,7 @@ export class PeopleService {
 
   async addPerson(orgId: number, body: Record<string, unknown>) {
     const [person] = await db.insert(orgPeopleTable).values({ orgId, ...body } as any).returning();
+    await writeAuditLog(orgId, "person.created", "person", String(person.id), { name: [person.firstName, person.lastName].filter(Boolean).join(" ") });
     return { person };
   }
 
@@ -23,6 +25,7 @@ export class PeopleService {
       .set({ ...body, updatedAt: new Date() })
       .where(and(eq(orgPeopleTable.id, id), eq(orgPeopleTable.orgId, orgId)))
       .returning();
+    await writeAuditLog(orgId, "person.updated", "person", String(id), { name: [person?.firstName, person?.lastName].filter(Boolean).join(" ") });
     return { person };
   }
 
@@ -30,6 +33,7 @@ export class PeopleService {
     await db
       .delete(orgPeopleTable)
       .where(and(eq(orgPeopleTable.id, id), eq(orgPeopleTable.orgId, orgId)));
+    await writeAuditLog(orgId, "person.deleted", "person", String(id));
     return { success: true };
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { db, orgPoliciesTable, orgPolicyAcknowledgmentsTable, orgPeopleTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { writeAuditLog } from "../../lib/audit-log.js";
 
 export const POLICY_TEMPLATES = [
   { key: "acceptable-use", title: "Acceptable Use Policy", category: "security", description: "Defines acceptable use of company systems, data, and resources." },
@@ -65,6 +66,7 @@ export class PoliciesService {
 
   async createPolicy(orgId: number, body: Record<string, unknown>) {
     const [policy] = await db.insert(orgPoliciesTable).values({ orgId, ...body } as any).returning();
+    await writeAuditLog(orgId, "policy.created", "policy", String(policy.id), { title: policy.title, status: policy.status });
     return { policy };
   }
 
@@ -78,6 +80,8 @@ export class PoliciesService {
       .set(updates)
       .where(and(eq(orgPoliciesTable.id, id), eq(orgPoliciesTable.orgId, orgId)))
       .returning();
+    const action = body.status === "published" ? "policy.published" : "policy.updated";
+    await writeAuditLog(orgId, action, "policy", String(id), { title: policy?.title, status: policy?.status });
     return { policy };
   }
 
@@ -85,6 +89,7 @@ export class PoliciesService {
     await db
       .delete(orgPoliciesTable)
       .where(and(eq(orgPoliciesTable.id, id), eq(orgPoliciesTable.orgId, orgId)));
+    await writeAuditLog(orgId, "policy.deleted", "policy", String(id));
     return { success: true };
   }
 
@@ -126,6 +131,7 @@ export class PoliciesService {
       personId: body.personId,
       ipAddress: body.ipAddress,
     }).returning();
+    await writeAuditLog(orgId, "policy.acknowledged", "policy", String(policyId), { personId: body.personId });
     return { acknowledgment: ack, alreadyAcknowledged: false };
   }
 
@@ -137,6 +143,7 @@ export class PoliciesService {
     const people = await db.query.orgPeopleTable.findMany({
       where: and(eq(orgPeopleTable.orgId, orgId), eq(orgPeopleTable.active, true)),
     });
+    await writeAuditLog(orgId, "policy.ack_requested", "policy", String(policyId), { title: policy.title, recipients: people.length });
     return { requested: people.length, policy };
   }
 }

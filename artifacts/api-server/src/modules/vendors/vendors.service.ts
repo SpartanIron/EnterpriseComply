@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { db, orgVendorsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { writeAuditLog } from "../../lib/audit-log.js";
 
 @Injectable()
 export class VendorsService {
@@ -14,6 +15,7 @@ export class VendorsService {
 
   async addVendor(orgId: number, body: Record<string, unknown>) {
     const [vendor] = await db.insert(orgVendorsTable).values({ orgId, ...body } as any).returning();
+    await writeAuditLog(orgId, "vendor.created", "vendor", String(vendor.id), { name: vendor.name });
     return { vendor };
   }
 
@@ -27,6 +29,7 @@ export class VendorsService {
       .set(updates)
       .where(and(eq(orgVendorsTable.id, id), eq(orgVendorsTable.orgId, orgId)))
       .returning();
+    await writeAuditLog(orgId, "vendor.updated", "vendor", String(id), { name: vendor?.name });
     return { vendor };
   }
 
@@ -34,6 +37,7 @@ export class VendorsService {
     await db
       .delete(orgVendorsTable)
       .where(and(eq(orgVendorsTable.id, id), eq(orgVendorsTable.orgId, orgId)));
+    await writeAuditLog(orgId, "vendor.deleted", "vendor", String(id));
     return { success: true };
   }
 }

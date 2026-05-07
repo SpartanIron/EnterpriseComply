@@ -206,7 +206,7 @@ export default function POAM() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+            <div className="p-6 space-y-4 overflow-y-auto" style={{ maxHeight: "calc(90vh - 160px)" }}>
               {[
                 { label: "Title *", field: "title", type: "text", placeholder: "MFA not enforced for admin accounts" },
                 { label: "Weakness *", field: "weakness", type: "text", placeholder: "Authentication weakness" },

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
 import {
   db,
   organizationsTable,
@@ -28,11 +28,33 @@ export class OrgsService {
     email?: string; firstName?: string; lastName?: string;
   }) {
     const { name, industry, size, website, email, firstName, lastName } = body;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-    const [org] = await db.insert(organizationsTable).values({
-      name, slug, industry, size, website, onboardingStep: 2,
-    }).returning();
+    // Ensure slug uniqueness by appending a random suffix on collision
+    let slug = baseSlug;
+    let org: typeof organizationsTable.$inferSelect | undefined;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (attempt > 0) {
+        const suffix = Math.random().toString(36).slice(2, 6);
+        slug = `${baseSlug}-${suffix}`;
+      }
+      try {
+        const result = await db.insert(organizationsTable).values({
+          name, slug, industry, size, website, onboardingStep: 2,
+        }).returning();
+        org = result[0];
+        break;
+      } catch (err: any) {
+        if (err?.code === "23505" && err?.constraint?.includes("slug")) {
+          continue; // retry with new suffix
+        }
+        throw err;
+      }
+    }
+
+    if (!org) {
+      throw new ConflictException("Could not generate a unique organization identifier. Please try a slightly different company name.");
+    }
 
     await db.insert(orgMembersTable).values({
       orgId: org.id, clerkUserId, email: email ?? "",
