@@ -81,7 +81,7 @@ const INDUSTRIES = [
   {
     name: "Government",
     desc: "FedRAMP, CMMC, NIST 800-53, and StateRAMP - all native.",
-    photo: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=600&h=400&fit=crop&q=80",
+    photo: "https://images.unsplash.com/photo-1587131110607-07f5be87b5ba?w=600&h=400&fit=crop&q=80",
   },
   {
     name: "Technology",
