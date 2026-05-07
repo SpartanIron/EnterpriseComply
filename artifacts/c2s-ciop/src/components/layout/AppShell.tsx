@@ -56,6 +56,7 @@ const NAV = [
       { path: "/poam", label: "POA&M", icon: PoamIcon },
       { path: "/sprs", label: "SPRS Score", icon: SprsIcon },
       { path: "/ssp", label: "SSP Generator", icon: SspIcon },
+      { path: "/stigs", label: "STIG Findings", icon: StigIcon },
       { path: "/custom-frameworks", label: "Custom Frameworks", icon: CustomFwIcon },
     ],
   },
@@ -486,6 +487,9 @@ function SspIcon({ active }: { active: boolean }) {
 }
 function CustomFwIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />;
+}
+function StigIcon({ active }: { active: boolean }) {
+  return <Icon active={active} d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016zM12 9v2m0 4h.01" />;
 }
 function RemediationIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />;

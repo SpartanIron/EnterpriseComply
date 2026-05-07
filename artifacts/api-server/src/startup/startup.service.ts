@@ -528,6 +528,40 @@ CREATE TABLE IF NOT EXISTS integration_sync_log (
   error_message TEXT,
   next_sync_at TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS org_stig_checklists (
+  id SERIAL PRIMARY KEY,
+  org_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  benchmark_id TEXT,
+  version TEXT,
+  release TEXT,
+  hostname TEXT,
+  target_comment TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS org_stig_findings (
+  id SERIAL PRIMARY KEY,
+  org_id INTEGER NOT NULL,
+  checklist_id INTEGER NOT NULL,
+  vuln_id TEXT NOT NULL,
+  rule_id TEXT,
+  rule_ver TEXT,
+  title TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'medium',
+  status TEXT NOT NULL DEFAULT 'not_reviewed',
+  description TEXT,
+  fix_text TEXT,
+  check_content TEXT,
+  finding_details TEXT,
+  comments TEXT,
+  uco_control_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;
 
 @Injectable()

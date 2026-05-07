@@ -30,6 +30,7 @@ import { ScoreHistoryModule } from "./modules/score-history/score-history.module
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { GapAnalysisModule } from "./modules/gap-analysis/gap-analysis.module";
 import { TestRunsModule } from "./modules/test-runs/test-runs.module";
+import { StigsModule } from "./modules/stigs/stigs.module";
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { TestRunsModule } from "./modules/test-runs/test-runs.module";
     NotificationsModule,
     GapAnalysisModule,
     TestRunsModule,
+    StigsModule,
   ],
   providers: [
     {

@@ -31,6 +31,7 @@ import GapAnalysis from "./pages/GapAnalysis";
 import Remediation from "./pages/Remediation";
 import TestRunHistory from "./pages/TestRunHistory";
 import Pricing from "./pages/Pricing";
+import Stigs from "./pages/Stigs";
 import NotFound from "./pages/not-found";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -141,6 +142,7 @@ function AppRoutes() {
       <Route path="/poam" component={() => <AppShell><POAM /></AppShell>} />
       <Route path="/sprs" component={() => <AppShell><SPRS /></AppShell>} />
       <Route path="/ssp" component={() => <AppShell><SSP /></AppShell>} />
+      <Route path="/stigs" component={() => <AppShell><Stigs /></AppShell>} />
 
       {/* Settings */}
       <Route path="/settings" component={() => <AppShell><Settings /></AppShell>} />
