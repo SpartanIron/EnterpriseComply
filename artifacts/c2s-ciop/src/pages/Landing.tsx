@@ -297,74 +297,129 @@ function MockupSidebar({ activeItem }: { activeItem: string }) {
 
 function DashboardScreen() {
   return (
-    <div className="flex-1 overflow-hidden" style={{ background: "#f8fafc" }}>
-      <div className="px-4 py-3" style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)" }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <svg width="36" height="36" className="flex-shrink-0">
-              <circle cx="18" cy="18" r="13" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
-              <circle cx="18" cy="18" r="13" fill="none" stroke="#34d399" strokeWidth="3"
-                strokeDasharray={`${0.92 * 2 * Math.PI * 13} ${2 * Math.PI * 13}`}
-                strokeLinecap="round" transform="rotate(-90 18 18)" />
-              <text x="18" y="22" textAnchor="middle" fontSize="8" fontWeight="bold" fill="white">92%</text>
-            </svg>
-            <div>
-              <p style={{ fontSize: 7, color: "rgba(147,197,253,0.85)", fontWeight: 600, letterSpacing: "0.06em" }}>ACME CORP - LIVE POSTURE</p>
-              <p style={{ fontSize: 10, color: "white", fontWeight: 700, marginTop: 1 }}>Compliance Score</p>
-              <p style={{ fontSize: 7, color: "rgba(147,197,253,0.75)", marginTop: 1 }}>5 frameworks active</p>
-            </div>
-          </div>
-          <div className="flex gap-1.5">
-            {[
-              { label: "Open Tasks", val: "128", color: "#fbbf24" },
-              { label: "High Risk", val: "23", color: "#f87171" },
-              { label: "Upcoming", val: "15", color: "#34d399" },
-            ].map(s => (
-              <div key={s.label} className="text-center px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.1)" }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: s.color }}>{s.val}</p>
-                <p style={{ fontSize: 6, color: "rgba(147,197,253,0.7)", marginTop: 1 }}>{s.label}</p>
-              </div>
-            ))}
+    <div className="flex-1 overflow-hidden" style={{ background: "#f8fafc", display: "flex", flexDirection: "column" }}>
+      {/* Page header */}
+      <div className="flex items-center justify-between px-4 py-2 border-b" style={{ background: "white", borderColor: "#e2e8f0", flexShrink: 0 }}>
+        <p style={{ fontSize: 7, color: "#94a3b8" }}>Home / Live Posture</p>
+        <p style={{ fontSize: 10, fontWeight: 700, color: "#0f172a" }}>Overview</p>
+        <div />
+      </div>
+
+      {/* Stats row */}
+      <div style={{ display: "flex", gap: 6, padding: "8px 10px 0", flexShrink: 0 }}>
+        <div style={{ flex: "0 0 auto", background: "white", borderRadius: 6, border: "1px solid #e2e8f0", padding: "6px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+          <svg width="36" height="36" style={{ flexShrink: 0 }}>
+            <circle cx="18" cy="18" r="13" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+            <circle cx="18" cy="18" r="13" fill="none" stroke="#16a34a" strokeWidth="3"
+              strokeDasharray={`${0.92 * 2 * Math.PI * 13} ${2 * Math.PI * 13}`}
+              strokeLinecap="round" transform="rotate(-90 18 18)" />
+            <text x="18" y="22" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#0f172a">92%</text>
+          </svg>
+          <div>
+            <p style={{ fontSize: 9, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>Compliance Score</p>
+            <p style={{ fontSize: 6.5, color: "#64748b", marginTop: 1 }}>5 frameworks active</p>
           </div>
         </div>
-      </div>
-      <div className="grid gap-2 p-3" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
         {[
-          { name: "SOC 2 Type II", score: 92, accent: "#2563eb", tag: "Commercial", pass: 28, fail: 1 },
-          { name: "FedRAMP Moderate", score: 71, accent: "#7c3aed", tag: "Federal", pass: 19, fail: 4 },
-          { name: "ISO 27001", score: 85, accent: "#0891b2", tag: "International", pass: 24, fail: 2 },
-          { name: "CMMC Level 2", score: 68, accent: "#059669", tag: "Federal", pass: 17, fail: 5 },
-        ].map((fw) => (
-          <div key={fw.name} className="rounded-lg bg-white border border-slate-200 overflow-hidden">
-            <div className="h-0.5" style={{ background: fw.accent }} />
-            <div className="p-2">
-              <div className="flex items-start justify-between mb-1.5">
-                <div>
-                  <p className="font-bold text-slate-900" style={{ fontSize: 8.5, lineHeight: 1.2 }}>{fw.name}</p>
-                  <span style={{ fontSize: 6.5, padding: "1px 5px", borderRadius: 999, background: `${fw.accent}18`, color: fw.accent, fontWeight: 600, display: "inline-block", marginTop: 2 }}>{fw.tag}</span>
-                </div>
-                <svg width="28" height="28" className="flex-shrink-0">
-                  <circle cx="14" cy="14" r="9" fill="none" stroke="#f1f5f9" strokeWidth="2.5" />
-                  <circle cx="14" cy="14" r="9" fill="none"
-                    stroke={fw.score >= 80 ? "#16a34a" : "#f59e0b"} strokeWidth="2.5"
-                    strokeDasharray={`${(fw.score / 100) * 2 * Math.PI * 9} ${2 * Math.PI * 9}`}
-                    strokeLinecap="round" transform="rotate(-90 14 14)" />
-                  <text x="14" y="17.5" textAnchor="middle" fontSize="5.5" fontWeight="bold" fill={fw.score >= 80 ? "#16a34a" : "#d97706"}>{fw.score}%</text>
-                </svg>
-              </div>
-              <div className="flex gap-1">
-                <div className="flex-1 rounded text-center py-0.5" style={{ background: "#f0fdf4" }}>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: "#15803d" }}>{fw.pass}</p>
-                  <p style={{ fontSize: 6, color: "#15803d" }}>Pass</p>
-                </div>
-                <div className="flex-1 rounded text-center py-0.5" style={{ background: "#fef2f2" }}>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: "#dc2626" }}>{fw.fail}</p>
-                  <p style={{ fontSize: 6, color: "#dc2626" }}>Fail</p>
-                </div>
-              </div>
-            </div>
+          { label: "Open Tasks", val: "128", color: "#f59e0b" },
+          { label: "High Risk", val: "23", color: "#ef4444" },
+          { label: "Upcoming Obligations", val: "15", color: "#2563eb" },
+        ].map(s => (
+          <div key={s.label} style={{ flex: 1, background: "white", borderRadius: 6, border: "1px solid #e2e8f0", padding: "6px 8px", textAlign: "center" }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.val}</p>
+            <p style={{ fontSize: 6, color: "#94a3b8", marginTop: 3, lineHeight: 1.2 }}>{s.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Middle: Compliance Risks + Recent Activity */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: "6px 10px 0", flex: 1, minHeight: 0 }}>
+        <div style={{ background: "white", borderRadius: 6, border: "1px solid #e2e8f0", padding: "8px", overflow: "hidden" }}>
+          <p style={{ fontSize: 8, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>Compliance Risks</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="46" height="46" style={{ flexShrink: 0 }}>
+              <circle cx="23" cy="23" r="17" fill="none" stroke="#f1f5f9" strokeWidth="4" />
+              <circle cx="23" cy="23" r="17" fill="none" stroke="#16a34a" strokeWidth="4"
+                strokeDasharray={`${0.78 * 2 * Math.PI * 17} ${2 * Math.PI * 17}`}
+                strokeLinecap="round" transform="rotate(-90 23 23)" />
+              <circle cx="23" cy="23" r="17" fill="none" stroke="#f59e0b" strokeWidth="4"
+                strokeDasharray={`${0.14 * 2 * Math.PI * 17} ${2 * Math.PI * 17}`}
+                strokeLinecap="round" transform={`rotate(${(-90 + 0.78 * 360)} 23 23)`} />
+              <text x="23" y="27" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#0f172a">92%</text>
+            </svg>
+            <div style={{ flex: 1 }}>
+              {[
+                { label: "Compliant", pct: 78, color: "#16a34a" },
+                { label: "In Progress", pct: 14, color: "#f59e0b" },
+                { label: "Non-Compliant", pct: 8, color: "#ef4444" },
+              ].map(r => (
+                <div key={r.label} style={{ marginBottom: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                    <span style={{ fontSize: 6, color: "#64748b" }}>{r.label}</span>
+                    <span style={{ fontSize: 6, fontWeight: 700, color: r.color }}>{r.pct}%</span>
+                  </div>
+                  <div style={{ height: 3, background: "#f1f5f9", borderRadius: 2 }}>
+                    <div style={{ width: `${r.pct}%`, height: "100%", background: r.color, borderRadius: 2 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ background: "white", borderRadius: 6, border: "1px solid #e2e8f0", padding: "8px", overflow: "hidden" }}>
+          <p style={{ fontSize: 8, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>Recent Activity</p>
+          {[
+            { event: "Policy New User Access Policy Updated", date: "May 20, 2024", color: "#2563eb" },
+            { event: "Control Monitoring Test Passed", date: "May 20, 2024", color: "#16a34a" },
+            { event: "Vendor Risk Assessment Completed", date: "May 20, 2024", color: "#f59e0b" },
+            { event: "Regulatory Changes Policy Review Due", date: "May 20, 2024", color: "#ef4444" },
+          ].map((a, i) => (
+            <div key={i} style={{ display: "flex", gap: 5, marginBottom: 5 }}>
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: a.color, marginTop: 2, flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: 6.5, color: "#0f172a", fontWeight: 500, lineHeight: 1.3 }}>{a.event}</p>
+                <p style={{ fontSize: 5.5, color: "#94a3b8", marginTop: 1 }}>{a.date}</p>
+              </div>
+            </div>
+          ))}
+          <p style={{ fontSize: 6.5, color: "#2563eb", marginTop: 2 }}>View All Activity</p>
+        </div>
+      </div>
+
+      {/* Bottom: Top Risks + Upcoming Obligations */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: "6px 10px 8px", flexShrink: 0 }}>
+        <div style={{ background: "white", borderRadius: 6, border: "1px solid #e2e8f0", padding: "8px" }}>
+          <p style={{ fontSize: 8, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>Top Risks</p>
+          {[
+            { name: "Data Privacy", level: "High", date: "Jun 15" },
+            { name: "Access Management", level: "Medium", date: "Jun 20" },
+            { name: "Vendor Management", level: "Low", date: "Jul 1" },
+          ].map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "3px 0", borderBottom: i < 2 ? "1px solid #f8fafc" : "none" }}>
+              <span style={{ fontSize: 6.5, color: "#0f172a", fontWeight: 500 }}>{r.name}</span>
+              <span style={{ fontSize: 5.5, padding: "1px 4px", borderRadius: 3, fontWeight: 600,
+                background: r.level === "High" ? "#fef2f2" : r.level === "Medium" ? "#fffbeb" : "#f0fdf4",
+                color: r.level === "High" ? "#dc2626" : r.level === "Medium" ? "#d97706" : "#16a34a" }}>{r.level}</span>
+              <span style={{ fontSize: 5.5, color: "#94a3b8" }}>{r.date}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: "white", borderRadius: 6, border: "1px solid #e2e8f0", padding: "8px" }}>
+          <p style={{ fontSize: 8, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>Upcoming Obligations</p>
+          {[
+            { name: "Annual Policy Review", due: "Jun 1, 2024", fw: "SOC 2" },
+            { name: "Vendor Assessment", due: "Jun 15", fw: "FedRAMP" },
+            { name: "Control Testing Cycle", due: "Jul 1", fw: "ISO 27001" },
+          ].map((o, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "3px 0", borderBottom: i < 2 ? "1px solid #f8fafc" : "none" }}>
+              <div>
+                <p style={{ fontSize: 6.5, color: "#0f172a", fontWeight: 500 }}>{o.name}</p>
+                <p style={{ fontSize: 5.5, color: "#94a3b8", marginTop: 1 }}>{o.fw}</p>
+              </div>
+              <span style={{ fontSize: 5.5, color: "#64748b", flexShrink: 0, marginLeft: 4 }}>{o.due}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -491,50 +546,11 @@ function IntegrationsScreen() {
 }
 
 function ProductMockup() {
-  const [active, setActive] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActive((prev) => (prev + 1) % MOCKUP_TABS.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const sidebarActive = active === 0 ? "Dashboard" : active === 1 ? "Controls" : "Integrations";
-
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: "#0f172a", boxShadow: "0 0 0 1px rgba(255,255,255,0.08)" }}>
-      {/* App top bar — no browser chrome, just app header */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b" style={{ background: "#0f172a", borderColor: "rgba(255,255,255,0.06)" }}>
-        <div className="flex gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#ef4444", opacity: 0.7 }} />
-          <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#f59e0b", opacity: 0.7 }} />
-          <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#22c55e", opacity: 0.7 }} />
-        </div>
-        <div className="flex gap-1 ml-2">
-          {MOCKUP_TABS.map((t, i) => (
-            <button
-              key={t.id}
-              onClick={() => setActive(i)}
-              className="px-3 py-1 rounded text-xs font-semibold transition-all duration-200"
-              style={{
-                fontSize: 11,
-                background: active === i ? "rgba(37,99,235,0.25)" : "transparent",
-                color: active === i ? "#93c5fd" : "rgba(255,255,255,0.35)",
-                cursor: "pointer",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex" style={{ minHeight: 370 }}>
-        <MockupSidebar activeItem={sidebarActive} />
-        {active === 0 && <DashboardScreen />}
-        {active === 1 && <ControlsScreen />}
-        {active === 2 && <IntegrationsScreen />}
+      <div className="flex" style={{ minHeight: 440 }}>
+        <MockupSidebar activeItem="Dashboard" />
+        <DashboardScreen />
       </div>
     </div>
   );
