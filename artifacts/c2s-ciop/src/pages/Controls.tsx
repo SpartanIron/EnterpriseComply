@@ -73,12 +73,72 @@ export default function Controls() {
     notTested: controls.filter(c => !c.result?.status || c.result?.status === "not_tested").length,
   };
   const total = controls.length;
+  const passRate = total > 0 ? Math.round((stats.passing / total) * 100) : 0;
 
   const FILTERS: [string, string, number][] = [
     ["all", "All controls", total],
     ["passing", "Passing", stats.passing],
     ["failing", "Failing", stats.failing],
     ["not_tested", "Not Tested", stats.notTested],
+  ];
+
+  const STAT_CARDS = [
+    {
+      label: "Total Controls",
+      value: total,
+      sub: "across all domains",
+      valueColor: "text-slate-900",
+      topBar: "bg-slate-300",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+      iconBg: "bg-slate-50 text-slate-500",
+      badge: null,
+    },
+    {
+      label: "Passing",
+      value: stats.passing,
+      sub: `${passRate}% pass rate`,
+      valueColor: stats.passing > 0 ? "text-green-700" : "text-slate-400",
+      topBar: "bg-green-500",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ),
+      iconBg: stats.passing > 0 ? "bg-green-50 text-green-600" : "bg-slate-50 text-slate-400",
+      badge: stats.passing > 0 ? { label: `${passRate}%`, cls: "bg-green-50 text-green-700 ring-1 ring-green-200" } : null,
+    },
+    {
+      label: "Failing",
+      value: stats.failing,
+      sub: stats.failing > 0 ? "requires remediation" : "none failing",
+      valueColor: stats.failing > 0 ? "text-red-600" : "text-slate-400",
+      topBar: stats.failing > 0 ? "bg-red-500" : "bg-slate-200",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      ),
+      iconBg: stats.failing > 0 ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400",
+      badge: stats.failing > 0 ? { label: "Action needed", cls: "bg-red-50 text-red-700 ring-1 ring-red-200" } : null,
+    },
+    {
+      label: "Not Tested",
+      value: stats.notTested,
+      sub: "pending evaluation",
+      valueColor: "text-slate-600",
+      topBar: "bg-amber-400",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      iconBg: stats.notTested > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-400",
+      badge: null,
+    },
   ];
 
   return (
@@ -89,18 +149,20 @@ export default function Controls() {
       />
 
       {/* Stats strip */}
-      <div className="grid grid-cols-4 gap-3 mb-5">
-        {[
-          { label: "Total", value: total, colorVal: "text-slate-900", bar: "bg-slate-300" },
-          { label: "Passing", value: stats.passing, colorVal: stats.passing > 0 ? "text-green-600" : "text-slate-400", bar: "bg-green-500" },
-          { label: "Failing", value: stats.failing, colorVal: stats.failing > 0 ? "text-red-600" : "text-slate-400", bar: "bg-red-500" },
-          { label: "Not Tested", value: stats.notTested, colorVal: "text-slate-500", bar: "bg-slate-200" },
-        ].map(s => (
-          <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <p className={`text-2xl font-bold leading-none ${s.colorVal}`}>{s.value}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">{s.label}</p>
-            <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
-              <div className={`h-full ${s.bar} rounded-full`} style={{ width: total > 0 ? `${(s.value / total) * 100}%` : "0%" }} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        {STAT_CARDS.map(s => (
+          <div key={s.label} className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+            <div className={`h-[3px] ${s.topBar}`} />
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${s.iconBg}`}>{s.icon}</div>
+                {s.badge && (
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.badge.cls}`}>{s.badge.label}</span>
+                )}
+              </div>
+              <p className={`text-2xl font-bold leading-none ${s.valueColor}`}>{s.value}</p>
+              <p className="text-xs font-semibold text-slate-500 mt-1">{s.label}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{s.sub}</p>
             </div>
           </div>
         ))}
@@ -251,7 +313,7 @@ export default function Controls() {
           })}
 
           {domains.every(d => !groupedByDomain[d]?.length) && (
-            <div className="bg-white border border-dashed border-slate-300 rounded-xl p-10 text-center">
+            <div className="bg-white border border-slate-200 rounded-xl p-10 text-center shadow-sm">
               <p className="text-slate-500 text-sm">No controls match the current filter.</p>
             </div>
           )}

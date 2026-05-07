@@ -3,11 +3,43 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import { PageHeader, EmptyState, PrimaryButton, SectionLabel } from "@/components/ui/PageHeader";
 
-const CATEGORY_CONFIG: Record<string, { badge: string; label: string }> = {
-  commercial: { badge: "bg-blue-50 text-blue-700 ring-1 ring-blue-200", label: "Commercial" },
-  federal: { badge: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", label: "Federal" },
-  "best-practice": { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: "Best Practice" },
+const CATEGORY_CONFIG: Record<string, { badge: string; label: string; accent: string }> = {
+  commercial: { badge: "bg-blue-50 text-blue-700 ring-1 ring-blue-200", label: "Commercial", accent: "#2563eb" },
+  federal: { badge: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", label: "Federal", accent: "#7c3aed" },
+  "best-practice": { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: "Best Practice", accent: "#64748b" },
 };
+
+function ProgressRing({ score, size = 64, hasActivity }: { score: number; size?: number; hasActivity: boolean }) {
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (hasActivity ? (score / 100) * circ : 0);
+  const color = !hasActivity ? "#cbd5e1" : score >= 75 ? "#16a34a" : score >= 50 ? "#f59e0b" : "#ef4444";
+  const textFill = !hasActivity ? "#94a3b8" : score >= 75 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
+  return (
+    <svg width={size} height={size} className="flex-shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={6} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke={color} strokeWidth={6}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: "stroke-dashoffset 0.8s ease" }}
+      />
+      <text x={size / 2} y={size / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+        fontSize={13} fontWeight="bold" fill={textFill}>
+        {Math.round(score)}%
+      </text>
+      {!hasActivity && (
+        <text x={size / 2} y={size / 2 + 14} textAnchor="middle" dominantBaseline="middle"
+          fontSize={8} fill="#94a3b8">
+          not started
+        </text>
+      )}
+    </svg>
+  );
+}
 
 export default function Frameworks() {
   const qc = useQueryClient();
@@ -97,8 +129,8 @@ export default function Frameworks() {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {[...Array(6)].map((_, i) => <div key={i} className="h-44 bg-slate-100 rounded-xl animate-pulse" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => <div key={i} className="h-52 bg-slate-100 rounded-xl animate-pulse" />)}
         </div>
       ) : frameworks.length === 0 ? (
         <EmptyState
@@ -108,7 +140,7 @@ export default function Frameworks() {
           action={<PrimaryButton onClick={() => setShowAdd(true)}>Add your first framework</PrimaryButton>}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {frameworks.map((fw: any) => (
             <FrameworkDetailCard
               key={fw.id}
@@ -220,51 +252,64 @@ function FrameworkDetailCard({ fw, onRemove }: { fw: any; onRemove: () => void }
   const total = passing + failing + untested;
   const hasActivity = passing > 0 || failing > 0;
 
-  const cat = CATEGORY_CONFIG[fw.category] ?? { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: fw.category };
-  const scoreColor = !hasActivity ? "text-slate-400" : score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-500" : "text-red-600";
-  const barColor = !hasActivity ? "bg-slate-200" : score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-400" : "bg-red-500";
+  const cat = CATEGORY_CONFIG[fw.category] ?? { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: fw.category, accent: "#64748b" };
+  const statusLabel = !hasActivity ? "Not started" : score >= 75 ? "On track" : score >= 50 ? "Needs attention" : "At risk";
+  const statusColor = !hasActivity ? "text-slate-400" : score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-600";
+  const statusBg = !hasActivity ? "bg-slate-50" : score >= 75 ? "bg-green-50" : score >= 50 ? "bg-amber-50" : "bg-red-50";
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-blue-100 transition-all group">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-slate-900 text-sm leading-snug">{fw.name}</p>
-          <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full mt-1.5 ${cat.badge}`}>{cat.label}</span>
-        </div>
-        <div className="flex items-start gap-2">
-          <div className="text-right flex-shrink-0">
-            <p className={`text-2xl font-bold leading-none ${scoreColor}`}>{Math.round(score)}%</p>
-            <p className="text-xs text-slate-400 mt-1 font-medium">{hasActivity ? "compliant" : "not started"}</p>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden">
+      {/* Colored top accent */}
+      <div className="h-[3px]" style={{ background: cat.accent }} />
+
+      <div className="p-5">
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${cat.badge}`}>{cat.label}</span>
+            </div>
+            <p className="font-bold text-slate-900 text-base leading-snug">{fw.name}</p>
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold mt-1.5 px-2 py-0.5 rounded-md ${statusBg} ${statusColor}`}>
+              {!hasActivity ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-300 inline-block" />
+              ) : score >= 75 ? (
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              ) : (
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01" /></svg>
+              )}
+              {statusLabel}
+            </span>
           </div>
-          <button
-            onClick={onRemove}
-            title="Remove framework"
-            className="mt-0.5 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-start gap-2 flex-shrink-0">
+            <ProgressRing score={score} size={64} hasActivity={hasActivity} />
+            <button
+              onClick={onRemove}
+              title="Remove framework"
+              className="mt-0.5 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-4">
-        <div className={`h-full ${barColor} rounded-full transition-all duration-700`} style={{ width: `${score}%` }} />
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Passing" value={passing} activeColor="bg-green-50" activeText="text-green-700" activeSub="text-green-600" active={passing > 0} />
-        <Stat label="Failing" value={failing} activeColor="bg-red-50" activeText="text-red-600" activeSub="text-red-500" active={failing > 0} />
-        <Stat label="Untested" value={untested} activeColor="bg-slate-50" activeText="text-slate-600" activeSub="text-slate-400" active={true} neutral />
-      </div>
-
-      {total > 0 && (
-        <div className="mt-3 flex gap-0.5 h-1.5 rounded-full overflow-hidden">
-          {passing > 0 && <div className="bg-green-400" style={{ width: `${(passing / total) * 100}%` }} />}
-          {failing > 0 && <div className="bg-red-400" style={{ width: `${(failing / total) * 100}%` }} />}
-          {untested > 0 && <div className="bg-slate-200" style={{ width: `${(untested / total) * 100}%` }} />}
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2">
+          <Stat label="Passing" value={passing} activeColor="bg-green-50" activeText="text-green-700" activeSub="text-green-600" active={passing > 0} />
+          <Stat label="Failing" value={failing} activeColor="bg-red-50" activeText="text-red-600" activeSub="text-red-500" active={failing > 0} />
+          <Stat label="Untested" value={untested} activeColor="bg-slate-50" activeText="text-slate-600" activeSub="text-slate-400" active={true} neutral />
         </div>
-      )}
+
+        {total > 0 && (
+          <div className="mt-3 flex gap-0.5 h-1.5 rounded-full overflow-hidden">
+            {passing > 0 && <div className="bg-green-400" style={{ width: `${(passing / total) * 100}%` }} />}
+            {failing > 0 && <div className="bg-red-400" style={{ width: `${(failing / total) * 100}%` }} />}
+            {untested > 0 && <div className="bg-slate-200" style={{ width: `${(untested / total) * 100}%` }} />}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

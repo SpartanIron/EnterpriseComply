@@ -10,6 +10,30 @@ const CATEGORY_COLORS: Record<string, { badge: string; label: string }> = {
   "best-practice": { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: "Best Practice" },
 };
 
+function HeroScoreRing({ score }: { score: number }) {
+  const size = 96;
+  const r = 38;
+  const circ = 2 * Math.PI * r;
+  const filled = (score / 100) * circ;
+  const hasScore = score > 0;
+  const stroke = !hasScore ? "rgba(255,255,255,0.2)" : score >= 75 ? "#4ade80" : score >= 50 ? "#fbbf24" : "#f87171";
+  return (
+    <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" style={{ position: "absolute" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="7" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={stroke} strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${hasScore ? filled : 0} ${circ}`}
+          style={{ transition: "stroke-dasharray 1s ease" }} />
+      </svg>
+      <div className="relative text-center">
+        <p className="text-2xl font-bold text-white leading-none">{score}</p>
+        <p className="text-xs text-blue-200 font-medium leading-tight mt-0.5">score</p>
+      </div>
+    </div>
+  );
+}
+
 function ScoreRingSmall({ score }: { score: number }) {
   const r = 28;
   const circ = 2 * Math.PI * r;
@@ -53,12 +77,15 @@ export default function Dashboard() {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-5 gap-4">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />)}
-        </div>
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-          {[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-slate-100 rounded-xl animate-pulse" />)}
+      <div className="space-y-0">
+        <div className="h-32 bg-blue-700 animate-pulse" />
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-5 gap-4">
+            {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />)}
+          </div>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+            {[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-slate-100 rounded-xl animate-pulse" />)}
+          </div>
         </div>
       </div>
     );
@@ -122,178 +149,210 @@ export default function Dashboard() {
   const completedSteps = gettingStartedSteps.filter(s => s.done).length;
   const showChecklist = completedSteps < gettingStartedSteps.length;
 
-  return (
-    <div className="p-6 space-y-6">
+  const scoreLabel = overall === 0 ? "Not started" : overall >= 75 ? "On track" : overall >= 50 ? "Needs attention" : "At risk";
+  const scoreLabelColor = overall === 0 ? "text-blue-200" : overall >= 75 ? "text-green-300" : overall >= 50 ? "text-amber-300" : "text-red-300";
 
-      {/* Context row */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">{greeting}{firstName ? `, ${firstName}` : ""}</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{org?.name} &middot; live compliance posture</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {connectedIntegrations === 0 && (
+  return (
+    <div>
+      {/* Hero gradient banner */}
+      <div
+        className="px-6 py-7 relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%)" }}
+      >
+        {/* Decorative circles */}
+        <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full opacity-10" style={{ background: "#ffffff" }} />
+        <div className="absolute -bottom-16 right-32 h-40 w-40 rounded-full opacity-[0.06]" style={{ background: "#ffffff" }} />
+        <div className="absolute top-4 right-1/3 h-20 w-20 rounded-full opacity-[0.05]" style={{ background: "#ffffff" }} />
+
+        <div className="relative flex items-center justify-between gap-6 flex-wrap">
+          {/* Left: greeting + status */}
+          <div className="flex items-center gap-6">
+            <HeroScoreRing score={overall} />
+            <div>
+              <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">
+                {org?.name ?? "ColorComply"} &middot; Live Posture
+              </p>
+              <h1 className="text-2xl font-bold text-white leading-tight">
+                {greeting}{firstName ? `, ${firstName}` : ""}
+              </h1>
+              <div className="flex items-center gap-3 mt-1.5">
+                <span className={`text-sm font-semibold ${scoreLabelColor}`}>{scoreLabel}</span>
+                <span className="text-blue-300 text-xs">
+                  {frameworks.length > 0
+                    ? `${frameworks.length} framework${frameworks.length !== 1 ? "s" : ""} active`
+                    : "No frameworks yet"}
+                </span>
+                {cs.total > 0 && (
+                  <span className="text-blue-300 text-xs">
+                    {cs.passing}/{cs.total} controls passing
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {connectedIntegrations === 0 && (
+              <button
+                onClick={() => navigate("/integrations")}
+                className="flex items-center gap-2 px-3.5 py-2 text-white text-sm font-semibold rounded-lg transition-all"
+                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.22)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.15)"; }}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Connect integration
+              </button>
+            )}
             <button
-              onClick={() => navigate("/integrations")}
-              className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              onClick={() => navigate("/frameworks")}
+              className="flex items-center gap-2 px-3.5 py-2 bg-white text-blue-700 text-sm font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Connect an integration
+              Add framework
             </button>
-          )}
-          <button
-            onClick={() => navigate("/frameworks")}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-700 text-slate-700 text-sm font-semibold rounded-lg transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add framework
-          </button>
+          </div>
         </div>
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      {/* Page body */}
+      <div className="p-6 space-y-6">
 
-        {/* Score card - accent */}
-        <div className="md:col-span-1 bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4 shadow-sm">
-          <ScoreRingSmall score={overall} />
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-slate-900 leading-none">{overall}</p>
-            <p className="text-xs font-semibold text-slate-500 mt-1 leading-tight">Overall Score</p>
-            <p className="text-xs text-slate-400 mt-0.5">{frameworks.length} framework{frameworks.length !== 1 ? "s" : ""}</p>
-          </div>
-        </div>
-
-        <KpiCard
-          label="Passing"
-          value={cs.passing}
-          total={cs.total}
-          color={cs.passing > 0 ? "green" : "neutral"}
-          icon={
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          }
-        />
-        <KpiCard
-          label="Failing"
-          value={cs.failing}
-          total={cs.total}
-          color={cs.failing > 0 ? "red" : "neutral"}
-          icon={
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          }
-        />
-        <KpiCard
-          label="Not Tested"
-          value={cs.notTested}
-          total={cs.total}
-          color="neutral"
-          icon={
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01" />
-            </svg>
-          }
-        />
-
-        {/* Integrations card */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${connectedIntegrations > 0 ? "bg-blue-50 text-blue-600" : "bg-slate-50 text-slate-400"}`}>
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        {/* KPI row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KpiCard
+            label="Passing Controls"
+            value={cs.passing}
+            total={cs.total}
+            color={cs.passing > 0 ? "green" : "neutral"}
+            icon={
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
-            </div>
-            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md ${connectedIntegrations > 0 ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
-              {connectedIntegrations}/12
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-slate-900 leading-none">{connectedIntegrations}</p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Integrations</p>
-          <p className="text-xs text-slate-400 mt-0.5">of 12 available</p>
-        </div>
-      </div>
-
-      {/* Getting started checklist */}
-      {showChecklist && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Getting started</h2>
-              <p className="text-sm text-slate-400 mt-0.5">{completedSteps} of {gettingStartedSteps.length} steps complete</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                  style={{ width: `${(completedSteps / gettingStartedSteps.length) * 100}%` }} />
+            }
+          />
+          <KpiCard
+            label="Failing Controls"
+            value={cs.failing}
+            total={cs.total}
+            color={cs.failing > 0 ? "red" : "neutral"}
+            icon={
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="Not Tested"
+            value={cs.notTested}
+            total={cs.total}
+            color="neutral"
+            icon={
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01" />
+              </svg>
+            }
+          />
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-blue-500" />
+            <div className="flex items-center justify-between mb-3 pt-1">
+              <div className="h-9 w-9 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
-              <span className="text-xs font-semibold text-slate-500">{Math.round((completedSteps / gettingStartedSteps.length) * 100)}%</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                {connectedIntegrations}/12
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 leading-none">{connectedIntegrations}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Integrations Active</p>
+            <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full transition-all duration-700" style={{ width: `${(connectedIntegrations / 12) * 100}%` }} />
             </div>
           </div>
-          <div className="space-y-2">
-            {gettingStartedSteps.map(step => (
-              <button key={step.id} onClick={() => navigate(step.href)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${step.done ? "border-green-200 bg-green-50/50" : "border-slate-200 hover:border-blue-200 hover:bg-blue-50/50"}`}>
-                <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 ${step.done ? "bg-green-500" : "bg-slate-200"}`}>
-                  {step.done
-                    ? <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    : <span className="h-2 w-2 rounded-full bg-white opacity-60" />
-                  }
-                </div>
-                <div className={`flex items-center gap-2 flex-1 min-w-0 ${step.done ? "text-green-700" : "text-slate-700"}`}>
-                  <span className={`text-slate-400 flex-shrink-0 ${step.done ? "opacity-50" : ""}`}>{step.icon}</span>
-                  <span className={`text-sm font-medium ${step.done ? "line-through opacity-60" : ""}`}>{step.label}</span>
-                </div>
-                {!step.done && (
-                  <svg className="h-4 w-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Framework Compliance */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Framework Compliance</h2>
-            {frameworks.length > 0 && (
-              <p className="text-xs text-slate-400 mt-0.5">{frameworks.length} active framework{frameworks.length !== 1 ? "s" : ""} tracked</p>
-            )}
-          </div>
-          <button onClick={() => navigate("/frameworks")} className="text-sm text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
-            Manage
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
 
-        {frameworks.length === 0 ? (
-          <div className="bg-white border border-dashed border-slate-300 rounded-xl p-10 text-center">
-            <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+        {/* Getting started checklist */}
+        {showChecklist && (
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Getting started</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{completedSteps} of {gettingStartedSteps.length} steps complete</p>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                    style={{ width: `${(completedSteps / gettingStartedSteps.length) * 100}%` }} />
+                </div>
+                <span className="text-xs font-bold text-slate-600">{Math.round((completedSteps / gettingStartedSteps.length) * 100)}%</span>
+              </div>
             </div>
-            <p className="font-semibold text-slate-700 text-sm">No frameworks activated</p>
-            <p className="text-slate-400 text-xs mt-1 mb-4">Add SOC 2, FedRAMP, CMMC, or any of 12 frameworks to start tracking compliance.</p>
-            <button onClick={() => navigate("/frameworks")} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-              Add your first framework
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-            {frameworks.map((fw: any) => <FrameworkCard key={fw.id} fw={fw} onClick={() => navigate("/frameworks")} />)}
+            <div className="p-4 space-y-1.5">
+              {gettingStartedSteps.map((step, idx) => (
+                <button key={step.id} onClick={() => navigate(step.href)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${step.done ? "border-green-200 bg-green-50/40" : "border-slate-200 hover:border-blue-200 hover:bg-blue-50/40"}`}>
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${step.done ? "bg-green-500 text-white" : "bg-slate-100 text-slate-500"}`}>
+                    {step.done
+                      ? <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      : idx + 1
+                    }
+                  </div>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className={`flex-shrink-0 ${step.done ? "text-green-400" : "text-slate-400"}`}>{step.icon}</span>
+                    <span className={`text-sm font-medium ${step.done ? "text-green-700 line-through opacity-70" : "text-slate-700"}`}>{step.label}</span>
+                  </div>
+                  {!step.done && (
+                    <svg className="h-4 w-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* Framework Compliance */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Framework Compliance</h2>
+              {frameworks.length > 0 && (
+                <p className="text-xs text-slate-400 mt-0.5">{frameworks.length} active framework{frameworks.length !== 1 ? "s" : ""}</p>
+              )}
+            </div>
+            <button onClick={() => navigate("/frameworks")} className="text-sm text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
+              Manage
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          {frameworks.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-xl p-10 text-center shadow-sm">
+              <div className="h-12 w-12 bg-gradient-to-br from-blue-50 to-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 ring-1 ring-slate-200">
+                <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <p className="font-bold text-slate-800 text-sm">No frameworks activated</p>
+              <p className="text-slate-400 text-xs mt-1 mb-4 max-w-xs mx-auto">Add SOC 2, FedRAMP, CMMC, or any of 12 supported frameworks to start tracking compliance.</p>
+              <button onClick={() => navigate("/frameworks")} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+                Add your first framework
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+              {frameworks.map((fw: any) => <FrameworkCard key={fw.id} fw={fw} onClick={() => navigate("/frameworks")} />)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -304,23 +363,53 @@ function KpiCard({ label, value, total, color, icon }: {
 }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   const iconBg = color === "green" ? "bg-green-50 text-green-600" : color === "red" ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400";
-  const valueColor = color === "green" ? "text-green-700" : color === "red" ? "text-red-600" : "text-slate-900";
+  const valueColor = color === "green" ? "text-green-700" : color === "red" ? "text-red-600" : "text-slate-800";
   const barColor = color === "green" ? "bg-green-500" : color === "red" ? "bg-red-500" : "bg-slate-300";
+  const topBar = color === "green" ? "bg-green-500" : color === "red" ? "bg-red-500" : "bg-slate-300";
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconBg}`}>{icon}</div>
-        {total > 0 && (
-          <span className="text-xs font-semibold text-slate-400">{pct}%</span>
-        )}
-      </div>
-      <p className={`text-2xl font-bold leading-none ${valueColor}`}>{value}</p>
-      <p className="text-xs font-semibold text-slate-500 mt-1">{label}</p>
-      <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full ${barColor} rounded-full transition-all duration-700`} style={{ width: total > 0 ? `${pct}%` : "0%" }} />
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className={`h-[3px] ${topBar}`} />
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>{icon}</div>
+          {total > 0 && (
+            <span className="text-xs font-bold text-slate-400">{pct}%</span>
+          )}
+        </div>
+        <p className={`text-2xl font-bold leading-none ${valueColor}`}>{value}</p>
+        <p className="text-xs font-semibold text-slate-500 mt-1">{label}</p>
+        <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+          <div className={`h-full ${barColor} rounded-full transition-all duration-700`} style={{ width: total > 0 ? `${pct}%` : "0%" }} />
+        </div>
       </div>
     </div>
+  );
+}
+
+function FrameworkProgressRing({ score, size = 52, hasActivity }: { score: number; size?: number; hasActivity: boolean }) {
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (hasActivity ? (score / 100) * circ : 0);
+  const color = !hasActivity ? "#cbd5e1" : score >= 75 ? "#16a34a" : score >= 50 ? "#f59e0b" : "#ef4444";
+  const textFill = !hasActivity ? "#94a3b8" : score >= 75 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
+  return (
+    <svg width={size} height={size} className="flex-shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={5} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke={color} strokeWidth={5}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: "stroke-dashoffset 0.8s ease" }}
+      />
+      <text x={size / 2} y={size / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+        fontSize={11} fontWeight="bold" fill={textFill}>
+        {Math.round(score)}%
+      </text>
+    </svg>
   );
 }
 
@@ -333,8 +422,6 @@ function FrameworkCard({ fw, onClick }: { fw: any; onClick: () => void }) {
   const hasActivity = passing > 0 || failing > 0;
 
   const cat = CATEGORY_COLORS[fw.category] ?? { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: fw.category };
-  const scoreColor = !hasActivity ? "text-slate-400" : score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-500" : "text-red-600";
-  const barColor = !hasActivity ? "bg-slate-200" : score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-400" : "bg-red-500";
 
   return (
     <div
@@ -350,14 +437,7 @@ function FrameworkCard({ fw, onClick }: { fw: any; onClick: () => void }) {
             {cat.label}
           </span>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className={`text-2xl font-bold leading-none ${scoreColor}`}>{Math.round(score)}%</p>
-          <p className="text-xs text-slate-400 mt-0.5 font-medium">{hasActivity ? "compliant" : "not started"}</p>
-        </div>
-      </div>
-
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-3">
-        <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${score}%` }} />
+        <FrameworkProgressRing score={score} hasActivity={hasActivity} />
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 text-center">
@@ -376,10 +456,10 @@ function FrameworkCard({ fw, onClick }: { fw: any; onClick: () => void }) {
       </div>
 
       {total > 0 && (
-        <div className="mt-2.5 flex gap-1 h-1">
-          {passing > 0 && <div className="bg-green-400 rounded-full h-full" style={{ width: `${(passing / total) * 100}%` }} />}
-          {failing > 0 && <div className="bg-red-400 rounded-full h-full" style={{ width: `${(failing / total) * 100}%` }} />}
-          {untested > 0 && <div className="bg-slate-200 rounded-full h-full" style={{ width: `${(untested / total) * 100}%` }} />}
+        <div className="mt-2.5 flex gap-0.5 h-1 rounded-full overflow-hidden">
+          {passing > 0 && <div className="bg-green-400 rounded-full" style={{ width: `${(passing / total) * 100}%` }} />}
+          {failing > 0 && <div className="bg-red-400 rounded-full" style={{ width: `${(failing / total) * 100}%` }} />}
+          {untested > 0 && <div className="bg-slate-200 rounded-full" style={{ width: `${(untested / total) * 100}%` }} />}
         </div>
       )}
     </div>
