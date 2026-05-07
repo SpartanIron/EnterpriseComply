@@ -100,7 +100,7 @@ export default function Onboarding() {
       <header className="bg-white border-b border-slate-200 h-16 flex items-center px-8">
         <div className="flex items-center gap-2">
           <img src={`${BASE_PATH}/logo.svg`} className="h-7 w-7" />
-          <span className="font-semibold text-slate-900">ColorComply</span>
+          <span className="font-semibold text-slate-900">EnterpriseComply</span>
         </div>
       </header>
 

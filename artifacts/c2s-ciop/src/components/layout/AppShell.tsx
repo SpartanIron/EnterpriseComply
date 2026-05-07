@@ -133,7 +133,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="font-bold text-white text-sm truncate leading-tight tracking-tight">ColorComply</p>
+              <p className="font-bold text-white text-sm truncate leading-tight tracking-tight">EnterpriseComply</p>
               {org && <p className="text-xs truncate leading-tight mt-0.5" style={{ color: "rgba(148,163,184,0.9)" }}>{org.name}</p>}
             </div>
           </div>

@@ -16,14 +16,14 @@ const pageMeta: Record<string, { title: string; crumb: string; sub: string }> = 
 
 export function Header() {
   const [location] = useLocation();
-  const page = pageMeta[location] ?? { title: "ColorComply", crumb: "Home", sub: "Compliance automation platform" };
+  const page = pageMeta[location] ?? { title: "EnterpriseComply", crumb: "Home", sub: "Compliance automation platform" };
   const now = new Date();
 
   return (
     <header className="h-14 border-b border-border bg-card flex items-center px-5 gap-4 sticky top-0 z-20 shadow-2xs">
       <div className="flex-1 overflow-hidden">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-0.5">
-          <span>ColorComply</span>
+          <span>EnterpriseComply</span>
           <ChevronRight className="w-3 h-3" />
           <span className="text-foreground font-medium">{page.crumb}</span>
         </div>

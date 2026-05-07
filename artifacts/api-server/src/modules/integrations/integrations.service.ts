@@ -223,7 +223,7 @@ export class IntegrationsService {
     const headers = {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github.v3+json",
-      "User-Agent": "ColorComply/1.0",
+      "User-Agent": "EnterpriseComply/1.0",
     };
 
     try {

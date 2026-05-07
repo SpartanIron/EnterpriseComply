@@ -98,7 +98,7 @@ export default function AuditLog() {
         ) : filtered.length === 0 ? (
           <div className="px-5 py-16 text-center">
             <p className="text-slate-400 text-sm">
-              {filter ? "No log entries match your filter." : "No audit log entries yet. Actions will appear here as your team uses ColorComply."}
+              {filter ? "No log entries match your filter." : "No audit log entries yet. Actions will appear here as your team uses EnterpriseComply."}
             </p>
           </div>
         ) : (

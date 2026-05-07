@@ -170,7 +170,7 @@ export default function Dashboard() {
             <HeroScoreRing score={overall} />
             <div>
               <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">
-                {org?.name ?? "ColorComply"} &middot; Live Posture
+                {org?.name ?? "EnterpriseComply"} &middot; Live Posture
               </p>
               <h1 className="text-2xl font-bold text-white leading-tight">
                 {greeting}{firstName ? `, ${firstName}` : ""}

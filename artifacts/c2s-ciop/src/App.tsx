@@ -81,7 +81,7 @@ function HomeRedirect() {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-3">
           <img src={`${BASE_PATH}/logo.svg`} className="h-10 w-10 animate-pulse" />
-          <p className="text-slate-500 text-sm">Loading ColorComply...</p>
+          <p className="text-slate-500 text-sm">Loading EnterpriseComply...</p>
         </div>
       </div>
     );

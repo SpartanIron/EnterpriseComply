@@ -86,7 +86,7 @@ const STEPS = [
   {
     num: "02",
     title: "Get your compliance score",
-    desc: "ColorComply maps your controls across all 12 supported frameworks and shows you exactly where you stand - instantly.",
+    desc: "EnterpriseComply maps your controls across all 12 supported frameworks and shows you exactly where you stand - instantly.",
     color: "text-green-400",
     iconPath: "M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z",
   },
@@ -284,7 +284,7 @@ function ProductMockup() {
         <div className="h-3 w-3 rounded-full bg-green-400/70" />
         <div className="flex-1 mx-3 h-5 rounded-full flex items-center px-3" style={{ background: "rgba(255,255,255,0.07)" }}>
           <div className="h-1.5 w-1.5 rounded-full bg-green-400 mr-2 flex-shrink-0" />
-          <span className="text-xs" style={{ color: "rgba(148,163,184,0.8)" }}>app.colorcomply.com</span>
+          <span className="text-xs" style={{ color: "rgba(148,163,184,0.8)" }}>app.enterprisecomply.com</span>
         </div>
       </div>
 
@@ -295,7 +295,7 @@ function ProductMockup() {
               <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-white font-bold leading-none" style={{ fontSize: 11 }}>ColorComply</p>
+              <p className="text-white font-bold leading-none" style={{ fontSize: 11 }}>EnterpriseComply</p>
               <p style={{ fontSize: 9, color: "#64748b", marginTop: 1 }}>Acme Corp</p>
             </div>
           </div>
@@ -517,9 +517,9 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href={`${BASE_PATH}/`} className="flex items-center gap-2.5 no-underline">
             <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" alt="ColorComply" />
+              <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" alt="EnterpriseComply" />
             </div>
-            <span className="font-bold text-white text-lg tracking-tight">ColorComply</span>
+            <span className="font-bold text-white text-lg tracking-tight">EnterpriseComply</span>
           </a>
           <div className="hidden md:flex items-center gap-1">
             {["Features", "Frameworks", "Federal"].map(link => (
@@ -586,7 +586,7 @@ export default function Landing() {
               </h1>
 
               <p className="text-lg leading-relaxed mb-8" style={{ color: "rgba(148,163,184,0.9)", maxWidth: 500 }}>
-                ColorComply automates SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and 8 more frameworks. Implement one control - satisfy all frameworks it maps to. Simultaneously.
+                EnterpriseComply automates SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and 8 more frameworks. Implement one control - satisfy all frameworks it maps to. Simultaneously.
               </p>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-10">
@@ -681,7 +681,7 @@ export default function Landing() {
                 <span className="gradient-text">Satisfy them all.</span>
               </h2>
               <p className="text-lg leading-relaxed mb-8" style={{ color: "rgba(148,163,184,0.85)" }}>
-                ColorComply's UCO system maps each security control to every framework it satisfies. Enable MFA once and it automatically counts toward SOC 2, FedRAMP, CMMC, HIPAA, ISO 27001, and more - simultaneously.
+                EnterpriseComply's UCO system maps each security control to every framework it satisfies. Enable MFA once and it automatically counts toward SOC 2, FedRAMP, CMMC, HIPAA, ISO 27001, and more - simultaneously.
               </p>
               <div className="space-y-3 mb-8">
                 {[
@@ -742,14 +742,14 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6 text-xs font-semibold" style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.25)", color: "#fbbf24" }}>
-              Why teams switch to ColorComply
+              Why teams switch to EnterpriseComply
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
               The only platform that goes{" "}
               <span className="gradient-text-gold">beyond commercial compliance</span>
             </h2>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Vanta and Drata are great for SOC 2. ColorComply does that - and covers the federal layer they don't touch.
+              Vanta and Drata are great for SOC 2. EnterpriseComply does that - and covers the federal layer they don't touch.
             </p>
           </div>
 
@@ -759,7 +759,7 @@ export default function Landing() {
                 <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(100,116,139,0.7)" }}>Feature</span>
               </div>
               {[
-                { name: "ColorComply", highlight: true },
+                { name: "EnterpriseComply", highlight: true },
                 { name: "Vanta", highlight: false },
                 { name: "Drata", highlight: false },
               ].map(col => (
@@ -937,7 +937,7 @@ export default function Landing() {
             <span className="gradient-text">in record time?</span>
           </h2>
           <p className="text-xl mb-10" style={{ color: "rgba(148,163,184,0.85)" }}>
-            Join teams using ColorComply to satisfy multiple compliance frameworks from a single platform. Free to start, scales with your compliance program.
+            Join teams using EnterpriseComply to satisfy multiple compliance frameworks from a single platform. Free to start, scales with your compliance program.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href={`${BASE_PATH}/sign-up`}
@@ -965,7 +965,7 @@ export default function Landing() {
                 <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
                   <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" />
                 </div>
-                <span className="font-bold text-white">ColorComply</span>
+                <span className="font-bold text-white">EnterpriseComply</span>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: "rgba(100,116,139,0.8)" }}>
                 The compliance platform for teams that need more than just SOC 2.

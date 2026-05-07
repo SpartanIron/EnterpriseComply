@@ -197,7 +197,7 @@ export class QuestionnairesService {
       return { answer: "We maintain automated daily backups with tested restoration procedures. Our RTO is 4 hours and RPO is 24 hours.", confidence: 0.75 };
     }
     if (q.includes("soc 2") || q.includes("iso 27001") || q.includes("certification")) {
-      return { answer: "Our compliance posture is managed through ColorComply. We are actively pursuing SOC 2 Type II certification.", confidence: 0.80 };
+      return { answer: "Our compliance posture is managed through EnterpriseComply. We are actively pursuing SOC 2 Type II certification.", confidence: 0.80 };
     }
     return { answer: "", confidence: 0 };
   }
