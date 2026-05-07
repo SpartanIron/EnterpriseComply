@@ -298,28 +298,23 @@ export default function Landing() {
           backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.06) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
         }} />
-        {/* Full-width edge-to-edge diagonal spectrum - violet → blue → cyan → teal → green */}
-        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "58%", zIndex: 0 }}>
+        {/* Three-stripe diagonal - indigo / blue / cyan - solid, no fade */}
+        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "52%", zIndex: 0 }}>
           <div style={{
             position: "absolute",
             inset: 0,
             background: [
-              "linear-gradient(38deg,",
-              "  rgba(109,40,217,0.72) 0%,   rgba(109,40,217,0.72) 8%,",
-              "  rgba(37,99,235,0.78)  8%,   rgba(37,99,235,0.78)  16%,",
-              "  rgba(14,165,233,0.74) 16%,  rgba(14,165,233,0.74) 24%,",
-              "  rgba(6,182,212,0.68)  24%,  rgba(6,182,212,0.68)  32%,",
-              "  rgba(16,185,129,0.60) 32%,  rgba(16,185,129,0.60) 40%,",
-              "  rgba(132,204,22,0.48) 40%,  rgba(132,204,22,0.48) 48%,",
-              "  transparent 48%",
+              "linear-gradient(22deg,",
+              "  #4f46e5 0%,   #4f46e5 17%,",
+              "  #2563eb 17%,  #2563eb 33%,",
+              "  #06b6d4 33%,  #06b6d4 49%,",
+              "  transparent 49%",
               ")"
             ].join(""),
-            maskImage: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 75%)",
-            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 75%)",
           }} />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28">
+        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28" style={{ zIndex: 2 }}>
           <div className="grid lg:grid-cols-2 gap-14 items-center">
             {/* Left */}
             <div>
