@@ -145,6 +145,11 @@ function NavBar() {
                 onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
                 Log In
               </a>
+              <a href={BASE_PATH + "/pricing"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#64748b" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
+                Pricing
+              </a>
               <a href={BASE_PATH + "/sign-up"}
                 className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all"
                 style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 16px rgba(37,99,235,0.3)" }}>
@@ -770,6 +775,98 @@ export default function Landing() {
                 </a>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEDERAL GTM WEDGE ── */}
+      <section style={{ background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 60%, #0a1628 100%)", borderTop: "1px solid rgba(59,130,246,0.12)" }}>
+        <div className="max-w-7xl mx-auto px-6 py-24">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border mb-5" style={{ background: "rgba(59,130,246,0.08)", borderColor: "rgba(59,130,246,0.25)" }}>
+              <svg className="h-3.5 w-3.5" style={{ color: "#60a5fa" }} fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" /></svg>
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#60a5fa" }}>Federal-first architecture</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-4">
+              The Only GRC Platform Built<br />
+              <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #38bdf8 60%, #34d399 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                For Defense Contractors
+              </span>
+            </h2>
+            <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: "#94a3b8" }}>
+              FedRAMP, CMMC Level 2, and NIST 800-53 are not bolt-on modules. POA&amp;M management, SPRS score tracking, and SSP generation are native features - sharing the same evidence, controls, and infrastructure as your commercial frameworks.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+            {[
+              {
+                title: "POA&M Management",
+                badge: "Native",
+                desc: "Create, track, and close Plans of Action &amp; Milestones directly in the platform. Generate POA&Ms from failing controls with one click. Track scheduled completion dates, mitigations, and risk acceptances.",
+                stat: "100%", statLabel: "FedRAMP-compliant POA&M format",
+                icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+              },
+              {
+                title: "SPRS Score Tracker",
+                badge: "CMMC + NIST 800-171",
+                desc: "Calculate and track your Supplier Performance Risk System score automatically. See the exact DoD scoring methodology applied to your 110 NIST 800-171 practices, with drill-down to individual control gaps.",
+                stat: "-203 to 110", statLabel: "Full SPRS scoring range supported",
+                icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+              },
+              {
+                title: "SSP Generator",
+                badge: "NIST SP 800-18",
+                desc: "Generate a complete System Security Plan compliant with NIST SP 800-18. Automatically populates system boundaries, data flows, responsible roles, applicable laws, and control implementation statements.",
+                stat: "One click", statLabel: "From controls to exportable SSP",
+                icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z",
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-2xl p-6 border flex flex-col" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(59,130,246,0.18)" }}>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(59,130,246,0.12)" }}>
+                    <svg className="h-5 w-5" style={{ color: "#60a5fa" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(59,130,246,0.15)", color: "#93c5fd" }}>{item.badge}</span>
+                </div>
+                <h3 className="text-base font-bold text-white mb-2">{item.title}</h3>
+                <p className="text-sm leading-relaxed flex-1 mb-5" style={{ color: "#94a3b8" }} dangerouslySetInnerHTML={{ __html: item.desc }} />
+                <div className="border-t pt-4 flex items-end gap-2" style={{ borderColor: "rgba(59,130,246,0.12)" }}>
+                  <span className="text-2xl font-extrabold" style={{ color: "#60a5fa" }}>{item.stat}</span>
+                  <span className="text-xs mb-0.5" style={{ color: "#64748b" }}>{item.statLabel}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl p-6 border" style={{ background: "rgba(59,130,246,0.05)", borderColor: "rgba(59,130,246,0.18)" }}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+              {[
+                { stat: "12", label: "Frameworks native" },
+                { stat: "110", label: "NIST 800-171 practices" },
+                { stat: "41", label: "Universal controls" },
+                { stat: "1", label: "System of record" },
+              ].map((s) => (
+                <div key={s.label} className="text-center">
+                  <p className="text-3xl font-extrabold mb-1" style={{ color: "#60a5fa" }}>{s.stat}</p>
+                  <p className="text-xs" style={{ color: "#64748b" }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t" style={{ borderColor: "rgba(59,130,246,0.12)" }}>
+              <p className="text-sm text-center sm:text-left" style={{ color: "#94a3b8" }}>
+                <span className="font-semibold text-white">FedRAMP Moderate, High, LI-SaaS. CMMC L1 and L2. NIST 800-53 Rev 5. NIST 800-171 Rev 2.</span>
+                <br />All in one platform with shared evidence and zero duplicate data entry.
+              </p>
+              <a href={BASE_PATH + "/sign-up"}
+                className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all hover:scale-105"
+                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", color: "white", boxShadow: "0 0 24px rgba(37,99,235,0.35)" }}>
+                See the federal layer
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+              </a>
+            </div>
           </div>
         </div>
       </section>

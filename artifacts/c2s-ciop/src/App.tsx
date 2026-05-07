@@ -30,6 +30,7 @@ import ComplianceReport from "./pages/ComplianceReport";
 import GapAnalysis from "./pages/GapAnalysis";
 import Remediation from "./pages/Remediation";
 import TestRunHistory from "./pages/TestRunHistory";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/not-found";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -110,6 +111,7 @@ function AppRoutes() {
         </div>
       )} />
       <Route path="/landing" component={Landing} />
+      <Route path="/pricing" component={Pricing} />
       <Route path="/onboarding" component={Onboarding} />
 
       {/* Core */}
