@@ -797,18 +797,22 @@ export default function Landing() {
                 <span className="text-white font-bold text-sm">EnterpriseComply</span>
               </div>
               <p className="text-slate-500 text-xs max-w-xs">GRC automation for organizations that can't afford compliance failures.</p>
+              <a href="https://colorcodesolutions.com" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-600 hover:text-slate-400 transition-colors mt-1 inline-block">by ColorCode Solutions</a>
             </div>
-            <div className="flex items-center gap-6">
-              {["Privacy Policy", "Terms of Service", "Security", "Contact"].map((link) => (
-                <a key={link} href="#" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
-                  {link}
-                </a>
-              ))}
+            <div className="flex items-center gap-6 flex-wrap">
+              <a href="https://colorcodesolutions.com/privacy" target="_blank" rel="noopener noreferrer" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Privacy Policy</a>
+              <a href="https://colorcodesolutions.com/terms" target="_blank" rel="noopener noreferrer" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Terms of Service</a>
+              <a href="https://colorcodesolutions.com/security" target="_blank" rel="noopener noreferrer" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Security</a>
+              <a href="mailto:support@colorcodesolutions.com" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Contact</a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-slate-600">
-              &copy; {new Date().getFullYear()} ColorCode Solutions, Inc. All rights reserved.
+              &copy; {new Date().getFullYear()}{" "}
+              <a href="https://colorcodesolutions.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+                ColorCode Solutions, Inc.
+              </a>{" "}
+              All rights reserved.
             </p>
             <p className="text-xs text-slate-600">
               SOC 2 Type II certified &bull; FedRAMP In Progress &bull; ISO 27001 certified

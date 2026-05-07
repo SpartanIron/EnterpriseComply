@@ -10,7 +10,7 @@
 
 **Do not report security vulnerabilities through public GitHub issues.**
 
-Email security@colorcodesolutions.com with:
+Email **security@colorcodesolutions.com** with:
 
 - Description of the vulnerability
 - Steps to reproduce

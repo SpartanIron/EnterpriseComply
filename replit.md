@@ -1,6 +1,6 @@
 # EnterpriseComply
 
-Full-stack compliance automation SaaS platform by ColorCode Solutions - Vanta-competitor with federal layer, covering 12 frameworks from SOC 2 to FedRAMP.
+Full-stack compliance automation SaaS platform by ColorCode Solutions - offered under colorcodesolutions.com. Vanta-competitor with federal layer, covering 12 frameworks from SOC 2 to FedRAMP.
 
 ## Run & Operate
 
