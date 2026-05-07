@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
@@ -57,10 +58,42 @@ const NAV = [
   },
 ];
 
+function getActiveSection(location: string): string {
+  for (const group of NAV) {
+    if (group.items.some((item) => location === item.path || location.startsWith(item.path + "/"))) {
+      return group.section;
+    }
+  }
+  return "Overview";
+}
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
+
+  const activeSection = getActiveSection(location);
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([activeSection]));
+
+  useEffect(() => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      next.add(activeSection);
+      return next;
+    });
+  }, [activeSection]);
+
+  function toggleSection(section: string) {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  }
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -75,74 +108,116 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
         {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img src={`${BASE_PATH}/logo.svg`} className="h-6 w-6 flex-shrink-0" />
+        <div className="h-16 flex items-center px-4 border-b border-slate-100">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={`${BASE_PATH}/logo.svg`} className="h-7 w-7 flex-shrink-0" />
             <div className="min-w-0">
-              <p className="font-semibold text-slate-900 text-sm truncate">ColorComply</p>
-              {org && <p className="text-xs text-slate-400 truncate">{org.name}</p>}
+              <p className="font-semibold text-slate-900 text-base truncate leading-tight">ColorComply</p>
+              {org && <p className="text-xs text-slate-400 truncate leading-tight mt-0.5">{org.name}</p>}
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {NAV.map(({ section, items }) => (
-            <div key={section} className="mb-4">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 mb-1">{section}</p>
-              {items.map(({ path, label, icon: Icon }) => {
-                const active = location === path || location.startsWith(path + "/");
-                return (
-                  <button
-                    key={path}
-                    onClick={() => navigate(path)}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors mb-0.5 ${
-                      active
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    }`}
+        <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
+          {NAV.map(({ section, items }) => {
+            const isOpen = openSections.has(section);
+            const hasActive = items.some(
+              (item) => location === item.path || location.startsWith(item.path + "/"),
+            );
+
+            return (
+              <div key={section}>
+                {/* Section header - clickable to collapse */}
+                <button
+                  onClick={() => toggleSection(section)}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg group transition-colors ${
+                    hasActive && !isOpen
+                      ? "text-blue-700 bg-blue-50"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${hasActive && !isOpen ? "text-blue-600" : "text-slate-400 group-hover:text-slate-500"}`}>
+                    {section}
+                  </span>
+                  <svg
+                    className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""} ${hasActive && !isOpen ? "text-blue-500" : "text-slate-300 group-hover:text-slate-400"}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
                   >
-                    <Icon active={active} />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Section items */}
+                {isOpen && (
+                  <div className="mt-0.5 mb-1.5 space-y-0.5">
+                    {items.map(({ path, label, icon: Icon }) => {
+                      const active = location === path || location.startsWith(path + "/");
+                      return (
+                        <button
+                          key={path}
+                          onClick={() => navigate(path)}
+                          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            active
+                              ? "bg-blue-50 text-blue-700"
+                              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                          }`}
+                        >
+                          <Icon active={active} />
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
-        {/* User */}
-        <div className="p-2 border-t border-slate-100">
+        {/* Bottom: settings, audit log, user */}
+        <div className="px-2.5 pb-3 pt-2 border-t border-slate-100 space-y-0.5">
           <button
             onClick={() => navigate("/settings")}
-            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors mb-0.5 ${location === "/settings" ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+              location === "/settings" ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
           >
             <SettingsIcon active={location === "/settings"} />
             Settings
           </button>
           <button
             onClick={() => navigate("/audit-log")}
-            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors mb-1 ${location === "/audit-log" ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+              location === "/audit-log" ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
           >
             <AuditLogIcon active={location === "/audit-log"} />
             Audit Log
           </button>
-          <div className="flex items-center gap-2 px-2 py-1.5 mt-0.5">
+
+          {/* User profile */}
+          <div className="flex items-center gap-2.5 px-2.5 py-2 mt-1">
             {user?.imageUrl
-              ? <img src={user.imageUrl} className="h-6 w-6 rounded-full flex-shrink-0" />
-              : <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-semibold text-blue-700 flex-shrink-0">{user?.firstName?.[0] ?? "U"}</div>
+              ? <img src={user.imageUrl} className="h-7 w-7 rounded-full flex-shrink-0 ring-1 ring-slate-200" />
+              : <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700 flex-shrink-0">{user?.firstName?.[0] ?? "U"}</div>
             }
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-slate-700 truncate">{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
-              <button onClick={() => signOut()} className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors">Sign out</button>
+              <p className="text-sm font-medium text-slate-700 truncate leading-tight">{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
+              <button
+                onClick={() => signOut()}
+                className="text-xs text-slate-400 hover:text-slate-600 transition-colors leading-tight"
+              >
+                Sign out
+              </button>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
@@ -152,7 +227,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
 function Icon({ active, d }: { active: boolean; d: string }) {
   return (
-    <svg className={`h-3.5 w-3.5 flex-shrink-0 ${active ? "text-blue-600" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <svg
+      className={`h-4 w-4 flex-shrink-0 ${active ? "text-blue-600" : "text-slate-400"}`}
+      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d={d} />
     </svg>
   );

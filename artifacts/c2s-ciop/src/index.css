@@ -11,16 +11,25 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
 }
 
 * {
   font-family: var(--font-sans);
 }
 
+html {
+  font-size: 15px;
+}
+
 body {
   background-color: #ffffff;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
+  font-size: 0.9375rem;
+  line-height: 1.6;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
