@@ -331,7 +331,7 @@ export default function Landing() {
                 </span>
               </h1>
               <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#475569" }}>
-                Map a single control implementation across SOC 2, FedRAMP, CMMC, ISO 27001, and 19 more frameworks - simultaneously. Stop doing compliance work three times.
+                Implement security controls that satisfy 23 compliance frameworks simultaneously. Because real compliance is proof of real security - not a substitute for it.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-10">
                 <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
@@ -428,13 +428,13 @@ export default function Landing() {
                 </span>
               </h2>
               <p className="text-base leading-relaxed mb-6" style={{ color: "#64748b" }}>
-                EnterpriseComply's UCO layer maps 71 canonical controls to all 23 frameworks at once. A single control implementation - like enforcing MFA - automatically satisfies SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and more in one action. No duplicated work. No gaps.
+                EnterpriseComply's 71 UCO controls are security controls first - not compliance checklists. When you enforce MFA, you're reducing actual risk. The fact that it simultaneously satisfies SOC 2, FedRAMP, CMMC, ISO 27001, HIPAA, and more is a consequence of implementing genuine security - not the goal of it. No duplicated work. No gaps.
               </p>
               <div className="space-y-3">
                 {[
-                  { label: "One control", detail: "satisfies requirements across multiple frameworks simultaneously" },
+                  { label: "Security controls first.", detail: "Framework satisfaction is a consequence, not the objective." },
                   { label: "388+ authoritative mappings", detail: "maintained and kept current by our compliance team" },
-                  { label: "12 control domains", detail: "from Identity to Federal - every obligation covered" },
+                  { label: "12 control domains", detail: "from Identity to Federal - every security obligation covered" },
                 ].map(({ label, detail }) => (
                   <div key={label} className="flex items-start gap-3">
                     <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)" }}>
@@ -485,6 +485,73 @@ export default function Landing() {
               {/* Glow behind the grid */}
               <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(37,99,235,0.08) 0%, transparent 70%)" }} />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECURITY + COMPLIANCE BRIDGE ── */}
+      <section style={{ background: "#ffffff", borderTop: "1px solid #f1f5f9", borderBottom: "1px solid #f1f5f9" }}>
+        <div className="max-w-7xl mx-auto px-6 py-20">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#2563eb" }}>Beyond the audit checklist</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4">
+              Compliance and security<br />
+              <span style={{ color: "#2563eb" }}>are not the same thing.</span>
+            </h2>
+            <p className="text-base text-slate-500 leading-relaxed">
+              Passing an audit doesn't mean you're protected. A passed control with no implementation behind it is a liability, not an asset. EnterpriseComply is built on a different premise: start with security that actually works, then prove it to anyone who asks.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: (
+                  <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.188-2.738-.533-4.018a.75.75 0 00-.722-.515 11.21 11.21 0 01-7.879-3.045zM10.5 12.97l-1.72-1.72a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l4.5-4.5a.75.75 0 10-1.06-1.06l-3.97 3.97z" clipRule="evenodd" />
+                  </svg>
+                ),
+                accent: "#4f46e5",
+                title: "Security Controls, Not Audit Artifacts",
+                body: "Every UCO control is a real security objective - MFA enforcement, access reviews, encryption at rest, incident response. The compliance framework mappings are a byproduct of implementing genuine security, not the starting point.",
+              },
+              {
+                icon: (
+                  <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+                  </svg>
+                ),
+                accent: "#2563eb",
+                title: "Drift Detection, Not Point-in-Time Snapshots",
+                body: "Compliance status changes the moment a configuration drifts. Continuous monitoring tracks every integrated system in real time - alerting you when a passing control starts to fail, before your next audit reveals it.",
+              },
+              {
+                icon: (
+                  <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clipRule="evenodd" />
+                  </svg>
+                ),
+                accent: "#0891b2",
+                title: "Remediation Workflows, Not Finding Documentation",
+                body: "When a gap is identified - through a risk assessment, a failing control test, or a drift alert - it becomes a tracked remediation item with an owner, a due date, and a POA&M entry. Gaps close. They don't sit in a spreadsheet.",
+              },
+            ].map((col) => (
+              <div key={col.title} className="relative p-7 rounded-2xl border border-slate-100 bg-white">
+                <div className="h-13 w-13 rounded-xl flex items-center justify-center mb-5" style={{ background: `${col.accent}12`, color: col.accent }}>
+                  {col.icon}
+                </div>
+                <div className="absolute top-0 left-7 right-7 h-0.5 rounded-full" style={{ background: col.accent }} />
+                <h3 className="text-base font-bold text-slate-900 mb-3">{col.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{col.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-12 p-6 rounded-2xl border border-slate-200 bg-slate-50 text-center">
+            <p className="text-sm font-semibold text-slate-700 mb-1">
+              We don't help you pass audits.
+            </p>
+            <p className="text-sm text-slate-500">
+              We help you deserve to pass them - then make the audit itself effortless.
+            </p>
           </div>
         </div>
       </section>
