@@ -3,9 +3,17 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { logger } from "./lib/logger";
 import pinoHttp from "pino-http";
+import helmet from "helmet";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
 
   app.use(
     pinoHttp({

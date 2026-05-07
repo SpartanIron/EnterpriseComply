@@ -1,5 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import { join } from "path";
 import { clerkMiddleware } from "@clerk/express";
@@ -32,6 +34,12 @@ import { TestRunsModule } from "./modules/test-runs/test-runs.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 120,
+      },
+    ]),
     StartupModule,
     ...(process.env.NODE_ENV === "production"
       ? [
@@ -64,6 +72,12 @@ import { TestRunsModule } from "./modules/test-runs/test-runs.module";
     NotificationsModule,
     GapAnalysisModule,
     TestRunsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule implements NestModule {

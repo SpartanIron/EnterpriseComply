@@ -1,7 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
 
-const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -12,7 +10,7 @@ export const queryClient = new QueryClient({
 });
 
 export function apiUrl(path: string) {
-  return `${BASE_PATH}/api${path}`;
+  return `/api${path}`;
 }
 
 export async function apiFetch(path: string, options?: RequestInit) {

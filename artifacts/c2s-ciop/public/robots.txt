@@ -1,0 +1,34 @@
+User-agent: *
+Allow: /
+
+# Block authenticated/private routes
+Disallow: /api/
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /onboarding
+Disallow: /dashboard
+Disallow: /frameworks
+Disallow: /controls
+Disallow: /integrations
+Disallow: /evidence
+Disallow: /monitoring
+Disallow: /policies
+Disallow: /people
+Disallow: /access-reviews
+Disallow: /vendors
+Disallow: /risks
+Disallow: /questionnaires
+Disallow: /audits
+Disallow: /trust-center
+Disallow: /custom-frameworks
+Disallow: /poam
+Disallow: /sprs
+Disallow: /ssp
+Disallow: /settings
+Disallow: /audit-log
+Disallow: /report
+Disallow: /gap-analysis
+Disallow: /remediation
+Disallow: /test-runs
+
+Sitemap: https://enterprisecomply.com/sitemap.xml

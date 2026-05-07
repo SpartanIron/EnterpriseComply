@@ -61,7 +61,7 @@ function HomeRedirect() {
   const { data, isLoading } = useQuery<{ org: any | null }>({
     queryKey: ["orgs", "me"],
     queryFn: async () => {
-      const res = await fetch(`${BASE_PATH}/api/orgs/me`, { credentials: "include" });
+      const res = await fetch(`/api/orgs/me`, { credentials: "include" });
       return res.json();
     },
     enabled: !!isSignedIn && isLoaded,
@@ -166,7 +166,7 @@ export default function App() {
   return (
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY}
-      {...(isProd ? { proxyUrl: `${BASE_PATH}/api/__clerk` } : {})}
+      {...(isProd ? { proxyUrl: `/api/__clerk` } : {})}
       appearance={clerkAppearance}
     >
       <QueryClientProvider client={queryClient}>
