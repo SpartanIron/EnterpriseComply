@@ -16,10 +16,79 @@ const STATUS_BADGE: Record<string, string> = {
   closed: "bg-slate-100 text-slate-500",
 };
 
+const BLANK_FORM = {
+  title: "",
+  weakness: "",
+  description: "",
+  severity: "high",
+  frameworkKey: "fedramp",
+  ownerName: "",
+  ownerTeam: "",
+  originalRisk: "high",
+  residualRisk: "medium",
+  scheduledCompletionDate: "",
+  resources: "",
+  estimatedCost: "",
+  milestones: "Identify root cause\nDevelop remediation plan\nImplement fix\nVerify and close",
+};
+
+function exportToCSV(items: any[]) {
+  const headers = [
+    "ID",
+    "Title",
+    "Weakness Name",
+    "Description",
+    "Framework",
+    "UCO Control",
+    "Severity",
+    "Status",
+    "Point of Contact",
+    "Owner Team",
+    "Original Risk Rating",
+    "Residual Risk Rating",
+    "Resources Required",
+    "Estimated Cost",
+    "Scheduled Completion Date",
+    "Milestones",
+    "Date Identified",
+    "Date Closed",
+  ];
+
+  const rows = items.map((i) => [
+    i.id,
+    `"${(i.title ?? "").replace(/"/g, '""')}"`,
+    `"${(i.weakness ?? "").replace(/"/g, '""')}"`,
+    `"${(i.description ?? "").replace(/"/g, '""')}"`,
+    i.frameworkKey ?? "",
+    i.ucoControlId ?? "",
+    i.severity ?? "",
+    i.status ?? "",
+    `"${(i.ownerName ?? "").replace(/"/g, '""')}"`,
+    i.ownerTeam ?? "",
+    i.originalRisk ?? "",
+    i.residualRisk ?? "",
+    `"${(i.resources ?? "").replace(/"/g, '""')}"`,
+    i.estimatedCost ?? "",
+    i.scheduledCompletionDate ? new Date(i.scheduledCompletionDate).toLocaleDateString() : "",
+    `"${((Array.isArray(i.milestones) ? i.milestones.join("; ") : i.milestones) ?? "").replace(/"/g, '""')}"`,
+    i.createdAt ? new Date(i.createdAt).toLocaleDateString() : "",
+    i.closedAt ? new Date(i.closedAt).toLocaleDateString() : "",
+  ]);
+
+  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `poam-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function POAM() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ title: "", weakness: "", description: "", severity: "high", frameworkKey: "fedramp", ownerName: "", ownerTeam: "", originalRisk: "high", residualRisk: "medium" });
+  const [form, setForm] = useState({ ...BLANK_FORM });
   const [editStatus, setEditStatus] = useState<{ id: number; status: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [importResult, setImportResult] = useState<{ added: number } | null>(null);
@@ -38,18 +107,33 @@ export default function POAM() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const body: Record<string, any> = {
+        title: form.title,
+        weakness: form.weakness,
+        description: form.description,
+        severity: form.severity,
+        frameworkKey: form.frameworkKey,
+        ownerName: form.ownerName,
+        ownerTeam: form.ownerTeam,
+        originalRisk: form.originalRisk,
+        residualRisk: form.residualRisk,
+        resources: form.resources,
+      };
+      if (form.scheduledCompletionDate) body.scheduledCompletionDate = new Date(form.scheduledCompletionDate).toISOString();
+      if (form.estimatedCost) body.estimatedCost = parseFloat(form.estimatedCost);
+      if (form.milestones) body.milestones = form.milestones.split("\n").map((s: string) => s.trim()).filter(Boolean);
       const res = await fetch(apiUrl(`/orgs/${orgId}/poam`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       });
       return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-poam"] });
       setShowCreate(false);
-      setForm({ title: "", weakness: "", description: "", severity: "high", frameworkKey: "fedramp", ownerName: "", ownerTeam: "", originalRisk: "high", residualRisk: "medium" });
+      setForm({ ...BLANK_FORM });
     },
   });
 
@@ -101,19 +185,35 @@ export default function POAM() {
   const items = data?.items ?? [];
   const open = items.filter(i => i.status === "open" || i.status === "in_progress");
   const closed = items.filter(i => i.status === "resolved" || i.status === "closed" || i.status === "risk_accepted");
+  const overdue = items.filter(i =>
+    i.scheduledCompletionDate &&
+    new Date(i.scheduledCompletionDate) < new Date() &&
+    i.status !== "resolved" && i.status !== "closed"
+  );
 
   return (
     <div className="p-6 max-w-screen-xl">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900 leading-tight">Plan of Action &amp; Milestones</h1>
-          <p className="text-sm text-slate-500 mt-0.5">FedRAMP-compliant POA&amp;M tracking &middot; {open.length} open item{open.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm text-slate-500 mt-0.5">FedRAMP/FISMA/CMMC POA&amp;M tracking &middot; {open.length} open item{open.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {items.length > 0 && (
+            <button
+              onClick={() => exportToCSV(items)}
+              className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export CSV
+            </button>
+          )}
           <button
             onClick={() => importFromFailingMutation.mutate()}
             disabled={importFromFailingMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -132,7 +232,7 @@ export default function POAM() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-5 gap-3 mb-5">
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className={`text-2xl font-bold leading-none ${items.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{items.length}</p>
           <p className="text-xs font-semibold text-slate-500 mt-1">Total Items</p>
@@ -148,6 +248,10 @@ export default function POAM() {
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className={`text-2xl font-bold leading-none ${closed.length > 0 ? "text-green-600" : "text-slate-300"}`}>{closed.length}</p>
           <p className="text-xs font-semibold text-slate-500 mt-1">Resolved</p>
+        </div>
+        <div className={`rounded-xl p-4 shadow-sm border ${overdue.length > 0 ? "bg-red-50 border-red-200" : "bg-white border-slate-200"}`}>
+          <p className={`text-2xl font-bold leading-none ${overdue.length > 0 ? "text-red-600" : "text-slate-300"}`}>{overdue.length}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">Overdue</p>
         </div>
       </div>
 
@@ -183,7 +287,7 @@ export default function POAM() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white border border-slate-200 rounded-xl p-5">
               <p className="font-semibold text-slate-800 text-sm mb-2">What is a POA&amp;M?</p>
-              <p className="text-xs text-slate-500 leading-relaxed mb-3">A Plan of Action and Milestones (POA&amp;M) documents known security weaknesses and your plan to remediate them. It is a required artifact for FedRAMP, FISMA, and CMMC assessments - showing assessors you are actively managing risk even when controls are not fully implemented.</p>
+              <p className="text-xs text-slate-500 leading-relaxed mb-3">A Plan of Action and Milestones (POA&amp;M) documents known security weaknesses and your remediation plan. Required for FedRAMP, FISMA, and CMMC assessments. Each item must include weakness name, POC, resources required, scheduled completion date, milestones, and status.</p>
               <div className="flex flex-wrap gap-2">
                 {["FedRAMP Required", "FISMA", "CMMC Level 2", "NIST 800-53 CA-5"].map(t => (
                   <span key={t} className="px-2 py-0.5 bg-violet-50 text-violet-700 text-xs font-medium rounded-md">{t}</span>
@@ -191,20 +295,22 @@ export default function POAM() {
               </div>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <p className="font-semibold text-slate-800 text-sm mb-2">Getting started quickly</p>
-              <ol className="space-y-2">
+              <p className="font-semibold text-slate-800 text-sm mb-2">Required FedRAMP POA&amp;M fields</p>
+              <ul className="space-y-1.5">
                 {[
-                  "Click \"Import from failing controls\" to auto-populate from your current control gaps",
-                  "Set milestones with target remediation dates for each weakness",
-                  "Assign responsible parties and track remediation progress over time",
-                  "Close items as resolved - the audit trail is preserved automatically",
-                ].map((step, i) => (
-                  <li key={i} className="flex gap-3 text-xs text-slate-500">
-                    <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
-                    {step}
+                  "Weakness name and description",
+                  "Point of contact (POC) and team",
+                  "Resources required for remediation",
+                  "Scheduled completion date",
+                  "Milestones with target dates",
+                  "Original and residual risk ratings",
+                ].map((f, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-slate-500">
+                    <svg className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    {f}
                   </li>
                 ))}
-              </ol>
+              </ul>
             </div>
           </div>
         </div>
@@ -247,66 +353,136 @@ export default function POAM() {
 
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl my-8">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">New POA&M Item</h2>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">New POA&amp;M Item</h2>
+                <p className="text-xs text-slate-400 mt-0.5">All FedRAMP-required fields</p>
+              </div>
               <button onClick={() => setShowCreate(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto" style={{ maxHeight: "calc(90vh - 160px)" }}>
-              {[
-                { label: "Title *", field: "title", type: "text", placeholder: "MFA not enforced for admin accounts" },
-                { label: "Weakness *", field: "weakness", type: "text", placeholder: "Authentication weakness" },
-                { label: "Description", field: "description", type: "textarea", placeholder: "Describe the security weakness and its impact..." },
-                { label: "Owner Name *", field: "ownerName", type: "text", placeholder: "Jane Smith" },
-                { label: "Owner Team", field: "ownerTeam", type: "text", placeholder: "Security" },
-              ].map(f => (
-                <div key={f.field}>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">{f.label}</label>
-                  {f.type === "textarea" ? (
-                    <textarea value={(form as any)[f.field]} onChange={e => setForm({ ...form, [f.field]: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={3} placeholder={f.placeholder} />
-                  ) : (
-                    <input type="text" value={(form as any)[f.field]} onChange={e => setForm({ ...form, [f.field]: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={f.placeholder} />
-                  )}
-                </div>
-              ))}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Framework</label>
-                  <select value={form.frameworkKey} onChange={e => setForm({ ...form, frameworkKey: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="fedramp">FedRAMP</option>
-                    <option value="cmmc-l2">CMMC Level 2</option>
-                    <option value="nist-800-53">NIST 800-53</option>
-                    <option value="nist-800-171">NIST 800-171</option>
-                    <option value="soc2">SOC 2</option>
-                    <option value="iso27001">ISO 27001</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Severity</label>
-                  <select value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {["critical", "high", "medium", "low"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
-                  </select>
+            <div className="p-6 space-y-4 overflow-y-auto" style={{ maxHeight: "calc(90vh - 180px)" }}>
+
+              <div className="border-b border-slate-100 pb-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Weakness Identification</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Title *</label>
+                    <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="MFA not enforced for admin accounts" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Weakness Name *</label>
+                    <input type="text" value={form.weakness} onChange={e => setForm({ ...form, weakness: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Authentication weakness - missing MFA enforcement" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      rows={3} placeholder="Describe the security weakness, its scope, and potential impact..." />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Original Risk", field: "originalRisk", options: ["critical", "high", "medium", "low"] },
-                  { label: "Residual Risk", field: "residualRisk", options: ["high", "medium", "low", "minimal"] },
-                ].map(s => (
-                  <div key={s.field}>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">{s.label}</label>
-                    <select value={(form as any)[s.field]} onChange={e => setForm({ ...form, [s.field]: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {s.options.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+
+              <div className="border-b border-slate-100 pb-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Point of Contact &amp; Assignment</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Owner Name *</label>
+                    <input type="text" value={form.ownerName} onChange={e => setForm({ ...form, ownerName: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Jane Smith" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Owner Team</label>
+                    <input type="text" value={form.ownerTeam} onChange={e => setForm({ ...form, ownerTeam: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Security" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-b border-slate-100 pb-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Risk Classification</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Severity</label>
+                    <select value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {["critical", "high", "medium", "low"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
                     </select>
                   </div>
-                ))}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Original Risk</label>
+                    <select value={form.originalRisk} onChange={e => setForm({ ...form, originalRisk: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {["critical", "high", "medium", "low"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Residual Risk</label>
+                    <select value={form.residualRisk} onChange={e => setForm({ ...form, residualRisk: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {["high", "medium", "low", "minimal"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Framework</label>
+                    <select value={form.frameworkKey} onChange={e => setForm({ ...form, frameworkKey: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="fedramp">FedRAMP</option>
+                      <option value="cmmc-l2">CMMC Level 2</option>
+                      <option value="nist-800-53">NIST 800-53</option>
+                      <option value="nist-800-171">NIST 800-171</option>
+                      <option value="soc2">SOC 2</option>
+                      <option value="iso27001">ISO 27001</option>
+                    </select>
+                  </div>
+                </div>
               </div>
+
+              <div className="border-b border-slate-100 pb-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Remediation Planning</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Scheduled Completion Date *</label>
+                    <input type="date" value={form.scheduledCompletionDate} onChange={e => setForm({ ...form, scheduledCompletionDate: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Resources Required</label>
+                    <input type="text" value={form.resources} onChange={e => setForm({ ...form, resources: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Security engineer (40hrs), Azure AD license, external pen test" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Estimated Cost ($)</label>
+                    <input type="number" value={form.estimatedCost} onChange={e => setForm({ ...form, estimatedCost: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="5000" min="0" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Milestones</label>
+                    <p className="text-xs text-slate-400 mb-1.5">One milestone per line</p>
+                    <textarea value={form.milestones} onChange={e => setForm({ ...form, milestones: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                      rows={5} placeholder={"Identify root cause\nDevelop remediation plan\nImplement fix\nVerify and close"} />
+                  </div>
+                </div>
+              </div>
+
             </div>
             <div className="p-6 border-t border-slate-100 flex gap-3">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={() => createMutation.mutate()} disabled={!form.title || !form.weakness || !form.ownerName || createMutation.isPending} className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={() => createMutation.mutate()} disabled={!form.title || !form.weakness || !form.ownerName || createMutation.isPending}
+                className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {createMutation.isPending ? "Creating..." : "Create Item"}
               </button>
             </div>
@@ -317,8 +493,8 @@ export default function POAM() {
       {confirmDelete !== null && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="font-bold text-slate-900 mb-2">Delete POA&M item?</h3>
-            <p className="text-sm text-slate-500 mb-5">This will permanently remove this item from your POA&M.</p>
+            <h3 className="font-bold text-slate-900 mb-2">Delete POA&amp;M item?</h3>
+            <p className="text-sm text-slate-500 mb-5">This will permanently remove this item from your POA&amp;M.</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => deleteMutation.mutate(confirmDelete!)} disabled={deleteMutation.isPending}
@@ -335,8 +511,11 @@ export default function POAM() {
 
 function POAMCard({ item, onStatusChange, editStatus, onStatusSave, onStatusCancel, saving, onStatusSet, onDelete }: any) {
   const isEditing = editStatus?.id === item.id;
+  const isOverdue = item.scheduledCompletionDate && new Date(item.scheduledCompletionDate) < new Date() && item.status !== "resolved" && item.status !== "closed";
+  const milestones: string[] = Array.isArray(item.milestones) ? item.milestones : [];
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+    <div className={`bg-white rounded-xl border shadow-sm p-5 ${isOverdue ? "border-red-200" : "border-slate-200"}`}>
       <div className="flex items-start gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -356,18 +535,51 @@ function POAMCard({ item, onStatusChange, editStatus, onStatusSave, onStatusCanc
               </div>
             )}
             {item.frameworkKey && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-md">{item.frameworkKey}</span>}
+            {isOverdue && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-md">Overdue</span>}
           </div>
           <p className="font-semibold text-slate-900 text-sm mb-0.5">{item.title}</p>
           <p className="text-xs text-slate-500">{item.weakness}</p>
           {item.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p>}
+
+          {(milestones.length > 0 || item.resources) && (
+            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+              {milestones.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Milestones</p>
+                  <ul className="space-y-1">
+                    {milestones.slice(0, 3).map((m: string, i: number) => (
+                      <li key={i} className="flex gap-1.5 text-xs text-slate-500">
+                        <span className="text-slate-300 flex-shrink-0">-</span>{m}
+                      </li>
+                    ))}
+                    {milestones.length > 3 && <li className="text-xs text-slate-400">+{milestones.length - 3} more</li>}
+                  </ul>
+                </div>
+              )}
+              {item.resources && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Resources Required</p>
+                  <p className="text-xs text-slate-500">{item.resources}</p>
+                  {item.estimatedCost && <p className="text-xs text-slate-400 mt-1">Est. cost: ${Number(item.estimatedCost).toLocaleString()}</p>}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
           <div className="text-right text-xs text-slate-500">
             <p className="font-medium text-slate-700">{item.ownerName}</p>
             <p>{item.ownerTeam}</p>
             {item.scheduledCompletionDate && (
-              <p className="mt-1 text-amber-600 font-medium">Due {new Date(item.scheduledCompletionDate).toLocaleDateString()}</p>
+              <p className={`mt-1 font-medium ${isOverdue ? "text-red-600" : "text-amber-600"}`}>
+                Due {new Date(item.scheduledCompletionDate).toLocaleDateString()}
+              </p>
             )}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>{item.originalRisk} risk</span>
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            <span>{item.residualRisk}</span>
           </div>
           <button onClick={onDelete} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

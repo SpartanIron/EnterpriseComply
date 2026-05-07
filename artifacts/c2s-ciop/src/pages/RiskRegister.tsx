@@ -20,20 +20,32 @@ function riskLevel(score: number) {
 }
 
 function RiskMatrix({ risks }: { risks: any[] }) {
-  const cells: Record<string, number> = {};
+  const cells: Record<string, any[]> = {};
   risks.forEach((r) => {
     const key = `${r.likelihood}-${r.impact}`;
-    cells[key] = (cells[key] ?? 0) + 1;
+    if (!cells[key]) cells[key] = [];
+    cells[key].push(r);
   });
+
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-4">
-      <p className="text-sm font-semibold text-slate-700 mb-3">Risk Heat Map</p>
-      <div className="flex gap-1 items-end">
-        <div className="flex flex-col gap-1 mr-1">
+    <div className="bg-white border border-slate-200 rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-semibold text-slate-800">Risk Heat Map</p>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-200 inline-block" />Low</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-yellow-200 inline-block" />Medium</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-300 inline-block" />High</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" />Critical</span>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <div className="flex flex-col items-end justify-between" style={{ width: 80, paddingBottom: 28, paddingTop: 0 }}>
           {[5, 4, 3, 2, 1].map((l) => (
-            <div key={l} className="h-10 w-16 flex items-center justify-end pr-2 text-xs text-slate-400">{LIKELIHOOD_LABELS[l]}</div>
+            <div key={l} className="h-10 flex items-center text-right">
+              <span className="text-xs text-slate-400 leading-tight">{LIKELIHOOD_LABELS[l]}</span>
+            </div>
           ))}
-          <div className="h-6" />
         </div>
         <div>
           <div className="flex flex-col gap-1">
@@ -41,16 +53,29 @@ function RiskMatrix({ risks }: { risks: any[] }) {
               <div key={l} className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((i) => {
                   const score = l * i;
-                  const count = cells[`${l}-${i}`] ?? 0;
                   const level = riskLevel(score);
+                  const count = cells[`${l}-${i}`]?.length ?? 0;
+                  const bgColor =
+                    level === "critical" ? "bg-red-400 border-red-500" :
+                    level === "high" ? "bg-orange-300 border-orange-400" :
+                    level === "medium" ? "bg-yellow-200 border-yellow-300" :
+                    "bg-green-100 border-green-200";
+                  const textColor =
+                    level === "critical" ? "text-white" :
+                    level === "high" ? "text-orange-900" :
+                    level === "medium" ? "text-yellow-800" :
+                    "text-green-700";
+
                   return (
-                    <div key={i} className={`h-10 w-10 rounded flex items-center justify-center text-sm font-bold border ${
-                      level === "critical" ? "bg-red-100 border-red-300 text-red-700" :
-                      level === "high" ? "bg-orange-100 border-orange-300 text-orange-700" :
-                      level === "medium" ? "bg-yellow-100 border-yellow-300 text-yellow-600" :
-                      "bg-green-50 border-green-200 text-green-700"
-                    }`}>
-                      {count > 0 ? count : ""}
+                    <div key={i}
+                      className={`h-10 w-10 rounded flex items-center justify-center text-sm font-bold border ${bgColor} ${textColor} relative group`}
+                      title={`Likelihood: ${LIKELIHOOD_LABELS[l]}, Impact: ${IMPACT_LABELS[i]}, Score: ${score} (${level.toUpperCase()})`}
+                    >
+                      {count > 0 ? (
+                        <span className="text-xs font-bold">{count}</span>
+                      ) : (
+                        <span className="text-xs opacity-30">{score}</span>
+                      )}
                     </div>
                   );
                 })}
@@ -59,12 +84,34 @@ function RiskMatrix({ risks }: { risks: any[] }) {
           </div>
           <div className="flex gap-1 mt-1">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-6 w-10 flex items-center justify-center text-xs text-slate-400">{IMPACT_LABELS[i]?.slice(0, 3)}</div>
+              <div key={i} className="h-10 w-10 flex flex-col items-center justify-start pt-1 text-center">
+                <span className="text-xs text-slate-400 leading-tight">{IMPACT_LABELS[i]}</span>
+              </div>
             ))}
           </div>
-          <div className="text-xs text-slate-400 text-center mt-1">Impact</div>
+          <div className="text-xs text-slate-400 text-center mt-1 font-medium">Impact &rarr;</div>
         </div>
       </div>
+      <div className="text-xs text-slate-400 text-center mt-3">
+        Numbers in cells = risks at that score. Hover for details.
+      </div>
+
+      {risks.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Risk Summary</p>
+          <div className="grid grid-cols-4 gap-2">
+            {["critical", "high", "medium", "low"].map((level) => {
+              const count = risks.filter(r => riskLevel(r.inherentScore) === level).length;
+              return (
+                <div key={level} className={`rounded-lg p-2 text-center border ${RISK_COLORS[level]}`}>
+                  <p className="text-lg font-bold">{count}</p>
+                  <p className="text-xs capitalize">{level}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -122,7 +169,6 @@ export default function RiskRegister() {
   }, [showSuggest]);
 
   const suggestions = suggestData?.suggestions ?? [];
-
   const risks = data?.risks ?? [];
   const summary = data?.summary ?? {};
   const filtered = filter === "all" ? risks : risks.filter((r) => r.status === filter || riskLevel(r.inherentScore) === filter);
@@ -155,7 +201,7 @@ export default function RiskRegister() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Risk Register</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Identify, assess, and track organizational risks</p>
+          <p className="text-sm text-slate-500 mt-0.5">5x5 risk matrix - ISO 31000 / NIST SP 800-30 methodology</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -224,9 +270,11 @@ export default function RiskRegister() {
                         <p className="text-sm font-medium text-slate-800">{risk.title}</p>
                         {risk.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{risk.description}</p>}
                         <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                          <span>Likelihood: {LIKELIHOOD_LABELS[risk.likelihood]}</span>
-                          <span>Impact: {IMPACT_LABELS[risk.impact]}</span>
-                          <span>Score: {risk.inherentScore}</span>
+                          <span>L: {LIKELIHOOD_LABELS[risk.likelihood]} ({risk.likelihood})</span>
+                          <span>I: {IMPACT_LABELS[risk.impact]} ({risk.impact})</span>
+                          <span className={`font-semibold ${level === "critical" ? "text-red-600" : level === "high" ? "text-orange-600" : level === "medium" ? "text-yellow-600" : "text-green-600"}`}>
+                            Score: {risk.inherentScore}
+                          </span>
                           {risk.ownerName && <span>Owner: {risk.ownerName}</span>}
                           {risk.ucoControlId && <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">{risk.ucoControlId}</span>}
                         </div>
@@ -297,18 +345,23 @@ export default function RiskRegister() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Likelihood (1-5): {LIKELIHOOD_LABELS[form.likelihood]}</label>
-                  <input type="range" min={1} max={5} value={form.likelihood} onChange={(e) => setForm({ ...form, likelihood: Number(e.target.value) })} className="w-full" />
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2">Likelihood (1-5): <span className="font-semibold text-slate-800">{form.likelihood} - {LIKELIHOOD_LABELS[form.likelihood]}</span></label>
+                <input type="range" min={1} max={5} value={form.likelihood} onChange={(e) => setForm({ ...form, likelihood: Number(e.target.value) })} className="w-full accent-blue-600" />
+                <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+                  {LIKELIHOOD_LABELS.slice(1).map(l => <span key={l}>{l.slice(0, 3)}</span>)}
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Impact (1-5): {IMPACT_LABELS[form.impact]}</label>
-                  <input type="range" min={1} max={5} value={form.impact} onChange={(e) => setForm({ ...form, impact: Number(e.target.value) })} className="w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2">Impact (1-5): <span className="font-semibold text-slate-800">{form.impact} - {IMPACT_LABELS[form.impact]}</span></label>
+                <input type="range" min={1} max={5} value={form.impact} onChange={(e) => setForm({ ...form, impact: Number(e.target.value) })} className="w-full accent-blue-600" />
+                <div className="flex justify-between text-xs text-slate-400 mt-0.5">
+                  {IMPACT_LABELS.slice(1).map(l => <span key={l}>{l.slice(0, 3)}</span>)}
                 </div>
               </div>
               <div className={`p-3 rounded-lg text-center border ${RISK_COLORS[riskLevel(inherentScore)]}`}>
-                <p className="text-sm font-bold">Inherent Risk Score: {inherentScore} ({riskLevel(inherentScore).toUpperCase()})</p>
+                <p className="text-sm font-bold">Inherent Risk Score: {inherentScore} - {riskLevel(inherentScore).toUpperCase()}</p>
+                <p className="text-xs mt-0.5 opacity-70">Likelihood {form.likelihood} x Impact {form.impact}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -329,7 +382,7 @@ export default function RiskRegister() {
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none font-mono" placeholder="UCO-AC-001" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Asset</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Asset at Risk</label>
                   <input value={form.asset} onChange={(e) => setForm({ ...form, asset: e.target.value })}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Customer DB" />
                 </div>
@@ -353,7 +406,6 @@ export default function RiskRegister() {
         </div>
       )}
 
-      {/* Auto-suggest from failing controls modal */}
       {showSuggest && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
@@ -409,24 +461,17 @@ export default function RiskRegister() {
                         className={`p-4 rounded-lg border cursor-pointer transition-all ${isSelected ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300"}`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`mt-0.5 h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center ${isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
+                          <div className={`h-4 w-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center ${isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
                             {isSelected && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${RISK_COLORS[level]}`}>
-                                {level.toUpperCase()}
-                              </span>
-                              <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">{s.relatedControlId}</span>
-                              <span className="text-xs text-slate-400 capitalize">{s.category}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded font-semibold border ${RISK_COLORS[level]}`}>{level.toUpperCase()}</span>
+                              <span className="text-xs font-mono text-slate-500">{s.relatedControlId}</span>
                             </div>
                             <p className="text-sm font-medium text-slate-800">{s.title}</p>
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{s.description}</p>
-                            <p className="text-xs text-slate-400 mt-1">Failing control: {s.controlName}</p>
-                          </div>
-                          <div className="text-right flex-shrink-0 text-xs text-slate-500">
-                            <div className="font-bold text-slate-700 text-sm">{s.inherentScore}</div>
-                            <div>score</div>
+                            <p className="text-xs text-slate-500 mt-0.5">{s.description}</p>
+                            <p className="text-xs text-slate-400 mt-1">L:{s.likelihood} x I:{s.impact} = Score {s.inherentScore}</p>
                           </div>
                         </div>
                       </div>
@@ -436,20 +481,15 @@ export default function RiskRegister() {
               )}
             </div>
             {suggestions.length > 0 && (
-              <div className="p-5 border-t border-slate-100 flex items-center justify-between flex-shrink-0">
-                <p className="text-xs text-slate-500">{selectedSuggestions.size} selected</p>
-                <div className="flex gap-3">
-                  <button onClick={() => { setShowSuggest(false); setSelectedSuggestions(new Set()); }}
-                    className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => importMutation.mutate(Array.from(selectedSuggestions))}
-                    disabled={selectedSuggestions.size === 0 || importMutation.isPending}
-                    className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                    {importMutation.isPending ? "Creating..." : `Create ${selectedSuggestions.size} risk${selectedSuggestions.size !== 1 ? "s" : ""}`}
-                  </button>
-                </div>
+              <div className="p-5 border-t border-slate-100 flex gap-3 justify-end flex-shrink-0">
+                <button onClick={() => { setShowSuggest(false); setSelectedSuggestions(new Set()); }}
+                  className="px-4 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
+                <button
+                  onClick={() => importMutation.mutate(Array.from(selectedSuggestions))}
+                  disabled={selectedSuggestions.size === 0 || importMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  {importMutation.isPending ? "Importing..." : `Import ${selectedSuggestions.size} Risk${selectedSuggestions.size !== 1 ? "s" : ""}`}
+                </button>
               </div>
             )}
           </div>
