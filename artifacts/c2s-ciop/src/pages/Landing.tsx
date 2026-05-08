@@ -1083,24 +1083,24 @@ export default function Landing() {
       </section>
 
       {/* ── BOTTOM FEATURE BADGES ── */}
-      <section style={{ background: "#050d1a", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      <section style={{ background: "#ffffff", borderTop: "1px solid #e2e8f0" }}>
         <div className="max-w-7xl mx-auto px-6 py-14">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: "Secure by Design", desc: "Zero-trust architecture, AES-256 encryption, and SOC 2-compliant infrastructure from day one." },
-              { icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z", title: "Scalable by Nature", desc: "From Series A to Fortune 500. Multi-tenant architecture built for the volume enterprise compliance demands." },
-              { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", title: "AI-Powered Insights", desc: "Control gap analysis, framework delta alerts, and risk prioritization - surfaced automatically, not after the audit." },
-              { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", title: "Always Audit Ready", desc: "Continuous evidence collection means your audit package is always current. No scramble. No gaps." },
-            ].map(({ icon, title, desc }) => (
-              <div key={title} className="flex flex-col gap-3">
-                <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.2)" }}>
-                  <svg className="h-5 w-5" style={{ color: "#60a5fa" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: "Secure by Design", desc: "Zero-trust architecture, AES-256 encryption, and SOC 2-compliant infrastructure from day one.", accent: "#4f46e5" },
+              { icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z", title: "Scalable by Nature", desc: "From Series A to Fortune 500. Multi-tenant architecture built for the volume enterprise compliance demands.", accent: "#2563eb" },
+              { icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", title: "AI-Powered Insights", desc: "Control gap analysis, framework delta alerts, and risk prioritization - surfaced automatically, not after the audit.", accent: "#0891b2" },
+              { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", title: "Always Audit Ready", desc: "Continuous evidence collection means your audit package is always current. No scramble. No gaps.", accent: "#059669" },
+            ].map(({ icon, title, desc, accent }) => (
+              <div key={title} className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: "#f8fafc", border: `1.5px solid ${accent}22` }}>
+                <div className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: accent }}>
+                  <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-white text-sm mb-1">{title}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#475569" }}>{desc}</p>
+                  <p className="font-bold text-slate-900 text-sm mb-1.5">{title}</p>
+                  <p className="text-xs leading-relaxed text-slate-500">{desc}</p>
                 </div>
               </div>
             ))}
