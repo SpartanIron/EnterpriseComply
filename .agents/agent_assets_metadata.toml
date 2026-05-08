@@ -24,3 +24,39 @@ id = "keC1T2Z0B5qtvB8efR-iU"
 uri = "file://attached_assets/image_search/candidate_4.jpg"
 type = "image"
 title = "Option 4: Big data network abstract"
+
+[[outputs]]
+id = "uXygyFH4FK-3N8ZuOELrA"
+uri = "file://attached_assets/image_search/premium_1.jpg"
+type = "image"
+title = "Option 1: Server room symmetry - dramatic side lighting"
+
+[[outputs]]
+id = "OtwKHweAnkC9QeOqLKzRm"
+uri = "file://attached_assets/image_search/premium_2.jpg"
+type = "image"
+title = "Option 2: Pentagon aerial view - Washington DC"
+
+[[outputs]]
+id = "cxYmzC58XbEzp9kJMdU1f"
+uri = "file://attached_assets/image_search/premium_5.jpg"
+type = "image"
+title = "Option 3: Data center - blue and white LED rows"
+
+[[outputs]]
+id = "cTNIYsdOYQGu7hpM7HZsM"
+uri = "file://attached_assets/image_search/premium_6.jpg"
+type = "image"
+title = "Option 4: Futuristic server corridor - deep blue"
+
+[[outputs]]
+id = "4_mx-KTiO-n4zRr1ltjS5"
+uri = "file://attached_assets/image_search/premium_7.jpg"
+type = "image"
+title = "Option 5: IT security compliance - Unsplash"
+
+[[outputs]]
+id = "U4scIecWZdiT2rA_gVaaE"
+uri = "file://attached_assets/image_search/premium_8.jpg"
+type = "image"
+title = "Option 6: Data center servers - Unsplash Premium"
