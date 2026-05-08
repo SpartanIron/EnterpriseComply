@@ -213,7 +213,7 @@ export default function RiskRegister() {
             </svg>
             Suggest from controls
           </button>
-          <button onClick={() => { setForm({ ...BLANK_FORM }); setShowAdd(true); }} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 transition-colors">
+          <button onClick={() => { setForm({ ...BLANK_FORM }); setShowAdd(true); }} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
             + Add Risk
           </button>
         </div>
@@ -225,7 +225,7 @@ export default function RiskRegister() {
           { label: "Critical", value: summary.critical ?? 0, color: "text-red-600" },
           { label: "High", value: summary.high ?? 0, color: "text-orange-600" },
           { label: "Medium", value: summary.medium ?? 0, color: "text-yellow-600" },
-          { label: "Open", value: summary.open ?? 0, color: "text-green-800" },
+          { label: "Open", value: summary.open ?? 0, color: "text-blue-600" },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white border border-slate-200 rounded-lg p-4">
             <p className="text-xs text-slate-500 font-medium">{label}</p>
@@ -239,7 +239,7 @@ export default function RiskRegister() {
           <div className="flex gap-2 mb-4">
             {["all", "open", "mitigated", "critical", "high"].map((f) => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors capitalize ${filter === f ? "bg-green-800 text-white border-green-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors capitalize ${filter === f ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
                 {f === "all" ? "All Risks" : f}
               </button>
             ))}
@@ -263,7 +263,7 @@ export default function RiskRegister() {
                             {level.toUpperCase()}
                           </span>
                           <span className="text-xs text-slate-400 capitalize">{risk.category}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${risk.status === "open" ? "bg-green-50 text-green-800" : risk.status === "mitigated" ? "bg-green-50 text-green-600" : "bg-slate-100 text-slate-500"}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${risk.status === "open" ? "bg-blue-50 text-blue-600" : risk.status === "mitigated" ? "bg-green-50 text-green-600" : "bg-slate-100 text-slate-500"}`}>
                             {risk.status}
                           </span>
                         </div>
@@ -318,18 +318,18 @@ export default function RiskRegister() {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="Risk title" />
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Risk title" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+                  rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
                   <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700">
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {["operational", "technical", "legal", "financial", "reputational", "compliance"].map((c) => (
                       <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                     ))}
@@ -338,7 +338,7 @@ export default function RiskRegister() {
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Treatment</label>
                   <select value={form.treatment} onChange={(e) => setForm({ ...form, treatment: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700">
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {["mitigate", "accept", "transfer", "avoid"].map((t) => (
                       <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
                     ))}
@@ -398,7 +398,7 @@ export default function RiskRegister() {
               <button
                 onClick={() => editing ? updateMutation.mutate({ id: editing.id, ...form }) : createMutation.mutate(form)}
                 disabled={!form.title || (editing ? updateMutation.isPending : createMutation.isPending)}
-                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {(editing ? updateMutation.isPending : createMutation.isPending) ? "Saving..." : editing ? "Save Changes" : "Add Risk"}
               </button>
             </div>
@@ -442,7 +442,7 @@ export default function RiskRegister() {
                           setSelectedSuggestions(new Set(suggestions.map((s: any) => s.relatedControlId)));
                         }
                       }}
-                      className="text-xs font-medium text-green-800 hover:text-green-700"
+                      className="text-xs font-medium text-blue-600 hover:text-blue-700"
                     >
                       {selectedSuggestions.size === suggestions.length ? "Deselect all" : "Select all"}
                     </button>
@@ -458,10 +458,10 @@ export default function RiskRegister() {
                           if (isSelected) next.delete(s.relatedControlId); else next.add(s.relatedControlId);
                           setSelectedSuggestions(next);
                         }}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${isSelected ? "border-green-400 bg-green-50" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${isSelected ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300"}`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`h-4 w-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center ${isSelected ? "bg-green-800 border-green-800" : "border-slate-300"}`}>
+                          <div className={`h-4 w-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center ${isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
                             {isSelected && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                           </div>
                           <div className="flex-1">
@@ -487,7 +487,7 @@ export default function RiskRegister() {
                 <button
                   onClick={() => importMutation.mutate(Array.from(selectedSuggestions))}
                   disabled={selectedSuggestions.size === 0 || importMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                   {importMutation.isPending ? "Importing..." : `Import ${selectedSuggestions.size} Risk${selectedSuggestions.size !== 1 ? "s" : ""}`}
                 </button>
               </div>

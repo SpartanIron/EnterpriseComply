@@ -78,7 +78,7 @@ export default function TrustCenter() {
             Setup guide
           </button>
           <button
-            className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-2"
             onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(window.location.href.replace("trust-center", "trust") || ""); }}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
@@ -87,8 +87,8 @@ export default function TrustCenter() {
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-green-800 to-indigo-700 rounded-2xl p-1 mb-6">
-        <div className="bg-gradient-to-r from-green-800 to-indigo-700 rounded-xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-1 mb-6">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
               <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -97,14 +97,14 @@ export default function TrustCenter() {
             </div>
             <div>
               <p className="text-white font-bold text-lg">{preview?.org?.name ?? "Your Organization"}</p>
-              <p className="text-green-100 text-sm">Security and compliance overview, updated automatically</p>
+              <p className="text-blue-100 text-sm">Security and compliance overview - updated automatically</p>
             </div>
           </div>
           <div className="flex items-center gap-6">
             <ScoreRing score={preview?.overallScore ?? 0} size={76} />
             <div className="text-right">
               <p className="text-white font-bold text-2xl">{(preview?.frameworks ?? []).length}</p>
-              <p className="text-green-100 text-xs">Active frameworks</p>
+              <p className="text-blue-200 text-xs">Active frameworks</p>
             </div>
           </div>
         </div>
@@ -127,19 +127,19 @@ export default function TrustCenter() {
       {activeTab === "overview" && (
         <div className="space-y-5">
           {showSetup && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-              <p className="font-semibold text-green-900 text-sm mb-3">How to set up your Trust Center</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+              <p className="font-semibold text-blue-900 text-sm mb-3">How to set up your Trust Center</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { step: "1", title: "Activate frameworks", body: "Go to Frameworks and activate SOC 2, ISO 27001, or any compliance standard to show your certifications.", link: "/frameworks" },
                   { step: "2", title: "Publish policies", body: "Go to Policies, create policies from templates, and publish them to surface them on your trust page.", link: "/policies" },
-                  { step: "3", title: "Share the URL", body: "Share your Trust Center URL with customers, prospects, and auditors; it updates automatically.", link: null },
+                  { step: "3", title: "Share the URL", body: "Share your Trust Center URL with customers, prospects, and auditors - it updates automatically.", link: null },
                 ].map(({ step, title, body, link }) => (
-                  <div key={step} className="bg-white border border-green-100 rounded-xl p-4">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-800 text-white text-xs font-bold mb-2">{step}</span>
+                  <div key={step} className="bg-white border border-blue-100 rounded-xl p-4">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold mb-2">{step}</span>
                     <p className="font-semibold text-slate-800 text-sm mb-1">{title}</p>
                     <p className="text-xs text-slate-500 leading-relaxed mb-2">{body}</p>
-                    {link && <a href={link} className="text-xs text-green-800 font-semibold hover:underline">Go to {title.split(" ")[1]} &rarr;</a>}
+                    {link && <a href={link} className="text-xs text-blue-600 font-semibold hover:underline">Go to {title.split(" ")[1]} &rarr;</a>}
                   </div>
                 ))}
               </div>
@@ -150,7 +150,7 @@ export default function TrustCenter() {
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <p className="font-semibold text-slate-800 text-sm">Framework compliance scores</p>
-                <span className="text-xs text-slate-400">Live data; updates as evidence is collected</span>
+                <span className="text-xs text-slate-400">Live data - updates as evidence is collected</span>
               </div>
               <div className="p-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {(preview.frameworks ?? []).map((f: any) => (
@@ -164,7 +164,7 @@ export default function TrustCenter() {
                 ))}
                 {(preview.frameworks ?? []).length === 0 && (
                   <div className="col-span-4 text-center py-8 text-slate-400 text-sm">
-                    No active frameworks yet. <a href="/frameworks" className="text-green-800 hover:underline">Activate frameworks</a> to show compliance scores.
+                    No active frameworks yet. <a href="/frameworks" className="text-blue-600 hover:underline">Activate frameworks</a> to show compliance scores.
                   </div>
                 )}
               </div>
@@ -194,8 +194,8 @@ export default function TrustCenter() {
                 {preview.publishedPolicies.map((p: any) => (
                   <div key={p.title} className="flex items-center justify-between text-sm p-3 border border-slate-100 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 bg-green-50 rounded flex items-center justify-center">
-                        <svg className="h-3.5 w-3.5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      <div className="h-6 w-6 bg-blue-50 rounded flex items-center justify-center">
+                        <svg className="h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                       </div>
                       <span className="text-slate-700 font-medium">{p.title}</span>
                     </div>
@@ -225,8 +225,8 @@ export default function TrustCenter() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {SECURITY_PRACTICES.map((practice) => (
               <div key={practice.title} className="bg-white border border-slate-200 rounded-xl p-5 flex gap-4">
-                <div className="h-10 w-10 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="h-5 w-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={practice.icon} />
                   </svg>
                 </div>
@@ -240,11 +240,11 @@ export default function TrustCenter() {
           <div className="bg-white border border-slate-200 rounded-xl p-5">
             <p className="font-semibold text-slate-800 text-sm mb-3">Responsible disclosure</p>
             <p className="text-sm text-slate-500 leading-relaxed mb-3">
-              We take security vulnerabilities seriously. If you discover a security issue, please report it to <a href="mailto:security@colorcodesolutions.com" className="text-green-800 hover:underline font-medium">security@colorcodesolutions.com</a>. We commit to responding within 24 hours and providing a fix timeline within 72 hours for critical issues.
+              We take security vulnerabilities seriously. If you discover a security issue, please report it to <a href="mailto:security@colorcodesolutions.com" className="text-blue-600 hover:underline font-medium">security@colorcodesolutions.com</a>. We commit to responding within 24 hours and providing a fix timeline within 72 hours for critical issues.
             </p>
             <div className="flex gap-2">
               <span className="px-2.5 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-lg">24h response SLA</span>
-              <span className="px-2.5 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-lg">No legal action for good-faith research</span>
+              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg">No legal action for good-faith research</span>
             </div>
           </div>
         </div>
@@ -263,7 +263,7 @@ export default function TrustCenter() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-semibold text-slate-800">{sp.name}</p>
-                      <a href={sp.link} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-800">
+                      <a href={sp.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600">
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                       </a>
                     </div>
@@ -278,14 +278,14 @@ export default function TrustCenter() {
           </div>
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-500 leading-relaxed">
             <p className="font-semibold text-slate-700 mb-1">Data Processing Agreements</p>
-            <p>All sub-processors listed above have executed Data Processing Agreements (DPAs) with ColorCode Solutions. Customer data is not sold or shared with third parties for advertising or marketing purposes. To request our DPA or a list of updated sub-processors, contact <a href="mailto:privacy@colorcodesolutions.com" className="text-green-800 hover:underline">privacy@colorcodesolutions.com</a>.</p>
+            <p>All sub-processors listed above have executed Data Processing Agreements (DPAs) with ColorCode Solutions. Customer data is not sold or shared with third parties for advertising or marketing purposes. To request our DPA or a list of updated sub-processors, contact <a href="mailto:privacy@colorcodesolutions.com" className="text-blue-600 hover:underline">privacy@colorcodesolutions.com</a>.</p>
           </div>
         </div>
       )}
 
       {activeTab === "portability" && (
         <div className="space-y-5">
-          <div className="bg-gradient-to-br from-green-800 to-indigo-700 rounded-2xl p-6 text-white">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white">
             <div className="flex items-start gap-4">
               <div className="h-12 w-12 bg-white/15 rounded-xl flex items-center justify-center flex-shrink-0">
                 <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -294,8 +294,8 @@ export default function TrustCenter() {
               </div>
               <div>
                 <p className="font-bold text-lg mb-1">Your compliance program is yours. Not ours.</p>
-                <p className="text-green-100 text-sm leading-relaxed max-w-2xl">
-                  We've seen what happens when a certified MSP closes or a GRC vendor gets acquired. Customers are left rebuilding their evidence from scratch, re-documenting controls they already paid to implement, and starting over. EnterpriseComply is built on a different principle: you own your data, you always have access to it, and you can take it with you at any time, no questions asked.
+                <p className="text-blue-100 text-sm leading-relaxed max-w-2xl">
+                  We've seen what happens when a certified MSP closes or a GRC vendor gets acquired - customers are left rebuilding their evidence from scratch, re-documenting controls they already paid to implement, and starting over. EnterpriseComply is built on a different principle: you own your data, you always have access to it, and you can take it with you at any time - no questions asked.
                 </p>
               </div>
             </div>
@@ -305,23 +305,23 @@ export default function TrustCenter() {
             {[
               {
                 question: "What happens if we change providers?",
-                answer: "Export your full compliance program as structured data at any time: controls, evidence, POA&Ms, risks, policies, and assessments. Your new provider or internal team can import it directly. Nothing is rebuilt from zero.",
+                answer: "Export your full compliance program as structured data at any time - controls, evidence, POA&Ms, risks, policies, and assessments. Your new provider or internal team can import it directly. Nothing is rebuilt from zero.",
                 icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4",
               },
               {
                 question: "What happens if EnterpriseComply closes?",
-                answer: "Your data is stored in your own tenant partition. We provide 90-day advance notice of any service changes plus an immediate full export. Your evidence artifacts are stored at the URLs you provided, not locked inside our system.",
+                answer: "Your data is stored in your own tenant partition. We provide 90-day advance notice of any service changes plus an immediate full export. Your evidence artifacts are stored at the URLs you provided - not locked inside our system.",
                 icon: "M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z",
               },
               {
                 question: "How much of our program would have to be redone?",
-                answer: "Zero. Every control implementation, every evidence item, every POA&M entry, every risk, all exportable as open formats (CSV, JSON, PDF). Your CMMC program lives in your export, not in our database.",
+                answer: "Zero. Every control implementation, every evidence item, every POA&M entry, every risk - all exportable as open formats (CSV, JSON, PDF). Your CMMC program lives in your export, not in our database.",
                 icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
               },
             ].map((item) => (
               <div key={item.question} className="bg-white border border-slate-200 rounded-xl p-5">
-                <div className="h-9 w-9 bg-green-50 rounded-lg flex items-center justify-center mb-3">
-                  <svg className="h-5 w-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <div className="h-9 w-9 bg-blue-50 rounded-lg flex items-center justify-center mb-3">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                   </svg>
                 </div>
@@ -369,10 +369,10 @@ export default function TrustCenter() {
                 {[
                   "Exports available on-demand, 24/7, from Settings",
                   "No support ticket, no waiting period, no approval process",
-                  "Evidence artifact URLs are your URLs, stored exactly as you provided them",
+                  "Evidence artifact URLs are your URLs - stored exactly as you provided them",
                   "90-day advance notice of any service termination",
                   "Immediate full export upon account cancellation request",
-                  "Open formats only: CSV, JSON, and PDF, with no proprietary lock-in",
+                  "Open formats only - CSV, JSON, and PDF - no proprietary lock-in",
                 ].map((c) => (
                   <li key={c} className="flex items-start gap-2 text-xs text-green-700">
                     <svg className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -386,7 +386,7 @@ export default function TrustCenter() {
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
               <p className="font-semibold text-slate-800 text-sm mb-2">Choosing a certified MSP? Ask these first.</p>
               <p className="text-xs text-slate-500 leading-relaxed mb-3">
-                Whether you use EnterpriseComply directly or through an MSP partner, your compliance data should always be accessible to you, not just to the MSP. Before signing any GRC or managed compliance contract, ask:
+                Whether you use EnterpriseComply directly or through an MSP partner, your compliance data should always be accessible to you - not just to the MSP. Before signing any GRC or managed compliance contract, ask:
               </p>
               <ul className="space-y-1.5">
                 {[
@@ -396,7 +396,7 @@ export default function TrustCenter() {
                   "Is my data stored in my account or the MSP's account?",
                 ].map((q) => (
                   <li key={q} className="flex items-start gap-2 text-xs text-slate-600">
-                    <span className="text-green-600 font-bold flex-shrink-0 mt-0.5">?</span>
+                    <span className="text-blue-500 font-bold flex-shrink-0 mt-0.5">?</span>
                     {q}
                   </li>
                 ))}
@@ -409,7 +409,7 @@ export default function TrustCenter() {
               <p className="font-semibold text-slate-900 text-sm">Ready to export your compliance program?</p>
               <p className="text-xs text-slate-500 mt-0.5">Full export available in Settings. Download all controls, evidence, POA&Ms, risks, and policies in one click.</p>
             </div>
-            <a href="/settings" className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 flex-shrink-0 transition-colors">
+            <a href="/settings" className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0 transition-colors">
               Go to Settings
             </a>
           </div>
@@ -421,15 +421,15 @@ export default function TrustCenter() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {CERTIFICATIONS.map((cert) => (
               <div key={cert.name} className="bg-white border border-slate-200 rounded-xl p-5 flex items-start gap-4">
-                <div className={`h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 ${cert.color === "blue" ? "bg-green-50" : "bg-slate-50"}`}>
-                  <svg className={`h-6 w-6 ${cert.color === "blue" ? "text-green-800" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <div className={`h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 ${cert.color === "blue" ? "bg-blue-50" : "bg-slate-50"}`}>
+                  <svg className={`h-6 w-6 ${cert.color === "blue" ? "text-blue-600" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
                 </div>
                 <div>
                   <p className="font-semibold text-slate-900 text-sm mb-1">{cert.name}</p>
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cert.color === "blue" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>{cert.status}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cert.color === "blue" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>{cert.status}</span>
                   </div>
                   <p className="text-xs text-slate-500">{cert.desc}</p>
                 </div>
@@ -444,7 +444,7 @@ export default function TrustCenter() {
               <div>
                 <p className="font-semibold text-slate-400 text-sm mb-1">More certifications in progress</p>
                 <p className="text-xs text-slate-400 leading-relaxed">We are actively working toward additional certifications. Activate a framework to begin tracking your progress.</p>
-                <a href="/frameworks" className="text-xs text-green-800 font-semibold hover:underline mt-2 inline-block">View frameworks &rarr;</a>
+                <a href="/frameworks" className="text-xs text-blue-600 font-semibold hover:underline mt-2 inline-block">View frameworks &rarr;</a>
               </div>
             </div>
           </div>

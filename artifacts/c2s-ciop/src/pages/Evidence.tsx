@@ -4,7 +4,7 @@ import { apiUrl } from "@/lib/queryClient";
 import { PageHeader, EmptyState, PrimaryButton, SectionLabel } from "@/components/ui/PageHeader";
 
 const SOURCE_LABEL: Record<string, { label: string; cls: string }> = {
-  auto: { label: "Automated", cls: "bg-green-50 text-green-700 ring-1 ring-green-200" },
+  auto: { label: "Automated", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
   manual: { label: "Manual", cls: "bg-slate-100 text-slate-600 ring-1 ring-slate-200" },
   github: { label: "GitHub", cls: "bg-slate-900 text-white" },
 };
@@ -129,7 +129,7 @@ export default function Evidence() {
           <p className="text-xs font-semibold text-slate-500 mt-1">Total Items</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${autoItems.length > 0 ? "text-green-800" : "text-slate-300"}`}>{autoItems.length}</p>
+          <p className={`text-2xl font-bold leading-none ${autoItems.length > 0 ? "text-blue-600" : "text-slate-300"}`}>{autoItems.length}</p>
           <p className="text-xs font-semibold text-slate-500 mt-1">Automated</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -189,13 +189,13 @@ export default function Evidence() {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Title *</label>
                 <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="MFA configuration screenshot" />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="MFA configuration screenshot" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Type</label>
                   <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 bg-white">
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                     {["document", "screenshot", "log", "report"].map(t => (
                       <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
                     ))}
@@ -204,31 +204,31 @@ export default function Evidence() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Control ID</label>
                   <input value={form.ucoControlId} onChange={e => setForm(f => ({ ...f, ucoControlId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="UCO-AI-001" />
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="UCO-AI-001" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Description</label>
                 <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 resize-none" rows={3} placeholder="Describe this evidence item..." />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={3} placeholder="Describe this evidence item..." />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">URL (optional)</label>
                   <input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="https://..." />
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Expiry Date</label>
                   <input type="date" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
             </div>
             <div className="p-5 border-t border-slate-100 flex justify-end gap-2">
               <button onClick={() => setShowUpload(false)} className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
               <button onClick={() => addMutation.mutate()} disabled={!form.title || addMutation.isPending}
-                className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50 transition-colors">
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
                 {addMutation.isPending ? "Adding..." : "Add Evidence"}
               </button>
             </div>
@@ -288,7 +288,7 @@ function EvidenceTable({ items, onDelete }: { items: any[]; onDelete: (id: numbe
                         <p className="font-semibold text-slate-900 text-sm leading-snug">{e.title}</p>
                         {e.url && (
                           <a href={e.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium text-green-800 hover:text-green-700 bg-green-50 hover:bg-green-100 px-2 py-0.5 rounded transition-colors flex-shrink-0"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors flex-shrink-0"
                             title={e.url}>
                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

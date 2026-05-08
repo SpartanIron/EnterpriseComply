@@ -24,11 +24,11 @@ const FRAMEWORKS = [
 ];
 
 const FRAMEWORK_COLORS: Record<string, string> = {
-  soc2: "from-green-700 to-green-800",
+  soc2: "from-blue-500 to-blue-600",
   iso27001: "from-purple-500 to-purple-600",
-  "nist-csf": "from-green-600 to-green-700",
+  "nist-csf": "from-indigo-500 to-indigo-600",
   "nist-800-53": "from-violet-500 to-violet-600",
-  "nist-800-171": "from-green-800 to-green-900",
+  "nist-800-171": "from-blue-600 to-blue-700",
   hipaa: "from-teal-500 to-teal-600",
   pci: "from-orange-500 to-orange-600",
   gdpr: "from-rose-500 to-rose-600",
@@ -138,12 +138,12 @@ export default function Onboarding() {
           <div className="flex items-center gap-2 mb-8">
             {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex items-center gap-2">
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${s < step ? "bg-green-800 text-white" : s === step ? "bg-green-800 text-white" : "bg-slate-200 text-slate-400"}`}>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${s < step ? "bg-blue-600 text-white" : s === step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-400"}`}>
                   {s < step ? (
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   ) : s}
                 </div>
-                {s < 4 && <div className={`h-0.5 w-12 transition-colors ${s < step ? "bg-green-800" : "bg-slate-200"}`} />}
+                {s < 4 && <div className={`h-0.5 w-12 transition-colors ${s < step ? "bg-blue-600" : "bg-slate-200"}`} />}
               </div>
             ))}
             <div className="ml-4 text-sm text-slate-500">
@@ -167,7 +167,7 @@ export default function Onboarding() {
                     value={orgData.name}
                     onChange={e => setOrgData({ ...orgData, name: e.target.value })}
                     placeholder="Acme Corp"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -176,7 +176,7 @@ export default function Onboarding() {
                     <select
                       value={orgData.industry}
                       onChange={e => setOrgData({ ...orgData, industry: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 bg-white"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     >
                       {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
                     </select>
@@ -186,7 +186,7 @@ export default function Onboarding() {
                     <select
                       value={orgData.size}
                       onChange={e => setOrgData({ ...orgData, size: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 bg-white"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     >
                       {SIZES.map(s => <option key={s}>{s}</option>)}
                     </select>
@@ -199,14 +199,14 @@ export default function Onboarding() {
                     value={orgData.website}
                     onChange={e => setOrgData({ ...orgData, website: e.target.value })}
                     placeholder="https://acme.com"
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
               <button
                 onClick={() => createOrg.mutate()}
                 disabled={!orgData.name.trim() || createOrg.isPending}
-                className="mt-6 w-full py-3 bg-green-800 hover:bg-green-900 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
+                className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
               >
                 {createOrg.isPending ? "Creating..." : "Continue"}
               </button>
@@ -233,11 +233,11 @@ export default function Onboarding() {
                             onClick={() => toggleFramework(fw.key)}
                             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-sm text-left transition-colors ${
                               selected
-                                ? "border-green-800 bg-green-50 text-green-700"
+                                ? "border-blue-600 bg-blue-50 text-blue-700"
                                 : "border-slate-200 hover:border-slate-300 text-slate-700"
                             }`}
                           >
-                            <div className={`h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center ${selected ? "bg-green-800 border-green-800" : "border-slate-300"}`}>
+                            <div className={`h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center ${selected ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
                               {selected && <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
                             </div>
                             <span className="font-medium">{fw.name}</span>
@@ -255,7 +255,7 @@ export default function Onboarding() {
                 <button
                   onClick={() => activateFrameworks.mutate(orgId!)}
                   disabled={selectedFrameworks.length === 0 || activateFrameworks.isPending}
-                  className="flex-1 py-3 bg-green-800 hover:bg-green-900 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
                 >
                   {activateFrameworks.isPending ? "Saving..." : `Continue with ${selectedFrameworks.length} framework${selectedFrameworks.length !== 1 ? "s" : ""}`}
                 </button>
@@ -270,7 +270,7 @@ export default function Onboarding() {
               <p className="text-slate-500 mb-6">Connect GitHub to automatically collect evidence for code security controls.</p>
               <a
                 href={apiUrl(`/integrations/github/connect?orgId=${orgId}`)}
-                className="w-full flex items-center gap-4 p-4 border-2 border-slate-200 hover:border-green-300 rounded-xl transition-colors group"
+                className="w-full flex items-center gap-4 p-4 border-2 border-slate-200 hover:border-blue-300 rounded-xl transition-colors group"
               >
                 <div className="h-12 w-12 bg-slate-900 rounded-xl flex items-center justify-center flex-shrink-0">
                   <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="currentColor">
@@ -278,10 +278,10 @@ export default function Onboarding() {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-slate-900 group-hover:text-green-700 transition-colors">Connect GitHub</p>
+                  <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">Connect GitHub</p>
                   <p className="text-sm text-slate-500">MFA status, branch protection, code review policies</p>
                 </div>
-                <svg className="h-5 w-5 text-slate-400 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-5 w-5 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </a>
@@ -292,7 +292,7 @@ export default function Onboarding() {
                 <button
                   onClick={() => completeOnboarding.mutate(orgId!)}
                   disabled={completeOnboarding.isPending}
-                  className="flex-1 py-3 bg-green-800 hover:bg-green-900 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
                 >
                   {completeOnboarding.isPending ? "One moment..." : "Skip for now"}
                 </button>
@@ -323,11 +323,11 @@ function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; sel
   const overallScore = totalControls > 0 ? Math.round((passingControls / totalControls) * 100) : 0;
 
   const FRAMEWORK_BADGE_COLORS: Record<string, string> = {
-    soc2: "bg-green-100 text-green-700",
+    soc2: "bg-blue-100 text-blue-700",
     iso27001: "bg-purple-100 text-purple-700",
     "nist-csf": "bg-indigo-100 text-indigo-700",
     "nist-800-53": "bg-violet-100 text-violet-700",
-    "nist-800-171": "bg-green-100 text-green-700",
+    "nist-800-171": "bg-blue-100 text-blue-700",
     hipaa: "bg-teal-100 text-teal-700",
     pci: "bg-orange-100 text-orange-700",
     gdpr: "bg-rose-100 text-rose-700",
@@ -341,7 +341,7 @@ function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; sel
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="h-8 w-8 rounded-full border-2 border-green-800 border-t-transparent animate-spin" />
+          <div className="h-8 w-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
           <p className="text-slate-700 font-semibold">Calculating your baseline compliance score...</p>
         </div>
         <p className="text-sm text-slate-400">Mapping {selectedFrameworks.length} framework{selectedFrameworks.length !== 1 ? "s" : ""} against your controls</p>
@@ -352,7 +352,7 @@ function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; sel
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       {/* Hero */}
-      <div className="bg-gradient-to-br from-green-800 to-green-900 p-8 text-center">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-8 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-white text-xs font-semibold mb-4">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
           Compliance program created
@@ -363,7 +363,7 @@ function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; sel
           </div>
         </div>
         <p className="text-white text-2xl font-bold mb-1">Your baseline is ready</p>
-        <p className="text-green-100 text-sm">
+        <p className="text-blue-100 text-sm">
           {passingControls} of {totalControls > 0 ? totalControls : "all"} controls passing across {frameworks.length} framework{frameworks.length !== 1 ? "s" : ""}
         </p>
       </div>
@@ -402,16 +402,16 @@ function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; sel
           </div>
         )}
 
-        <div className="bg-green-50 border border-green-100 rounded-xl p-4 mb-5">
-          <p className="text-sm font-semibold text-green-900 mb-1">What happens next?</p>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+          <p className="text-sm font-semibold text-blue-900 mb-1">What happens next?</p>
           <ul className="space-y-1">
             {[
               "Connect AWS, Okta, and other integrations to auto-collect evidence",
               "Review failing controls and assign owners for remediation",
               "Invite your auditor to the Auditor Portal for evidence review",
             ].map(item => (
-              <li key={item} className="flex items-start gap-2 text-xs text-green-800">
-                <svg className="h-3.5 w-3.5 text-green-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              <li key={item} className="flex items-start gap-2 text-xs text-blue-800">
+                <svg className="h-3.5 w-3.5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                 {item}
               </li>
             ))}
@@ -420,7 +420,7 @@ function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; sel
 
         <button
           onClick={onDone}
-          className="w-full py-3 bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl text-sm transition-colors"
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors"
         >
           Go to your dashboard
         </button>

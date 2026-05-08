@@ -11,17 +11,17 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 const AUTO_CONFIG: Record<string, { label: string; cls: string }> = {
-  full: { label: "Automated", cls: "bg-green-50 text-green-700 ring-1 ring-green-200" },
+  full: { label: "Automated", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
   partial: { label: "Partial", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" },
   manual: { label: "Manual", cls: "bg-slate-100 text-slate-500 ring-1 ring-slate-200" },
 };
 
 const FRAMEWORK_COLORS: Record<string, string> = {
-  soc2: "bg-green-50 text-green-700 ring-1 ring-green-200",
+  soc2: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
   iso27001: "bg-purple-50 text-purple-700 ring-1 ring-purple-200",
   "nist-csf": "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
   "nist-800-53": "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
-  "nist-800-171": "bg-green-50 text-green-700 ring-1 ring-green-200",
+  "nist-800-171": "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
   hipaa: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",
   pci: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
   gdpr: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
@@ -157,7 +157,7 @@ function CascadeModal({
         <div className="border-t border-slate-100 p-4">
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl text-sm transition-colors"
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors"
           >
             Done
           </button>
@@ -202,7 +202,7 @@ function OwnerPanel({ orgId, controlId, defaultOwner, defaultDue, onSuccess, onC
             value={owner}
             onChange={e => setOwner(e.target.value)}
             placeholder="Jane Smith"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
@@ -211,7 +211,7 @@ function OwnerPanel({ orgId, controlId, defaultOwner, defaultDue, onSuccess, onC
             type="date"
             value={due}
             onChange={e => setDue(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -219,7 +219,7 @@ function OwnerPanel({ orgId, controlId, defaultOwner, defaultDue, onSuccess, onC
         <button
           onClick={() => mutation.mutate()}
           disabled={mutation.isPending}
-          className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
           {mutation.isPending ? "Saving..." : "Save"}
         </button>
@@ -391,7 +391,7 @@ export default function Controls() {
 
       <PageHeader
         title="Controls"
-        subtitle="Security controls that satisfy every active framework. Implement once, prove compliance continuously."
+        subtitle="Security controls that satisfy every active framework - implement once, prove compliance continuously"
       />
 
       {/* Stats strip */}
@@ -490,9 +490,9 @@ export default function Controls() {
                               </div>
 
                               {c.remediationGuidance && (
-                                <div className="bg-green-50 border border-green-100 rounded-lg p-3.5">
-                                  <p className="text-xs font-bold text-green-700 mb-1 uppercase tracking-wide">Remediation Guidance</p>
-                                  <p className="text-sm text-green-900 leading-relaxed">{c.remediationGuidance}</p>
+                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3.5">
+                                  <p className="text-xs font-bold text-blue-700 mb-1 uppercase tracking-wide">Remediation Guidance</p>
+                                  <p className="text-sm text-blue-900 leading-relaxed">{c.remediationGuidance}</p>
                                 </div>
                               )}
 
@@ -532,7 +532,7 @@ export default function Controls() {
                                   )}
                                   <button
                                     onClick={() => setOwnerPanelId(c.controlId)}
-                                    className="text-xs text-slate-400 hover:text-green-800 font-medium"
+                                    className="text-xs text-slate-400 hover:text-blue-600 font-medium"
                                   >
                                     {c.result?.ownerName ? "Edit owner" : "Assign owner"}
                                   </button>
@@ -545,7 +545,7 @@ export default function Controls() {
                                   <select
                                     value={overrideStatus}
                                     onChange={e => setOverrideStatus(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 bg-white"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                   >
                                     <option value="passing">Passing</option>
                                     <option value="failing">Failing</option>
@@ -556,14 +556,14 @@ export default function Controls() {
                                     value={overrideNote}
                                     onChange={e => setOverrideNote(e.target.value)}
                                     placeholder="Add notes or justification..."
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 resize-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                     rows={3}
                                   />
                                   <div className="flex gap-2">
                                     <button
                                       onClick={() => overrideMutation.mutate({ controlId: c.controlId, status: overrideStatus, notes: overrideNote })}
                                       disabled={overrideMutation.isPending}
-                                      className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50 transition-colors"
+                                      className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                                     >
                                       {overrideMutation.isPending ? "Saving..." : "Save Override"}
                                     </button>
@@ -578,7 +578,7 @@ export default function Controls() {
                               ) : (
                                 <button
                                   onClick={() => { setOverrideId(c.controlId); setOverrideStatus(status); setOverrideNote(c.result?.remediationNotes ?? ""); }}
-                                  className="text-sm text-green-800 hover:text-green-700 font-semibold"
+                                  className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
                                 >
                                   Set manual override
                                 </button>

@@ -226,36 +226,36 @@ export default function Vendors() {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Vendor name *</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="Salesforce" />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Salesforce" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Website</label>
                 <input value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="https://salesforce.com" />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://salesforce.com" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Description</label>
                 <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 resize-none" placeholder="What does this vendor do?" />
+                  rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="What does this vendor do?" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Category</label>
                   <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {["saas", "infrastructure", "services", "hardware", "software"].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">Risk Level</label>
                   <select value={form.riskLevel} onChange={e => setForm(f => ({ ...f, riskLevel: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {["critical", "high", "medium", "low"].map(r => <option key={r}>{r}</option>)}
                   </select>
                 </div>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.hasDataProcessingAgreement} onChange={e => setForm(f => ({ ...f, hasDataProcessingAgreement: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-green-800" />
+                <input type="checkbox" checked={form.hasDataProcessingAgreement} onChange={e => setForm(f => ({ ...f, hasDataProcessingAgreement: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-blue-600" />
                 <span className="text-sm text-slate-700">Data Processing Agreement (DPA) signed</span>
               </label>
             </div>
@@ -264,7 +264,7 @@ export default function Vendors() {
               <button
                 onClick={() => editing ? updateMutation.mutate({ id: editing.id, data: form }) : addMutation.mutate()}
                 disabled={!form.name || (editing ? updateMutation.isPending : addMutation.isPending)}
-                className="flex-1 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50 transition-colors"
+                className="flex-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {(editing ? updateMutation.isPending : addMutation.isPending) ? "Saving..." : editing ? "Save Changes" : "Add Vendor"}
               </button>

@@ -151,7 +151,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     error:   { dot: "bg-red-500",    icon: "text-red-500" },
     warning: { dot: "bg-amber-400",  icon: "text-amber-500" },
     success: { dot: "bg-green-500",  icon: "text-green-500" },
-    info:    { dot: "bg-green-600",   icon: "text-green-600" },
+    info:    { dot: "bg-blue-500",   icon: "text-blue-500" },
   };
 
   const currentLabel = (() => {
@@ -166,19 +166,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
   })();
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#f5f3ee" }}>
-      {/* Sidebar - forest green */}
-      <aside className="w-64 flex flex-col flex-shrink-0" style={{ background: "#14532d" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: "#f8fafc" }}>
+      {/* Sidebar - dark */}
+      <aside className="w-64 flex flex-col flex-shrink-0" style={{ background: "#0f172a" }}>
         {/* Logo */}
         <button
           onClick={() => navigate("/dashboard")}
           className="h-16 flex items-center px-5 w-full transition-colors"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.18)", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>
+            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg">
               <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" />
             </div>
             <div className="min-w-0">
@@ -202,19 +202,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   onClick={() => toggleSection(section)}
                   className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg group transition-colors"
                   style={{
-                    color: hasActive && !isOpen ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.45)",
-                    background: hasActive && !isOpen ? "rgba(255,255,255,0.1)" : "transparent",
+                    color: hasActive && !isOpen ? "#60a5fa" : "rgba(100,116,139,0.9)",
+                    background: hasActive && !isOpen ? "rgba(59,130,246,0.12)" : "transparent",
                   }}
                   onMouseEnter={e => {
                     if (!(hasActive && !isOpen)) {
-                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
-                      (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.7)";
+                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                      (e.currentTarget as HTMLElement).style.color = "#94a3b8";
                     }
                   }}
                   onMouseLeave={e => {
                     if (!(hasActive && !isOpen)) {
                       (e.currentTarget as HTMLElement).style.background = "transparent";
-                      (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)";
+                      (e.currentTarget as HTMLElement).style.color = "rgba(100,116,139,0.9)";
                     }
                   }}
                 >
@@ -240,21 +240,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
                           onClick={() => navigate(path)}
                           className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all"
                           style={{
-                            background: active ? "rgba(255,255,255,0.15)" : "transparent",
-                            color: active ? "#ffffff" : "rgba(255,255,255,0.65)",
-                            borderLeft: active ? "2px solid #4ade80" : "2px solid transparent",
-                            boxShadow: "none",
+                            background: active ? "#2563eb" : "transparent",
+                            color: active ? "#ffffff" : "rgba(148,163,184,0.9)",
+                            boxShadow: active ? "0 1px 3px rgba(37,99,235,0.4)" : "none",
                           }}
                           onMouseEnter={e => {
                             if (!active) {
-                              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)";
-                              (e.currentTarget as HTMLElement).style.color = "#ffffff";
+                              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+                              (e.currentTarget as HTMLElement).style.color = "#f1f5f9";
                             }
                           }}
                           onMouseLeave={e => {
                             if (!active) {
                               (e.currentTarget as HTMLElement).style.background = "transparent";
-                              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)";
+                              (e.currentTarget as HTMLElement).style.color = "rgba(148,163,184,0.9)";
                             }
                           }}
                         >
@@ -271,7 +270,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* Bottom */}
-        <div className="px-2.5 pb-3 pt-2 space-y-0.5" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <div className="px-2.5 pb-3 pt-2 space-y-0.5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           {[
             { path: "/settings", label: "Settings", Icon: SettingsIcon },
             { path: "/audit-log", label: "Audit Log", Icon: AuditLogIcon },
@@ -283,20 +282,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 onClick={() => navigate(path)}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all"
                 style={{
-                  background: active ? "rgba(255,255,255,0.15)" : "transparent",
-                  color: active ? "#ffffff" : "rgba(255,255,255,0.65)",
-                  borderLeft: active ? "2px solid #4ade80" : "2px solid transparent",
+                  background: active ? "#2563eb" : "transparent",
+                  color: active ? "#ffffff" : "rgba(148,163,184,0.9)",
+                  boxShadow: active ? "0 1px 3px rgba(37,99,235,0.4)" : "none",
                 }}
                 onMouseEnter={e => {
                   if (!active) {
-                    (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)";
-                    (e.currentTarget as HTMLElement).style.color = "#ffffff";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+                    (e.currentTarget as HTMLElement).style.color = "#f1f5f9";
                   }
                 }}
                 onMouseLeave={e => {
                   if (!active) {
                     (e.currentTarget as HTMLElement).style.background = "transparent";
-                    (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)";
+                    (e.currentTarget as HTMLElement).style.color = "rgba(148,163,184,0.9)";
                   }
                 }}
               >
@@ -309,17 +308,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {/* User profile */}
           <div className="flex items-center gap-2.5 px-2.5 py-2 mt-1">
             {user?.imageUrl
-              ? <img src={user.imageUrl} className="h-7 w-7 rounded-full flex-shrink-0" style={{ outline: "1.5px solid rgba(255,255,255,0.2)" }} />
-              : <div className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: "rgba(255,255,255,0.2)" }}>{user?.firstName?.[0] ?? "U"}</div>
+              ? <img src={user.imageUrl} className="h-7 w-7 rounded-full flex-shrink-0" style={{ outline: "1.5px solid rgba(255,255,255,0.15)" }} />
+              : <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">{user?.firstName?.[0] ?? "U"}</div>
             }
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate leading-tight" style={{ color: "rgba(255,255,255,0.9)" }}>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
+              <p className="text-sm font-medium truncate leading-tight" style={{ color: "#e2e8f0" }}>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
               <button
                 onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
                 className="text-xs leading-tight transition-colors"
-                style={{ color: "rgba(255,255,255,0.45)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+                style={{ color: "rgba(100,116,139,0.8)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#94a3b8"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(100,116,139,0.8)"; }}
               >
                 Sign out
               </button>
@@ -331,7 +330,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Right column */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top header bar */}
-        <header className="h-14 flex items-center justify-between px-6 flex-shrink-0" style={{ background: "#faf8f4", borderBottom: "1px solid #d4c9b0" }}>
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs text-slate-400 font-medium hidden sm:block">{activeSection}</span>
             <svg className="h-3 w-3 text-slate-300 flex-shrink-0 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -370,7 +369,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     {unreadCount > 0 && (
                       <button
                         onClick={() => markAllReadMutation.mutate()}
-                        className="text-xs font-semibold text-green-700 hover:text-green-800"
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700"
                       >
                         Mark all read
                       </button>
@@ -405,17 +404,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
-            <div className="h-8 w-8 rounded-full overflow-hidden flex-shrink-0" style={{ outline: "2px solid #d4c9b0" }}>
+            <div className="h-8 w-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-slate-100">
               {user?.imageUrl
                 ? <img src={user.imageUrl} className="h-full w-full object-cover" />
-                : <div className="h-full w-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#15803d" }}>{user?.firstName?.[0] ?? "U"}</div>
+                : <div className="h-full w-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white">{user?.firstName?.[0] ?? "U"}</div>
               }
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto" style={{ background: "#f5f3ee" }}>
+        <main className="flex-1 overflow-y-auto bg-slate-50">
           {children}
         </main>
       </div>

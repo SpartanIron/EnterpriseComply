@@ -198,7 +198,7 @@ export default function Policies() {
           />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { cat: "Security", count: 12, examples: "Information Security Policy, Acceptable Use Policy, Access Control Policy", color: "bg-green-50 text-green-700" },
+              { cat: "Security", count: 12, examples: "Information Security Policy, Acceptable Use Policy, Access Control Policy", color: "bg-blue-50 text-blue-700" },
               { cat: "Privacy", count: 5, examples: "Data Classification Policy, Privacy Policy, Data Retention Policy", color: "bg-green-50 text-green-700" },
               { cat: "Operations", count: 6, examples: "Change Management Policy, Incident Response Policy, Business Continuity Plan", color: "bg-amber-50 text-amber-700" },
               { cat: "Human Resources", count: 4, examples: "Background Check Policy, Employee Security Awareness, Onboarding/Offboarding", color: "bg-purple-50 text-purple-700" },
@@ -243,7 +243,7 @@ export default function Policies() {
                         <div>
                           <p className="font-semibold text-slate-900">{p.title}</p>
                           {p.acknowledgedCount !== undefined && p.status === "published" && (
-                            <button onClick={() => setAckModal(p)} className="text-xs text-green-800 hover:underline mt-0.5">
+                            <button onClick={() => setAckModal(p)} className="text-xs text-blue-600 hover:underline mt-0.5">
                               {p.acknowledgedCount ?? 0} acknowledgment{(p.acknowledgedCount ?? 0) !== 1 ? "s" : ""}
                             </button>
                           )}
@@ -275,7 +275,7 @@ export default function Policies() {
                         {p.status === "published" && (
                           <>
                             <button onClick={() => setAckModal(p)}
-                              className="px-2 py-1 text-xs font-semibold bg-green-50 text-green-800 border border-green-200 rounded hover:bg-green-100 transition-colors whitespace-nowrap">
+                              className="px-2 py-1 text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition-colors whitespace-nowrap">
                               Acks
                             </button>
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: "review_required" } })}
@@ -322,25 +322,25 @@ export default function Policies() {
                           key={t.key}
                           onClick={() => createMutation.mutate(t)}
                           disabled={createMutation.isPending}
-                          className="w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl hover:border-green-300 hover:bg-green-50/50 transition-all text-left group disabled:opacity-60"
+                          className="w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left group disabled:opacity-60"
                         >
-                          <div className="h-9 w-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 flex-shrink-0 group-hover:bg-green-100 group-hover:text-green-800 transition-colors">
+                          <div className="h-9 w-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 flex-shrink-0 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-slate-900 text-sm group-hover:text-green-700 transition-colors">{t.title}</p>
+                            <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">{t.title}</p>
                             {t.description && <p className="text-xs text-slate-400 mt-0.5 truncate">{t.description}</p>}
                             {t.frameworks?.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {t.frameworks.slice(0, 3).map((f: string) => (
-                                  <span key={f} className="px-1.5 py-0.5 bg-green-50 text-green-800 text-xs font-mono rounded">{f}</span>
+                                  <span key={f} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs font-mono rounded">{f}</span>
                                 ))}
                               </div>
                             )}
                           </div>
-                          <svg className="h-4 w-4 text-slate-300 group-hover:text-green-600 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <svg className="h-4 w-4 text-slate-300 group-hover:text-blue-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
@@ -371,13 +371,13 @@ export default function Policies() {
             </div>
             <div className="p-5 border-b border-slate-100 flex gap-2">
               <select value={ackPersonId} onChange={e => setAckPersonId(e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 bg-white">
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <option value="">Select person to acknowledge...</option>
                 {people.map((p: any) => <option key={p.id} value={p.id}>{p.name ?? p.login} {p.email ? `(${p.email})` : ""}</option>)}
               </select>
               <button onClick={() => acknowledgeMutation.mutate({ policyId: ackModal.id, personId: Number(ackPersonId) })}
                 disabled={!ackPersonId || acknowledgeMutation.isPending}
-                className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50">
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 Record
               </button>
               <button onClick={() => bulkRequestMutation.mutate(ackModal.id)} disabled={bulkRequestMutation.isPending}

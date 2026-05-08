@@ -36,7 +36,7 @@ export function EmptyState({
 }) {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-14 text-center shadow-sm">
-      <div className="h-14 w-14 bg-gradient-to-br from-green-50 to-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-green-600 ring-1 ring-slate-200">
+      <div className="h-14 w-14 bg-gradient-to-br from-blue-50 to-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-400 ring-1 ring-slate-200">
         {icon}
       </div>
       <p className="font-bold text-slate-800 text-base">{title}</p>
@@ -51,7 +51,7 @@ export function PrimaryButton({ children, onClick, disabled }: { children: React
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-2 px-4 py-2 bg-green-800 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm"
+      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm"
     >
       {children}
     </button>

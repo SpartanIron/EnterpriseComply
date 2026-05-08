@@ -61,7 +61,7 @@ export default function AccessReviews() {
           <h1 className="text-xl font-bold text-slate-900">Access Reviews</h1>
           <p className="text-sm text-slate-500 mt-0.5">SOC 2 CC6.2 / ISO 27001 A.9 - Periodic user access attestation</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">
+        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
           + New Review Campaign
         </button>
       </div>
@@ -70,21 +70,21 @@ export default function AccessReviews() {
         reviews.length === 0 ? (
           <div className="space-y-4">
             <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-              <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <svg className="h-6 w-6 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
               </div>
               <p className="text-slate-700 font-semibold">No access reviews yet</p>
               <p className="text-sm text-slate-400 mt-1 mb-5">Create a review campaign to attest user access across your organization.</p>
-              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">Launch first campaign</button>
+              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Launch first campaign</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 { label: "SOC 2 CC6.2", body: "Requires periodic review of user access to verify that only authorized individuals retain access to systems." },
-                { label: "ISO 27001 A.9", body: "Access rights must be reviewed regularly (typically quarterly) and revoked when no longer needed." },
+                { label: "ISO 27001 A.9", body: "Access rights must be reviewed regularly - typically quarterly - and revoked when no longer needed." },
                 { label: "FedRAMP AC-2", body: "Account management reviews must occur at defined frequencies with documented approvals and attestations." },
               ].map(({ label, body }) => (
                 <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
-                  <span className="inline-block px-2 py-0.5 bg-green-50 text-green-700 text-xs font-semibold rounded-md mb-2">{label}</span>
+                  <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md mb-2">{label}</span>
                   <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
                 </div>
               ))}
@@ -95,11 +95,11 @@ export default function AccessReviews() {
             {reviews.map((r) => {
               const pct = r.totalPeople > 0 ? Math.round(((r.approvedCount + r.revokedCount) / r.totalPeople) * 100) : 0;
               return (
-                <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-green-300 cursor-pointer" onClick={() => setSelected(r)}>
+                <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-300 cursor-pointer" onClick={() => setSelected(r)}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === "completed" ? "bg-green-50 text-green-700" : "bg-green-50 text-green-800"}`}>{r.status === "completed" ? "Completed" : "In Progress"}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === "completed" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-600"}`}>{r.status === "completed" ? "Completed" : "In Progress"}</span>
                         {r.dueDate && <span className="text-xs text-slate-400">Due {new Date(r.dueDate).toLocaleDateString()}</span>}
                       </div>
                       <h3 className="font-medium text-slate-800">{r.name}</h3>
@@ -109,7 +109,7 @@ export default function AccessReviews() {
                           <span>Review progress</span><span>{pct}%</span>
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-2">
-                          <div className="bg-green-700 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     </div>
@@ -132,7 +132,7 @@ export default function AccessReviews() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg> Back
               </button>
               <h2 className="text-lg font-semibold text-slate-900">{selected.name}</h2>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selected.status === "completed" ? "bg-green-50 text-green-700" : "bg-green-50 text-green-800"}`}>{selected.status}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selected.status === "completed" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-600"}`}>{selected.status}</span>
             </div>
             <div className="flex gap-2">
               {pendingItems.length > 0 && (
@@ -220,17 +220,17 @@ export default function AccessReviews() {
             <div className="p-5 border-b border-slate-100"><h2 className="font-semibold text-slate-900">New Access Review Campaign</h2></div>
             <div className="p-5 space-y-3">
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Campaign Name *</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="e.g. Q1 2025 Quarterly Access Review" /></div>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Q1 2025 Quarterly Access Review" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Due Date</label>
                 <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
-              <p className="text-xs text-green-800 bg-green-50 border border-green-200 rounded-lg p-2">All active employees will be added to this review campaign automatically.</p>
+              <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg p-2">All active employees will be added to this review campaign automatically.</p>
             </div>
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createMutation.mutate(form)} disabled={!form.name || createMutation.isPending}
-                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {createMutation.isPending ? "Creating..." : "Launch Campaign"}
               </button>
             </div>

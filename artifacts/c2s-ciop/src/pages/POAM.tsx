@@ -10,7 +10,7 @@ const SEVERITY_BADGE: Record<string, string> = {
 };
 const STATUS_BADGE: Record<string, string> = {
   open: "bg-red-100 text-red-700",
-  in_progress: "bg-green-100 text-green-700",
+  in_progress: "bg-blue-100 text-blue-700",
   risk_accepted: "bg-amber-100 text-amber-700",
   resolved: "bg-green-100 text-green-700",
   closed: "bg-slate-100 text-slate-500",
@@ -222,7 +222,7 @@ export default function POAM() {
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-800 hover:bg-green-900 text-white text-sm font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -242,7 +242,7 @@ export default function POAM() {
           <p className="text-xs font-semibold text-slate-500 mt-1">Open</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${open.filter(i => i.status === "in_progress").length > 0 ? "text-green-800" : "text-slate-300"}`}>{open.filter(i => i.status === "in_progress").length}</p>
+          <p className={`text-2xl font-bold leading-none ${open.filter(i => i.status === "in_progress").length > 0 ? "text-blue-600" : "text-slate-300"}`}>{open.filter(i => i.status === "in_progress").length}</p>
           <p className="text-xs font-semibold text-slate-500 mt-1">In Progress</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -281,7 +281,7 @@ export default function POAM() {
                 className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors">
                 Import from failing controls
               </button>
-              <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 transition-colors">Create first item</button>
+              <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">Create first item</button>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -371,19 +371,19 @@ export default function POAM() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Title *</label>
                     <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="MFA not enforced for admin accounts" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Weakness Name *</label>
                     <input type="text" value={form.weakness} onChange={e => setForm({ ...form, weakness: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Authentication weakness - missing MFA enforcement" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
                     <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 resize-none"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                       rows={3} placeholder="Describe the security weakness, its scope, and potential impact..." />
                   </div>
                 </div>
@@ -395,13 +395,13 @@ export default function POAM() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Owner Name *</label>
                     <input type="text" value={form.ownerName} onChange={e => setForm({ ...form, ownerName: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Jane Smith" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Owner Team</label>
                     <input type="text" value={form.ownerTeam} onChange={e => setForm({ ...form, ownerTeam: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Security" />
                   </div>
                 </div>
@@ -413,21 +413,21 @@ export default function POAM() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Severity</label>
                     <select value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                       {["critical", "high", "medium", "low"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Original Risk</label>
                     <select value={form.originalRisk} onChange={e => setForm({ ...form, originalRisk: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                       {["critical", "high", "medium", "low"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Residual Risk</label>
                     <select value={form.residualRisk} onChange={e => setForm({ ...form, residualRisk: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                       {["high", "medium", "low", "minimal"].map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
                     </select>
                   </div>
@@ -436,7 +436,7 @@ export default function POAM() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Framework</label>
                     <select value={form.frameworkKey} onChange={e => setForm({ ...form, frameworkKey: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                       <option value="fedramp">FedRAMP</option>
                       <option value="cmmc-l2">CMMC Level 2</option>
                       <option value="nist-800-53">NIST 800-53</option>
@@ -454,25 +454,25 @@ export default function POAM() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Scheduled Completion Date *</label>
                     <input type="date" value={form.scheduledCompletionDate} onChange={e => setForm({ ...form, scheduledCompletionDate: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Resources Required</label>
                     <input type="text" value={form.resources} onChange={e => setForm({ ...form, resources: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Security engineer (40hrs), Azure AD license, external pen test" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Estimated Cost ($)</label>
                     <input type="number" value={form.estimatedCost} onChange={e => setForm({ ...form, estimatedCost: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="5000" min="0" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Milestones</label>
                     <p className="text-xs text-slate-400 mb-1.5">One milestone per line</p>
                     <textarea value={form.milestones} onChange={e => setForm({ ...form, milestones: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 font-mono"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                       rows={5} placeholder={"Identify root cause\nDevelop remediation plan\nImplement fix\nVerify and close"} />
                   </div>
                 </div>
@@ -482,7 +482,7 @@ export default function POAM() {
             <div className="p-6 border-t border-slate-100 flex gap-3">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createMutation.mutate()} disabled={!form.title || !form.weakness || !form.ownerName || createMutation.isPending}
-                className="flex-1 py-2.5 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50">
+                className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {createMutation.isPending ? "Creating..." : "Create Item"}
               </button>
             </div>
@@ -527,10 +527,10 @@ function POAMCard({ item, onStatusChange, editStatus, onStatusSave, onStatusCanc
               </span>
             ) : (
               <div className="flex items-center gap-1.5">
-                <select value={editStatus.status} onChange={e => onStatusSet(e.target.value)} className="px-2 py-0.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-700">
+                <select value={editStatus.status} onChange={e => onStatusSet(e.target.value)} className="px-2 py-0.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
                   {["open", "in_progress", "risk_accepted", "resolved", "closed"].map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
                 </select>
-                <button onClick={onStatusSave} disabled={saving} className="px-2 py-0.5 bg-green-800 text-white text-xs rounded hover:bg-green-900 disabled:opacity-50">{saving ? "..." : "Save"}</button>
+                <button onClick={onStatusSave} disabled={saving} className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50">{saving ? "..." : "Save"}</button>
                 <button onClick={onStatusCancel} className="px-2 py-0.5 border border-slate-200 text-slate-600 text-xs rounded hover:bg-slate-50">Cancel</button>
               </div>
             )}

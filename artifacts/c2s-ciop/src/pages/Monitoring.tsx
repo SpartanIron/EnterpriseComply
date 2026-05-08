@@ -17,7 +17,7 @@ const SEVERITY_CONFIG: Record<string, { dot: string; text: string }> = {
   critical: { dot: "bg-red-500", text: "text-red-700" },
   high: { dot: "bg-orange-500", text: "text-orange-700" },
   warning: { dot: "bg-yellow-500", text: "text-yellow-700" },
-  info: { dot: "bg-green-500", text: "text-green-700" },
+  info: { dot: "bg-blue-400", text: "text-blue-700" },
 };
 
 export default function Monitoring() {
@@ -89,7 +89,7 @@ export default function Monitoring() {
           <p className="text-xs font-semibold text-slate-500 mt-1">Total Notifications</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${unread > 0 ? "text-green-800" : "text-slate-300"}`}>{unread}</p>
+          <p className={`text-2xl font-bold leading-none ${unread > 0 ? "text-blue-600" : "text-slate-300"}`}>{unread}</p>
           <p className="text-xs font-semibold text-slate-500 mt-1">Unread</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -106,10 +106,10 @@ export default function Monitoring() {
       <div className="flex gap-1 border-b border-slate-200 mb-6">
         {([["notifications", "Notifications"], ["monitoring", "Monitoring Jobs"], ["settings", "Alert Settings"]] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? "border-green-800 text-green-800" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
             {label}
             {id === "notifications" && (notifData?.unreadCount ?? 0) > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">{notifData?.unreadCount}</span>
+              <span className="ml-1.5 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">{notifData?.unreadCount}</span>
             )}
           </button>
         ))}
@@ -119,7 +119,7 @@ export default function Monitoring() {
         <div>
           {notifications.length > 0 && unread > 0 && (
             <div className="flex justify-end mb-3">
-              <button onClick={() => markReadMutation.mutate()} className="text-xs text-green-800 hover:underline">Mark all read</button>
+              <button onClick={() => markReadMutation.mutate()} className="text-xs text-blue-600 hover:underline">Mark all read</button>
             </div>
           )}
           {notifications.length === 0 ? (
@@ -207,20 +207,20 @@ export default function Monitoring() {
                   <p className="text-sm font-medium text-slate-700">Email Notifications</p>
                   <p className="text-xs text-slate-400">Receive alerts via email</p>
                 </div>
-                <input type="checkbox" checked={settings.emailEnabled} onChange={(e) => updateSettingsMutation.mutate({ emailEnabled: e.target.checked })} className="h-4 w-4 text-green-800" />
+                <input type="checkbox" checked={settings.emailEnabled} onChange={(e) => updateSettingsMutation.mutate({ emailEnabled: e.target.checked })} className="h-4 w-4 text-blue-600" />
               </label>
               <label className="flex items-center justify-between p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
                 <div>
                   <p className="text-sm font-medium text-slate-700">Slack Notifications</p>
                   <p className="text-xs text-slate-400">Send alerts to a Slack channel</p>
                 </div>
-                <input type="checkbox" checked={settings.slackEnabled} onChange={(e) => updateSettingsMutation.mutate({ slackEnabled: e.target.checked })} className="h-4 w-4 text-green-800" />
+                <input type="checkbox" checked={settings.slackEnabled} onChange={(e) => updateSettingsMutation.mutate({ slackEnabled: e.target.checked })} className="h-4 w-4 text-blue-600" />
               </label>
               {settings.slackEnabled && (
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Slack Webhook URL</label>
                   <input defaultValue={settings.slackWebhookUrl ?? ""} onBlur={(e) => updateSettingsMutation.mutate({ slackWebhookUrl: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="https://hooks.slack.com/services/..." />
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://hooks.slack.com/services/..." />
                 </div>
               )}
             </div>
@@ -231,7 +231,7 @@ export default function Monitoring() {
               {([["notifyOnDrift", "Compliance Drift Detected"], ["notifyOnEvidenceExpiry", "Evidence Expiring (30 days)"], ["notifyOnPoamOverdue", "POA&M Items Overdue"], ["notifyOnNewFindings", "New Findings"]] as const).map(([key, label]) => (
                 <label key={key} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
                   <p className="text-sm font-medium text-slate-700">{label}</p>
-                  <input type="checkbox" checked={settings[key]} onChange={(e) => updateSettingsMutation.mutate({ [key]: e.target.checked })} className="h-4 w-4 text-green-800" />
+                  <input type="checkbox" checked={settings[key]} onChange={(e) => updateSettingsMutation.mutate({ [key]: e.target.checked })} className="h-4 w-4 text-blue-600" />
                 </label>
               ))}
             </div>

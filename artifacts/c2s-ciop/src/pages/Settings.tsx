@@ -72,19 +72,19 @@ export default function Settings() {
             <>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Organization name</label>
-                <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+                <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Industry</label>
-                  <select value={form.industry ?? ""} onChange={e => setForm({ ...form, industry: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                  <select value={form.industry ?? ""} onChange={e => setForm({ ...form, industry: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Select industry</option>
                     {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Company size</label>
-                  <select value={form.size ?? ""} onChange={e => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-700">
+                  <select value={form.size ?? ""} onChange={e => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Select size</option>
                     {SIZES.map(s => <option key={s}>{s}</option>)}
                   </select>
@@ -92,12 +92,12 @@ export default function Settings() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Website</label>
-                <input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="https://..." />
+                <input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
               </div>
               <button
                 onClick={() => saveMutation.mutate()}
                 disabled={!isDirty || saveMutation.isPending}
-                className="px-5 py-2.5 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {saveMutation.isPending ? "Saving..." : saved ? "Saved" : "Save changes"}
               </button>
@@ -116,7 +116,7 @@ export default function Settings() {
               <p className="font-semibold text-slate-900 capitalize">{org?.plan ?? "Starter"} Plan</p>
               <p className="text-sm text-slate-500 mt-0.5">All frameworks, integrations, and core features included.</p>
             </div>
-            <span className="px-3 py-1.5 bg-green-100 text-green-700 text-sm font-semibold rounded-full">Current plan</span>
+            <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full">Current plan</span>
           </div>
         </div>
       </div>
@@ -205,7 +205,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
 
   const EXPORTS = [
     { id: "evidence", label: "Evidence Vault", desc: "All evidence items with artifact URLs, control mappings, collection dates, and expiry", format: "CSV", action: exportEvidence },
-    { id: "poam", label: "POA&M Register", desc: "All plan of action items with FedRAMP-required fields (eMASS-compatible column format)", format: "CSV", action: exportPoam },
+    { id: "poam", label: "POA&M Register", desc: "All plan of action items with FedRAMP-required fields - eMASS-compatible column format", format: "CSV", action: exportPoam },
     { id: "risks", label: "Risk Register", desc: "All risk items with likelihood, impact, category, owner, and linked controls", format: "CSV", action: exportRisks },
   ];
 
@@ -219,7 +219,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
         <button
           onClick={exportAll}
           disabled={!!exporting}
-          className="flex items-center gap-2 px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -229,12 +229,12 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
       </div>
 
       <div className="p-5">
-        <div className="bg-green-50 border border-green-100 rounded-lg px-4 py-3 mb-4 flex items-start gap-3">
-          <svg className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 mb-4 flex items-start gap-3">
+          <svg className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
           </svg>
-          <p className="text-xs text-green-700 leading-relaxed">
-            Exports are available on-demand, 24/7. Evidence artifact URLs point to the external locations you provided; your artifacts live at those URLs, not inside our system. "Export All" produces a single JSON file containing all data sets. Use the individual exports for CSV format.
+          <p className="text-xs text-blue-700 leading-relaxed">
+            Exports are available on-demand, 24/7. Evidence artifact URLs point to the external locations you provided - your artifacts live at those URLs, not inside our system. "Export All" produces a single JSON file containing all data sets. Use the individual exports for CSV format.
           </p>
         </div>
 
@@ -264,7 +264,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
 
         <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span>SSP and board reports are available from their respective pages in the Federal and Dashboard sections.</span>
-          <a href="/trust-center" className="text-green-800 hover:underline font-medium flex-shrink-0 ml-3">View portability policy</a>
+          <a href="/trust-center" className="text-blue-600 hover:underline font-medium flex-shrink-0 ml-3">View portability policy</a>
         </div>
       </div>
     </div>

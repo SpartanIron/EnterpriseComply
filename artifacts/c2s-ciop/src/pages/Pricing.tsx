@@ -74,7 +74,7 @@ const TIERS = [
     description: "For DoD contractors and defense suppliers requiring CMMC, NIST 800-171, and POA&M compliance.",
     highlight: true,
     badge: "Federal-native",
-    mspCallout: "CMMC MSPs charge $5k-15k/mo. EnterpriseComply Federal: $2,000/mo. Same outcome: your data, your program.",
+    mspCallout: "CMMC MSPs charge $5k-15k/mo. EnterpriseComply Federal: $2,000/mo. Same outcome - your data, your program.",
     cta: "Start free trial",
     ctaHref: "/sign-up",
     features: [
@@ -189,7 +189,7 @@ const COMPETITORS = [
     poam: true,
     sprs: true,
     ssp: true,
-    note: "No software. You own nothing.",
+    note: "No software - you own nothing",
   },
   {
     name: "EnterpriseComply",
@@ -215,11 +215,11 @@ const FAQS = [
   },
   {
     q: "Why do I need the Federal tier for CMMC?",
-    a: "CMMC Level 2 requires NIST SP 800-171 controls, a System Security Plan (SSP), a Plan of Action and Milestones (POA&M), and a SPRS score in the DoD portal. These are native to the Federal tier, not available as add-ons in Essentials or Professional.",
+    a: "CMMC Level 2 requires NIST SP 800-171 controls, a System Security Plan (SSP), a Plan of Action and Milestones (POA&M), and a SPRS score in the DoD portal. These are native to the Federal tier - not available as add-ons in Essentials or Professional.",
   },
   {
     q: "How does EnterpriseComply compare to hiring a CMMC MSP?",
-    a: "A CMMC MSP typically charges $5,000-15,000 per month to manage your compliance program. When they close or you change providers, you may have to rebuild from scratch. EnterpriseComply Federal at $2,000/month gives you the same capability with full data ownership and portability. Export everything at any time.",
+    a: "A CMMC MSP typically charges $5,000-15,000 per month to manage your compliance program - and when they close or you change providers, you may have to rebuild from scratch. EnterpriseComply Federal at $2,000/month gives you the same capability with full data ownership and portability. Export everything at any time.",
   },
   {
     q: "Can I upgrade or downgrade mid-year?",
@@ -239,13 +239,13 @@ const FAQS = [
   },
   {
     q: "Do you offer nonprofit or startup discounts?",
-    a: "Yes. 30% for verified nonprofits and 20% for pre-Series A startups. Contact sales with documentation and we will apply the discount immediately.",
+    a: "Yes - 30% for verified nonprofits and 20% for pre-Series A startups. Contact sales with documentation and we will apply the discount immediately.",
   },
 ];
 
 function CheckIcon({ colored = false }: { colored?: boolean }) {
   return (
-    <svg className={`h-4 w-4 flex-shrink-0 mt-0.5 ${colored ? "text-green-800" : "text-emerald-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <svg className={`h-4 w-4 flex-shrink-0 mt-0.5 ${colored ? "text-blue-600" : "text-emerald-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   );
@@ -281,13 +281,13 @@ export default function Pricing() {
           <div className="flex items-center gap-4">
             <a href={BASE_PATH + "/"} className="text-sm text-slate-500 hover:text-slate-900">Home</a>
             {isSignedIn ? (
-              <a href={BASE_PATH + "/dashboard"} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">
+              <a href={BASE_PATH + "/dashboard"} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
                 Dashboard
               </a>
             ) : (
               <>
                 <a href={BASE_PATH + "/sign-in"} className="text-sm text-slate-600 hover:text-slate-900">Sign in</a>
-                <a href={BASE_PATH + "/sign-up"} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">
+                <a href={BASE_PATH + "/sign-up"} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
                   Start free trial
                 </a>
               </>
@@ -297,12 +297,12 @@ export default function Pricing() {
       </nav>
 
       <div className="pt-24 pb-8 px-6 text-center max-w-3xl mx-auto">
-        <p className="text-xs font-bold uppercase tracking-widest text-green-800 mb-3">Transparent pricing</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Transparent pricing</p>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
           Compliance infrastructure,<br />not compliance overhead.
         </h1>
         <p className="text-lg text-slate-500 leading-relaxed mb-8">
-          The only GRC platform with a native federal layer. SOC 2, ISO 27001, HIPAA, CMMC, FedRAMP, and 8 more, all on the same evidence and control foundation. No per-framework fees.
+          The only GRC platform with a native federal layer. SOC 2, ISO 27001, HIPAA, CMMC, FedRAMP, and 8 more - all on the same evidence and control foundation. No per-framework fees.
         </p>
 
         <div className="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1">
@@ -340,7 +340,7 @@ export default function Pricing() {
               <div
                 key={tier.name}
                 className={`relative rounded-2xl flex flex-col ${tier.highlight
-                  ? "bg-green-800 text-white shadow-2xl shadow-blue-200 ring-2 ring-green-800"
+                  ? "bg-blue-600 text-white shadow-2xl shadow-blue-200 ring-2 ring-blue-600"
                   : "bg-white border border-slate-200"
                 }`}
               >
@@ -351,28 +351,28 @@ export default function Pricing() {
                 )}
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="mb-4">
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${tier.highlight ? "text-green-200" : "text-slate-400"}`}>{tier.name}</p>
+                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${tier.highlight ? "text-blue-200" : "text-slate-400"}`}>{tier.name}</p>
                     <div className="flex items-end gap-1 mb-1">
                       <span className={`text-3xl font-extrabold tracking-tight ${tier.highlight ? "text-white" : "text-slate-900"}`}>{price}</span>
-                      {tier.annualPrice !== null && <span className={`text-sm mb-1 ${tier.highlight ? "text-green-200" : "text-slate-400"}`}>/mo</span>}
+                      {tier.annualPrice !== null && <span className={`text-sm mb-1 ${tier.highlight ? "text-blue-200" : "text-slate-400"}`}>/mo</span>}
                     </div>
                     {priceNote && (
-                      <p className={`text-xs mb-2 ${tier.highlight ? "text-green-200" : "text-slate-400"}`}>{priceNote}</p>
+                      <p className={`text-xs mb-2 ${tier.highlight ? "text-blue-200" : "text-slate-400"}`}>{priceNote}</p>
                     )}
-                    <p className={`text-sm leading-relaxed ${tier.highlight ? "text-green-100" : "text-slate-500"}`}>{tier.description}</p>
+                    <p className={`text-sm leading-relaxed ${tier.highlight ? "text-blue-100" : "text-slate-500"}`}>{tier.description}</p>
                   </div>
 
                   {tier.mspCallout && (
-                    <div className="bg-green-700/40 border border-green-400/50 rounded-xl p-3 mb-4">
-                      <p className="text-xs text-green-100 leading-relaxed">{tier.mspCallout}</p>
+                    <div className="bg-blue-500/40 border border-blue-400/50 rounded-xl p-3 mb-4">
+                      <p className="text-xs text-blue-100 leading-relaxed">{tier.mspCallout}</p>
                     </div>
                   )}
 
                   <a
                     href={BASE_PATH + tier.ctaHref}
                     className={`block w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-all mb-5 ${tier.highlight
-                      ? "bg-white text-green-800 hover:bg-green-50"
-                      : "bg-green-800 text-white hover:bg-green-900"
+                      ? "bg-white text-blue-600 hover:bg-blue-50"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
                     }`}
                   >
                     {tier.cta}
@@ -381,22 +381,22 @@ export default function Pricing() {
                   <div className="space-y-2 flex-1">
                     {tier.features.map((f) => (
                       <div key={f.label} className="flex items-start gap-2">
-                        <div className={`h-4 w-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${tier.highlight ? "bg-green-700" : "bg-green-50"}`}>
-                          <svg className={`h-2.5 w-2.5 ${tier.highlight ? "text-white" : "text-green-800"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <div className={`h-4 w-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${tier.highlight ? "bg-blue-500" : "bg-blue-50"}`}>
+                          <svg className={`h-2.5 w-2.5 ${tier.highlight ? "text-white" : "text-blue-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
                         </div>
-                        <span className={`text-xs leading-relaxed ${tier.highlight ? "text-green-50" : "text-slate-600"}`}>{f.label}</span>
+                        <span className={`text-xs leading-relaxed ${tier.highlight ? "text-blue-50" : "text-slate-600"}`}>{f.label}</span>
                       </div>
                     ))}
                     {tier.notIncluded.map((f) => (
                       <div key={f} className="flex items-start gap-2 opacity-40">
-                        <div className={`h-4 w-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${tier.highlight ? "bg-green-900" : "bg-slate-100"}`}>
-                          <svg className={`h-2.5 w-2.5 ${tier.highlight ? "text-green-500" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <div className={`h-4 w-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${tier.highlight ? "bg-blue-700" : "bg-slate-100"}`}>
+                          <svg className={`h-2.5 w-2.5 ${tier.highlight ? "text-blue-300" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </div>
-                        <span className={`text-xs line-through leading-relaxed ${tier.highlight ? "text-green-200" : "text-slate-400"}`}>{f}</span>
+                        <span className={`text-xs line-through leading-relaxed ${tier.highlight ? "text-blue-200" : "text-slate-400"}`}>{f}</span>
                       </div>
                     ))}
                   </div>
@@ -411,9 +411,9 @@ export default function Pricing() {
         {/* Competitive comparison */}
         <div className="mb-16">
           <div className="text-center mb-8">
-            <p className="text-xs font-bold uppercase tracking-widest text-green-800 mb-2">Competitive landscape</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">Competitive landscape</p>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">The only platform with commercial and federal in one place</h2>
-            <p className="text-slate-500 text-sm max-w-xl mx-auto">Vanta and Drata cover commercial frameworks. CMMC MSPs cover federal. Only EnterpriseComply does both, at a fraction of the MSP cost.</p>
+            <p className="text-slate-500 text-sm max-w-xl mx-auto">Vanta and Drata cover commercial frameworks. CMMC MSPs cover federal. Only EnterpriseComply does both - at a fraction of the MSP cost.</p>
           </div>
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full text-sm">
@@ -430,10 +430,10 @@ export default function Pricing() {
               </thead>
               <tbody>
                 {COMPETITORS.map((c, i) => (
-                  <tr key={c.name} className={`border-b border-slate-100 last:border-0 ${c.highlight ? "bg-green-50" : i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
+                  <tr key={c.name} className={`border-b border-slate-100 last:border-0 ${c.highlight ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
                     <td className="py-3 px-5">
-                      <span className={`font-semibold ${c.highlight ? "text-green-700" : "text-slate-900"}`}>{c.name}</span>
-                      {c.highlight && <span className="ml-2 text-xs bg-green-800 text-white px-1.5 py-0.5 rounded font-bold">YOU</span>}
+                      <span className={`font-semibold ${c.highlight ? "text-blue-700" : "text-slate-900"}`}>{c.name}</span>
+                      {c.highlight && <span className="ml-2 text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold">YOU</span>}
                     </td>
                     <td className="py-3 px-4 text-slate-600">{c.price}</td>
                     <td className="py-3 px-4 text-center">
@@ -448,7 +448,7 @@ export default function Pricing() {
                     <td className="py-3 px-4 text-center">
                       <div className="flex justify-center">{c.ssp ? <CheckIcon /> : <XIcon />}</div>
                     </td>
-                    <td className={`py-3 px-4 text-xs ${c.highlight ? "text-green-700 font-semibold" : "text-slate-400"}`}>{c.note}</td>
+                    <td className={`py-3 px-4 text-xs ${c.highlight ? "text-blue-700 font-semibold" : "text-slate-400"}`}>{c.note}</td>
                   </tr>
                 ))}
               </tbody>
@@ -467,7 +467,7 @@ export default function Pricing() {
                   <th className="text-left py-3 pr-6 font-semibold text-slate-700 w-[40%]">Feature</th>
                   <th className="text-center py-3 px-3 font-semibold text-slate-700">Essentials</th>
                   <th className="text-center py-3 px-3 font-semibold text-slate-700">Professional</th>
-                  <th className="text-center py-3 px-3 font-semibold text-green-800">Federal</th>
+                  <th className="text-center py-3 px-3 font-semibold text-blue-600">Federal</th>
                   <th className="text-center py-3 px-3 font-semibold text-slate-700">Enterprise</th>
                 </tr>
               </thead>
@@ -481,7 +481,7 @@ export default function Pricing() {
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex justify-center"><CompareCell value={row.professional} /></div>
                     </td>
-                    <td className="py-2.5 px-3 text-center bg-green-50/50">
+                    <td className="py-2.5 px-3 text-center bg-blue-50/50">
                       <div className="flex justify-center"><CompareCell value={row.federal} /></div>
                     </td>
                     <td className="py-2.5 px-3 text-center rounded-r-lg">
@@ -500,7 +500,7 @@ export default function Pricing() {
             {
               icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
               label: "Federal-native, not bolted on",
-              desc: "POA&M, SPRS, and SSP generation are built into the core platform, not third-party modules. The same evidence powering your SOC 2 satisfies your CMMC controls.",
+              desc: "POA&M, SPRS, and SSP generation are built into the core platform - not third-party modules. The same evidence powering your SOC 2 satisfies your CMMC controls.",
             },
             {
               icon: "M13 10V3L4 14h7v7l9-11h-7z",
@@ -510,12 +510,12 @@ export default function Pricing() {
             {
               icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z",
               label: "You own your compliance data",
-              desc: "Export everything (evidence, POA&Ms, risk register) at any time in standard formats. No lock-in, no MSP dependency, no starting over if you change providers.",
+              desc: "Export everything - evidence, POA&Ms, risk register - at any time in standard formats. No lock-in, no MSP dependency, no starting over if you change providers.",
             },
           ].map((item) => (
             <div key={item.label} className="bg-white border border-slate-200 rounded-xl p-5 flex gap-4">
-              <div className="h-10 w-10 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <svg className="h-5 w-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                   <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                 </svg>
               </div>
@@ -541,14 +541,14 @@ export default function Pricing() {
         </div>
 
         {/* CTA */}
-        <div className="bg-gradient-to-br from-green-950 to-green-800 rounded-2xl p-10 text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-green-500 mb-3">14-day free trial</p>
+        <div className="bg-gradient-to-br from-slate-900 to-blue-900 rounded-2xl p-10 text-center">
+          <p className="text-xs font-bold uppercase tracking-widest text-blue-300 mb-3">14-day free trial</p>
           <h2 className="text-3xl font-extrabold text-white mb-3">Ready to see it in action?</h2>
           <p className="text-slate-300 text-base mb-8 max-w-xl mx-auto">
             Start your free trial today. No credit card required. Full access to your selected tier for 14 days. Most teams complete their first automated evidence collection in under 30 minutes.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href={BASE_PATH + "/sign-up"} className="px-8 py-3.5 bg-green-800 text-white font-semibold rounded-xl text-sm hover:bg-green-700 transition-all hover:scale-105">
+            <a href={BASE_PATH + "/sign-up"} className="px-8 py-3.5 bg-blue-600 text-white font-semibold rounded-xl text-sm hover:bg-blue-500 transition-all hover:scale-105">
               Start free trial
             </a>
             <a href="mailto:sales@colorcodesolutions.com" className="px-8 py-3.5 border border-white/20 text-white font-semibold rounded-xl text-sm hover:bg-white/10 transition-all">
