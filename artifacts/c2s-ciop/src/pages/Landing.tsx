@@ -765,13 +765,13 @@ export default function Landing() {
                 body: "When a gap is identified - through a risk assessment, a failing control test, or a drift alert - it becomes a tracked remediation item with an owner, a due date, and a POA&M entry. Gaps close. They don't sit in a spreadsheet.",
               },
             ].map((col) => (
-              <div key={col.title} className="relative p-7 rounded-2xl border border-slate-100 bg-white">
-                <div className="h-13 w-13 rounded-xl flex items-center justify-center mb-5" style={{ background: `${col.accent}12`, color: col.accent }}>
+              <div key={col.title} className="relative p-7 rounded-2xl" style={{ background: `${col.accent}0f`, border: `1.5px solid ${col.accent}30` }}>
+                <div className="h-13 w-13 rounded-xl flex items-center justify-center mb-5" style={{ background: col.accent, color: "#fff" }}>
                   {col.icon}
                 </div>
-                <div className="absolute top-0 left-7 right-7 h-0.5 rounded-full" style={{ background: col.accent }} />
+                <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ background: col.accent }} />
                 <h3 className="text-base font-bold text-slate-900 mb-3">{col.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{col.body}</p>
+                <p className="text-sm text-slate-600 leading-relaxed">{col.body}</p>
               </div>
             ))}
           </div>
@@ -801,9 +801,9 @@ export default function Landing() {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
-              <div key={f.title} className="p-6 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-lg transition-all group">
+              <div key={f.title} className="p-6 rounded-2xl border hover:shadow-lg transition-all group" style={{ background: "#f8fafc", borderColor: "#e2e8f0" }}>
                 <div className="h-12 w-12 rounded-xl flex items-center justify-center mb-5 transition-colors group-hover:bg-blue-600"
-                  style={{ background: "#eff6ff", color: "#2563eb" }}>
+                  style={{ background: "#2563eb", color: "#fff" }}>
                   <div className="group-hover:text-white transition-colors" style={{ color: "inherit" }}>{f.icon}</div>
                 </div>
                 <h3 className="text-base font-bold text-slate-900 mb-2">{f.title}</h3>
@@ -861,7 +861,7 @@ export default function Landing() {
               </div>
               <a href={BASE_PATH + "/sign-up"}
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-lg"
-                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 16px rgba(37,99,235,0.3)" }}>
+                style={{ background: "#2563eb", boxShadow: "0 4px 16px rgba(37,99,235,0.3)" }}>
                 See the full portability guarantee
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -958,14 +958,14 @@ export default function Landing() {
                 icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z",
               },
             ].map((item) => (
-              <div key={item.title} className="rounded-2xl p-6 border flex flex-col" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(59,130,246,0.18)" }}>
+              <div key={item.title} className="rounded-2xl p-6 border flex flex-col" style={{ background: "#0d1b3e", borderColor: "#1e3a8a" }}>
                 <div className="flex items-start justify-between mb-4">
-                  <div className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(59,130,246,0.12)" }}>
-                    <svg className="h-5 w-5" style={{ color: "#60a5fa" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <div className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#1d4ed8" }}>
+                    <svg className="h-5 w-5" style={{ color: "#fff" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                       <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                     </svg>
                   </div>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(59,130,246,0.15)", color: "#93c5fd" }}>{item.badge}</span>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#1e3a8a", color: "#93c5fd" }}>{item.badge}</span>
                 </div>
                 <h3 className="text-base font-bold text-white mb-2">{item.title}</h3>
                 <p className="text-sm leading-relaxed flex-1 mb-5" style={{ color: "#94a3b8" }} dangerouslySetInnerHTML={{ __html: item.desc }} />
@@ -998,7 +998,7 @@ export default function Landing() {
               </p>
               <a href={BASE_PATH + "/sign-up"}
                 className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all hover:scale-105"
-                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", color: "white", boxShadow: "0 0 24px rgba(37,99,235,0.35)" }}>
+                style={{ background: "#2563eb", color: "white", boxShadow: "0 0 24px rgba(37,99,235,0.35)" }}>
                 See the federal layer
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
@@ -1073,7 +1073,7 @@ export default function Landing() {
               </p>
               <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
                 className="inline-flex items-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl text-sm transition-all hover:scale-105"
-                style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 0 32px rgba(37,99,235,0.4)" }}>
+                style={{ background: "#2563eb", boxShadow: "0 0 32px rgba(37,99,235,0.4)" }}>
                 Request a Demo
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
