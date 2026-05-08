@@ -1008,14 +1008,14 @@ export default function Landing() {
       </section>
 
       {/* ── INDUSTRIES ── */}
-      <section style={{ background: "#050d1a" }}>
+      <section style={{ background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="text-center mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#3b82f6" }}>Built for highly regulated industries</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: "white" }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#2563eb" }}>Built for highly regulated industries</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
               Purpose-Built. Industry-Ready.
             </h2>
-            <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: "#64748b" }}>
+            <p className="mt-3 text-base max-w-xl mx-auto text-slate-500">
               From the Pentagon to Wall Street. The only GRC platform with a native federal layer alongside full commercial framework coverage - one system for every obligation.
             </p>
           </div>
