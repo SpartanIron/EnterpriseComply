@@ -109,15 +109,15 @@ function NavBar() {
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
   return (
-    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(255,255,255,0.96)", borderColor: "rgba(0,0,0,0.08)", backdropFilter: "blur(12px)" }}>
+    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(3,7,18,0.88)", borderColor: "rgba(255,255,255,0.07)", backdropFilter: "blur(16px)" }}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
         <a href={BASE_PATH + "/"} className="flex items-center gap-3">
           <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-600/30">
             <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" alt="" />
           </div>
           <div>
-            <span className="font-bold text-sm tracking-tight" style={{ color: "#0f172a" }}>EnterpriseComply</span>
-            <span className="hidden sm:inline text-xs ml-2" style={{ color: "#94a3b8" }}>by ColorCode Solutions</span>
+            <span className="font-bold text-sm tracking-tight" style={{ color: "#f1f5f9" }}>EnterpriseComply</span>
+            <span className="hidden sm:inline text-xs ml-2" style={{ color: "#475569" }}>by ColorCode Solutions</span>
           </div>
         </a>
 
@@ -127,9 +127,9 @@ function NavBar() {
               <button
                 onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
                 className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
-                style={{ color: "#64748b", borderColor: "rgba(255,255,255,0.08)", background: "transparent" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#64748b"; }}>
+                style={{ color: "#94a3b8", borderColor: "rgba(255,255,255,0.1)", background: "transparent" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#cbd5e1"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}>
                 Sign out
               </button>
               <a href={BASE_PATH + "/dashboard"}
@@ -140,14 +140,14 @@ function NavBar() {
             </>
           ) : (
             <>
-              <a href={BASE_PATH + "/sign-in"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#64748b" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
+              <a href={BASE_PATH + "/sign-in"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#94a3b8" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#cbd5e1")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#94a3b8")}>
                 Log In
               </a>
-              <a href={BASE_PATH + "/pricing"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#64748b" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
+              <a href={BASE_PATH + "/pricing"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#94a3b8" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#cbd5e1")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#94a3b8")}>
                 Pricing
               </a>
               <a href={BASE_PATH + "/sign-up"}
@@ -483,27 +483,29 @@ export default function Landing() {
       <NavBar />
 
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ background: "#ffffff", minHeight: 680 }}>
-        {/* Subtle dot grid */}
+      <section className="relative overflow-hidden" style={{
+        background: "linear-gradient(160deg, #030712 0%, #0a1628 40%, #0f2044 70%, #0c1a38 100%)",
+        minHeight: 680,
+      }}>
+        {/* Subtle dot grid on dark */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.06) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
         }} />
-        {/* Three-stripe diagonal - indigo / blue / cyan - solid, no fade */}
-        <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: "52%", zIndex: 0 }}>
-          <div style={{
-            position: "absolute",
-            inset: 0,
-            background: [
-              "linear-gradient(22deg,",
-              "  #4f46e5 0%,   #4f46e5 17%,",
-              "  #2563eb 17%,  #2563eb 33%,",
-              "  #06b6d4 33%,  #06b6d4 49%,",
-              "  transparent 49%",
-              ")"
-            ].join(""),
-          }} />
-        </div>
+        {/* Soft radial glow - blue, top-right */}
+        <div className="absolute pointer-events-none" style={{
+          top: "-10%", right: "-5%",
+          width: "55%", height: "80%",
+          background: "radial-gradient(ellipse, rgba(37,99,235,0.18) 0%, transparent 70%)",
+          zIndex: 0,
+        }} />
+        {/* Soft radial glow - cyan, bottom-left */}
+        <div className="absolute pointer-events-none" style={{
+          bottom: "-15%", left: "-5%",
+          width: "40%", height: "60%",
+          background: "radial-gradient(ellipse, rgba(6,182,212,0.1) 0%, transparent 70%)",
+          zIndex: 0,
+        }} />
 
         <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28" style={{ zIndex: 2 }}>
           <div className="grid lg:grid-cols-2 gap-14 items-center">
@@ -511,32 +513,32 @@ export default function Landing() {
             <div>
               <div className="flex flex-col gap-2 mb-7">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border self-start"
-                  style={{ background: "rgba(37,99,235,0.06)", borderColor: "rgba(37,99,235,0.2)", color: "#1d4ed8" }}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  style={{ background: "rgba(37,99,235,0.15)", borderColor: "rgba(59,130,246,0.35)", color: "#93c5fd" }}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
                   Federal-First GRC Platform
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001"].map((fw) => (
                     <span key={fw} className="text-xs font-semibold px-2 py-0.5 rounded"
-                      style={{ background: "rgba(15,23,42,0.06)", color: "#475569", border: "1px solid rgba(15,23,42,0.1)" }}>
+                      style={{ background: "rgba(255,255,255,0.07)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.1)" }}>
                       {fw}
                     </span>
                   ))}
                 </div>
               </div>
-              <h1 className="font-extrabold leading-tight tracking-tight mb-6" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "#0f172a" }}>
+              <h1 className="font-extrabold leading-tight tracking-tight mb-6" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "#f1f5f9" }}>
                 Federal Compliance.<br />
-                <span style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 50%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #38bdf8 50%, #22d3ee 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   One Control. Every Framework.
                 </span>
               </h1>
-              <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#475569" }}>
+              <p className="text-lg leading-relaxed mb-9 max-w-lg" style={{ color: "#94a3b8" }}>
                 The only GRC platform built federal-first. Native POA&amp;M, SPRS score tracking, and SSP generation for FedRAMP, CMMC, and NIST 800-171 - with full commercial framework coverage for SOC 2, ISO 27001, HIPAA, and 19 more. One control. Every obligation.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-10">
                 <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
                   className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-lg text-sm transition-all hover:scale-105"
-                  style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 20px rgba(37,99,235,0.35)" }}>
+                  style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 24px rgba(37,99,235,0.45)" }}>
                   Request a Demo
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -544,7 +546,7 @@ export default function Landing() {
                 </a>
                 <a href="#federal"
                   className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg text-sm transition-all border"
-                  style={{ color: "#374151", borderColor: "rgba(15,23,42,0.18)", background: "rgba(15,23,42,0.03)" }}>
+                  style={{ color: "#cbd5e1", borderColor: "rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)" }}>
                   See the Federal Layer
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -559,7 +561,7 @@ export default function Landing() {
                   { icon: "M13 10V3L4 14h7v7l9-11h-7z", label: "Live in 10 Minutes" },
                 ].map(({ icon, label }) => (
                   <div key={label} className="flex items-center gap-1.5 text-sm" style={{ color: "#64748b" }}>
-                    <svg className="h-4 w-4 flex-shrink-0" style={{ color: "#2563eb" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                    <svg className="h-4 w-4 flex-shrink-0" style={{ color: "#38bdf8" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                       <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
                     </svg>
                     {label}
@@ -568,10 +570,10 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Right - mockup with clean elevation shadow */}
+            {/* Right - mockup floating on dark */}
             <div className="relative">
               <div className="relative rounded-2xl overflow-hidden" style={{
-                boxShadow: "0 32px 80px rgba(15,23,42,0.14), 0 8px 24px rgba(15,23,42,0.08), 0 0 0 1px rgba(15,23,42,0.06)",
+                boxShadow: "0 40px 100px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)",
               }}>
                 <ProductMockup />
               </div>
