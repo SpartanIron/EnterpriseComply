@@ -775,11 +775,11 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="mt-12 p-6 rounded-2xl border border-slate-200 bg-slate-50 text-center">
-            <p className="text-sm font-semibold text-slate-700 mb-1">
+          <div className="mt-12 px-10 py-10 rounded-2xl border-2 text-center" style={{ background: "#f0f6ff", borderColor: "#bfdbfe" }}>
+            <p className="font-extrabold tracking-tight text-slate-900 mb-3" style={{ fontSize: "clamp(1.4rem, 2.5vw, 2rem)" }}>
               We don't help you pass audits.
             </p>
-            <p className="text-sm text-slate-500">
+            <p className="font-medium text-slate-600 leading-relaxed" style={{ fontSize: "clamp(1rem, 1.5vw, 1.2rem)" }}>
               We help you deserve to pass them - then make the audit itself effortless.
             </p>
           </div>
