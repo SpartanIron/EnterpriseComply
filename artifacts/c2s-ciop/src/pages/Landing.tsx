@@ -1,5 +1,5 @@
 import { useAuth, useClerk } from "@clerk/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -494,6 +494,173 @@ function ProductMockup() {
   );
 }
 
+// Animated network graph background for the hero
+function NetworkGraph() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    let t = 0;
+
+    // Nodes: label, x%, y%, size
+    const nodes = [
+      { label: "FedRAMP", x: 0.5, y: 0.38, r: 28, primary: true },
+      { label: "CMMC L2", x: 0.72, y: 0.22, r: 22, primary: false },
+      { label: "SOC 2", x: 0.28, y: 0.22, r: 22, primary: false },
+      { label: "NIST 800-171", x: 0.78, y: 0.58, r: 19, primary: false },
+      { label: "ISO 27001", x: 0.22, y: 0.58, r: 19, primary: false },
+      { label: "HIPAA", x: 0.62, y: 0.72, r: 17, primary: false },
+      { label: "PCI DSS", x: 0.38, y: 0.72, r: 17, primary: false },
+      { label: "NIST CSF", x: 0.87, y: 0.38, r: 15, primary: false },
+      { label: "StateRAMP", x: 0.13, y: 0.38, r: 15, primary: false },
+      { label: "GDPR", x: 0.65, y: 0.88, r: 13, primary: false },
+      { label: "HITRUST", x: 0.35, y: 0.88, r: 13, primary: false },
+      { label: "CIS Controls", x: 0.50, y: 0.14, r: 14, primary: false },
+    ];
+
+    // Connections: always from center node (0) to satellites
+    const edges = nodes.slice(1).map((_, i) => [0, i + 1]);
+    // Some cross-edges for mesh feel
+    const crossEdges = [[1,2],[1,3],[2,4],[3,5],[4,6],[5,7],[6,8],[7,9],[8,10],[9,10],[3,11],[4,11]];
+
+    function draw() {
+      if (!canvas || !ctx) return;
+      const W = canvas.offsetWidth;
+      const H = canvas.offsetHeight;
+      ctx.clearRect(0, 0, W, H);
+
+      t += 0.008;
+
+      // Draw cross edges (subtle)
+      crossEdges.forEach(([a, b]) => {
+        const na = nodes[a], nb = nodes[b];
+        const ax = na.x * W, ay = na.y * H;
+        const bx = nb.x * W, by = nb.y * H;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.strokeStyle = "rgba(20,83,45,0.07)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // Draw primary edges with animated pulse
+      edges.forEach(([a, b], idx) => {
+        const na = nodes[a], nb = nodes[b];
+        const ax = na.x * W, ay = na.y * H;
+        const bx = nb.x * W, by = nb.y * H;
+
+        // Static edge
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.strokeStyle = "rgba(20,83,45,0.18)";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Animated pulse dot traveling along edge
+        const phase = (t * 0.7 + idx * 0.42) % 1;
+        const px = ax + (bx - ax) * phase;
+        const py = ay + (by - ay) * phase;
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(22,163,74,${0.7 - phase * 0.5})`;
+        ctx.fill();
+      });
+
+      // Draw nodes
+      nodes.forEach((node, i) => {
+        const nx = node.x * W;
+        const ny = node.y * H;
+        const pulse = Math.sin(t * 1.2 + i * 0.8) * 0.12 + 1;
+        const r = node.r * pulse;
+
+        if (node.primary) {
+          // Outer glow ring
+          ctx.beginPath();
+          ctx.arc(nx, ny, r + 10, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(20,83,45,0.08)";
+          ctx.fill();
+
+          // Green filled circle
+          ctx.beginPath();
+          ctx.arc(nx, ny, r, 0, Math.PI * 2);
+          ctx.fillStyle = "#14532d";
+          ctx.fill();
+
+          // Inner highlight
+          ctx.beginPath();
+          ctx.arc(nx, ny - r * 0.2, r * 0.55, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255,255,255,0.12)";
+          ctx.fill();
+
+          // Label inside
+          ctx.font = `bold ${Math.round(r * 0.35)}px Inter, sans-serif`;
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(node.label, nx, ny);
+        } else {
+          // Satellite node - cream bg, green border
+          ctx.beginPath();
+          ctx.arc(nx, ny, r, 0, Math.PI * 2);
+          ctx.fillStyle = "#faf8f4";
+          ctx.fill();
+          ctx.strokeStyle = "#14532d";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Label
+          ctx.font = `600 ${Math.max(8, Math.round(r * 0.5))}px Inter, sans-serif`;
+          ctx.fillStyle = "#14532d";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(node.label, nx, ny);
+        }
+      });
+
+      animId = requestAnimationFrame(draw);
+    }
+
+    function resize() {
+      if (!canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    resize();
+    draw();
+    window.addEventListener("resize", resize);
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        opacity: 0.9,
+      }}
+    />
+  );
+}
+
 export default function Landing() {
   const { isSignedIn } = useAuth();
 
@@ -503,199 +670,208 @@ export default function Landing() {
       <NavBar />
 
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ background: "#f5f3ee" }}>
-        {/* Atmospheric glow layers */}
+      <section className="relative overflow-hidden" style={{ background: "#ffffff", minHeight: 720 }}>
+
+        {/* Subtle grid lines */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: [
-            "radial-gradient(ellipse 110% 55% at 50% 100%, rgba(21,128,61,0.1) 0%, rgba(234,88,12,0.05) 50%, transparent 70%)",
-            "radial-gradient(ellipse 50% 45% at 15% 5%, rgba(21,128,61,0.08) 0%, transparent 55%)",
-            "radial-gradient(ellipse 35% 35% at 88% 8%, rgba(21,128,61,0.06) 0%, transparent 55%)",
+          backgroundImage: [
+            "linear-gradient(rgba(20,83,45,0.06) 1px, transparent 1px)",
+            "linear-gradient(90deg, rgba(20,83,45,0.06) 1px, transparent 1px)",
           ].join(", "),
-        }} />
-        {/* Fine dot grid */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.065) 1px, transparent 1px)",
-          backgroundSize: "22px 22px",
+          backgroundSize: "56px 56px",
         }} />
 
-        {/* Left floating card - Control Status */}
-        <div className="absolute hidden xl:flex pointer-events-none" style={{ left: "3.5%", top: "28%", zIndex: 1 }}>
-          <div className="rounded-xl p-3.5 border" style={{
-            background: "rgba(250,248,244,0.95)",
-            borderColor: "rgba(212,201,176,1)",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,201,176,0.3)",
-            width: 208,
-            backdropFilter: "blur(16px)",
-          }}>
-            <div className="flex items-center gap-2 mb-3 pb-2.5" style={{ borderBottom: "1px solid rgba(212,201,176,0.5)" }}>
-              <div className="h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(209,250,229,1)" }}>
-                <svg className="h-3.5 w-3.5" style={{ color: "#16a34a" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+        {/* Green glow top-right */}
+        <div className="absolute pointer-events-none" style={{
+          right: -80, top: -80, width: 500, height: 500,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(20,83,45,0.09) 0%, transparent 65%)",
+        }} />
+
+        {/* Green glow bottom-left */}
+        <div className="absolute pointer-events-none" style={{
+          left: -100, bottom: 0, width: 400, height: 400,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(20,83,45,0.05) 0%, transparent 70%)",
+        }} />
+
+        {/* Left content column */}
+        <div className="relative max-w-7xl mx-auto px-8 lg:px-16 pt-20 pb-0">
+          <div className="grid lg:grid-cols-2 gap-0 items-center" style={{ minHeight: 620 }}>
+
+            {/* Left: text + CTAs */}
+            <div className="relative z-10 pb-16 lg:pb-24">
+
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-8 border"
+                style={{ background: "#14532d", borderColor: "#14532d" }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4ade80" }} />
+                <span className="text-xs font-bold uppercase tracking-wider text-white">Federal-First GRC Platform</span>
               </div>
-              <div>
-                <p className="font-bold leading-none" style={{ fontSize: 11, color: "#111827" }}>UCO Control Status</p>
-                <p style={{ fontSize: 9, color: "#9c9480", marginTop: 2 }}>41 controls monitored</p>
+
+              {/* Headline - very large, bold, left-aligned */}
+              <h1 className="font-black tracking-tight leading-none mb-6"
+                style={{ fontSize: "clamp(2.8rem, 5vw, 4.75rem)", letterSpacing: "-0.04em", color: "#0a0a0a" }}>
+                One Control.<br />
+                <span style={{ color: "#14532d" }}>Every Framework.</span>
+              </h1>
+              <p className="font-bold mb-5" style={{ fontSize: "clamp(1.25rem, 2vw, 1.75rem)", color: "#15803d", letterSpacing: "-0.02em" }}>
+                Zero duplicate work. Zero compliance gaps.
+              </p>
+
+              {/* Subtext */}
+              <p className="text-lg leading-relaxed mb-8 max-w-lg" style={{ color: "#4b5563" }}>
+                The only GRC platform built federal-first. Implement one security control and satisfy FedRAMP, CMMC, NIST, SOC 2, ISO 27001, and 7 more frameworks simultaneously.
+              </p>
+
+              {/* Framework chips */}
+              <div className="flex items-center gap-2 flex-wrap mb-10">
+                {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001", "HIPAA", "+6 more"].map((fw) => (
+                  <span key={fw} className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                    style={{ background: fw === "+6 more" ? "rgba(20,83,45,0.1)" : "#f0fdf4", color: "#14532d", border: "1px solid rgba(20,83,45,0.2)" }}>
+                    {fw}
+                  </span>
+                ))}
+              </div>
+
+              {/* CTAs */}
+              <div className="flex items-center gap-4 flex-wrap mb-12">
+                <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
+                  className="inline-flex items-center gap-2.5 px-8 py-4 text-white font-bold rounded-xl text-sm transition-all hover:brightness-110 hover:scale-105"
+                  style={{
+                    background: "#14532d",
+                    boxShadow: "0 4px 24px rgba(20,83,45,0.35), 0 1px 0 rgba(255,255,255,0.12) inset",
+                    letterSpacing: "0.02em",
+                    fontSize: 14,
+                  }}>
+                  Request a Demo
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </a>
+                <a href="#federal"
+                  className="inline-flex items-center gap-2 px-6 py-4 font-semibold rounded-xl text-sm transition-all hover:bg-slate-100"
+                  style={{ color: "#111827", border: "1px solid #d1d5db", background: "#ffffff", letterSpacing: "0.01em", fontSize: 14 }}>
+                  See the Federal Layer
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              </div>
+
+              {/* Social proof strip */}
+              <div className="flex items-center gap-6">
+                <div className="flex -space-x-2">
+                  {["#14532d","#15803d","#166534","#16a34a"].map((c, i) => (
+                    <div key={i} className="h-8 w-8 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold" style={{ background: c }}>
+                      {["A","B","C","D"][i]}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-0.5 mb-0.5">
+                    {[1,2,3,4,5].map(s => (
+                      <svg key={s} className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="#16a34a"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                    ))}
+                  </div>
+                  <p className="text-xs" style={{ color: "#6b7280" }}>Trusted by 200+ defense contractors</p>
+                </div>
               </div>
             </div>
-            {[
-              { name: "MFA Enforcement", status: "Passing", color: "#4ade80" },
-              { name: "Access Reviews", status: "Passing", color: "#4ade80" },
-              { name: "Encryption at Rest", status: "Passing", color: "#4ade80" },
-              { name: "Incident Response", status: "Review", color: "#15803d" },
-            ].map((item) => (
-              <div key={item.name} className="flex items-center justify-between py-1.5" style={{ borderBottom: "1px solid rgba(212,201,176,0.2)" }}>
-                <span style={{ color: "#6b6b5e", fontSize: 10.5 }}>{item.name}</span>
-                <span className="flex items-center gap-1 font-semibold" style={{ color: item.color, fontSize: 10 }}>
-                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
-                  {item.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Right floating card - Framework Coverage */}
-        <div className="absolute hidden xl:flex pointer-events-none" style={{ right: "3.5%", top: "20%", zIndex: 1 }}>
-          <div className="rounded-xl p-3.5 border" style={{
-            background: "rgba(250,248,244,0.95)",
-            borderColor: "rgba(212,201,176,1)",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,201,176,0.3)",
-            width: 196,
-            backdropFilter: "blur(16px)",
-          }}>
-            <p className="font-bold mb-0.5" style={{ fontSize: 11, color: "#111827" }}>Compliance Score</p>
-            <p style={{ fontSize: 9, color: "#9c9480", marginBottom: 8 }}>5 frameworks active - Acme Corp</p>
-            <div className="mb-3" style={{
-              fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.03em",
-              background: "linear-gradient(135deg, #16a34a, #15803d)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-            }}>92%</div>
-            <div className="space-y-2">
-              {[
-                { fw: "FedRAMP Mod", pct: 94 },
-                { fw: "CMMC L2", pct: 88 },
-                { fw: "SOC 2 Type II", pct: 97 },
-                { fw: "NIST 800-171", pct: 91 },
-              ].map(({ fw, pct }) => (
-                <div key={fw}>
-                  <div className="flex justify-between mb-1" style={{ fontSize: 10 }}>
-                    <span style={{ color: "#6b6b5e" }}>{fw}</span>
-                    <span style={{ color: "#16a34a", fontWeight: 700 }}>{pct}%</span>
+            {/* Right: animated network graph */}
+            <div className="relative hidden lg:block" style={{ height: 620 }}>
+              <NetworkGraph />
+
+              {/* Floating stat card - bottom left of graph */}
+              <div className="absolute bottom-16 left-4 rounded-xl p-4 border pointer-events-none z-10"
+                style={{ background: "rgba(255,255,255,0.95)", borderColor: "#e5e7eb", boxShadow: "0 8px 32px rgba(0,0,0,0.1)", backdropFilter: "blur(12px)", width: 190 }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#f0fdf4" }}>
+                    <svg className="h-4 w-4" style={{ color: "#16a34a" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
                   </div>
-                  <div className="h-1 rounded-full" style={{ background: "rgba(209,250,229,1)" }}>
-                    <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg, #14532d, #15803d)" }} />
+                  <div>
+                    <p className="font-bold text-xs" style={{ color: "#111827" }}>Live Posture Score</p>
+                    <p className="text-xs" style={{ color: "#9ca3af" }}>Acme Corp - 5 frameworks</p>
                   </div>
                 </div>
-              ))}
+                <div className="text-4xl font-black mb-2 leading-none" style={{ color: "#14532d" }}>92%</div>
+                <div className="h-1.5 rounded-full mb-2" style={{ background: "#f0fdf4" }}>
+                  <div className="h-1.5 rounded-full" style={{ width: "92%", background: "linear-gradient(90deg,#14532d,#16a34a)" }} />
+                </div>
+                <p className="text-xs" style={{ color: "#6b7280" }}>+4% from last month</p>
+              </div>
+
+              {/* Floating alert card - top right of graph */}
+              <div className="absolute top-12 right-4 rounded-xl p-3.5 border pointer-events-none z-10"
+                style={{ background: "rgba(255,255,255,0.95)", borderColor: "#e5e7eb", boxShadow: "0 8px 32px rgba(0,0,0,0.1)", backdropFilter: "blur(12px)", width: 200 }}>
+                <p className="font-bold text-xs mb-2.5" style={{ color: "#111827" }}>Frameworks Active</p>
+                {[
+                  { fw: "FedRAMP Moderate", pct: 94, color: "#7c3aed" },
+                  { fw: "CMMC Level 2", pct: 88, color: "#14532d" },
+                  { fw: "SOC 2 Type II", pct: 97, color: "#0369a1" },
+                  { fw: "NIST 800-171", pct: 91, color: "#b45309" },
+                ].map(({ fw, pct, color }) => (
+                  <div key={fw} className="mb-2">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs" style={{ color: "#6b7280" }}>{fw}</span>
+                      <span className="text-xs font-bold" style={{ color }}>{pct}%</span>
+                    </div>
+                    <div className="h-1 rounded-full" style={{ background: "#f3f4f6" }}>
+                      <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Content: centered single column */}
-        <div className="relative max-w-4xl mx-auto px-6 pt-20 pb-0 text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold mb-7 border"
-            style={{
-              background: "rgba(20,83,45,0.08)",
-              borderColor: "rgba(20,83,45,0.2)",
-              color: "#15803d",
-              boxShadow: "0 0 20px rgba(212,201,176,1)",
-            }}>
-            <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: "#16a34a" }} />
-            Federal-First GRC Platform
+        {/* Bottom product mockup strip - full-width dark band */}
+        <div style={{ background: "#0f1a13", borderTop: "1px solid rgba(20,83,45,0.5)", marginTop: -1 }}>
+          <div className="max-w-7xl mx-auto px-8 lg:px-16">
+            {/* Tab pills */}
+            <div className="flex items-center gap-1 pt-5 pb-4 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+              <span className="text-xs font-semibold mr-3" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview:</span>
+              {MOCKUP_TABS.map((t, i) => (
+                <span key={t.id} className="px-3 py-1 rounded-full text-xs font-semibold"
+                  style={{
+                    background: i === 0 ? "#14532d" : "transparent",
+                    color: i === 0 ? "white" : "rgba(255,255,255,0.45)",
+                    border: i === 0 ? "1px solid #15803d" : "1px solid transparent",
+                  }}>
+                  {t.label}
+                </span>
+              ))}
+              <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)" }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#22c55e", boxShadow: "0 0 6px #22c55e" }} />
+                <span className="text-xs font-semibold" style={{ color: "#22c55e" }}>Live sync</span>
+              </div>
+            </div>
           </div>
-
-          {/* Headline */}
-          <h1 className="font-extrabold leading-none tracking-tight mb-7"
-            style={{ fontSize: "clamp(3rem, 6.5vw, 5.25rem)", letterSpacing: "-0.03em" }}>
-            <span className="block" style={{ color: "#111827" }}>Federal Compliance.</span>
-            <span className="block" style={{
-              background: "linear-gradient(135deg, #16a34a 0%, #15803d 45%, #15803d 90%)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-              filter: "drop-shadow(0 0 28px rgba(20,83,45,0.25))",
-            }}>
-              One Control. Every Framework.
-            </span>
-          </h1>
-
-          {/* Framework chips - inline below headline */}
-          <div className="flex items-center justify-center gap-2 flex-wrap mb-8">
-            {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001", "HIPAA", "+6 more"].map((fw) => (
-              <span key={fw} className="text-xs font-semibold px-2.5 py-1 rounded-md"
-                style={{ background: "rgba(20,83,45,0.08)", color: "#15803d", border: "1px solid rgba(20,83,45,0.2)" }}>
-                {fw}
-              </span>
-            ))}
-          </div>
-
-          {/* Subtext */}
-          <p className="text-xl leading-relaxed mb-10 max-w-2xl mx-auto" style={{ color: "#6b6b5e" }}>
-            The only GRC platform built federal-first. Implement one control and satisfy every framework simultaneously.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex items-center justify-center gap-4 flex-wrap mb-16">
-            <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
-              className="inline-flex items-center gap-2 px-8 py-4 text-white font-bold rounded-xl text-sm transition-all hover:scale-105 hover:brightness-110"
-              style={{
-                background: "linear-gradient(135deg, #14532d 0%, #14532d 60%, #15803d 100%)",
-                boxShadow: "0 4px 28px rgba(20,83,45,0.35), 0 1px 0 rgba(255,255,255,0.15) inset",
-                letterSpacing: "0.01em",
-              }}>
-              Request a Demo
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </a>
-            <a href="#federal"
-              className="inline-flex items-center gap-2 px-7 py-4 font-semibold rounded-xl text-sm transition-all"
-              style={{
-                color: "#6b6b5e",
-                border: "1px solid #d4c9b0",
-                background: "rgba(20,83,45,0.06)",
-                letterSpacing: "0.01em",
-              }}>
-              See the Federal Layer
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
+          <div className="max-w-7xl mx-auto px-8 lg:px-16 pb-0">
+            <div className="rounded-t-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+              <ProductMockup />
+            </div>
           </div>
         </div>
 
-        {/* Product mockup - floating below CTAs, wider than text column */}
-        <div className="relative max-w-5xl mx-auto px-6 pb-0">
-          {/* Bloom glow behind mockup */}
-          <div className="absolute pointer-events-none" style={{
-            inset: 0,
-            background: "radial-gradient(ellipse 80% 50% at 50% 40%, rgba(212,201,176,0.8) 0%, transparent 70%)",
-            filter: "blur(32px)",
-          }} />
-          <div className="relative rounded-t-2xl overflow-hidden" style={{
-            boxShadow: "0 0 0 1px rgba(212,201,176,0.5), 0 -8px 40px rgba(20,83,45,0.06), 0 32px 60px rgba(0,0,0,0.12)",
-          }}>
-            <ProductMockup />
-          </div>
-        </div>
-
-        {/* Stats strip - sits at the base of the hero, above the trust bar */}
-        <div style={{ background: "rgba(245,243,238,0.9)", borderTop: "1px solid rgba(209,250,229,1)", borderBottom: "1px solid rgba(212,201,176,0.2)" }}>
-          <div className="max-w-4xl mx-auto px-6 py-10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        {/* Stats strip */}
+        <div style={{ background: "#f9fafb", borderTop: "1px solid #e5e7eb" }}>
+          <div className="max-w-5xl mx-auto px-6 py-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               {[
                 { value: "12", label: "Compliance Frameworks", sub: "FedRAMP to SOC 2 to ISO 27001" },
                 { value: "41", label: "Universal Controls", sub: "implement once, satisfy all" },
                 { value: "388+", label: "Authoritative Mappings", sub: "maintained and kept current" },
-                { value: "110", label: "NIST 800-171 Practices", sub: "full CMMC Level 2 coverage" },
+                { value: "10 min", label: "Setup to First Score", sub: "no professional services needed" },
               ].map(({ value, label, sub }) => (
                 <div key={label}>
-                  <p className="text-3xl font-extrabold mb-1 leading-none"
-                    style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                    {value}
-                  </p>
-                  <p className="text-sm font-semibold leading-snug mb-0.5" style={{ color: "#111827" }}>{label}</p>
-                  <p className="text-xs" style={{ color: "#9c9480" }}>{sub}</p>
+                  <p className="font-black mb-1 leading-none" style={{ fontSize: "2rem", color: "#14532d" }}>{value}</p>
+                  <p className="text-sm font-semibold mb-0.5" style={{ color: "#111827" }}>{label}</p>
+                  <p className="text-xs" style={{ color: "#9ca3af" }}>{sub}</p>
                 </div>
               ))}
             </div>
