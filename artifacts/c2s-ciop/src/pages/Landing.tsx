@@ -503,40 +503,65 @@ export default function Landing() {
       <NavBar />
 
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ background: "#050d1a", minHeight: 680 }}>
-        {/* Subtle dot grid on dark */}
+      <section className="relative overflow-hidden" style={{
+        background: "linear-gradient(135deg, #060e20 0%, #040c1a 40%, #060e20 100%)",
+        minHeight: 680,
+      }}>
+        {/* Rich atmospheric glow behind the mockup */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
+          background: [
+            "radial-gradient(ellipse 90% 85% at 72% 50%, rgba(37,99,235,0.28) 0%, rgba(37,99,235,0.08) 45%, transparent 70%)",
+            "radial-gradient(ellipse 55% 65% at 8% 15%, rgba(99,102,241,0.22) 0%, transparent 55%)",
+            "radial-gradient(ellipse 40% 40% at 85% 90%, rgba(6,182,212,0.12) 0%, transparent 60%)",
+          ].join(", "),
+          zIndex: 0,
         }} />
-        {/* Radial blue glow top-left */}
-        <div className="absolute pointer-events-none" style={{ top: -120, left: -80, width: 700, height: 700, background: "radial-gradient(circle, rgba(37,99,235,0.13) 0%, transparent 65%)", zIndex: 0 }} />
-        {/* Radial cyan glow bottom-right */}
-        <div className="absolute pointer-events-none" style={{ bottom: -80, right: -80, width: 500, height: 500, background: "radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 65%)", zIndex: 0 }} />
+        {/* Dot grid - visible on dark */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+          zIndex: 1,
+        }} />
+        {/* Horizontal shimmer line across mid-hero */}
+        <div className="absolute pointer-events-none" style={{
+          top: "50%", left: 0, right: 0, height: 1,
+          background: "linear-gradient(90deg, transparent 0%, rgba(59,130,246,0.18) 30%, rgba(59,130,246,0.35) 50%, rgba(59,130,246,0.18) 70%, transparent 100%)",
+          zIndex: 1,
+        }} />
 
         <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28" style={{ zIndex: 2 }}>
           <div className="grid lg:grid-cols-2 gap-14 items-center">
             {/* Left */}
             <div>
-              <div className="flex flex-col gap-2 mb-7">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border self-start"
-                  style={{ background: "rgba(59,130,246,0.1)", borderColor: "rgba(59,130,246,0.25)", color: "#93c5fd" }}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-                  Federal-First GRC Platform
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001"].map((fw) => (
-                    <span key={fw} className="text-xs font-semibold px-2 py-0.5 rounded"
-                      style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.1)" }}>
-                      {fw}
-                    </span>
-                  ))}
-                </div>
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-5 border self-start"
+                style={{
+                  background: "rgba(37,99,235,0.18)",
+                  borderColor: "rgba(59,130,246,0.45)",
+                  color: "#93c5fd",
+                  boxShadow: "0 0 16px rgba(37,99,235,0.25), inset 0 1px 0 rgba(255,255,255,0.06)",
+                }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                Federal-First GRC Platform
               </div>
 
-              <h1 className="font-extrabold leading-tight tracking-tight mb-5" style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", color: "white" }}>
-                Federal Compliance.<br />
-                <span style={{ background: "linear-gradient(135deg, #60a5fa 0%, #38bdf8 55%, #34d399 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              {/* Framework chips */}
+              <div className="flex items-center gap-2 flex-wrap mb-7">
+                {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001"].map((fw) => (
+                  <span key={fw} className="text-xs font-semibold px-2.5 py-1 rounded-md"
+                    style={{ background: "rgba(59,130,246,0.14)", color: "#93c5fd", border: "1px solid rgba(59,130,246,0.3)" }}>
+                    {fw}
+                  </span>
+                ))}
+              </div>
+
+              <h1 className="font-extrabold leading-none tracking-tight mb-5" style={{ fontSize: "clamp(2.6rem, 4.8vw, 3.75rem)" }}>
+                <span className="text-white">Federal Compliance.</span><br />
+                <span style={{
+                  background: "linear-gradient(135deg, #60a5fa 0%, #22d3ee 50%, #34d399 100%)",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+                  filter: "drop-shadow(0 0 24px rgba(96,165,250,0.4))",
+                }}>
                   One Control. Every Framework.
                 </span>
               </h1>
@@ -547,16 +572,24 @@ export default function Landing() {
 
               <div className="flex items-center gap-3 flex-wrap mb-10">
                 <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
-                  className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-lg text-sm transition-all hover:scale-105"
-                  style={{ background: "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)", boxShadow: "0 4px 24px rgba(37,99,235,0.5)" }}>
+                  className="inline-flex items-center gap-2 px-7 py-3.5 text-white font-bold rounded-lg text-sm transition-all hover:scale-105"
+                  style={{
+                    background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #0ea5e9 100%)",
+                    boxShadow: "0 4px 24px rgba(37,99,235,0.55), 0 1px 0 rgba(255,255,255,0.12) inset",
+                  }}>
                   Request a Demo
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 </a>
                 <a href="#federal"
-                  className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg text-sm transition-all border"
-                  style={{ color: "#cbd5e1", borderColor: "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)" }}>
+                  className="inline-flex items-center gap-2 px-6 py-3.5 font-semibold rounded-lg text-sm transition-all border"
+                  style={{
+                    color: "#cbd5e1",
+                    borderColor: "rgba(255,255,255,0.16)",
+                    background: "rgba(255,255,255,0.05)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+                  }}>
                   See the Federal Layer
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -564,31 +597,38 @@ export default function Landing() {
                 </a>
               </div>
 
-              {/* Verified product stats */}
-              <div className="flex flex-wrap gap-x-6 gap-y-3">
-                {[
-                  { value: "12", label: "compliance frameworks", sub: "FedRAMP to SOC 2 to ISO 27001" },
-                  { value: "41", label: "universal controls", sub: "one implementation, every framework" },
-                  { value: "388+", label: "authoritative mappings", sub: "maintained by our compliance team" },
-                  { value: "110", label: "NIST 800-171 practices", sub: "full CMMC Level 2 coverage" },
-                ].map(({ value, label, sub }) => (
-                  <div key={label} className="flex items-start gap-2.5">
-                    <div className="h-px w-4 mt-2.5 flex-shrink-0" style={{ background: "rgba(59,130,246,0.5)" }} />
-                    <div>
-                      <p className="text-sm font-bold text-white leading-tight">
-                        <span style={{ color: "#60a5fa" }}>{value}</span> {label}
+              {/* Stats strip */}
+              <div className="pt-6 border-t" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  {[
+                    { value: "12", label: "Compliance Frameworks", sub: "FedRAMP to SOC 2 to ISO 27001" },
+                    { value: "41", label: "Universal Controls", sub: "one implementation, every framework" },
+                    { value: "388+", label: "Authoritative Mappings", sub: "maintained and kept current" },
+                    { value: "110", label: "NIST 800-171 Practices", sub: "full CMMC Level 2 coverage" },
+                  ].map(({ value, label, sub }) => (
+                    <div key={label}>
+                      <p className="text-2xl font-extrabold leading-none mb-0.5"
+                        style={{ background: "linear-gradient(135deg, #60a5fa, #22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                        {value}
                       </p>
+                      <p className="text-xs font-semibold text-white leading-tight">{label}</p>
                       <p className="text-xs mt-0.5" style={{ color: "#475569" }}>{sub}</p>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Right - product mockup, clean on dark */}
+            {/* Right - product mockup */}
             <div className="relative">
+              {/* Glow behind the mockup */}
+              <div className="absolute inset-0 pointer-events-none" style={{
+                background: "radial-gradient(ellipse 80% 70% at 50% 50%, rgba(37,99,235,0.2) 0%, transparent 70%)",
+                filter: "blur(20px)",
+                transform: "scale(1.1)",
+              }} />
               <div className="relative rounded-2xl overflow-hidden" style={{
-                boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)",
+                boxShadow: "0 40px 100px rgba(0,0,0,0.7), 0 8px 32px rgba(37,99,235,0.15), 0 0 0 1px rgba(255,255,255,0.1)",
               }}>
                 <ProductMockup />
               </div>
