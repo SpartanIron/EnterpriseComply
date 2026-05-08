@@ -518,6 +518,80 @@ export default function Landing() {
           backgroundSize: "22px 22px",
         }} />
 
+        {/* Left floating card - Control Status */}
+        <div className="absolute hidden xl:flex pointer-events-none" style={{ left: "3.5%", top: "28%", zIndex: 1 }}>
+          <div className="rounded-xl p-3.5 border" style={{
+            background: "rgba(12,6,0,0.88)",
+            borderColor: "rgba(249,115,22,0.22)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(249,115,22,0.08)",
+            width: 208,
+            backdropFilter: "blur(16px)",
+          }}>
+            <div className="flex items-center gap-2 mb-3 pb-2.5" style={{ borderBottom: "1px solid rgba(249,115,22,0.1)" }}>
+              <div className="h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(234,88,12,0.2)" }}>
+                <svg className="h-3.5 w-3.5" style={{ color: "#fb923c" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-bold leading-none" style={{ fontSize: 11 }}>UCO Control Status</p>
+                <p style={{ fontSize: 9, color: "#6b4c2a", marginTop: 2 }}>41 controls monitored</p>
+              </div>
+            </div>
+            {[
+              { name: "MFA Enforcement", status: "Passing", color: "#4ade80" },
+              { name: "Access Reviews", status: "Passing", color: "#4ade80" },
+              { name: "Encryption at Rest", status: "Passing", color: "#4ade80" },
+              { name: "Incident Response", status: "Review", color: "#f59e0b" },
+            ].map((item) => (
+              <div key={item.name} className="flex items-center justify-between py-1.5" style={{ borderBottom: "1px solid rgba(249,115,22,0.06)" }}>
+                <span style={{ color: "#94a3b8", fontSize: 10.5 }}>{item.name}</span>
+                <span className="flex items-center gap-1 font-semibold" style={{ color: item.color, fontSize: 10 }}>
+                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right floating card - Framework Coverage */}
+        <div className="absolute hidden xl:flex pointer-events-none" style={{ right: "3.5%", top: "20%", zIndex: 1 }}>
+          <div className="rounded-xl p-3.5 border" style={{
+            background: "rgba(12,6,0,0.88)",
+            borderColor: "rgba(249,115,22,0.22)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(249,115,22,0.08)",
+            width: 196,
+            backdropFilter: "blur(16px)",
+          }}>
+            <p className="font-bold text-white mb-0.5" style={{ fontSize: 11 }}>Compliance Score</p>
+            <p style={{ fontSize: 9, color: "#6b4c2a", marginBottom: 8 }}>5 frameworks active - Acme Corp</p>
+            <div className="mb-3" style={{
+              fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.03em",
+              background: "linear-gradient(135deg, #fb923c, #f59e0b)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+            }}>92%</div>
+            <div className="space-y-2">
+              {[
+                { fw: "FedRAMP Mod", pct: 94 },
+                { fw: "CMMC L2", pct: 88 },
+                { fw: "SOC 2 Type II", pct: 97 },
+                { fw: "NIST 800-171", pct: 91 },
+              ].map(({ fw, pct }) => (
+                <div key={fw}>
+                  <div className="flex justify-between mb-1" style={{ fontSize: 10 }}>
+                    <span style={{ color: "#78503a" }}>{fw}</span>
+                    <span style={{ color: "#fb923c", fontWeight: 700 }}>{pct}%</span>
+                  </div>
+                  <div className="h-1 rounded-full" style={{ background: "rgba(249,115,22,0.12)" }}>
+                    <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg, #c2410c, #f97316)" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Content: centered single column */}
         <div className="relative max-w-4xl mx-auto px-6 pt-20 pb-0 text-center">
           {/* Badge */}
