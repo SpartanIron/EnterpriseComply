@@ -60,7 +60,7 @@ export default function GapAnalysis() {
         <button
           onClick={() => mutation.mutate()}
           disabled={!orgId || mutation.isPending}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50 transition-colors shadow-sm"
         >
           {mutation.isPending ? (
             <>
@@ -84,8 +84,8 @@ export default function GapAnalysis() {
       {/* Empty state */}
       {!result && !mutation.isPending && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
-          <div className="h-16 w-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <div className="h-16 w-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <svg className="h-8 w-8 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
@@ -100,7 +100,7 @@ export default function GapAnalysis() {
               { icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "Framework coverage" },
             ].map(({ icon, label }) => (
               <div key={label} className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
                 </svg>
                 {label}
@@ -110,7 +110,7 @@ export default function GapAnalysis() {
           <button
             onClick={() => mutation.mutate()}
             disabled={!orgId}
-            className="px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-6 py-3 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 disabled:opacity-50 transition-colors"
           >
             Run Gap Analysis
           </button>
@@ -140,7 +140,7 @@ export default function GapAnalysis() {
               { label: "Overall Risk", value: risk?.label ?? "Unknown", color: risk?.color ?? "text-slate-700" },
               { label: "Controls Failing", value: result.failing, color: "text-red-600" },
               { label: "Not Yet Tested", value: result.notTested, color: "text-amber-600" },
-              { label: "Time to Compliance", value: result.estimatedTimeToCompliance, color: "text-blue-600" },
+              { label: "Time to Compliance", value: result.estimatedTimeToCompliance, color: "text-green-800" },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
                 <div className={`text-lg font-extrabold ${color} leading-tight`}>{value}</div>
@@ -150,14 +150,14 @@ export default function GapAnalysis() {
           </div>
 
           {/* Executive summary */}
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
+          <div className="bg-green-50 border border-green-100 rounded-xl p-5">
             <div className="flex items-start gap-3">
-              <svg className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-5 w-5 text-green-800 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <p className="text-sm font-bold text-blue-900 mb-1">Executive Summary</p>
-                <p className="text-sm text-blue-800 leading-relaxed">{result.executiveSummary}</p>
+                <p className="text-sm font-bold text-green-900 mb-1">Executive Summary</p>
+                <p className="text-sm text-green-800 leading-relaxed">{result.executiveSummary}</p>
               </div>
             </div>
           </div>
@@ -189,7 +189,7 @@ export default function GapAnalysis() {
                   <button
                     key={p}
                     onClick={() => setFilterPriority(p)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${filterPriority === p ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${filterPriority === p ? "bg-green-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}
                   >
                     {p === "all" ? "All" : p}
                   </button>
@@ -222,7 +222,7 @@ export default function GapAnalysis() {
                             </span>
                             <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${effort.cls}`}>{effort.label}</span>
                             {item.quickWin && (
-                              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-blue-200">
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 ring-1 ring-green-200">
                                 Quick Win
                               </span>
                             )}
@@ -259,7 +259,7 @@ export default function GapAnalysis() {
                             <ol className="space-y-1.5">
                               {(item.actionSteps ?? []).map((step: string, i: number) => (
                                 <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                                  <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                                  <span className="flex-shrink-0 h-5 w-5 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">{i + 1}</span>
                                   {step}
                                 </li>
                               ))}
@@ -267,7 +267,7 @@ export default function GapAnalysis() {
                           </div>
                         </div>
                         <div className="mt-4 flex gap-2">
-                          <a href="/controls" className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                          <a href="/controls" className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-800 text-white text-xs font-semibold rounded-lg hover:bg-green-900 transition-colors">
                             Go to Controls
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                           </a>

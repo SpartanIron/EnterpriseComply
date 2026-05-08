@@ -104,7 +104,7 @@ export default function ComplianceReport() {
           line-height: 1.5;
         }
         .report-header {
-          background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
+          background: linear-gradient(135deg, #14532d 0%, #15803d 60%, #15803d 100%);
           color: white;
           padding: 40px;
           border-radius: 12px;
@@ -162,12 +162,12 @@ export default function ComplianceReport() {
         .footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
         .print-btn {
           position: fixed; top: 20px; right: 20px; z-index: 100;
-          background: #2563eb; color: white; border: none; border-radius: 8px;
+          background: #14532d; color: white; border: none; border-radius: 8px;
           padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
           display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(37,99,235,0.3);
         }
-        .print-btn:hover { background: #1d4ed8; }
-        .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #1d4ed8; }
+        .print-btn:hover { background: #15803d; }
+        .info-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #15803d; }
       `}</style>
 
       <button className="no-print print-btn" onClick={() => window.print()}>

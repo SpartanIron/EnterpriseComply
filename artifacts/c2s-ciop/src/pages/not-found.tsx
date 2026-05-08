@@ -9,7 +9,7 @@ export default function NotFound() {
       <img src={`${BASE_PATH}/logo.svg`} className="h-12 w-12 opacity-50" />
       <h1 className="text-3xl font-bold text-slate-900">Page not found</h1>
       <p className="text-slate-500">The page you're looking for doesn't exist.</p>
-      <button onClick={() => navigate("/dashboard")} className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+      <button onClick={() => navigate("/dashboard")} className="px-5 py-2.5 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900 transition-colors">
         Go to Dashboard
       </button>
     </div>

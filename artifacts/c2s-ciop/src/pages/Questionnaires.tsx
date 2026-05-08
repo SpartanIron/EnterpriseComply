@@ -124,7 +124,7 @@ export default function Questionnaires() {
           <h1 className="text-xl font-bold text-slate-900">Security Questionnaires</h1>
           <p className="text-sm text-slate-500 mt-0.5">Questionnaire response management and vendor risk assessments</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
+        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">
           + New Questionnaire
         </button>
       </div>
@@ -132,7 +132,7 @@ export default function Questionnaires() {
       <div className="flex gap-1 border-b border-slate-200 mb-6">
         {[["incoming", "Incoming (SQA)"], ["vendor", "Vendor Assessments"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id as typeof tab)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? "border-green-800 text-green-800" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
             {label}
           </button>
         ))}
@@ -150,7 +150,7 @@ export default function Questionnaires() {
                 </div>
                 <p className="text-slate-600 font-medium">No questionnaires yet</p>
                 <p className="text-slate-400 text-sm mt-1 mb-4">Create one to auto-fill responses from your compliance controls and evidence.</p>
-                <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create questionnaire</button>
+                <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">Create questionnaire</button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
@@ -159,7 +159,7 @@ export default function Questionnaires() {
                   { label: "VSAQ (10 questions)", body: "Vendor Security Assessment Questionnaire for high-level risk triage. Used in early-stage enterprise deals before a full SIG-Lite is required." },
                 ].map(({ label, body }) => (
                   <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
-                    <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md mb-2">{label}</span>
+                    <span className="inline-block px-2 py-0.5 bg-green-50 text-green-700 text-xs font-semibold rounded-md mb-2">{label}</span>
                     <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
                   </div>
                 ))}
@@ -173,7 +173,7 @@ export default function Questionnaires() {
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <div className="text-center cursor-pointer" onClick={() => setSelectedQ(q)}>
-                  <p className="font-bold text-blue-600">{q.answeredItems}/{q.totalItems}</p>
+                  <p className="font-bold text-green-800">{q.answeredItems}/{q.totalItems}</p>
                   <p className="text-xs text-slate-400">Answered</p>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${q.status === "completed" ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-600"}`}>{q.status}</span>
@@ -199,15 +199,15 @@ export default function Questionnaires() {
           </div>
 
           {autoAnsweredCount > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm flex items-center justify-between">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-sm flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <svg className="h-4 w-4 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                <span className="text-blue-700">
+                <svg className="h-4 w-4 text-green-800 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <span className="text-green-700">
                   {autoAnsweredCount} of {items.length} questions pre-filled by keyword matching against your compliance data.
-                  <span className="text-blue-500 ml-1">Review and edit all answers before sending.</span>
+                  <span className="text-green-600 ml-1">Review and edit all answers before sending.</span>
                 </span>
               </div>
-              <span className="text-xs font-medium text-blue-600 flex-shrink-0">{items.length > 0 ? Math.round((answeredCount / items.length) * 100) : 0}% complete</span>
+              <span className="text-xs font-medium text-green-800 flex-shrink-0">{items.length > 0 ? Math.round((answeredCount / items.length) * 100) : 0}% complete</span>
             </div>
           )}
 
@@ -231,7 +231,7 @@ export default function Questionnaires() {
                       defaultValue={item.answer ?? ""}
                       onBlur={(e) => { if (e.target.value !== item.answer) updateItemMutation.mutate({ id: item.id, answer: e.target.value }); }}
                       rows={3}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
                       placeholder="Enter your answer..."
                     />
                   </div>
@@ -279,7 +279,7 @@ export default function Questionnaires() {
                       "Share completed assessments with auditors as evidence of vendor due diligence",
                     ].map((step, i) => (
                       <li key={i} className="flex gap-3 text-xs text-slate-500">
-                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
+                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-green-50 text-green-800 font-bold text-xs flex items-center justify-center">{i + 1}</span>
                         {step}
                       </li>
                     ))}
@@ -315,7 +315,7 @@ export default function Questionnaires() {
             </div>
             <div className="p-5 space-y-3">
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Title *</label>
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Acme Corp SIG-Lite 2025" /></div>
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="e.g. Acme Corp SIG-Lite 2025" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-slate-600 mb-1">Requester Name</label>
                   <input value={form.requesterName} onChange={(e) => setForm({ ...form, requesterName: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
@@ -339,7 +339,7 @@ export default function Questionnaires() {
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createMutation.mutate(form)} disabled={!form.title || createMutation.isPending}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
                 {createMutation.isPending ? "Processing..." : "Create & Pre-fill"}
               </button>
             </div>

@@ -5,7 +5,7 @@ import { useOrg } from "@/hooks/useOrg";
 
 const ACTION_COLORS: Record<string, string> = {
   CREATE: "bg-green-100 text-green-700",
-  UPDATE: "bg-blue-100 text-blue-700",
+  UPDATE: "bg-green-100 text-green-700",
   DELETE: "bg-red-100 text-red-700",
   PATCH: "bg-yellow-100 text-yellow-700",
   LOGIN: "bg-purple-100 text-purple-700",
@@ -52,7 +52,7 @@ export default function AuditLog() {
         </div>
         <div className="flex items-center gap-2">
           <input value={filter} onChange={(e) => setFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
             placeholder="Filter logs..." />
         </div>
       </div>
@@ -63,7 +63,7 @@ export default function AuditLog() {
           <p className="text-xs font-semibold text-slate-500 mt-1">Total Entries</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${today > 0 ? "text-blue-600" : "text-slate-300"}`}>{today}</p>
+          <p className={`text-2xl font-bold leading-none ${today > 0 ? "text-green-800" : "text-slate-300"}`}>{today}</p>
           <p className="text-xs font-semibold text-slate-500 mt-1">Today</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">

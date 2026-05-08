@@ -199,7 +199,7 @@ export default function Audits() {
           <h1 className="text-xl font-bold text-slate-900">Auditor Portal</h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage audit engagements, evidence requests, and auditor access</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
+        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">
           + New Engagement
         </button>
       </div>
@@ -209,12 +209,12 @@ export default function Audits() {
           {engagements.length === 0 ? (
             <div className="space-y-4">
               <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <svg className="h-6 w-6 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 </div>
                 <p className="text-slate-700 font-semibold">No audit engagements yet</p>
                 <p className="text-sm text-slate-400 mt-1 mb-5">Create an engagement to invite auditors and manage evidence requests in one place.</p>
-                <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create first engagement</button>
+                <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">Create first engagement</button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -222,7 +222,7 @@ export default function Audits() {
                   <ol className="space-y-2">
                     {["Create an engagement and assign a framework (SOC 2, ISO 27001, FedRAMP, etc.)", "An auditor access token is generated; share it securely with your auditor firm", "Use bulk evidence request templates to pre-populate all required requests per framework", "Track and resolve requests as you provide documents, then close when audit completes"].map((step, i) => (
                       <li key={i} className="flex gap-3 text-xs text-slate-500">
-                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
+                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-green-50 text-green-800 font-bold text-xs flex items-center justify-center">{i + 1}</span>
                         {step}
                       </li>
                     ))}
@@ -242,7 +242,7 @@ export default function Audits() {
                   <p className="text-xs text-slate-500 leading-relaxed mb-3">Pre-built evidence checklists for SOC 2, ISO 27001, FedRAMP, HIPAA, PCI DSS, CMMC, and NIST 800-53. Load all standard requests with one click after creating an engagement.</p>
                   <div className="flex gap-2">
                     {["SOC 2: 10 items", "FedRAMP: 10 items", "CMMC: 6 items"].map((t) => (
-                      <span key={t} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded">{t}</span>
+                      <span key={t} className="px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded">{t}</span>
                     ))}
                   </div>
                 </div>
@@ -255,7 +255,7 @@ export default function Audits() {
                 const resolved = e.requestSummary?.resolved ?? 0;
                 const pct = total > 0 ? Math.round((resolved / total) * 100) : 0;
                 return (
-                  <div key={e.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-300 cursor-pointer transition-colors" onClick={() => setSelected(e)}>
+                  <div key={e.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-green-300 cursor-pointer transition-colors" onClick={() => setSelected(e)}>
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -313,24 +313,24 @@ export default function Audits() {
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-2xl font-bold text-blue-600">{readinessPct}%</p>
+                <p className="text-2xl font-bold text-green-800">{readinessPct}%</p>
               </div>
               <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${readinessPct}%` }} />
+                <div className="h-full bg-green-700 rounded-full transition-all" style={{ width: `${readinessPct}%` }} />
               </div>
               <p className="text-xs text-slate-400 mt-1">Readiness</p>
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-5 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <p className="font-medium text-blue-800">Auditor: {selected.auditorName} ({selected.auditorEmail})</p>
-              <p className="text-blue-600 mt-0.5">Framework: {FRAMEWORK_LABELS[selected.frameworkKey] ?? selected.frameworkKey}</p>
+              <p className="font-medium text-green-800">Auditor: {selected.auditorName} ({selected.auditorEmail})</p>
+              <p className="text-green-800 mt-0.5">Framework: {FRAMEWORK_LABELS[selected.frameworkKey] ?? selected.frameworkKey}</p>
             </div>
             {selected.accessToken && (
               <button
                 onClick={() => setTokenModal({ token: selected.accessToken, name: selected.name })}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-200 transition-colors flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-semibold rounded-lg hover:bg-green-200 transition-colors flex-shrink-0"
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                 View access token
@@ -355,12 +355,12 @@ export default function Audits() {
                 </div>
                 <div className="flex gap-2">
                   {frameworkTemplates.length > 0 && requests.length === 0 && (
-                    <button onClick={() => setShowBulkTemplate(true)} className="px-3 py-1.5 text-sm border border-blue-200 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 flex items-center gap-1.5">
+                    <button onClick={() => setShowBulkTemplate(true)} className="px-3 py-1.5 text-sm border border-green-200 text-green-700 bg-green-50 rounded-lg hover:bg-green-100 flex items-center gap-1.5">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                       Load {FRAMEWORK_LABELS[selected.frameworkKey] ?? selected.frameworkKey} template ({frameworkTemplates.length} items)
                     </button>
                   )}
-                  <button onClick={() => setShowRequest(true)} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Request Evidence</button>
+                  <button onClick={() => setShowRequest(true)} className="px-3 py-1.5 text-sm bg-green-800 text-white rounded-lg hover:bg-green-900">+ Request Evidence</button>
                   {selected.status === "active" && (
                     <button onClick={() => closeMutation.mutate(selected.id)} className="px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Close Engagement</button>
                   )}
@@ -382,7 +382,7 @@ export default function Audits() {
                         </div>
                         <p className="text-sm font-medium text-slate-800">{req.title}</p>
                         {req.description && <p className="text-xs text-slate-500 mt-0.5">{req.description}</p>}
-                        {req.responseNotes && <p className="text-xs text-blue-600 mt-1">Response: {req.responseNotes}</p>}
+                        {req.responseNotes && <p className="text-xs text-green-800 mt-1">Response: {req.responseNotes}</p>}
                       </div>
                       {req.status === "pending" && (
                         <div className="flex gap-2 ml-3">
@@ -447,7 +447,7 @@ export default function Audits() {
             <div className="p-5 border-b border-slate-100"><h2 className="font-semibold text-slate-900">New Audit Engagement</h2></div>
             <div className="p-5 space-y-3">
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Engagement Name *</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. SOC 2 Type II Audit 2025" /></div>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="e.g. SOC 2 Type II Audit 2025" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Framework</label>
                 <select value={form.frameworkKey} onChange={(e) => setForm({ ...form, frameworkKey: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
                   {Object.entries(FRAMEWORK_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -459,7 +459,7 @@ export default function Audits() {
                   <input value={form.auditorName} onChange={(e) => setForm({ ...form, auditorName: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="Lead auditor" /></div>
               </div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Auditor Email *</label>
-                <input type="email" value={form.auditorEmail} onChange={(e) => setForm({ ...form, auditorEmail: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                <input type="email" value={form.auditorEmail} onChange={(e) => setForm({ ...form, auditorEmail: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
                   <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
@@ -470,7 +470,7 @@ export default function Audits() {
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createMutation.mutate(form)} disabled={!form.name || !form.auditorEmail || createMutation.isPending}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
                 {createMutation.isPending ? "Creating..." : "Create Engagement"}
               </button>
             </div>
@@ -488,7 +488,7 @@ export default function Audits() {
             <div className="p-5 max-h-80 overflow-y-auto space-y-2">
               {frameworkTemplates.map((tmpl, i) => (
                 <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                  <span className="text-xs font-bold text-blue-600 mt-0.5 flex-shrink-0 font-mono">{tmpl.ucoControlId}</span>
+                  <span className="text-xs font-bold text-green-800 mt-0.5 flex-shrink-0 font-mono">{tmpl.ucoControlId}</span>
                   <div>
                     <p className="text-sm font-medium text-slate-800">{tmpl.title}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{tmpl.description}</p>
@@ -499,7 +499,7 @@ export default function Audits() {
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowBulkTemplate(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={handleBulkCreate} disabled={bulkLoading}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
                 {bulkLoading ? "Creating requests..." : `Create ${frameworkTemplates.length} requests`}
               </button>
             </div>
@@ -513,7 +513,7 @@ export default function Audits() {
             <div className="p-5 border-b border-slate-100"><h2 className="font-semibold text-slate-900">New Evidence Request</h2></div>
             <div className="p-5 space-y-3">
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Request Title *</label>
-                <input value={reqForm.title} onChange={(e) => setReqForm({ ...reqForm, title: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. User access list Q4 2024" /></div>
+                <input value={reqForm.title} onChange={(e) => setReqForm({ ...reqForm, title: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="e.g. User access list Q4 2024" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
                 <textarea value={reqForm.description} onChange={(e) => setReqForm({ ...reqForm, description: e.target.value })} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
               <div className="grid grid-cols-2 gap-3">
@@ -526,7 +526,7 @@ export default function Audits() {
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowRequest(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createRequestMutation.mutate(reqForm)} disabled={!reqForm.title || createRequestMutation.isPending}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
                 {createRequestMutation.isPending ? "Sending..." : "Send Request"}
               </button>
             </div>
@@ -547,8 +547,8 @@ export default function Audits() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-blue-900 mb-1">What auditors can access</p>
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-green-900 mb-1">What auditors can access</p>
                 <ul className="space-y-1">
                   {[
                     "Read-only view of all evidence requests for this engagement",
@@ -556,8 +556,8 @@ export default function Audits() {
                     "Control status for the selected framework",
                     "No write access; cannot modify your data",
                   ].map((item, i) => (
-                    <li key={i} className="flex gap-2 text-xs text-blue-700">
-                      <svg className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <li key={i} className="flex gap-2 text-xs text-green-700">
+                      <svg className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                       {item}
                     </li>
                   ))}
@@ -571,7 +571,7 @@ export default function Audits() {
                     {tokenModal.token}
                   </div>
                   <button onClick={copyToken}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex-shrink-0 ${tokenCopied ? "bg-green-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
+                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex-shrink-0 ${tokenCopied ? "bg-green-600 text-white" : "bg-green-800 text-white hover:bg-green-900"}`}>
                     {tokenCopied ? "Copied!" : "Copy token"}
                   </button>
                 </div>
@@ -591,7 +591,7 @@ export default function Audits() {
                         `To access evidence for "${tokenModal.name}":\n1. Navigate to: ${window.location.origin}/auditor-portal\n2. Enter token: ${tokenModal.token}\n3. You will have read-only access to all evidence requests and artifacts for this engagement.`
                       );
                     }}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-xs text-green-800 hover:text-green-700 font-medium"
                   >
                     Copy full instructions
                   </button>

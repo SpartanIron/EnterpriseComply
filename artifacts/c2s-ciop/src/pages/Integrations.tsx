@@ -179,7 +179,7 @@ function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClos
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6">
+        <div className="bg-gradient-to-r from-green-800 to-green-700 p-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -187,7 +187,7 @@ function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClos
               </div>
               <div>
                 <p className="text-white font-bold text-lg">Connect Okta</p>
-                <p className="text-blue-100 text-sm">MFA enrollment, password policy, and inactive users</p>
+                <p className="text-green-100 text-sm">MFA enrollment, password policy, and inactive users</p>
               </div>
             </div>
             <button onClick={onClose} className="text-white/70 hover:text-white">
@@ -196,9 +196,9 @@ function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClos
           </div>
         </div>
         <div className="p-6 space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-sm text-blue-800">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3.5 text-sm text-green-800">
             <p className="font-semibold mb-1">Create a read-only API token</p>
-            <p className="text-xs text-blue-700">In Okta: Security &rarr; API &rarr; Tokens &rarr; Create Token. The token needs read access to users, factors, and policies.</p>
+            <p className="text-xs text-green-700">In Okta: Security &rarr; API &rarr; Tokens &rarr; Create Token. The token needs read access to users, factors, and policies.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Okta Domain</label>
@@ -209,7 +209,7 @@ function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClos
                 value={form.domain}
                 onChange={e => setForm(f => ({ ...f, domain: e.target.value }))}
                 placeholder="yourcompany.okta.com"
-                className="flex-1 px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
               />
             </div>
           </div>
@@ -220,7 +220,7 @@ function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClos
               value={form.apiToken}
               onChange={e => setForm(f => ({ ...f, apiToken: e.target.value }))}
               placeholder="SSWS xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-700"
             />
           </div>
           {error && (
@@ -238,7 +238,7 @@ function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClos
             <button
               onClick={() => mutation.mutate()}
               disabled={!form.domain || !form.apiToken || mutation.isPending}
-              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+              className="flex-1 py-2.5 bg-green-800 hover:bg-green-900 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
             >
               {mutation.isPending ? (
                 <span className="flex items-center justify-center gap-2">
@@ -382,7 +382,7 @@ export default function Integrations() {
               <svg className="h-10 w-10 text-slate-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
               <p className="text-sm font-bold text-slate-700">No connected integrations</p>
               <p className="text-xs text-slate-400 mt-1 mb-4">Connect an integration to see health metrics here.</p>
-              <button onClick={() => setTab("catalog")} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Browse catalog</button>
+              <button onClick={() => setTab("catalog")} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">Browse catalog</button>
             </div>
           )}
           {!healthLoading && health.length > 0 && (
@@ -426,7 +426,7 @@ export default function Integrations() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {[
-                        { label: "Evidence Collected", value: h.evidenceCollected ?? 0, color: "text-blue-600" },
+                        { label: "Evidence Collected", value: h.evidenceCollected ?? 0, color: "text-green-800" },
                         { label: "Last Sync", value: h.lastSyncAt ? new Date(h.lastSyncAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never", color: "text-slate-700" },
                         { label: "Sync Status", value: sc.label, color: h.lastSyncStatus === "healthy" ? "text-green-600" : "text-amber-600" },
                         { label: "Next Sync", value: h.nextSyncAt ? new Date(h.nextSyncAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "Scheduled", color: "text-slate-500" },
@@ -521,7 +521,7 @@ function ConnectedCard({ integration, onSync, syncing }: { integration: any; onS
               Connected
             </span>
             {isRealIntegration && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full ring-1 ring-blue-200">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 text-xs font-semibold rounded-full ring-1 ring-green-200">
                 Live
               </span>
             )}
@@ -560,14 +560,14 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
     : connecting ? "Connecting..." : "Connect (Demo)";
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-200 hover:shadow-sm transition-all">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 hover:border-green-200 hover:shadow-sm transition-all">
       <div className="flex items-center gap-3 mb-2">
         <IntegrationLogo name={integration.key} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="font-semibold text-slate-900">{integration.name}</p>
             {isCredentials && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded ring-1 ring-blue-200">Live checks</span>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-700 text-xs font-semibold rounded ring-1 ring-green-200">Live checks</span>
             )}
           </div>
         </div>
@@ -576,7 +576,7 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
       {integration.controls?.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-4">
           {integration.controls.slice(0, 4).map((c: string) => (
-            <span key={c} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs font-mono rounded">{c}</span>
+            <span key={c} className="px-1.5 py-0.5 bg-green-50 text-green-800 text-xs font-mono rounded">{c}</span>
           ))}
           {integration.controls.length > 4 && (
             <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 text-xs rounded">+{integration.controls.length - 4} more</span>
@@ -593,8 +593,8 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
           <button onClick={onConnect} disabled={connecting}
             className={`flex-1 px-3 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-60 transition-colors ${
               isCredentials
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-blue-600 hover:bg-blue-700"
+                ? "bg-green-800 hover:bg-green-900"
+                : "bg-green-800 hover:bg-green-900"
             }`}>
             {btnLabel}
           </button>
@@ -624,17 +624,17 @@ function IntegrationLogo({ name, size = "md" }: { name: string; size?: "sm" | "m
     zendesk: "Zd", bamboohr: "BH", greenhouse: "GH", netsuite: "NS",
   };
   const colors: Record<string, string> = {
-    aws: "bg-orange-100 text-orange-700", okta: "bg-blue-100 text-blue-700",
-    jira: "bg-blue-100 text-blue-700", slack: "bg-purple-100 text-purple-700",
+    aws: "bg-orange-100 text-orange-700", okta: "bg-green-100 text-green-700",
+    jira: "bg-green-100 text-green-700", slack: "bg-purple-100 text-purple-700",
     crowdstrike: "bg-red-100 text-red-700", jamf: "bg-slate-100 text-slate-600",
-    workday: "bg-yellow-100 text-yellow-700", "google-workspace": "bg-blue-100 text-blue-700",
-    "azure-ad": "bg-blue-100 text-blue-700", datadog: "bg-purple-100 text-purple-700",
+    workday: "bg-yellow-100 text-yellow-700", "google-workspace": "bg-green-100 text-green-700",
+    "azure-ad": "bg-green-100 text-green-700", datadog: "bg-purple-100 text-purple-700",
     pagerduty: "bg-green-100 text-green-700", servicenow: "bg-green-100 text-green-700",
-    qualys: "bg-red-100 text-red-700", tenable: "bg-blue-100 text-blue-700",
+    qualys: "bg-red-100 text-red-700", tenable: "bg-green-100 text-green-700",
     splunk: "bg-orange-100 text-orange-700", sentinelone: "bg-indigo-100 text-indigo-700",
-    duo: "bg-green-100 text-green-700", sailpoint: "bg-blue-100 text-blue-700",
+    duo: "bg-green-100 text-green-700", sailpoint: "bg-green-100 text-green-700",
     cyberark: "bg-red-100 text-red-700", snyk: "bg-violet-100 text-violet-700",
-    knowbe4: "bg-orange-100 text-orange-700", "microsoft-365": "bg-blue-100 text-blue-700",
+    knowbe4: "bg-orange-100 text-orange-700", "microsoft-365": "bg-green-100 text-green-700",
   };
   const textSz = size === "sm" ? "text-xs" : "text-xs";
   return (

@@ -39,7 +39,7 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const clerkAppearance = {
   variables: {
-    colorPrimary: "#2563eb",
+    colorPrimary: "#14532d",
     colorText: "#0f172a",
     colorBackground: "#ffffff",
     colorInputBackground: "#f8fafc",
@@ -50,8 +50,8 @@ const clerkAppearance = {
   elements: {
     card: "shadow-lg border border-slate-200",
     headerTitle: "text-slate-900 font-semibold",
-    formButtonPrimary: "bg-blue-600 hover:bg-blue-700 text-white",
-    footerActionLink: "text-blue-600 hover:text-blue-700",
+    formButtonPrimary: "bg-green-800 hover:bg-green-700 text-white",
+    footerActionLink: "text-green-700 hover:text-green-800",
     logoBox: "flex items-center justify-center",
   },
 };

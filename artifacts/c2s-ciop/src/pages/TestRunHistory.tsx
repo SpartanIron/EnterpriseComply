@@ -64,7 +64,7 @@ export default function TestRunHistory() {
           <h1 className="text-xl font-bold text-slate-900">Automated Test Run History</h1>
           <p className="text-sm text-slate-500 mt-1">30-day history of automated control tests and their pass/fail results.</p>
         </div>
-        <a href="/controls" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+        <a href="/controls" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-green-800 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
           Manage Controls
         </a>
@@ -112,13 +112,13 @@ export default function TestRunHistory() {
             placeholder="Search test name or control..."
             value={searchQ}
             onChange={e => setSearchQ(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
           />
         </div>
         <div className="flex gap-1.5">
           {[["all", "All"], ["pass", "Passed"], ["fail", "Failed"]].map(([v, l]) => (
             <button key={v} onClick={() => setFilterStatus(v)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${filterStatus === v ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}>
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${filterStatus === v ? "bg-green-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}>
               {l}
             </button>
           ))}

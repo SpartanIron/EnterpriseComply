@@ -109,16 +109,16 @@ function AnnouncementBanner() {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
   return (
-    <div className="relative" style={{ background: "linear-gradient(90deg, #92400e 0%, #b45309 50%, #d97706 100%)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+    <div className="relative" style={{ background: "linear-gradient(90deg, #14532d 0%, #15803d 100%)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
       <div className="max-w-7xl mx-auto px-6 py-2.5 flex items-center justify-center gap-3">
         <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.18)", color: "#fef3c7" }}>Webinar</span>
         <span className="text-xs text-white">CMMC Level 2 Readiness for Defense Contractors</span>
-        <a href="#" className="text-xs font-semibold underline" style={{ color: "#fde68a" }}>Register free →</a>
+        <a href="#" className="text-xs font-semibold underline" style={{ color: "#a7f3d0" }}>Register free →</a>
       </div>
       <button
         onClick={() => setVisible(false)}
         className="absolute right-4 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-100 opacity-60"
-        style={{ color: "#fde68a" }}>
+        style={{ color: "#a7f3d0" }}>
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -131,13 +131,13 @@ function NavBar() {
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
   return (
-    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(10,5,0,0.95)", borderColor: "rgba(249,115,22,0.1)", backdropFilter: "blur(12px)" }}>
+    <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(245,243,238,0.97)", borderColor: "rgba(212,201,176,0.5)", backdropFilter: "blur(12px)" }}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
         <a href={BASE_PATH + "/"} className="flex items-center gap-3">
-          <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #c2410c, #ea580c)", boxShadow: "0 0 12px rgba(249,115,22,0.3)" }}>
+          <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#14532d", boxShadow: "0 2px 8px rgba(20,83,45,0.25)" }}>
             <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" alt="" />
           </div>
-          <span className="font-bold text-sm tracking-tight text-white">EnterpriseComply</span>
+          <span className="font-bold text-sm tracking-tight">EnterpriseComply</span>
         </a>
 
         <div className="flex items-center gap-3">
@@ -146,32 +146,32 @@ function NavBar() {
               <button
                 onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
                 className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
-                style={{ color: "#94a3b8", borderColor: "rgba(255,255,255,0.08)", background: "transparent" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#e2e8f0"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}>
+                style={{ color: "#6b6b5e", borderColor: "#d4c9b0", background: "transparent" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#111827"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#6b6b5e"; }}>
                 Sign out
               </button>
               <a href={BASE_PATH + "/dashboard"}
                 className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all hover:brightness-110"
-                style={{ background: "linear-gradient(135deg, #c2410c 0%, #ea580c 100%)", boxShadow: "0 0 16px rgba(249,115,22,0.3)" }}>
+                style={{ background: "#14532d", boxShadow: "0 2px 8px rgba(20,83,45,0.3)" }}>
                 Go to App
               </a>
             </>
           ) : (
             <>
-              <a href={BASE_PATH + "/sign-in"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#94a3b8" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#e2e8f0")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#94a3b8")}>
+              <a href={BASE_PATH + "/sign-in"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#6b6b5e" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#111827")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#6b6b5e")}>
                 Log In
               </a>
-              <a href={BASE_PATH + "/pricing"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#94a3b8" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#e2e8f0")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#94a3b8")}>
+              <a href={BASE_PATH + "/pricing"} className="text-xs font-medium px-3 py-1.5 transition-colors" style={{ color: "#6b6b5e" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#111827")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#6b6b5e")}>
                 Pricing
               </a>
               <a href={BASE_PATH + "/sign-up"}
                 className="px-4 py-1.5 text-white text-xs font-semibold rounded-lg transition-all hover:brightness-110"
-                style={{ background: "linear-gradient(135deg, #c2410c 0%, #ea580c 100%)", boxShadow: "0 0 16px rgba(249,115,22,0.3)" }}>
+                style={{ background: "#14532d", boxShadow: "0 0 16px rgba(167,243,208,0.7)" }}>
                 Request a Demo
               </a>
             </>
@@ -197,9 +197,9 @@ const SIDEBAR_NAV = [
 
 function MockupSidebar({ activeItem }: { activeItem: string }) {
   return (
-    <div className="flex flex-col flex-shrink-0" style={{ width: 130, background: "#0f172a", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-      <div className="flex items-center gap-2 px-3 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="h-5 w-5 rounded flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #c2410c, #ea580c)" }}>
+    <div className="flex flex-col flex-shrink-0" style={{ width: 130, background: "#14532d", borderRight: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex items-center gap-2 px-3 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <div className="h-5 w-5 rounded flex items-center justify-center flex-shrink-0" style={{ background: "#14532d" }}>
           <img src={`${BASE_PATH}/logo.svg`} className="h-3 w-3" alt="" />
         </div>
         <div>
@@ -210,13 +210,13 @@ function MockupSidebar({ activeItem }: { activeItem: string }) {
       <div className="px-2 py-2 flex-1">
         {SIDEBAR_NAV.map(({ section, items }) => (
           <div key={section} className="mb-1">
-            <p className="font-bold uppercase" style={{ fontSize: 6.5, letterSpacing: "0.1em", padding: "5px 6px 2px", color: "#334155" }}>{section}</p>
+            <p className="font-bold uppercase" style={{ fontSize: 6.5, letterSpacing: "0.1em", padding: "5px 6px 2px", color: "rgba(255,255,255,0.5)" }}>{section}</p>
             {items.map(({ label }) => {
               const active = label === activeItem;
               return (
-                <div key={label} className="flex items-center gap-1.5 rounded-md" style={{ padding: "3px 6px", background: active ? "rgba(37,99,235,0.15)" : "transparent" }}>
-                  <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: active ? "#3b82f6" : "#334155" }} />
-                  <span style={{ fontSize: 8.5, color: active ? "#93c5fd" : "#64748b", fontWeight: active ? 600 : 400 }}>{label}</span>
+                <div key={label} className="flex items-center gap-1.5 rounded-md" style={{ padding: "3px 6px", background: active ? "rgba(255,255,255,0.15)" : "transparent" }}>
+                  <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: active ? "#4ade80" : "rgba(255,255,255,0.3)" }} />
+                  <span style={{ fontSize: 8.5, color: active ? "#ffffff" : "rgba(255,255,255,0.6)", fontWeight: active ? 600 : 400 }}>{label}</span>
                 </div>
               );
             })}
@@ -230,7 +230,7 @@ function MockupSidebar({ activeItem }: { activeItem: string }) {
 function DashboardScreen() {
   return (
     <div className="flex-1 overflow-hidden" style={{ background: "#f8fafc" }}>
-      <div className="px-4 py-3" style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)" }}>
+      <div className="px-4 py-3" style={{ background: "linear-gradient(135deg, #14532d 0%, #15803d 100%)" }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <svg width="36" height="36" className="flex-shrink-0">
@@ -241,9 +241,9 @@ function DashboardScreen() {
               <text x="18" y="22" textAnchor="middle" fontSize="8" fontWeight="bold" fill="white">92%</text>
             </svg>
             <div>
-              <p style={{ fontSize: 7, color: "rgba(147,197,253,0.85)", fontWeight: 600, letterSpacing: "0.06em" }}>ACME CORP - LIVE POSTURE</p>
+              <p style={{ fontSize: 7, color: "rgba(255,255,255,0.7)", fontWeight: 600, letterSpacing: "0.06em" }}>ACME CORP - LIVE POSTURE</p>
               <p style={{ fontSize: 10, color: "white", fontWeight: 700, marginTop: 1 }}>Compliance Score</p>
-              <p style={{ fontSize: 7, color: "rgba(147,197,253,0.75)", marginTop: 1 }}>5 frameworks active</p>
+              <p style={{ fontSize: 7, color: "rgba(255,255,255,0.6)", marginTop: 1 }}>5 frameworks active</p>
             </div>
           </div>
           <div className="flex gap-1.5">
@@ -254,7 +254,7 @@ function DashboardScreen() {
             ].map(s => (
               <div key={s.label} className="text-center px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.1)" }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: s.color }}>{s.val}</p>
-                <p style={{ fontSize: 6, color: "rgba(147,197,253,0.7)", marginTop: 1 }}>{s.label}</p>
+                <p style={{ fontSize: 6, color: "rgba(255,255,255,0.55)", marginTop: 1 }}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -262,7 +262,7 @@ function DashboardScreen() {
       </div>
       <div className="grid gap-2 p-3" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
         {[
-          { name: "SOC 2 Type II", score: 92, accent: "#2563eb", tag: "Commercial", pass: 28, fail: 1 },
+          { name: "SOC 2 Type II", score: 92, accent: "#0369a1", tag: "Commercial", pass: 28, fail: 1 },
           { name: "FedRAMP Moderate", score: 71, accent: "#7c3aed", tag: "Federal", pass: 19, fail: 4 },
           { name: "ISO 27001", score: 85, accent: "#0891b2", tag: "International", pass: 24, fail: 2 },
           { name: "CMMC Level 2", score: 68, accent: "#059669", tag: "Federal", pass: 17, fail: 5 },
@@ -278,7 +278,7 @@ function DashboardScreen() {
                 <svg width="28" height="28" className="flex-shrink-0">
                   <circle cx="14" cy="14" r="9" fill="none" stroke="#f1f5f9" strokeWidth="2.5" />
                   <circle cx="14" cy="14" r="9" fill="none"
-                    stroke={fw.score >= 80 ? "#16a34a" : "#f59e0b"} strokeWidth="2.5"
+                    stroke={fw.score >= 80 ? "#16a34a" : "#15803d"} strokeWidth="2.5"
                     strokeDasharray={`${(fw.score / 100) * 2 * Math.PI * 9} ${2 * Math.PI * 9}`}
                     strokeLinecap="round" transform="rotate(-90 14 14)" />
                   <text x="14" y="17.5" textAnchor="middle" fontSize="5.5" fontWeight="bold" fill={fw.score >= 80 ? "#16a34a" : "#d97706"}>{fw.score}%</text>
@@ -348,12 +348,12 @@ function ControlsScreen() {
               </div>
             </div>
             <div className="w-full rounded-full overflow-hidden" style={{ height: 3, background: "#f1f5f9" }}>
-              <div className="h-full rounded-full" style={{ width: `${d.pct}%`, background: d.pct === 100 ? "#16a34a" : d.pct >= 75 ? "#f59e0b" : "#ef4444" }} />
+              <div className="h-full rounded-full" style={{ width: `${d.pct}%`, background: d.pct === 100 ? "#16a34a" : d.pct >= 75 ? "#15803d" : "#ef4444" }} />
             </div>
             <div className="flex gap-2 mt-1">
               <span style={{ fontSize: 6.5, color: "#15803d" }}>{d.pass} passing</span>
               {d.fail > 0 && <span style={{ fontSize: 6.5, color: "#dc2626" }}>{d.fail} failing</span>}
-              <span style={{ fontSize: 6.5, color: "#94a3b8", marginLeft: "auto" }}>SOC 2 - FedRAMP - ISO 27001 +3</span>
+              <span style={{ fontSize: 6.5, color: "#6b6b5e", marginLeft: "auto" }}>SOC 2 - FedRAMP - ISO 27001 +3</span>
             </div>
           </div>
         ))}
@@ -365,7 +365,7 @@ function ControlsScreen() {
 function IntegrationsScreen() {
   const integrations = [
     { name: "GitHub", logo: "GH", connected: true, synced: "2m ago", evidence: 47, color: "#1f2937" },
-    { name: "AWS", logo: "AWS", connected: true, synced: "5m ago", evidence: 112, color: "#f59e0b" },
+    { name: "AWS", logo: "AWS", connected: true, synced: "5m ago", evidence: 112, color: "#15803d" },
     { name: "Google Workspace", logo: "GWS", connected: true, synced: "12m ago", evidence: 38, color: "#3b82f6" },
     { name: "Okta", logo: "OK", connected: false, synced: null, evidence: 0, color: "#0ea5e9" },
     { name: "Slack", logo: "SL", connected: true, synced: "1h ago", evidence: 22, color: "#7c3aed" },
@@ -394,7 +394,7 @@ function IntegrationsScreen() {
                 <p style={{ fontSize: 8.5, fontWeight: 600, color: "#1e293b" }}>{intg.name}</p>
                 {intg.connected
                   ? <p style={{ fontSize: 6.5, color: "#64748b", marginTop: 1 }}>Synced {intg.synced}</p>
-                  : <p style={{ fontSize: 6.5, color: "#94a3b8", marginTop: 1 }}>Not connected</p>}
+                  : <p style={{ fontSize: 6.5, color: "#6b6b5e", marginTop: 1 }}>Not connected</p>}
               </div>
               <div className="flex-shrink-0">
                 {intg.connected
@@ -403,7 +403,7 @@ function IntegrationsScreen() {
                       <span style={{ fontSize: 6, fontWeight: 600, color: "#15803d" }}>Active</span>
                     </div>
                   : <div className="px-1.5 py-0.5 rounded-full" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                      <span style={{ fontSize: 6, color: "#94a3b8" }}>Connect</span>
+                      <span style={{ fontSize: 6, color: "#6b6b5e" }}>Connect</span>
                     </div>}
               </div>
             </div>
@@ -411,7 +411,7 @@ function IntegrationsScreen() {
               <div className="px-2.5 pb-2">
                 <div className="flex items-center justify-between rounded" style={{ background: "#f8fafc", padding: "2px 6px" }}>
                   <span style={{ fontSize: 6.5, color: "#64748b" }}>Evidence collected</span>
-                  <span style={{ fontSize: 7.5, fontWeight: 700, color: "#2563eb" }}>{intg.evidence}</span>
+                  <span style={{ fontSize: 7.5, fontWeight: 700, color: "#15803d" }}>{intg.evidence}</span>
                 </div>
               </div>
             )}
@@ -446,9 +446,9 @@ function ProductMockup() {
             className="px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200"
             style={{
               fontSize: 11,
-              background: active === i ? "#2563eb" : "rgba(255,255,255,0.08)",
-              color: active === i ? "white" : "rgba(255,255,255,0.45)",
-              border: active === i ? "1px solid #2563eb" : "1px solid rgba(255,255,255,0.08)",
+              background: active === i ? "#14532d" : "rgba(20,83,45,0.08)",
+              color: active === i ? "white" : "#6b6b5e",
+              border: active === i ? "1px solid #14532d" : "1px solid #d4c9b0",
               cursor: "pointer",
             }}
           >
@@ -460,9 +460,9 @@ function ProductMockup() {
       {/* Progress bar */}
       <div className="flex gap-1 mb-3">
         {MOCKUP_TABS.map((_, i) => (
-          <div key={i} className="flex-1 rounded-full overflow-hidden" style={{ height: 2, background: "rgba(255,255,255,0.1)" }}>
+          <div key={i} className="flex-1 rounded-full overflow-hidden" style={{ height: 2, background: "#d4c9b0" }}>
             <div className="h-full rounded-full" style={{
-              background: "#3b82f6",
+              background: "#15803d",
               width: i < active ? "100%" : i === active ? "100%" : "0%",
               transition: i === active ? "none" : "none",
               opacity: i === active ? 1 : i < active ? 0.4 : 0,
@@ -479,7 +479,7 @@ function ProductMockup() {
           <div className="h-2.5 w-2.5 rounded-full bg-green-400" />
           <div className="flex-1 mx-3 h-5 rounded-md bg-white border border-slate-200 flex items-center px-3 gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
-            <span className="font-medium" style={{ color: "#94a3b8", fontSize: 10 }}>{tab.url}</span>
+            <span className="font-medium" style={{ color: "#6b6b5e", fontSize: 10 }}>{tab.url}</span>
           </div>
         </div>
 
@@ -498,18 +498,18 @@ export default function Landing() {
   const { isSignedIn } = useAuth();
 
   return (
-    <div style={{ fontFamily: "Inter, -apple-system, sans-serif", background: "#0a0500", color: "white" }}>
+    <div style={{ fontFamily: "Inter, -apple-system, sans-serif", background: "#f5f3ee", color: "#111827" }}>
       <AnnouncementBanner />
       <NavBar />
 
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ background: "#0c0500" }}>
+      <section className="relative overflow-hidden" style={{ background: "#f5f3ee" }}>
         {/* Atmospheric glow layers */}
         <div className="absolute inset-0 pointer-events-none" style={{
           background: [
-            "radial-gradient(ellipse 110% 55% at 50% 100%, rgba(249,115,22,0.28) 0%, rgba(234,88,12,0.05) 50%, transparent 70%)",
-            "radial-gradient(ellipse 50% 45% at 15% 5%, rgba(251,146,60,0.16) 0%, transparent 55%)",
-            "radial-gradient(ellipse 35% 35% at 88% 8%, rgba(245,158,11,0.12) 0%, transparent 55%)",
+            "radial-gradient(ellipse 110% 55% at 50% 100%, rgba(21,128,61,0.1) 0%, rgba(234,88,12,0.05) 50%, transparent 70%)",
+            "radial-gradient(ellipse 50% 45% at 15% 5%, rgba(21,128,61,0.08) 0%, transparent 55%)",
+            "radial-gradient(ellipse 35% 35% at 88% 8%, rgba(21,128,61,0.06) 0%, transparent 55%)",
           ].join(", "),
         }} />
         {/* Fine dot grid */}
@@ -521,31 +521,31 @@ export default function Landing() {
         {/* Left floating card - Control Status */}
         <div className="absolute hidden xl:flex pointer-events-none" style={{ left: "3.5%", top: "28%", zIndex: 1 }}>
           <div className="rounded-xl p-3.5 border" style={{
-            background: "rgba(12,6,0,0.88)",
-            borderColor: "rgba(249,115,22,0.22)",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(249,115,22,0.08)",
+            background: "rgba(250,248,244,0.95)",
+            borderColor: "rgba(212,201,176,1)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,201,176,0.3)",
             width: 208,
             backdropFilter: "blur(16px)",
           }}>
-            <div className="flex items-center gap-2 mb-3 pb-2.5" style={{ borderBottom: "1px solid rgba(249,115,22,0.1)" }}>
-              <div className="h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(234,88,12,0.2)" }}>
-                <svg className="h-3.5 w-3.5" style={{ color: "#fb923c" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <div className="flex items-center gap-2 mb-3 pb-2.5" style={{ borderBottom: "1px solid rgba(212,201,176,0.5)" }}>
+              <div className="h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(209,250,229,1)" }}>
+                <svg className="h-3.5 w-3.5" style={{ color: "#16a34a" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
               <div>
-                <p className="text-white font-bold leading-none" style={{ fontSize: 11 }}>UCO Control Status</p>
-                <p style={{ fontSize: 9, color: "#6b4c2a", marginTop: 2 }}>41 controls monitored</p>
+                <p className="font-bold leading-none" style={{ fontSize: 11, color: "#111827" }}>UCO Control Status</p>
+                <p style={{ fontSize: 9, color: "#9c9480", marginTop: 2 }}>41 controls monitored</p>
               </div>
             </div>
             {[
               { name: "MFA Enforcement", status: "Passing", color: "#4ade80" },
               { name: "Access Reviews", status: "Passing", color: "#4ade80" },
               { name: "Encryption at Rest", status: "Passing", color: "#4ade80" },
-              { name: "Incident Response", status: "Review", color: "#f59e0b" },
+              { name: "Incident Response", status: "Review", color: "#15803d" },
             ].map((item) => (
-              <div key={item.name} className="flex items-center justify-between py-1.5" style={{ borderBottom: "1px solid rgba(249,115,22,0.06)" }}>
-                <span style={{ color: "#94a3b8", fontSize: 10.5 }}>{item.name}</span>
+              <div key={item.name} className="flex items-center justify-between py-1.5" style={{ borderBottom: "1px solid rgba(212,201,176,0.2)" }}>
+                <span style={{ color: "#6b6b5e", fontSize: 10.5 }}>{item.name}</span>
                 <span className="flex items-center gap-1 font-semibold" style={{ color: item.color, fontSize: 10 }}>
                   <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
                   {item.status}
@@ -558,17 +558,17 @@ export default function Landing() {
         {/* Right floating card - Framework Coverage */}
         <div className="absolute hidden xl:flex pointer-events-none" style={{ right: "3.5%", top: "20%", zIndex: 1 }}>
           <div className="rounded-xl p-3.5 border" style={{
-            background: "rgba(12,6,0,0.88)",
-            borderColor: "rgba(249,115,22,0.22)",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(249,115,22,0.08)",
+            background: "rgba(250,248,244,0.95)",
+            borderColor: "rgba(212,201,176,1)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,201,176,0.3)",
             width: 196,
             backdropFilter: "blur(16px)",
           }}>
-            <p className="font-bold text-white mb-0.5" style={{ fontSize: 11 }}>Compliance Score</p>
-            <p style={{ fontSize: 9, color: "#6b4c2a", marginBottom: 8 }}>5 frameworks active - Acme Corp</p>
+            <p className="font-bold mb-0.5" style={{ fontSize: 11, color: "#111827" }}>Compliance Score</p>
+            <p style={{ fontSize: 9, color: "#9c9480", marginBottom: 8 }}>5 frameworks active - Acme Corp</p>
             <div className="mb-3" style={{
               fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.03em",
-              background: "linear-gradient(135deg, #fb923c, #f59e0b)",
+              background: "linear-gradient(135deg, #16a34a, #15803d)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
             }}>92%</div>
             <div className="space-y-2">
@@ -580,11 +580,11 @@ export default function Landing() {
               ].map(({ fw, pct }) => (
                 <div key={fw}>
                   <div className="flex justify-between mb-1" style={{ fontSize: 10 }}>
-                    <span style={{ color: "#78503a" }}>{fw}</span>
-                    <span style={{ color: "#fb923c", fontWeight: 700 }}>{pct}%</span>
+                    <span style={{ color: "#6b6b5e" }}>{fw}</span>
+                    <span style={{ color: "#16a34a", fontWeight: 700 }}>{pct}%</span>
                   </div>
-                  <div className="h-1 rounded-full" style={{ background: "rgba(249,115,22,0.12)" }}>
-                    <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg, #c2410c, #f97316)" }} />
+                  <div className="h-1 rounded-full" style={{ background: "rgba(209,250,229,1)" }}>
+                    <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(90deg, #14532d, #15803d)" }} />
                   </div>
                 </div>
               ))}
@@ -597,23 +597,23 @@ export default function Landing() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold mb-7 border"
             style={{
-              background: "rgba(234,88,12,0.18)",
-              borderColor: "rgba(249,115,22,0.42)",
-              color: "#fdba74",
-              boxShadow: "0 0 20px rgba(249,115,22,0.22)",
+              background: "rgba(20,83,45,0.08)",
+              borderColor: "rgba(20,83,45,0.2)",
+              color: "#15803d",
+              boxShadow: "0 0 20px rgba(212,201,176,1)",
             }}>
-            <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: "#fb923c" }} />
+            <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: "#16a34a" }} />
             Federal-First GRC Platform
           </div>
 
           {/* Headline */}
           <h1 className="font-extrabold leading-none tracking-tight mb-7"
             style={{ fontSize: "clamp(3rem, 6.5vw, 5.25rem)", letterSpacing: "-0.03em" }}>
-            <span className="block text-white">Federal Compliance.</span>
+            <span className="block" style={{ color: "#111827" }}>Federal Compliance.</span>
             <span className="block" style={{
-              background: "linear-gradient(135deg, #fb923c 0%, #f97316 45%, #f59e0b 90%)",
+              background: "linear-gradient(135deg, #16a34a 0%, #15803d 45%, #15803d 90%)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-              filter: "drop-shadow(0 0 28px rgba(251,146,60,0.42))",
+              filter: "drop-shadow(0 0 28px rgba(20,83,45,0.25))",
             }}>
               One Control. Every Framework.
             </span>
@@ -623,14 +623,14 @@ export default function Landing() {
           <div className="flex items-center justify-center gap-2 flex-wrap mb-8">
             {["FedRAMP", "CMMC L2", "NIST 800-171", "SOC 2", "ISO 27001", "HIPAA", "+6 more"].map((fw) => (
               <span key={fw} className="text-xs font-semibold px-2.5 py-1 rounded-md"
-                style={{ background: "rgba(249,115,22,0.12)", color: "#fdba74", border: "1px solid rgba(249,115,22,0.28)" }}>
+                style={{ background: "rgba(20,83,45,0.08)", color: "#15803d", border: "1px solid rgba(20,83,45,0.2)" }}>
                 {fw}
               </span>
             ))}
           </div>
 
           {/* Subtext */}
-          <p className="text-xl leading-relaxed mb-10 max-w-2xl mx-auto" style={{ color: "#94a3b8" }}>
+          <p className="text-xl leading-relaxed mb-10 max-w-2xl mx-auto" style={{ color: "#6b6b5e" }}>
             The only GRC platform built federal-first. Implement one control and satisfy every framework simultaneously.
           </p>
 
@@ -639,8 +639,8 @@ export default function Landing() {
             <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
               className="inline-flex items-center gap-2 px-8 py-4 text-white font-bold rounded-xl text-sm transition-all hover:scale-105 hover:brightness-110"
               style={{
-                background: "linear-gradient(135deg, #c2410c 0%, #ea580c 60%, #f97316 100%)",
-                boxShadow: "0 4px 28px rgba(249,115,22,0.55), 0 1px 0 rgba(255,255,255,0.15) inset",
+                background: "linear-gradient(135deg, #14532d 0%, #14532d 60%, #15803d 100%)",
+                boxShadow: "0 4px 28px rgba(20,83,45,0.35), 0 1px 0 rgba(255,255,255,0.15) inset",
                 letterSpacing: "0.01em",
               }}>
               Request a Demo
@@ -651,9 +651,9 @@ export default function Landing() {
             <a href="#federal"
               className="inline-flex items-center gap-2 px-7 py-4 font-semibold rounded-xl text-sm transition-all"
               style={{
-                color: "#cbd5e1",
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(255,255,255,0.04)",
+                color: "#6b6b5e",
+                border: "1px solid #d4c9b0",
+                background: "rgba(20,83,45,0.06)",
                 letterSpacing: "0.01em",
               }}>
               See the Federal Layer
@@ -669,18 +669,18 @@ export default function Landing() {
           {/* Bloom glow behind mockup */}
           <div className="absolute pointer-events-none" style={{
             inset: 0,
-            background: "radial-gradient(ellipse 80% 50% at 50% 40%, rgba(249,115,22,0.2) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse 80% 50% at 50% 40%, rgba(212,201,176,0.8) 0%, transparent 70%)",
             filter: "blur(32px)",
           }} />
           <div className="relative rounded-t-2xl overflow-hidden" style={{
-            boxShadow: "0 0 0 1px rgba(255,165,0,0.15), 0 -8px 60px rgba(249,115,22,0.16), 0 32px 80px rgba(0,0,0,0.6)",
+            boxShadow: "0 0 0 1px rgba(212,201,176,0.5), 0 -8px 40px rgba(20,83,45,0.06), 0 32px 60px rgba(0,0,0,0.12)",
           }}>
             <ProductMockup />
           </div>
         </div>
 
         {/* Stats strip - sits at the base of the hero, above the trust bar */}
-        <div style={{ background: "rgba(10,5,0,0.85)", borderTop: "1px solid rgba(249,115,22,0.12)", borderBottom: "1px solid rgba(249,115,22,0.06)" }}>
+        <div style={{ background: "rgba(245,243,238,0.9)", borderTop: "1px solid rgba(209,250,229,1)", borderBottom: "1px solid rgba(212,201,176,0.2)" }}>
           <div className="max-w-4xl mx-auto px-6 py-10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
               {[
@@ -691,11 +691,11 @@ export default function Landing() {
               ].map(({ value, label, sub }) => (
                 <div key={label}>
                   <p className="text-3xl font-extrabold mb-1 leading-none"
-                    style={{ background: "linear-gradient(135deg, #fb923c, #f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                    style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                     {value}
                   </p>
-                  <p className="text-sm font-semibold text-white leading-snug mb-0.5">{label}</p>
-                  <p className="text-xs" style={{ color: "#6b4c2a" }}>{sub}</p>
+                  <p className="text-sm font-semibold leading-snug mb-0.5" style={{ color: "#111827" }}>{label}</p>
+                  <p className="text-xs" style={{ color: "#9c9480" }}>{sub}</p>
                 </div>
               ))}
             </div>
@@ -704,21 +704,21 @@ export default function Landing() {
       </section>
 
       {/* ── TRUST BAR ── */}
-      <section style={{ background: "#110700", borderTop: "1px solid rgba(249,115,22,0.1)", borderBottom: "1px solid rgba(249,115,22,0.08)" }}>
+      <section style={{ background: "#faf8f4", borderTop: "1px solid rgba(212,201,176,0.5)", borderBottom: "1px solid rgba(212,201,176,0.3)" }}>
         <div className="max-w-7xl mx-auto px-6 py-10">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-8" style={{ color: "#6b4c2a" }}>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-8" style={{ color: "#9c9480" }}>
             Trusted by defense contractors, federal agencies, and enterprise security teams
           </p>
           <div className="flex items-center justify-center flex-wrap gap-10">
             {TRUST_NAMES.map((name) => (
-              <span key={name} className="text-sm font-bold tracking-wide" style={{ color: "#6b4c2a" }}>{name}</span>
+              <span key={name} className="text-sm font-bold tracking-wide" style={{ color: "#9c9480" }}>{name}</span>
             ))}
           </div>
         </div>
       </section>
 
       {/* ── STATS ── */}
-      <section style={{ background: "#0a0500", borderBottom: "1px solid rgba(249,115,22,0.08)" }}>
+      <section style={{ background: "#f5f3ee", borderBottom: "1px solid rgba(212,201,176,0.3)" }}>
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
@@ -728,9 +728,9 @@ export default function Landing() {
               { value: "10 min", label: "Setup to First Score", sub: "No professional services" },
             ].map(({ value, label, sub }) => (
               <div key={label}>
-                <div className="text-4xl font-extrabold tracking-tight mb-1.5" style={{ background: "linear-gradient(135deg, #fb923c, #f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{value}</div>
-                <div className="text-sm font-bold text-white mb-0.5">{label}</div>
-                <div className="text-xs" style={{ color: "#6b4c2a" }}>{sub}</div>
+                <div className="text-4xl font-extrabold tracking-tight mb-1.5" style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{value}</div>
+                <div className="text-sm font-bold mb-0.5" style={{ color: "#111827" }}>{label}</div>
+                <div className="text-xs" style={{ color: "#9c9480" }}>{sub}</div>
               </div>
             ))}
           </div>
@@ -738,19 +738,19 @@ export default function Landing() {
       </section>
 
       {/* ── UCO SECTION ── */}
-      <section style={{ background: "#110700", borderBottom: "1px solid rgba(249,115,22,0.08)" }}>
+      <section style={{ background: "#faf8f4", borderBottom: "1px solid rgba(212,201,176,0.3)" }}>
         <div className="max-w-7xl mx-auto px-6 py-20">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#f97316" }}>Universal Control Objectives</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#15803d" }}>Universal Control Objectives</p>
               <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-5">
-                <span className="text-white">Implement once.</span>
+                <span className="" style={{ color: "#111827" }}>Implement once.</span>
                 <br />
-                <span style={{ background: "linear-gradient(135deg, #fb923c 0%, #f97316 60%, #f59e0b 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                <span style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 60%, #15803d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   Satisfy every framework simultaneously.
                 </span>
               </h2>
-              <p className="text-base leading-relaxed mb-6" style={{ color: "#78503a" }}>
+              <p className="text-base leading-relaxed mb-6" style={{ color: "#6b6b5e" }}>
                 EnterpriseComply's UCO controls are security controls first, not compliance checklists. When you enforce MFA, you're reducing actual risk. The fact that it simultaneously satisfies FedRAMP, CMMC, NIST 800-171, SOC 2, ISO 27001, HIPAA, and more is a consequence of implementing genuine security, not the goal of it. No duplicated work. No gaps.
               </p>
               <div className="space-y-3">
@@ -760,13 +760,13 @@ export default function Landing() {
                   { label: "12 control domains", detail: "from Identity to Federal, covering every security obligation" },
                 ].map(({ label, detail }) => (
                   <div key={label} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(234,88,12,0.18)", border: "1px solid rgba(249,115,22,0.35)" }}>
-                      <svg className="h-2.5 w-2.5" style={{ color: "#fb923c" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(209,250,229,1)", border: "1px solid rgba(167,243,208,0.8)" }}>
+                      <svg className="h-2.5 w-2.5" style={{ color: "#16a34a" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <p className="text-sm" style={{ color: "#94a3b8" }}>
-                      <span className="font-semibold text-white">{label}</span> {detail}
+                    <p className="text-sm" style={{ color: "#6b6b5e" }}>
+                      <span className="font-semibold" style={{ color: "#111827" }}>{label}</span> {detail}
                     </p>
                   </div>
                 ))}
@@ -800,28 +800,28 @@ export default function Landing() {
                   { name: "Cyber Essentials", cat: "commercial", color: "#0c4a6e" },
                   { name: "HITRUST CSF", cat: "commercial", color: "#134e4a" },
                 ].map((fw) => (
-                  <div key={fw.name} className="rounded-lg px-2 py-2 text-center" style={{ background: `${fw.color}22`, border: `1px solid ${fw.color}44` }}>
-                    <p className="text-white font-semibold leading-tight" style={{ fontSize: 9 }}>{fw.name}</p>
+                  <div key={fw.name} className="rounded-lg px-2 py-2 text-center" style={{ background: `${fw.color}18`, border: `1px solid ${fw.color}55` }}>
+                    <p className="font-semibold leading-tight" style={{ fontSize: 9, color: fw.color }}>{fw.name}</p>
                   </div>
                 ))}
               </div>
               {/* Glow behind the grid */}
-              <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(249,115,22,0.1) 0%, transparent 70%)" }} />
+              <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(212,201,176,0.5) 0%, transparent 70%)" }} />
             </div>
           </div>
         </div>
       </section>
 
       {/* ── SECURITY + COMPLIANCE BRIDGE ── */}
-      <section style={{ background: "#0a0500", borderTop: "1px solid rgba(249,115,22,0.08)", borderBottom: "1px solid rgba(249,115,22,0.08)" }}>
+      <section style={{ background: "#f5f3ee", borderTop: "1px solid rgba(212,201,176,0.3)", borderBottom: "1px solid rgba(212,201,176,0.3)" }}>
         <div className="max-w-7xl mx-auto px-6 py-20">
           <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#f97316" }}>Beyond the audit checklist</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-4">
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#15803d" }}>Beyond the audit checklist</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4" style={{ color: "#111827" }}>
               Compliance and security<br />
-              <span style={{ background: "linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>are not the same thing.</span>
+              <span style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>are not the same thing.</span>
             </h2>
-            <p className="text-base leading-relaxed" style={{ color: "#78503a" }}>
+            <p className="text-base leading-relaxed" style={{ color: "#6b6b5e" }}>
               Passing an audit doesn't mean you're protected. A passed control with no implementation behind it is a liability, not an asset. EnterpriseComply is built on a different premise: start with security that actually works, then prove it to anyone who asks.
             </p>
           </div>
@@ -833,7 +833,7 @@ export default function Landing() {
                     <path fillRule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.188-2.738-.533-4.018a.75.75 0 00-.722-.515 11.21 11.21 0 01-7.879-3.045zM10.5 12.97l-1.72-1.72a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l4.5-4.5a.75.75 0 10-1.06-1.06l-3.97 3.97z" clipRule="evenodd" />
                   </svg>
                 ),
-                accent: "#ea580c",
+                accent: "#14532d",
                 title: "Security Controls, Not Audit Artifacts",
                 body: "Every UCO control is a real security objective: MFA enforcement, access reviews, encryption at rest, incident response. The compliance framework mappings are a byproduct of implementing genuine security, not the starting point.",
               },
@@ -843,7 +843,7 @@ export default function Landing() {
                     <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
                   </svg>
                 ),
-                accent: "#f97316",
+                accent: "#15803d",
                 title: "Drift Detection, Not Point-in-Time Snapshots",
                 body: "Compliance status changes the moment a configuration drifts. Continuous monitoring tracks every integrated system in real time, alerting you when a passing control starts to fail, before your next audit reveals it.",
               },
@@ -853,26 +853,26 @@ export default function Landing() {
                     <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clipRule="evenodd" />
                   </svg>
                 ),
-                accent: "#f59e0b",
+                accent: "#15803d",
                 title: "Remediation Workflows, Not Finding Documentation",
                 body: "When a gap is identified (through a risk assessment, a failing control test, or a drift alert) it becomes a tracked remediation item with an owner, a due date, and a POA&M entry. Gaps close. They don't sit in a spreadsheet.",
               },
             ].map((col) => (
-              <div key={col.title} className="relative p-7 rounded-2xl border" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(249,115,22,0.18)" }}>
-                <div className="h-13 w-13 rounded-xl flex items-center justify-center mb-5" style={{ background: `rgba(234,88,12,0.15)`, color: col.accent }}>
+              <div key={col.title} className="relative p-7 rounded-2xl border" style={{ background: "#ffffff", borderColor: "#d4c9b0" }}>
+                <div className="h-13 w-13 rounded-xl flex items-center justify-center mb-5" style={{ background: `rgba(209,250,229,1)`, color: col.accent }}>
                   {col.icon}
                 </div>
                 <div className="absolute top-0 left-7 right-7 h-0.5 rounded-full" style={{ background: col.accent }} />
-                <h3 className="text-base font-bold text-white mb-3">{col.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#78503a" }}>{col.body}</p>
+                <h3 className="text-base font-bold mb-3" style={{ color: "#111827" }}>{col.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: "#6b6b5e" }}>{col.body}</p>
               </div>
             ))}
           </div>
-          <div className="mt-12 p-6 rounded-2xl border text-center" style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.2)" }}>
-            <p className="text-sm font-semibold text-white mb-1">
+          <div className="mt-12 p-6 rounded-2xl border text-center" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.15)" }}>
+            <p className="text-sm font-semibold mb-1" style={{ color: "#111827" }}>
               We don't help you pass audits.
             </p>
-            <p className="text-sm" style={{ color: "#78503a" }}>
+            <p className="text-sm" style={{ color: "#6b6b5e" }}>
               We help you deserve to pass them, then make the audit itself effortless.
             </p>
           </div>
@@ -880,33 +880,33 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURES ── */}
-      <section id="features" style={{ background: "#110700" }}>
+      <section id="features" style={{ background: "#faf8f4" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="max-w-xl mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#f97316" }}>Precision-built for enterprise GRC.</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4 leading-tight">
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#15803d" }}>Precision-built for enterprise GRC.</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 leading-tight" style={{ color: "#111827" }}>
               The Operating System<br />
-              <span style={{ background: "linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>for Compliance.</span>
+              <span style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>for Compliance.</span>
             </h2>
-            <p className="text-base leading-relaxed" style={{ color: "#78503a" }}>
+            <p className="text-base leading-relaxed" style={{ color: "#6b6b5e" }}>
               From policy to evidence to audit, every workflow runs in one system. No spreadsheets, no siloed tools, no gaps between what you've done and what you can prove.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
               <div key={f.title} className="p-6 rounded-2xl border transition-all group"
-                style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(249,115,22,0.15)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(249,115,22,0.4)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 32px rgba(249,115,22,0.08)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(249,115,22,0.15)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}>
+                style={{ background: "#ffffff", borderColor: "#d4c9b0" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(167,243,208,0.9)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 32px rgba(212,201,176,0.3)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(212,201,176,0.6)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}>
                 <div className="h-12 w-12 rounded-xl flex items-center justify-center mb-5 transition-colors"
-                  style={{ background: "rgba(234,88,12,0.15)", color: "#fb923c" }}>
+                  style={{ background: "rgba(209,250,229,1)", color: "#16a34a" }}>
                   {f.icon}
                 </div>
-                <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-sm leading-relaxed mb-4" style={{ color: "#78503a" }}>{f.desc}</p>
-                <a href={isSignedIn ? BASE_PATH + f.page : BASE_PATH + "/sign-up"} className="inline-flex items-center gap-1 text-sm font-semibold transition-colors" style={{ color: "#fb923c" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#f97316")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "#fb923c")}>
+                <h3 className="text-base font-bold mb-2" style={{ color: "#111827" }}>{f.title}</h3>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: "#6b6b5e" }}>{f.desc}</p>
+                <a href={isSignedIn ? BASE_PATH + f.page : BASE_PATH + "/sign-up"} className="inline-flex items-center gap-1 text-sm font-semibold transition-colors" style={{ color: "#16a34a" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#15803d")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#16a34a")}>
                   Explore capabilities
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                 </a>
@@ -917,25 +917,25 @@ export default function Landing() {
       </section>
 
       {/* ── DATA PORTABILITY ── */}
-      <section style={{ background: "#0a0500", borderTop: "1px solid rgba(249,115,22,0.08)", borderBottom: "1px solid rgba(249,115,22,0.08)" }}>
+      <section style={{ background: "#f5f3ee", borderTop: "1px solid rgba(212,201,176,0.3)", borderBottom: "1px solid rgba(212,201,176,0.3)" }}>
         <div className="max-w-7xl mx-auto px-6 py-20">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
-                style={{ background: "rgba(234,88,12,0.14)", borderColor: "rgba(249,115,22,0.3)", color: "#fdba74" }}>
+                style={{ background: "rgba(20,83,45,0.08)", borderColor: "rgba(20,83,45,0.2)", color: "#15803d" }}>
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Your Data. Your Program. Always.
               </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight mb-5">
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-5" style={{ color: "#111827" }}>
                 What happens to your<br />
-                <span style={{ background: "linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>compliance program if things change?</span>
+                <span style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>compliance program if things change?</span>
               </h2>
-              <p className="text-base leading-relaxed mb-6" style={{ color: "#78503a" }}>
+              <p className="text-base leading-relaxed mb-6" style={{ color: "#6b6b5e" }}>
                 A CMMC Level 2 certified MSP closed recently and left dozens of defense contractors with a painful problem: they had to rebuild their entire compliance program from scratch. Re-collect evidence. Re-document controls. Find a new provider. Start over.
               </p>
-              <p className="text-base leading-relaxed mb-8" style={{ color: "#78503a" }}>
+              <p className="text-base leading-relaxed mb-8" style={{ color: "#6b6b5e" }}>
                 EnterpriseComply is built on a different premise. Your compliance data (every control, every evidence artifact, every POA&amp;M entry) belongs to you. Export it any time. Certified provider or not, those answers matter.
               </p>
               <div className="space-y-3 mb-8">
@@ -945,21 +945,21 @@ export default function Landing() {
                   { q: "How much would have to be rebuilt?", a: "Nothing. Every piece of your compliance program exports as open formats: CSV, JSON, and PDF." },
                 ].map(({ q, a }) => (
                   <div key={q} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(234,88,12,0.18)", border: "1px solid rgba(249,115,22,0.35)" }}>
-                      <svg className="h-2.5 w-2.5" style={{ color: "#fb923c" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <div className="flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center mt-0.5" style={{ background: "rgba(209,250,229,1)", border: "1px solid rgba(167,243,208,0.8)" }}>
+                      <svg className="h-2.5 w-2.5" style={{ color: "#16a34a" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">{q}</p>
-                      <p className="text-sm mt-0.5" style={{ color: "#78503a" }}>{a}</p>
+                      <p className="text-sm font-semibold" style={{ color: "#111827" }}>{q}</p>
+                      <p className="text-sm mt-0.5" style={{ color: "#6b6b5e" }}>{a}</p>
                     </div>
                   </div>
                 ))}
               </div>
               <a href={BASE_PATH + "/sign-up"}
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-lg"
-                style={{ background: "linear-gradient(135deg, #c2410c 0%, #f97316 100%)", boxShadow: "0 4px 16px rgba(249,115,22,0.3)" }}>
+                style={{ background: "linear-gradient(135deg, #14532d 0%, #15803d 100%)", boxShadow: "0 4px 16px rgba(167,243,208,0.7)" }}>
                 See the full portability guarantee
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -968,8 +968,8 @@ export default function Landing() {
             </div>
 
             <div className="space-y-3">
-              <div className="rounded-2xl p-6 border" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(249,115,22,0.18)" }}>
-                <p className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: "#6b4c2a" }}>What you can always export</p>
+              <div className="rounded-2xl p-6 border" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(209,250,229,1)" }}>
+                <p className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: "#9c9480" }}>What you can always export</p>
                 <div className="space-y-3">
                   {[
                     { label: "All UCO control implementations + status history", format: "CSV + JSON" },
@@ -984,14 +984,14 @@ export default function Landing() {
                     <div key={label} className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: "#22c55e" }} />
-                        <span className="text-sm" style={{ color: "#94a3b8" }}>{label}</span>
+                        <span className="text-sm" style={{ color: "#6b6b5e" }}>{label}</span>
                       </div>
-                      <span className="text-xs font-medium px-2 py-0.5 rounded flex-shrink-0" style={{ color: "#6b4c2a", background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}>{format}</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded flex-shrink-0" style={{ color: "#9c9480", background: "rgba(212,201,176,0.3)", border: "1px solid rgba(212,201,176,0.8)" }}>{format}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg, #9a3412 0%, #c2410c 60%, #ea580c 100%)" }}>
+              <div className="rounded-2xl p-5 text-white" style={{ background: "#14532d" }}>
                 <p className="font-bold text-sm mb-1">Before signing any GRC contract, ask:</p>
                 <ul className="space-y-1.5 mt-3">
                   {[
@@ -1000,13 +1000,13 @@ export default function Landing() {
                     "What happens to my CMMC program if you close?",
                     "Is my data in my account or yours?",
                   ].map((q) => (
-                    <li key={q} className="flex items-start gap-2 text-sm" style={{ color: "#fed7aa" }}>
-                      <span className="font-bold flex-shrink-0" style={{ color: "#fde68a" }}>?</span>
+                    <li key={q} className="flex items-start gap-2 text-sm" style={{ color: "#bbf7d0" }}>
+                      <span className="font-bold flex-shrink-0" style={{ color: "#a7f3d0" }}>?</span>
                       {q}
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs mt-4 pt-3" style={{ color: "#fde68a", borderTop: "1px solid rgba(255,255,255,0.2)" }}>EnterpriseComply answers all four before you sign.</p>
+                <p className="text-xs mt-4 pt-3" style={{ color: "#a7f3d0", borderTop: "1px solid rgba(255,255,255,0.2)" }}>EnterpriseComply answers all four before you sign.</p>
               </div>
             </div>
           </div>
@@ -1014,20 +1014,20 @@ export default function Landing() {
       </section>
 
       {/* ── FEDERAL GTM WEDGE ── */}
-      <section id="federal" style={{ background: "linear-gradient(135deg, #120600 0%, #1e0900 60%, #150700 100%)", borderTop: "1px solid rgba(249,115,22,0.14)" }}>
+      <section id="federal" style={{ background: "linear-gradient(135deg, #14532d 0%, #166534 60%, #15803d 100%)", borderTop: "1px solid rgba(212,201,176,0.5)" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border mb-5" style={{ background: "rgba(234,88,12,0.12)", borderColor: "rgba(249,115,22,0.3)" }}>
-              <svg className="h-3.5 w-3.5" style={{ color: "#fb923c" }} fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" /></svg>
-              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#fb923c" }}>Federal-first architecture</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border mb-5" style={{ background: "rgba(209,250,229,0.6)", borderColor: "rgba(167,243,208,0.7)" }}>
+              <svg className="h-3.5 w-3.5" style={{ color: "#16a34a" }} fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" /></svg>
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#16a34a" }}>Federal-first architecture</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-4">
               The Only GRC Platform Built<br />
-              <span style={{ background: "linear-gradient(135deg, #fb923c 0%, #f97316 60%, #f59e0b 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              <span style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 60%, #15803d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                 For Defense Contractors
               </span>
             </h2>
-            <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: "#78503a" }}>
+            <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
               FedRAMP, CMMC Level 2, and NIST 800-53 are not bolt-on modules. POA&amp;M management, SPRS score tracking, and SSP generation are native features, sharing the same evidence, controls, and infrastructure as your commercial frameworks.
             </p>
           </div>
@@ -1056,26 +1056,26 @@ export default function Landing() {
                 icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z",
               },
             ].map((item) => (
-              <div key={item.title} className="rounded-2xl p-6 border flex flex-col" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(249,115,22,0.2)" }}>
+              <div key={item.title} className="rounded-2xl p-6 border flex flex-col" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.15)" }}>
                 <div className="flex items-start justify-between mb-4">
-                  <div className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(234,88,12,0.15)" }}>
-                    <svg className="h-5 w-5" style={{ color: "#fb923c" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <div className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(209,250,229,1)" }}>
+                    <svg className="h-5 w-5" style={{ color: "#16a34a" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                       <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                     </svg>
                   </div>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(234,88,12,0.18)", color: "#fdba74" }}>{item.badge}</span>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.9)" }}>{item.badge}</span>
                 </div>
-                <h3 className="text-base font-bold text-white mb-2">{item.title}</h3>
-                <p className="text-sm leading-relaxed flex-1 mb-5" style={{ color: "#78503a" }} dangerouslySetInnerHTML={{ __html: item.desc }} />
-                <div className="border-t pt-4 flex items-end gap-2" style={{ borderColor: "rgba(249,115,22,0.14)" }}>
-                  <span className="text-2xl font-extrabold" style={{ color: "#fb923c" }}>{item.stat}</span>
-                  <span className="text-xs mb-0.5" style={{ color: "#6b4c2a" }}>{item.statLabel}</span>
+                <h3 className="text-base font-bold mb-2" style={{ color: "#111827" }}>{item.title}</h3>
+                <p className="text-sm leading-relaxed flex-1 mb-5" style={{ color: "rgba(255,255,255,0.7)" }} dangerouslySetInnerHTML={{ __html: item.desc }} />
+                <div className="border-t pt-4 flex items-end gap-2" style={{ borderColor: "rgba(212,201,176,0.5)" }}>
+                  <span className="text-2xl font-extrabold" style={{ color: "#16a34a" }}>{item.stat}</span>
+                  <span className="text-xs mb-0.5" style={{ color: "rgba(255,255,255,0.55)" }}>{item.statLabel}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="rounded-2xl p-6 border" style={{ background: "rgba(249,115,22,0.06)", borderColor: "rgba(249,115,22,0.2)" }}>
+          <div className="rounded-2xl p-6 border" style={{ background: "rgba(212,201,176,0.2)", borderColor: "rgba(212,201,176,0.8)" }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
               {[
                 { stat: "12", label: "Frameworks native" },
@@ -1084,19 +1084,19 @@ export default function Landing() {
                 { stat: "1", label: "System of record" },
               ].map((s) => (
                 <div key={s.label} className="text-center">
-                  <p className="text-3xl font-extrabold mb-1" style={{ color: "#fb923c" }}>{s.stat}</p>
-                  <p className="text-xs" style={{ color: "#6b4c2a" }}>{s.label}</p>
+                  <p className="text-3xl font-extrabold mb-1" style={{ color: "#4ade80" }}>{s.stat}</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>{s.label}</p>
                 </div>
               ))}
             </div>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t" style={{ borderColor: "rgba(249,115,22,0.14)" }}>
-              <p className="text-sm text-center sm:text-left" style={{ color: "#94a3b8" }}>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t" style={{ borderColor: "rgba(212,201,176,0.5)" }}>
+              <p className="text-sm text-center sm:text-left" style={{ color: "rgba(255,255,255,0.7)" }}>
                 <span className="font-semibold text-white">FedRAMP Moderate, High, LI-SaaS. CMMC L1 and L2. NIST 800-53 Rev 5. NIST 800-171 Rev 2.</span>
                 <br />All in one platform with shared evidence and zero duplicate data entry.
               </p>
               <a href={BASE_PATH + "/sign-up"}
                 className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all hover:scale-105"
-                style={{ background: "linear-gradient(135deg, #c2410c 0%, #f97316 100%)", color: "white", boxShadow: "0 0 24px rgba(249,115,22,0.35)" }}>
+                style={{ background: "linear-gradient(135deg, #14532d 0%, #15803d 100%)", color: "white", boxShadow: "0 0 24px rgba(167,243,208,0.8)" }}>
                 See the federal layer
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
@@ -1106,14 +1106,14 @@ export default function Landing() {
       </section>
 
       {/* ── INDUSTRIES ── */}
-      <section style={{ background: "#110700" }}>
+      <section style={{ background: "#faf8f4" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="text-center mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#f97316" }}>Built for highly regulated industries</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: "white" }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#15803d" }}>Built for highly regulated industries</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: "#111827" }}>
               Purpose-Built. Industry-Ready.
             </h2>
-            <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: "#78503a" }}>
+            <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: "#6b6b5e" }}>
               From the Pentagon to Wall Street. The only GRC platform with a native federal layer alongside full commercial framework coverage, one system for every obligation.
             </p>
           </div>
@@ -1125,13 +1125,13 @@ export default function Landing() {
                   alt={ind.name}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(10,5,0,0.85) 0%, rgba(10,5,0,0.4) 38%, transparent 62%)" }} />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(15,40,20,0.85) 0%, rgba(15,40,20,0.5) 40%, transparent 65%)" }} />
                 {/* Orange tint on hover */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "rgba(249,115,22,0.15)" }} />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "rgba(20,83,45,0.25)" }} />
                 <div className="relative flex flex-col justify-end h-full p-5" style={{ minHeight: 240 }}>
                   <h3 className="font-bold text-white text-sm mb-1.5">{ind.name}</h3>
-                  <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(253,186,116,0.8)" }}>{ind.desc}</p>
-                  <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#fb923c" }}>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.75)" }}>{ind.desc}</p>
+                  <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#16a34a" }}>
                     Learn more
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                   </div>
@@ -1140,7 +1140,7 @@ export default function Landing() {
             ))}
           </div>
           <div className="mt-6 text-center">
-            <a href="#" className="inline-flex items-center gap-2 text-sm font-semibold transition-colors" style={{ color: "#f97316" }}>
+            <a href="#" className="inline-flex items-center gap-2 text-sm font-semibold transition-colors" style={{ color: "#15803d" }}>
               View all industries
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
             </a>
@@ -1149,26 +1149,26 @@ export default function Landing() {
       </section>
 
       {/* ── BOLD CTA ── */}
-      <section style={{ background: "#0a0500", borderTop: "1px solid rgba(249,115,22,0.1)" }}>
+      <section style={{ background: "#f5f3ee", borderTop: "1px solid rgba(212,201,176,0.5)" }}>
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#f97316" }}>Stop treating compliance as overhead.</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#15803d" }}>Stop treating compliance as overhead.</p>
               <h2 className="font-extrabold tracking-tight leading-tight" style={{ fontSize: "clamp(2rem, 4vw, 3rem)" }}>
-                <span className="text-white">Stop Managing Compliance.</span>
+                <span className="" style={{ color: "#111827" }}>Stop Managing Compliance.</span>
                 <br />
-                <span style={{ background: "linear-gradient(135deg, #fb923c 0%, #f97316 60%, #f59e0b 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                <span style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 60%, #15803d 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   Start Owning It.
                 </span>
               </h2>
             </div>
             <div>
-              <p className="text-base leading-relaxed mb-8" style={{ color: "#78503a" }}>
+              <p className="text-base leading-relaxed mb-8" style={{ color: "#6b6b5e" }}>
                 The organizations that win on compliance treat it as a system, not a project. EnterpriseComply gives your team that system, and the time to use it.
               </p>
               <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
                 className="inline-flex items-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl text-sm transition-all hover:scale-105"
-                style={{ background: "linear-gradient(135deg, #c2410c 0%, #ea580c 60%, #f97316 100%)", boxShadow: "0 0 32px rgba(249,115,22,0.4)" }}>
+                style={{ background: "linear-gradient(135deg, #14532d 0%, #14532d 60%, #15803d 100%)", boxShadow: "0 4px 20px rgba(20,83,45,0.35)" }}>
                 Request a Demo
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </a>
@@ -1178,7 +1178,7 @@ export default function Landing() {
       </section>
 
       {/* ── BOTTOM FEATURE BADGES ── */}
-      <section style={{ background: "#110700", borderTop: "1px solid rgba(249,115,22,0.1)" }}>
+      <section style={{ background: "#faf8f4", borderTop: "1px solid rgba(212,201,176,0.5)" }}>
         <div className="max-w-7xl mx-auto px-6 py-14">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
@@ -1188,14 +1188,14 @@ export default function Landing() {
               { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", title: "Always Audit Ready", desc: "Continuous evidence collection means your audit package is always current. No scramble. No gaps." },
             ].map(({ icon, title, desc }) => (
               <div key={title} className="flex flex-col gap-3">
-                <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(234,88,12,0.15)", border: "1px solid rgba(249,115,22,0.25)" }}>
-                  <svg className="h-5 w-5" style={{ color: "#fb923c" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(209,250,229,1)", border: "1px solid rgba(20,83,45,0.15)" }}>
+                  <svg className="h-5 w-5" style={{ color: "#16a34a" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-white text-sm mb-1">{title}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#6b4c2a" }}>{desc}</p>
+                  <p className="font-bold text-sm mb-1" style={{ color: "#111827" }}>{title}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9c9480" }}>{desc}</p>
                 </div>
               </div>
             ))}
@@ -1204,23 +1204,23 @@ export default function Landing() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background: "#0a0500", borderTop: "1px solid rgba(249,115,22,0.1)" }}>
+      <footer style={{ background: "#f5f3ee", borderTop: "1px solid rgba(212,201,176,0.5)" }}>
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-10 mb-14">
             {/* Brand */}
             <div className="col-span-2">
               <a href={BASE_PATH + "/"} className="flex items-center gap-2.5 mb-4">
-                <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #c2410c, #ea580c)" }}>
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#14532d" }}>
                   <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" alt="" />
                 </div>
-                <span className="font-bold text-white">EnterpriseComply</span>
+                <span className="font-bold" style={{ color: "#111827" }}>EnterpriseComply</span>
               </a>
-              <p className="text-sm leading-relaxed mb-5" style={{ color: "#6b4c2a" }}>
+              <p className="text-sm leading-relaxed mb-5" style={{ color: "#9c9480" }}>
                 The only GRC platform built federal-first. FedRAMP, CMMC, NIST 800-53, and NIST 800-171 are native, not add-ons. One control satisfies every federal and commercial obligation simultaneously.
               </p>
               <div className="flex gap-3">
                 {["M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"].map((d, i) => (
-                  <a key={i} href="#" className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors" style={{ background: "rgba(249,115,22,0.1)", color: "#6b4c2a" }}>
+                  <a key={i} href="#" className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors" style={{ background: "rgba(212,201,176,0.5)", color: "#9c9480" }}>
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d={d} /></svg>
                   </a>
                 ))}
@@ -1230,13 +1230,13 @@ export default function Landing() {
             {/* Link groups */}
             {Object.entries(FOOTER_LINKS).map(([group, links]) => (
               <div key={group}>
-                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#6b4c2a" }}>{group}</p>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#9c9480" }}>{group}</p>
                 <ul className="space-y-2.5">
                   {links.map((link) => (
                     <li key={link}>
-                      <a href="#" className="text-sm transition-colors" style={{ color: "#6b4c2a" }}
-                        onMouseEnter={e => (e.currentTarget.style.color = "#fb923c")}
-                        onMouseLeave={e => (e.currentTarget.style.color = "#6b4c2a")}>
+                      <a href="#" className="text-sm transition-colors" style={{ color: "#9c9480" }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#16a34a")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "#9c9480")}>
                         {link}
                       </a>
                     </li>
@@ -1247,13 +1247,13 @@ export default function Landing() {
 
             {/* Newsletter */}
             <div className="col-span-2 md:col-span-1 lg:col-span-1">
-              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#6b4c2a" }}>Stay Updated</p>
-              <p className="text-sm mb-3" style={{ color: "#6b4c2a" }}>Get the latest compliance insights and industry updates.</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#9c9480" }}>Stay Updated</p>
+              <p className="text-sm mb-3" style={{ color: "#9c9480" }}>Get the latest compliance insights and industry updates.</p>
               <div className="flex gap-2">
                 <input type="email" placeholder="Your email" className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg outline-none"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white" }} />
+                  style={{ background: "#ffffff", border: "1px solid #d4c9b0", color: "#111827" }} />
                 <button className="px-3 py-2 rounded-lg text-sm font-semibold text-white flex-shrink-0 transition-colors"
-                  style={{ background: "linear-gradient(135deg, #c2410c, #ea580c)" }}>
+                  style={{ background: "#14532d" }}>
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                 </button>
               </div>
@@ -1261,15 +1261,15 @@ export default function Landing() {
           </div>
 
           {/* Bottom bar */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <p className="text-xs" style={{ color: "#4a3020" }}>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: "1px solid #d4c9b0" }}>
+            <p className="text-xs" style={{ color: "#b0a898" }}>
               &copy; 2026 ColorCode Solutions. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((link) => (
-                <a key={link} href="#" className="text-xs transition-colors" style={{ color: "#4a3020" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#6b4c2a")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "#4a3020")}>
+                <a key={link} href="#" className="text-xs transition-colors" style={{ color: "#b0a898" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#9c9480")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#b0a898")}>
                   {link}
                 </a>
               ))}

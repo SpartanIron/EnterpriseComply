@@ -121,7 +121,7 @@ function generateSspHtml(ssp: any): string {
           <tr><td style="padding:9px 12px;border:1px solid #e2e8f0;font-weight:600;">Confidentiality</td><td style="padding:9px 12px;border:1px solid #e2e8f0;">${impactBadgeHtml(ssp.system.fips199Confidentiality)}</td></tr>
           <tr style="background:#f8fafc;"><td style="padding:9px 12px;border:1px solid #e2e8f0;font-weight:600;">Integrity</td><td style="padding:9px 12px;border:1px solid #e2e8f0;">${impactBadgeHtml(ssp.system.fips199Integrity)}</td></tr>
           <tr><td style="padding:9px 12px;border:1px solid #e2e8f0;font-weight:600;">Availability</td><td style="padding:9px 12px;border:1px solid #e2e8f0;">${impactBadgeHtml(ssp.system.fips199Availability)}</td></tr>
-          <tr style="background:#eff6ff;"><td style="padding:9px 12px;border:1px solid #bfdbfe;font-weight:700;color:#1d4ed8;">Overall System Impact Level</td><td style="padding:9px 12px;border:1px solid #bfdbfe;">${impactBadgeHtml(ssp.system.overallImpactLevel ?? "Moderate")}</td></tr>
+          <tr style="background:#f0fdf4;"><td style="padding:9px 12px;border:1px solid #bbf7d0;font-weight:700;color:#15803d;">Overall System Impact Level</td><td style="padding:9px 12px;border:1px solid #bbf7d0;">${impactBadgeHtml(ssp.system.overallImpactLevel ?? "Moderate")}</td></tr>
         </tbody>
       </table>
     </div>` : "";
@@ -185,7 +185,7 @@ function generateSspHtml(ssp: any): string {
   const controlsHtml = Object.entries(domainMap)
     .map(([domain, controls], idx) => `
     <div style="page-break-inside:avoid;">
-      <h2 style="font-size:11pt;font-weight:600;color:#1d4ed8;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #bfdbfe;">
+      <h2 style="font-size:11pt;font-weight:600;color:#15803d;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid #bbf7d0;">
         3.${idx + 1} &nbsp;${he(domain)}
       </h2>
       <table style="width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:20px;">
@@ -238,13 +238,13 @@ function generateSspHtml(ssp: any): string {
     <strong style="font-size:11pt;color:#0f172a;">System Security Plan - Preview</strong>
     <span style="margin-left:14px;color:#64748b;font-size:9pt;">Use File &gt; Print (Ctrl/Cmd+P) and select "Save as PDF" to export</span>
   </div>
-  <button onclick="window.print()" style="padding:9px 22px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:10pt;font-weight:600;cursor:pointer;font-family:inherit;">
+  <button onclick="window.print()" style="padding:9px 22px;background:#15803d;color:#fff;border:none;border-radius:8px;font-size:10pt;font-weight:600;cursor:pointer;font-family:inherit;">
     Print / Save as PDF
   </button>
 </div>
 
 <!-- COVER PAGE -->
-<div style="text-align:center;padding:2in 0 1.6in;border-bottom:3px solid #1d4ed8;margin-bottom:40px;">
+<div style="text-align:center;padding:2in 0 1.6in;border-bottom:3px solid #15803d;margin-bottom:40px;">
   <div style="font-size:9pt;font-weight:700;color:#3b82f6;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:36px;">
     ${he(ssp.system?.organization)} &nbsp;|&nbsp; EnterpriseComply GRC Platform
   </div>
@@ -309,7 +309,7 @@ function generateSspHtml(ssp: any): string {
     <tr><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;background:#f8fafc;color:#374151;">Operational Status</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${he(ssp.system?.operationalStatus)}</td></tr>
     <tr><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;background:#f8fafc;color:#374151;">System Type</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${he(ssp.system?.systemType)}</td></tr>
     ${ssp.system?.cloudProvider && ssp.system.cloudProvider !== "N/A - On-Premise" ? `<tr><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;background:#f8fafc;color:#374151;">Cloud Provider</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${he(ssp.system.cloudProvider)}</td></tr>` : ""}
-    <tr><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;background:#f8fafc;color:#374151;">Compliance Framework</td><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;color:#1d4ed8;">${he(FRAMEWORK_LABELS[fw] ?? ssp.framework?.toUpperCase())}</td></tr>
+    <tr><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;background:#f8fafc;color:#374151;">Compliance Framework</td><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;color:#15803d;">${he(FRAMEWORK_LABELS[fw] ?? ssp.framework?.toUpperCase())}</td></tr>
     <tr><td style="padding:8px 12px;border:1px solid #e2e8f0;font-weight:600;background:#f8fafc;color:#374151;">Document Generated</td><td style="padding:8px 12px;border:1px solid #e2e8f0;">${dateStr}</td></tr>
   </tbody>
 </table>
@@ -345,7 +345,7 @@ ${interconnectsSection}
 
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 24px;">
   <div style="border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center;">
-    <div style="font-size:22pt;font-weight:700;color:#1d4ed8;">${cs.totalControls}</div>
+    <div style="font-size:22pt;font-weight:700;color:#15803d;">${cs.totalControls}</div>
     <div style="font-size:7.5pt;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px;">Total Controls</div>
   </div>
   <div style="border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center;">
@@ -459,7 +459,7 @@ export default function SSP() {
 
   const cs = generated?.complianceSummary;
 
-  const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const inputCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700";
   const selectCls = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none";
   const labelCls = "block text-xs font-medium text-slate-600 mb-1";
   const sectionHeadCls = "text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3 mt-5 pb-2 border-b border-slate-100";
@@ -477,10 +477,10 @@ export default function SSP() {
       <div className="flex gap-3 mb-8">
         {["System Info", "Environment", "Review & Export"].map((label, i) => (
           <div key={label} className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step > i + 1 ? "bg-green-500 text-white" : step === i + 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"}`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step > i + 1 ? "bg-green-500 text-white" : step === i + 1 ? "bg-green-800 text-white" : "bg-slate-100 text-slate-400"}`}>
               {step > i + 1 ? "✓" : i + 1}
             </div>
-            <span className={`text-sm font-medium ${step === i + 1 ? "text-blue-600" : "text-slate-400"}`}>{label}</span>
+            <span className={`text-sm font-medium ${step === i + 1 ? "text-green-800" : "text-slate-400"}`}>{label}</span>
             {i < 2 && <div className="w-8 h-px bg-slate-200" />}
           </div>
         ))}
@@ -551,7 +551,7 @@ export default function SSP() {
           <div className="flex justify-end pt-2">
             <button onClick={() => setStep(2)}
               disabled={!form.systemName || !form.systemOwner || !form.systemOwnerEmail}
-              className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="px-5 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
               Next
             </button>
           </div>
@@ -606,10 +606,10 @@ export default function SSP() {
                     {IMPACT_LEVELS.map((l) => <option key={l}>{l}</option>)}
                   </select>
                 </div>
-                <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-4 py-3">
                   <div>
-                    <p className="text-xs font-semibold text-blue-700 mb-0.5">Overall Impact Level</p>
-                    <p className="text-lg font-bold text-blue-800">
+                    <p className="text-xs font-semibold text-green-700 mb-0.5">Overall Impact Level</p>
+                    <p className="text-lg font-bold text-green-800">
                       {overallImpact(form.fips199Confidentiality, form.fips199Integrity, form.fips199Availability)}
                     </p>
                   </div>
@@ -670,7 +670,7 @@ export default function SSP() {
                         type="checkbox"
                         checked={form.applicableLaws.includes(law)}
                         onChange={() => toggleLaw(law)}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-green-800 focus:ring-green-700"
                       />
                       <span className="text-sm text-slate-700 group-hover:text-slate-900">{law}</span>
                     </label>
@@ -683,7 +683,7 @@ export default function SSP() {
           <div className="flex justify-between pt-2">
             <button onClick={() => setStep(1)} className="px-5 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Back</button>
             <button onClick={() => generateMutation.mutate(form)} disabled={generateMutation.isPending}
-              className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="px-5 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
               {generateMutation.isPending ? "Generating SSP..." : "Generate SSP"}
             </button>
           </div>
@@ -701,7 +701,7 @@ export default function SSP() {
               </p>
             </div>
             <button onClick={handleExportPdf}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+              className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 flex items-center gap-2">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -709,11 +709,11 @@ export default function SSP() {
             </button>
           </div>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 flex items-start gap-3">
-            <svg className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <div className="bg-green-50 border border-green-100 rounded-lg px-4 py-3 flex items-start gap-3">
+            <svg className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
             </svg>
-            <p className="text-xs text-blue-700">
+            <p className="text-xs text-green-700">
               "Export as PDF" opens a formatted preview in a new tab. Use Print (Ctrl/Cmd+P) and select "Save as PDF". The document includes a cover page, FIPS 199 categorization, applicable laws, user types, ports/protocols, cryptographic modules, and all control implementations with origination codes.
             </p>
           </div>

@@ -4,7 +4,7 @@ import { apiUrl } from "@/lib/queryClient";
 import { PageHeader, EmptyState, PrimaryButton, SectionLabel } from "@/components/ui/PageHeader";
 
 const CATEGORY_CONFIG: Record<string, { badge: string; label: string; accent: string }> = {
-  commercial: { badge: "bg-blue-50 text-blue-700 ring-1 ring-blue-200", label: "Commercial", accent: "#2563eb" },
+  commercial: { badge: "bg-green-50 text-green-700 ring-1 ring-green-200", label: "Commercial", accent: "#15803d" },
   federal: { badge: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", label: "Federal", accent: "#7c3aed" },
   "best-practice": { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: "Best Practice", accent: "#64748b" },
 };
@@ -146,10 +146,10 @@ export default function Frameworks() {
               { icon: "check", title: "Audit-ready Evidence", body: "Every passing control generates evidence. Share your Trust Center URL with auditors instead of filling spreadsheets." },
             ].map(({ icon, title, body }) => (
               <div key={title} className="bg-white border border-slate-200 rounded-xl p-5">
-                <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
-                  {icon === "shield" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
-                  {icon === "chart" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
-                  {icon === "check" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                <div className="h-10 w-10 bg-green-50 rounded-xl flex items-center justify-center mb-3">
+                  {icon === "shield" && <svg className="h-5 w-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
+                  {icon === "chart" && <svg className="h-5 w-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
+                  {icon === "check" && <svg className="h-5 w-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                 </div>
                 <p className="font-semibold text-slate-800 text-sm mb-1">{title}</p>
                 <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
@@ -188,15 +188,15 @@ export default function Frameworks() {
                       key={f.key}
                       onClick={() => activateMutation.mutate([f.key])}
                       disabled={activateMutation.isPending}
-                      className="bg-white border border-dashed border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-left group disabled:opacity-60"
+                      className="bg-white border border-dashed border-slate-200 rounded-xl p-4 hover:border-green-300 hover:bg-green-50/30 transition-all text-left group disabled:opacity-60"
                     >
                       <div className="h-[2px] -mt-4 -mx-4 mb-3 rounded-t-xl" style={{ background: cat.accent }} />
                       <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-slate-700 text-sm group-hover:text-blue-700 transition-colors truncate">{f.name}</p>
+                          <p className="font-semibold text-slate-700 text-sm group-hover:text-green-700 transition-colors truncate">{f.name}</p>
                           <p className="text-xs text-slate-400 mt-0.5 capitalize">{CATALOG_CATS[f.category] ?? f.category}</p>
                         </div>
-                        <svg className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        <svg className="h-4 w-4 text-slate-300 group-hover:text-green-600 transition-colors flex-shrink-0 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                       </div>
                     </button>
                   );
@@ -236,15 +236,15 @@ export default function Frameworks() {
                             key={f.key}
                             onClick={() => activateMutation.mutate([f.key])}
                             disabled={activateMutation.isPending}
-                            className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left group disabled:opacity-60"
+                            className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-green-300 hover:bg-green-50/50 transition-all text-left group disabled:opacity-60"
                           >
                             <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">{f.name}</p>
+                              <p className="font-semibold text-slate-900 text-sm group-hover:text-green-700 transition-colors">{f.name}</p>
                               <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{f.description}</p>
                             </div>
                             <div className="flex items-center gap-3 ml-4 flex-shrink-0">
                               <span className="text-xs text-slate-400 font-medium">{f.controlCount} controls</span>
-                              <svg className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <svg className="h-4 w-4 text-slate-300 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                               </svg>
                             </div>
@@ -314,7 +314,7 @@ function FrameworkDetailCard({ fw, onRemove }: { fw: any; onRemove: () => void }
   const statusBg = !hasActivity ? "bg-slate-50" : score >= 75 ? "bg-green-50" : score >= 50 ? "bg-amber-50" : "bg-red-50";
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-green-100 transition-all group overflow-hidden">
       {/* Colored top accent */}
       <div className="h-[3px]" style={{ background: cat.accent }} />
 

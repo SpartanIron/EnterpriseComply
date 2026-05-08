@@ -60,7 +60,7 @@ export default function CustomFrameworks() {
           <h1 className="text-xl font-bold text-slate-900">Custom Frameworks</h1>
           <p className="text-sm text-slate-500 mt-0.5">Build internal control frameworks, HITRUST overlays, or custom compliance programs</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
+        <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">
           + New Framework
         </button>
       </div>
@@ -69,12 +69,12 @@ export default function CustomFrameworks() {
         frameworks.length === 0 ? (
           <div className="space-y-4">
             <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+              <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <svg className="h-6 w-6 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
               </div>
               <p className="text-slate-700 font-semibold">No custom frameworks yet</p>
               <p className="text-sm text-slate-400 mt-1 mb-5">Build your own control framework for internal programs, overlays, or emerging regulations.</p>
-              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Create first framework</button>
+              <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-green-800 text-white text-sm font-semibold rounded-lg hover:bg-green-900">Create first framework</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
@@ -94,7 +94,7 @@ export default function CustomFrameworks() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {frameworks.map((fw) => (
-              <div key={fw.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-300 cursor-pointer transition-colors" onClick={() => setSelected(fw)}>
+              <div key={fw.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-green-300 cursor-pointer transition-colors" onClick={() => setSelected(fw)}>
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -124,7 +124,7 @@ export default function CustomFrameworks() {
               <h2 className="text-lg font-semibold text-slate-900">{selected.name}</h2>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowControl(true)} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ Add Control</button>
+              <button onClick={() => setShowControl(true)} className="px-3 py-1.5 text-sm bg-green-800 text-white rounded-lg hover:bg-green-900">+ Add Control</button>
               <button onClick={() => deleteFwMutation.mutate(selected.id)} className="px-3 py-1.5 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50">Delete Framework</button>
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function CustomFrameworks() {
             <div className="p-5 border-b border-slate-100"><h2 className="font-semibold text-slate-900">New Custom Framework</h2></div>
             <div className="p-5 space-y-3">
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Framework Name *</label>
-                <input value={fwForm.name} onChange={(e) => setFwForm({ ...fwForm, name: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Internal Security Policy" /></div>
+                <input value={fwForm.name} onChange={(e) => setFwForm({ ...fwForm, name: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="e.g. Internal Security Policy" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Short Name *</label>
                 <input value={fwForm.shortName} onChange={(e) => setFwForm({ ...fwForm, shortName: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="e.g. ISP-2025" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
@@ -196,7 +196,7 @@ export default function CustomFrameworks() {
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowNew(false)} className="px-4 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createFwMutation.mutate(fwForm)} disabled={!fwForm.name || !fwForm.shortName || createFwMutation.isPending}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">
                 Create
               </button>
             </div>
@@ -211,12 +211,12 @@ export default function CustomFrameworks() {
             <div className="p-5 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-slate-600 mb-1">Control ID *</label>
-                  <input value={ctrlForm.controlId} onChange={(e) => setCtrlForm({ ...ctrlForm, controlId: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. AC-1.1" /></div>
+                  <input value={ctrlForm.controlId} onChange={(e) => setCtrlForm({ ...ctrlForm, controlId: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" placeholder="e.g. AC-1.1" /></div>
                 <div><label className="block text-xs font-medium text-slate-600 mb-1">Domain</label>
                   <input value={ctrlForm.domain} onChange={(e) => setCtrlForm({ ...ctrlForm, domain: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
               </div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Title *</label>
-                <input value={ctrlForm.title} onChange={(e) => setCtrlForm({ ...ctrlForm, title: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                <input value={ctrlForm.title} onChange={(e) => setCtrlForm({ ...ctrlForm, title: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
                 <textarea value={ctrlForm.description} onChange={(e) => setCtrlForm({ ...ctrlForm, description: e.target.value })} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" /></div>
               <div><label className="block text-xs font-medium text-slate-600 mb-1">Owner</label>
@@ -225,7 +225,7 @@ export default function CustomFrameworks() {
             <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
               <button onClick={() => setShowControl(false)} className="px-4 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
               <button onClick={() => createCtrlMutation.mutate(ctrlForm)} disabled={!ctrlForm.controlId || !ctrlForm.title || createCtrlMutation.isPending}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Add Control</button>
+                className="px-4 py-2 text-sm font-medium bg-green-800 text-white rounded-lg hover:bg-green-900 disabled:opacity-50">Add Control</button>
             </div>
           </div>
         </div>

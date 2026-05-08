@@ -14,7 +14,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const DOMAIN_COLORS: Record<string, string> = {
-  "Access Control": "bg-blue-50 border-blue-200",
+  "Access Control": "bg-green-50 border-green-200",
   "Authentication & Identity": "bg-violet-50 border-violet-200",
   "Configuration Management": "bg-cyan-50 border-cyan-200",
   "Data Protection": "bg-teal-50 border-teal-200",
@@ -100,7 +100,7 @@ export default function Remediation() {
           <h1 className="text-xl font-bold text-slate-900">Remediation Board</h1>
           <p className="text-sm text-slate-500 mt-1">Track and move controls from failing to passing. Drag or use the action menu on each card.</p>
         </div>
-        <a href="/gap-analysis" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+        <a href="/gap-analysis" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-green-800 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           Run AI Gap Analysis
         </a>
@@ -125,7 +125,7 @@ export default function Remediation() {
       <div className="flex gap-2 flex-wrap">
         {domains.map(d => (
           <button key={d} onClick={() => setFilterDomain(d)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterDomain === d ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterDomain === d ? "bg-green-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}>
             {d === "all" ? "All domains" : d}
           </button>
         ))}
@@ -168,7 +168,7 @@ export default function Remediation() {
 
                     return (
                       <div key={c.controlId}
-                        className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer"
+                        className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 hover:border-green-200 hover:shadow-md transition-all cursor-pointer"
                         onClick={() => setSelected(c)}
                       >
                         <div className="flex items-start justify-between gap-2 mb-2">
@@ -255,9 +255,9 @@ export default function Remediation() {
                 <p className="text-sm text-slate-600 leading-relaxed">{selected.description}</p>
               </div>
               {selected.remediationGuidance && (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">Remediation Guidance</p>
-                  <p className="text-sm text-blue-900 leading-relaxed">{selected.remediationGuidance}</p>
+                <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                  <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2">Remediation Guidance</p>
+                  <p className="text-sm text-green-900 leading-relaxed">{selected.remediationGuidance}</p>
                 </div>
               )}
               {selected.result?.failureReason && (
