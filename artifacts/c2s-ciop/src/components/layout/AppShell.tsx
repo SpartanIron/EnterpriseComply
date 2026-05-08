@@ -178,9 +178,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg">
-              <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" />
-            </div>
+            <img src={`${BASE_PATH}/logo.svg`} className="h-9 w-9 flex-shrink-0" style={{ filter: "drop-shadow(0 2px 8px rgba(37,99,235,0.4))" }} />
             <div className="min-w-0">
               <p className="font-bold text-white text-sm truncate leading-tight tracking-tight">EnterpriseComply</p>
               {org && <p className="text-xs truncate leading-tight mt-0.5" style={{ color: "rgba(148,163,184,0.9)" }}>{org.name}</p>}

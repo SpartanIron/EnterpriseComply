@@ -112,9 +112,7 @@ function NavBar() {
     <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(255,255,255,0.97)", borderColor: "rgba(15,23,42,0.08)", backdropFilter: "blur(12px)" }}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
         <a href={BASE_PATH + "/"} className="flex items-center gap-3">
-          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-blue-600/30">
-            <img src={`${BASE_PATH}/logo.svg`} className="h-4 w-4" alt="" />
-          </div>
+          <img src={`${BASE_PATH}/logo.svg`} className="h-8 w-8 flex-shrink-0" alt="" style={{ filter: "drop-shadow(0 2px 6px rgba(37,99,235,0.3))" }} />
           <div>
             <span className="font-bold text-sm tracking-tight" style={{ color: "#0f172a" }}>EnterpriseComply</span>
             <span className="hidden sm:inline text-xs ml-2" style={{ color: "#94a3b8" }}>by ColorCode Solutions</span>
@@ -180,9 +178,7 @@ function MockupSidebar({ activeItem }: { activeItem: string }) {
   return (
     <div className="flex flex-col flex-shrink-0" style={{ width: 130, background: "#0f172a", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
       <div className="flex items-center gap-2 px-3 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="h-5 w-5 rounded bg-blue-600 flex items-center justify-center flex-shrink-0">
-          <img src={`${BASE_PATH}/logo.svg`} className="h-3 w-3" alt="" />
-        </div>
+        <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5 flex-shrink-0" alt="" />
         <div>
           <p className="font-bold text-white leading-none" style={{ fontSize: 9 }}>EnterpriseComply</p>
           <p style={{ fontSize: 7, color: "#475569", marginTop: 1 }}>Acme Corp</p>
@@ -1115,9 +1111,7 @@ export default function Landing() {
             {/* Brand */}
             <div className="col-span-2">
               <a href={BASE_PATH + "/"} className="flex items-center gap-2.5 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <img src={`${BASE_PATH}/logo.svg`} className="h-5 w-5" alt="" />
-                </div>
+                <img src={`${BASE_PATH}/logo.svg`} className="h-8 w-8 flex-shrink-0" alt="" style={{ filter: "drop-shadow(0 2px 6px rgba(37,99,235,0.4))" }} />
                 <span className="font-bold text-white">EnterpriseComply</span>
               </a>
               <p className="text-sm leading-relaxed mb-5" style={{ color: "#94a3b8" }}>
