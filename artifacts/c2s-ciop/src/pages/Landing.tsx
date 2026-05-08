@@ -646,39 +646,49 @@ export default function Landing() {
             </div>
             {/* Framework grid visual */}
             <div className="relative">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 {[
-                  { name: "SOC 2", cat: "commercial", color: "#2563eb" },
-                  { name: "ISO 27001", cat: "commercial", color: "#0891b2" },
-                  { name: "HIPAA", cat: "commercial", color: "#7c3aed" },
-                  { name: "PCI DSS", cat: "commercial", color: "#0d9488" },
-                  { name: "FedRAMP", cat: "federal", color: "#1d4ed8" },
-                  { name: "CMMC L2", cat: "federal", color: "#4338ca" },
-                  { name: "NIST 800-53", cat: "federal", color: "#1e40af" },
-                  { name: "NIST CSF", cat: "best-practice", color: "#0369a1" },
-                  { name: "GDPR", cat: "commercial", color: "#6d28d9" },
-                  { name: "HITRUST", cat: "commercial", color: "#0f766e" },
-                  { name: "CIS Controls", cat: "best-practice", color: "#1d4ed8" },
-                  { name: "ISO 27701", cat: "commercial", color: "#5b21b6" },
-                  { name: "NIST 800-171", cat: "federal", color: "#1e3a8a" },
-                  { name: "StateRAMP", cat: "federal", color: "#312e81" },
-                  { name: "NYCRR 500", cat: "commercial", color: "#164e63" },
-                  { name: "SOX ITGC", cat: "commercial", color: "#1e3a5f" },
-                  { name: "CCPA", cat: "commercial", color: "#3b0764" },
-                  { name: "FedRAMP High", cat: "federal", color: "#1e3a8a" },
-                  { name: "FedRAMP Low", cat: "federal", color: "#1e40af" },
-                  { name: "NIST AI RMF", cat: "best-practice", color: "#065f46" },
-                  { name: "CMMC L1", cat: "federal", color: "#3730a3" },
-                  { name: "Cyber Essentials", cat: "commercial", color: "#0c4a6e" },
-                  { name: "HITRUST CSF", cat: "commercial", color: "#134e4a" },
+                  { name: "SOC 2", cat: "Commercial" },
+                  { name: "ISO 27001", cat: "International" },
+                  { name: "HIPAA", cat: "Healthcare" },
+                  { name: "FedRAMP", cat: "Federal" },
+                  { name: "CMMC L2", cat: "Defense" },
+                  { name: "NIST 800-171", cat: "Federal" },
+                  { name: "PCI DSS", cat: "Financial" },
+                  { name: "HITRUST", cat: "Healthcare" },
+                  { name: "GDPR", cat: "Privacy" },
+                  { name: "CIS Controls", cat: "Best Practice" },
+                  { name: "NIST CSF", cat: "Best Practice" },
+                  { name: "StateRAMP", cat: "State Gov" },
+                  { name: "SOX ITGC", cat: "Financial" },
+                  { name: "NYCRR 500", cat: "Financial" },
+                  { name: "NIST AI RMF", cat: "Emerging" },
+                  { name: "FedRAMP High", cat: "Federal" },
+                  { name: "ISO 27701", cat: "Privacy" },
+                  { name: "CCPA", cat: "Privacy" },
+                  { name: "CMMC L1", cat: "Defense" },
+                  { name: "Cyber Essentials", cat: "Best Practice" },
+                  { name: "HITRUST CSF", cat: "Healthcare" },
                 ].map((fw) => (
-                  <div key={fw.name} className="rounded-lg px-2 py-2 text-center" style={{ background: `${fw.color}22`, border: `1px solid ${fw.color}44` }}>
-                    <p className="text-white font-semibold leading-tight" style={{ fontSize: 9 }}>{fw.name}</p>
+                  <div
+                    key={fw.name}
+                    className="rounded-xl text-center"
+                    style={{
+                      padding: "14px 10px",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                      boxShadow: "0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <p className="font-bold text-white tracking-tight" style={{ fontSize: 13, lineHeight: 1.2, marginBottom: 4 }}>{fw.name}</p>
+                    <p style={{ fontSize: 10, color: "rgba(148,163,184,0.85)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>{fw.cat}</p>
                   </div>
                 ))}
               </div>
               {/* Glow behind the grid */}
-              <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(37,99,235,0.08) 0%, transparent 70%)" }} />
+              <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(37,99,235,0.12) 0%, transparent 70%)" }} />
             </div>
           </div>
         </div>
