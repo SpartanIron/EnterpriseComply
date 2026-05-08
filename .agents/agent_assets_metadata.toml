@@ -1,5 +1,10 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "x5gxFvIxddSKEm7NeIkDk"
+uri = "file://artifacts/c2s-ciop/public/uco-bg-generated.png"
+type = "image"
+title = "pentagon-aerial-night"
 
 [[outputs]]
 id = "M2ae3wDNqasn7gL8Ft_5A"
@@ -84,3 +89,9 @@ id = "9tgzAg_f2TWF7EHAqc87K"
 uri = "file://attached_assets/image_search/alt_6.jpg"
 type = "image"
 title = "Option D: Washington DC aerial (Unsplash)"
+
+[[outputs]]
+id = "KrJxWLKA-d0GNdo48Xr5M"
+uri = "file://artifacts/c2s-ciop/public/uco-bg-generated.png"
+type = "image"
+title = "AI-generated: Pentagon aerial at night"
