@@ -568,12 +568,12 @@ export default function Landing() {
       {/* ── TRUST BAR ── */}
       <section style={{ background: "#050d1a", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="max-w-7xl mx-auto px-6 py-10">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-8" style={{ color: "#334155" }}>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest mb-8" style={{ color: "#64748b" }}>
             Trusted by defense contractors, federal agencies, and enterprise security teams
           </p>
           <div className="flex items-center justify-center flex-wrap gap-10">
             {TRUST_NAMES.map((name) => (
-              <span key={name} className="text-sm font-bold tracking-wide" style={{ color: "#334155" }}>{name}</span>
+              <span key={name} className="text-sm font-bold tracking-wide" style={{ color: "#94a3b8" }}>{name}</span>
             ))}
           </div>
         </div>
@@ -971,7 +971,7 @@ export default function Landing() {
                 <p className="text-sm leading-relaxed flex-1 mb-5" style={{ color: "#94a3b8" }} dangerouslySetInnerHTML={{ __html: item.desc }} />
                 <div className="border-t pt-4 flex items-end gap-2" style={{ borderColor: "rgba(59,130,246,0.12)" }}>
                   <span className="text-2xl font-extrabold" style={{ color: "#60a5fa" }}>{item.stat}</span>
-                  <span className="text-xs mb-0.5" style={{ color: "#64748b" }}>{item.statLabel}</span>
+                  <span className="text-xs mb-0.5" style={{ color: "#94a3b8" }}>{item.statLabel}</span>
                 </div>
               </div>
             ))}
@@ -987,7 +987,7 @@ export default function Landing() {
               ].map((s) => (
                 <div key={s.label} className="text-center">
                   <p className="text-3xl font-extrabold mb-1" style={{ color: "#60a5fa" }}>{s.stat}</p>
-                  <p className="text-xs" style={{ color: "#64748b" }}>{s.label}</p>
+                  <p className="text-xs" style={{ color: "#94a3b8" }}>{s.label}</p>
                 </div>
               ))}
             </div>
@@ -1068,7 +1068,7 @@ export default function Landing() {
               </h2>
             </div>
             <div>
-              <p className="text-base leading-relaxed mb-8" style={{ color: "#64748b" }}>
+              <p className="text-base leading-relaxed mb-8" style={{ color: "#94a3b8" }}>
                 The organizations that win on compliance treat it as a system, not a project. EnterpriseComply gives your team that system - and the time to use it.
               </p>
               <a href={isSignedIn ? BASE_PATH + "/dashboard" : BASE_PATH + "/sign-up"}
@@ -1120,12 +1120,12 @@ export default function Landing() {
                 </div>
                 <span className="font-bold text-white">EnterpriseComply</span>
               </a>
-              <p className="text-sm leading-relaxed mb-5" style={{ color: "#475569" }}>
+              <p className="text-sm leading-relaxed mb-5" style={{ color: "#94a3b8" }}>
                 The only GRC platform built federal-first. FedRAMP, CMMC, NIST 800-53, and NIST 800-171 are native - not add-ons. One control satisfies every federal and commercial obligation simultaneously.
               </p>
               <div className="flex gap-3">
                 {["M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"].map((d, i) => (
-                  <a key={i} href="#" className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors" style={{ background: "rgba(255,255,255,0.05)", color: "#475569" }}>
+                  <a key={i} href="#" className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors" style={{ background: "rgba(255,255,255,0.05)", color: "#64748b" }}>
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d={d} /></svg>
                   </a>
                 ))}
@@ -1135,13 +1135,13 @@ export default function Landing() {
             {/* Link groups */}
             {Object.entries(FOOTER_LINKS).map(([group, links]) => (
               <div key={group}>
-                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#334155" }}>{group}</p>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#94a3b8" }}>{group}</p>
                 <ul className="space-y-2.5">
                   {links.map((link) => (
                     <li key={link}>
-                      <a href="#" className="text-sm transition-colors" style={{ color: "#475569" }}
-                        onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
-                        onMouseLeave={e => (e.currentTarget.style.color = "#475569")}>
+                      <a href="#" className="text-sm transition-colors" style={{ color: "#64748b" }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#cbd5e1")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
                         {link}
                       </a>
                     </li>
@@ -1152,8 +1152,8 @@ export default function Landing() {
 
             {/* Newsletter */}
             <div className="col-span-2 md:col-span-1 lg:col-span-1">
-              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#334155" }}>Stay Updated</p>
-              <p className="text-sm mb-3" style={{ color: "#475569" }}>Get the latest compliance insights and industry updates.</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#94a3b8" }}>Stay Updated</p>
+              <p className="text-sm mb-3" style={{ color: "#94a3b8" }}>Get the latest compliance insights and industry updates.</p>
               <div className="flex gap-2">
                 <input type="email" placeholder="Your email" className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg outline-none"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white" }} />
@@ -1167,14 +1167,14 @@ export default function Landing() {
 
           {/* Bottom bar */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <p className="text-xs" style={{ color: "#334155" }}>
+            <p className="text-xs" style={{ color: "#64748b" }}>
               &copy; 2026 ColorCode Solutions. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((link) => (
-                <a key={link} href="#" className="text-xs transition-colors" style={{ color: "#334155" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#64748b")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "#334155")}>
+                <a key={link} href="#" className="text-xs transition-colors" style={{ color: "#64748b" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#94a3b8")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}>
                   {link}
                 </a>
               ))}
