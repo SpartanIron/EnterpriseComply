@@ -646,49 +646,74 @@ export default function Landing() {
             </div>
             {/* Framework grid visual */}
             <div className="relative">
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { name: "SOC 2", cat: "Commercial" },
-                  { name: "ISO 27001", cat: "International" },
-                  { name: "HIPAA", cat: "Healthcare" },
-                  { name: "FedRAMP", cat: "Federal" },
-                  { name: "CMMC L2", cat: "Defense" },
+              {(() => {
+                const catMeta: Record<string, { color: string; dot: string }> = {
+                  Federal:        { color: "#3b82f6", dot: "#60a5fa" },
+                  Defense:        { color: "#6366f1", dot: "#818cf8" },
+                  Commercial:     { color: "#0ea5e9", dot: "#38bdf8" },
+                  International:  { color: "#0ea5e9", dot: "#38bdf8" },
+                  Healthcare:     { color: "#10b981", dot: "#34d399" },
+                  Privacy:        { color: "#8b5cf6", dot: "#a78bfa" },
+                  Financial:      { color: "#64748b", dot: "#94a3b8" },
+                  "Best Practice":{ color: "#f59e0b", dot: "#fbbf24" },
+                  "State Gov":    { color: "#6366f1", dot: "#818cf8" },
+                  Emerging:       { color: "#f59e0b", dot: "#fbbf24" },
+                };
+                const frameworks = [
+                  { name: "FedRAMP Moderate", cat: "Federal" },
+                  { name: "FedRAMP High", cat: "Federal" },
+                  { name: "CMMC Level 2", cat: "Defense" },
                   { name: "NIST 800-171", cat: "Federal" },
-                  { name: "PCI DSS", cat: "Financial" },
-                  { name: "HITRUST", cat: "Healthcare" },
-                  { name: "GDPR", cat: "Privacy" },
-                  { name: "CIS Controls", cat: "Best Practice" },
-                  { name: "NIST CSF", cat: "Best Practice" },
+                  { name: "CMMC Level 1", cat: "Defense" },
                   { name: "StateRAMP", cat: "State Gov" },
+                  { name: "SOC 2 Type II", cat: "Commercial" },
+                  { name: "ISO 27001", cat: "International" },
+                  { name: "PCI DSS", cat: "Financial" },
                   { name: "SOX ITGC", cat: "Financial" },
                   { name: "NYCRR 500", cat: "Financial" },
-                  { name: "NIST AI RMF", cat: "Emerging" },
-                  { name: "FedRAMP High", cat: "Federal" },
-                  { name: "ISO 27701", cat: "Privacy" },
-                  { name: "CCPA", cat: "Privacy" },
-                  { name: "CMMC L1", cat: "Defense" },
-                  { name: "Cyber Essentials", cat: "Best Practice" },
+                  { name: "HIPAA", cat: "Healthcare" },
                   { name: "HITRUST CSF", cat: "Healthcare" },
-                ].map((fw) => (
-                  <div
-                    key={fw.name}
-                    className="rounded-xl text-center"
-                    style={{
-                      padding: "14px 10px",
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      backdropFilter: "blur(8px)",
-                      WebkitBackdropFilter: "blur(8px)",
-                      boxShadow: "0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <p className="font-bold text-white tracking-tight" style={{ fontSize: 13, lineHeight: 1.2, marginBottom: 4 }}>{fw.name}</p>
-                    <p style={{ fontSize: 10, color: "rgba(148,163,184,0.85)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>{fw.cat}</p>
+                  { name: "GDPR", cat: "Privacy" },
+                  { name: "CCPA", cat: "Privacy" },
+                  { name: "ISO 27701", cat: "Privacy" },
+                  { name: "CIS Controls", cat: "Best Practice" },
+                  { name: "NIST CSF", cat: "Best Practice" },
+                  { name: "NIST AI RMF", cat: "Emerging" },
+                  { name: "Cyber Essentials", cat: "Best Practice" },
+                  { name: "NIST 800-53", cat: "Federal" },
+                ];
+                return (
+                  <div className="grid grid-cols-3 gap-2">
+                    {frameworks.map((fw) => {
+                      const m = catMeta[fw.cat] ?? { color: "#64748b", dot: "#94a3b8" };
+                      return (
+                        <div
+                          key={fw.name}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "13px 14px",
+                            borderRadius: 10,
+                            borderLeft: `3px solid ${m.color}`,
+                            background: `linear-gradient(90deg, ${m.color}18 0%, rgba(255,255,255,0.04) 100%)`,
+                            backdropFilter: "blur(10px)",
+                            WebkitBackdropFilter: "blur(10px)",
+                            boxShadow: `0 1px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                          }}
+                        >
+                          <div style={{ width: 7, height: 7, borderRadius: "50%", background: m.dot, flexShrink: 0, boxShadow: `0 0 6px ${m.dot}` }} />
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fw.name}</p>
+                            <p style={{ fontSize: 10, fontWeight: 600, color: m.dot, textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>{fw.cat}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-              {/* Glow behind the grid */}
-              <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(37,99,235,0.12) 0%, transparent 70%)" }} />
+                );
+              })()}
+              <div className="absolute -inset-4 -z-10 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(37,99,235,0.10) 0%, transparent 70%)" }} />
             </div>
           </div>
         </div>
