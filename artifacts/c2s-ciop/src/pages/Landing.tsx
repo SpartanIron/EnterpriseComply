@@ -600,8 +600,18 @@ export default function Landing() {
       </section>
 
       {/* ── UCO SECTION ── */}
-      <section style={{ background: "#050d1a", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-20">
+      <section style={{
+        position: "relative",
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        backgroundImage: `url(${BASE_PATH}/uco-bg.jpg)`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(135deg, rgba(3,7,18,0.92) 0%, rgba(5,13,26,0.85) 50%, rgba(3,7,18,0.92) 100%)",
+        }} />
+        <div className="relative max-w-7xl mx-auto px-6 py-20">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#3b82f6" }}>Universal Control Objectives</p>
