@@ -590,7 +590,7 @@ export default function Landing() {
               { value: "10 min", label: "Setup to First Score", sub: "No professional services" },
             ].map(({ value, label, sub }) => (
               <div key={label}>
-                <div className="text-4xl font-extrabold tracking-tight mb-1.5" style={{ background: "linear-gradient(135deg, #3b82f6, #0ea5e9)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{value}</div>
+                <div className="text-4xl font-extrabold tracking-tight mb-1.5" style={{ background: "linear-gradient(135deg, #93c5fd, #7dd3fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{value}</div>
                 <div className="text-sm font-bold text-white mb-0.5">{label}</div>
                 <div className="text-xs" style={{ color: "#475569" }}>{sub}</div>
               </div>
