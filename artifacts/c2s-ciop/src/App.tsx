@@ -166,12 +166,10 @@ export default function App() {
     );
   }
 
-  const isProd = import.meta.env.PROD;
 
   return (
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY}
-      {...(isProd ? { proxyUrl: `/api/__clerk` } : {})}
       appearance={clerkAppearance}
     >
       <QueryClientProvider client={queryClient}>
