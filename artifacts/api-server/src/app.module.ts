@@ -12,7 +12,7 @@ import { OrgsModule } from "./modules/orgs/orgs.module";
 import { FrameworksModule } from "./modules/frameworks/frameworks.module";
 import { ControlsModule } from "./modules/controls/controls.module";
 import { IntegrationsModule } from "./modules/integrations/integrations.module";
-import { EvidenceModule } from "./modules/evidence/evidence.module";
+import { EvidenceModule } from "./modules/evidence/evidence.module";h
 import { PoamModule } from "./modules/poam/poam.module";
 import { PeopleModule } from "./modules/people/people.module";
 import { VendorsModule } from "./modules/vendors/vendors.module";
@@ -46,7 +46,7 @@ import { StigsModule } from "./modules/stigs/stigs.module";
       ? [
           ServeStaticModule.forRoot({
             rootPath: join(__dirname, "..", "..", "c2s-ciop", "dist", "public"),
-            exclude: ["/api/(.*)"],
+                      exclude: ["/api/*"],
           }),
         ]
       : []),
