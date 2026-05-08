@@ -2,8 +2,6 @@ import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
-import { ServeStaticModule } from "@nestjs/serve-static";
-import { join } from "path";
 import { clerkMiddleware } from "@clerk/express";
 import { ClerkProxyMiddleware, CLERK_PROXY_PATH } from "./middlewares/clerk-proxy.middleware";
 import { StartupModule } from "./startup/startup.module";
@@ -42,14 +40,6 @@ import { StigsModule } from "./modules/stigs/stigs.module";
       },
     ]),
     StartupModule,
-    ...(process.env.NODE_ENV === "production"
-      ? [
-          ServeStaticModule.forRoot({
-            rootPath: join(__dirname, "..", "..", "c2s-ciop", "dist", "public"),
-                      exclude: ["/api/*"],
-          }),
-        ]
-      : []),
     HealthModule,
     OrgsModule,
     FrameworksModule,
