@@ -580,7 +580,7 @@ export default function Landing() {
       </section>
 
       {/* ── STATS ── */}
-      <section style={{ background: "#1e3a5f", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <section style={{ background: "#ffffff", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
@@ -590,9 +590,9 @@ export default function Landing() {
               { value: "10 min", label: "Setup to First Score", sub: "No professional services" },
             ].map(({ value, label, sub }) => (
               <div key={label}>
-                <div className="text-4xl font-extrabold tracking-tight mb-1.5" style={{ background: "linear-gradient(135deg, #3b82f6, #0ea5e9)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{value}</div>
-                <div className="text-sm font-bold text-white mb-0.5">{label}</div>
-                <div className="text-xs" style={{ color: "#475569" }}>{sub}</div>
+                <div className="text-4xl font-extrabold tracking-tight mb-1.5" style={{ color: "#2563eb" }}>{value}</div>
+                <div className="text-sm font-bold text-slate-900 mb-0.5">{label}</div>
+                <div className="text-xs font-medium text-slate-500">{sub}</div>
               </div>
             ))}
           </div>
