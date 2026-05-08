@@ -609,20 +609,20 @@ export default function Landing() {
       }}>
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(135deg, rgba(3,7,18,0.55) 0%, rgba(5,13,26,0.45) 50%, rgba(3,7,18,0.55) 100%)",
+          background: "linear-gradient(to right, rgba(3,7,18,0.88) 0%, rgba(3,7,18,0.82) 45%, rgba(3,7,18,0.30) 100%)",
         }} />
         <div className="relative max-w-7xl mx-auto px-6 py-20">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#3b82f6" }}>Universal Control Objectives</p>
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-5">
+              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#60a5fa", textShadow: "0 1px 8px rgba(0,0,0,0.8)" }}>Universal Control Objectives</p>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-5" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.9)" }}>
                 <span className="text-white">Implement once.</span>
                 <br />
                 <span style={{ background: "linear-gradient(135deg, #3b82f6 0%, #0ea5e9 60%, #06b6d4 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                   Satisfy every framework simultaneously.
                 </span>
               </h2>
-              <p className="text-base leading-relaxed mb-6" style={{ color: "#e2e8f0", fontWeight: 500 }}>
+              <p className="text-base leading-relaxed mb-6" style={{ color: "#f1f5f9", fontWeight: 500, textShadow: "0 1px 10px rgba(0,0,0,0.9)" }}>
                 EnterpriseComply's UCO controls are security controls first - not compliance checklists. When you enforce MFA, you're reducing actual risk. The fact that it simultaneously satisfies FedRAMP, CMMC, NIST 800-171, SOC 2, ISO 27001, HIPAA, and more is a consequence of implementing genuine security - not the goal of it. No duplicated work. No gaps.
               </p>
               <div className="space-y-3">
@@ -637,7 +637,7 @@ export default function Landing() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <p className="text-sm" style={{ color: "#e2e8f0", fontWeight: 500 }}>
+                    <p className="text-sm" style={{ color: "#f1f5f9", fontWeight: 500, textShadow: "0 1px 8px rgba(0,0,0,0.9)" }}>
                       <span className="font-bold text-white">{label}</span> {detail}
                     </p>
                   </div>
