@@ -603,7 +603,7 @@ export default function Landing() {
       <section style={{
         position: "relative",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
-        backgroundImage: `url(${BASE_PATH}/uco-bg-generated.png)`,
+        backgroundImage: `url(${BASE_PATH}/uco-bg-capitol.jpg)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}>
