@@ -60,3 +60,27 @@ id = "U4scIecWZdiT2rA_gVaaE"
 uri = "file://attached_assets/image_search/premium_8.jpg"
 type = "image"
 title = "Option 6: Data center servers - Unsplash Premium"
+
+[[outputs]]
+id = "ZJv49qV1Hkhheyd9KrPxC"
+uri = "file://attached_assets/image_search/alt_1.jpg"
+type = "image"
+title = "Option A: US Capitol - dramatic twilight (Pexels)"
+
+[[outputs]]
+id = "kOmvBX4kjAUIIJZQQe3r9"
+uri = "file://attached_assets/image_search/alt_4.jpg"
+type = "image"
+title = "Option B: Cybersecurity (Unsplash)"
+
+[[outputs]]
+id = "WOWbluGj_XsX9HQ0EE9fw"
+uri = "file://attached_assets/image_search/alt_5.jpg"
+type = "image"
+title = "Option C: Law & compliance documents (Unsplash)"
+
+[[outputs]]
+id = "9tgzAg_f2TWF7EHAqc87K"
+uri = "file://attached_assets/image_search/alt_6.jpg"
+type = "image"
+title = "Option D: Washington DC aerial (Unsplash)"
