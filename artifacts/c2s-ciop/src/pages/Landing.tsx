@@ -1028,15 +1028,15 @@ export default function Landing() {
                   alt={ind.name}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                {/* Light gradient overlay - bottom only for text readability */}
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(3,7,18,0.78) 0%, rgba(3,7,18,0.38) 38%, transparent 62%)" }} />
+                {/* Gradient overlay - strong at bottom for text readability */}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(3,7,18,0.96) 0%, rgba(3,7,18,0.75) 45%, rgba(3,7,18,0.25) 100%)" }} />
                 {/* Blue tint on hover */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: "rgba(37,99,235,0.18)" }} />
                 {/* Content */}
                 <div className="relative flex flex-col justify-end h-full p-5" style={{ minHeight: 240 }}>
-                  <h3 className="font-bold text-white text-sm mb-1.5">{ind.name}</h3>
-                  <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(148,163,184,0.85)" }}>{ind.desc}</p>
-                  <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#60a5fa" }}>
+                  <h3 className="font-bold text-white text-sm mb-1.5" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>{ind.name}</h3>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.88)", textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>{ind.desc}</p>
+                  <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#93c5fd" }}>
                     Learn more
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                   </div>
