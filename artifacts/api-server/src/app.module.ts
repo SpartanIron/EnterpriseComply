@@ -12,7 +12,7 @@ import { OrgsModule } from "./modules/orgs/orgs.module";
 import { FrameworksModule } from "./modules/frameworks/frameworks.module";
 import { ControlsModule } from "./modules/controls/controls.module";
 import { IntegrationsModule } from "./modules/integrations/integrations.module";
-import { EvidenceModule } from "./modules/evidence/evidence.module";h
+import { EvidenceModule } from "./modules/evidence/evidence.module";
 import { PoamModule } from "./modules/poam/poam.module";
 import { PeopleModule } from "./modules/people/people.module";
 import { VendorsModule } from "./modules/vendors/vendors.module";
