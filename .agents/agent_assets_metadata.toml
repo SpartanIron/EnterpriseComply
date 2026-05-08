@@ -1,0 +1,26 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "M2ae3wDNqasn7gL8Ft_5A"
+uri = "file://attached_assets/image_search/candidate_1.jpg"
+type = "image"
+title = "Option 1: Cybersecurity fingerprint - dark blue abstract"
+
+[[outputs]]
+id = "atjiix7yTgYOyvDVebkOp"
+uri = "file://attached_assets/image_search/candidate_2.jpg"
+type = "image"
+title = "Option 2: Digital network glowing connection points"
+
+[[outputs]]
+id = "hTTxTVJUFMbe0im1cOZ7a"
+uri = "file://attached_assets/image_search/candidate_3.jpg"
+type = "image"
+title = "Option 3: Particles connected in lines - dark blue"
+
+[[outputs]]
+id = "keC1T2Z0B5qtvB8efR-iU"
+uri = "file://attached_assets/image_search/candidate_4.jpg"
+type = "image"
+title = "Option 4: Big data network abstract"
