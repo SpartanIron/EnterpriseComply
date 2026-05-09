@@ -31,6 +31,7 @@ import { GapAnalysisModule } from "./modules/gap-analysis/gap-analysis.module";
 import { TestRunsModule } from "./modules/test-runs/test-runs.module";
 import { StigsModule } from "./modules/stigs/stigs.module";
 import { RemediationModule } from "./modules/remediation/remediation.module";
+import { ClientPortalModule } from "./modules/client-portal/client-portal.module";
 import { ScapModule } from "./modules/scap/scap.module";
 import { AuditSharesModule } from "./modules/audit-shares/audit-shares.module";
 
@@ -67,6 +68,7 @@ import { AuditSharesModule } from "./modules/audit-shares/audit-shares.module";
     RemediationModule,
     AuditSharesModule,
     ScapModule,
+    ClientPortalModule,
   ],
   providers: [
     {
