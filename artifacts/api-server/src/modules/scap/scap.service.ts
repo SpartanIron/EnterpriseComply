@@ -59,31 +59,28 @@ function mapXccdfStatus(result: XccdfStatus): ParsedFinding["status"] {
 }
 
 function extractTagValue(xml: string, tag: string): string {
-  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, "i");
+  const re = new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)<\\/" + tag + ">", "i");
   const m = xml.match(re);
   return m ? m[1]!.trim() : "";
 }
 
 function extractAttr(tag: string, attr: string): string {
-  const re = new RegExp(`${attr}="([^"]*?)"`);
+  const re = new RegExp(attr + "=\"([^\"]*?)\"");
   const m = tag.match(re);
   return m ? m[1]! : "";
 }
 
 function inferSeverity(vulnId: string): ParsedFinding["severity"] {
   const lower = vulnId.toLowerCase();
-  // SCC/DISA STIG CAT levels are sometimes encoded in the rule ID
   if (lower.includes("cat_1") || lower.includes("cat1") || lower.includes("high")) return "high";
   if (lower.includes("cat_3") || lower.includes("cat3") || lower.includes("low"))  return "low";
   return "medium";
 }
 
 export function parseXccdf(xmlContent: string): ParseResult {
-  // Extract TestResult block
-  const testResultMatch = xmlContent.match(/<TestResult[^>]*>([sS]*?)</TestResult>/i);
+  const testResultMatch = xmlContent.match(/<TestResult[^>]*>([\s\S]*?)<\/TestResult>/i);
   const testResultBlock = testResultMatch ? testResultMatch[1]! : xmlContent;
 
-  // Benchmark title
   const checklistTitle =
     extractTagValue(xmlContent, "title") ||
     extractAttr(xmlContent.match(/<Benchmark[^>]*>/i)?.[0] ?? "", "id") ||
@@ -93,8 +90,7 @@ export function parseXccdf(xmlContent: string): ParseResult {
   const benchmarkId = extractAttr(xmlContent.match(/<Benchmark[^>]*>/i)?.[0] ?? "", "id") || "";
   const startTime = extractAttr(testResultBlock.match(/<TestResult[^>]*>/i)?.[0] ?? "", "start-time") || new Date().toISOString();
 
-  // Parse rule-result blocks
-  const ruleResultBlocks = testResultBlock.match(/<rule-result[sS]*?</rule-result>/gi) ?? [];
+  const ruleResultBlocks = testResultBlock.match(/<rule-result[\s\S]*?<\/rule-result>/gi) ?? [];
 
   const findings: ParsedFinding[] = ruleResultBlocks.map((block) => {
     const idref = extractAttr(block.match(/<rule-result[^>]*>/i)?.[0] ?? "", "idref");
@@ -102,7 +98,6 @@ export function parseXccdf(xmlContent: string): ParseResult {
     const title = extractTagValue(block, "title") || idref;
     const description = extractTagValue(block, "description") || "";
     const fixText = extractTagValue(block, "fixtext") || extractTagValue(block, "fix") || "";
-
     return {
       vulnId:      idref,
       title:       title || idref,
@@ -131,16 +126,13 @@ export function parseXccdf(xmlContent: string): ParseResult {
 
 @Injectable()
 export class ScapService {
-  // Parse XML content and return structured result without persisting
   parseXccdfContent(xmlContent: string): ParseResult {
     return parseXccdf(xmlContent);
   }
 
-  // Parse and persist: creates a new STIG checklist + bulk-insert findings
   async importXccdf(orgId: number, xmlContent: string): Promise<{ checklistId: number; summary: ParseResult["summary"] }> {
     const parsed = parseXccdf(xmlContent);
 
-    // Create the checklist record
     const [checklist] = await db
       .insert(orgStigChecklistsTable)
       .values({
@@ -154,7 +146,6 @@ export class ScapService {
 
     if (!checklist) throw new Error("Failed to create STIG checklist.");
 
-    // Bulk insert findings
     if (parsed.findings.length > 0) {
       const rows = parsed.findings.map((f) => ({
         orgId,
@@ -165,11 +156,11 @@ export class ScapService {
         severity:    f.severity,
         description: f.description,
         fixText:     f.fixText,
-        comments:    `Imported from XCCDF. Raw scanner result: ${f.rawResult}`,
+        comments:    "Imported from XCCDF. Raw scanner result: " + f.rawResult,
       }));
       await db.insert(orgStigFindingsTable).values(rows as any);
     }
 
     return { checklistId: checklist.id, summary: parsed.summary };
   }
-}
+  }
