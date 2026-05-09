@@ -10,9 +10,7 @@ export class IntegrationsController {
   constructor(private readonly integrationsService: IntegrationsService) {}
 
   @Get("integrations/catalog")
-  getCatalog() {
-    return this.integrationsService.getCatalog();
-  }
+  getCatalog() { return this.integrationsService.getCatalog(); }
 
   @Get("orgs/:orgId/integrations")
   @UseGuards(OrgContextGuard)
@@ -20,6 +18,7 @@ export class IntegrationsController {
     return this.integrationsService.getOrgIntegrations(ctx.orgId);
   }
 
+  // ── GitHub OAuth connect ────────────────────────────────────────────────────
   @Get("integrations/github/connect")
   @UseGuards(ClerkAuthGuard)
   githubConnect(
@@ -54,6 +53,18 @@ export class IntegrationsController {
     return this.integrationsService.syncOrgGitHub(ctx.orgId);
   }
 
+  // ── GitHub PAT (Personal Access Token) connect — direct, no OAuth ───────────
+  @Post("orgs/:orgId/integrations/github/connect-pat")
+  @UseGuards(OrgContextGuard)
+  connectGitHubPAT(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { personalAccessToken: string; orgOrOwner?: string },
+  ) {
+    if (!body.personalAccessToken) throw new BadRequestException("personalAccessToken is required");
+    return this.integrationsService.connectGitHub(ctx.orgId, body.personalAccessToken, body.orgOrOwner);
+  }
+
+  // ── AWS connect / sync ───────────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/aws/connect")
   @UseGuards(OrgContextGuard)
   connectAWS(
@@ -72,15 +83,14 @@ export class IntegrationsController {
     return this.integrationsService.syncOrgAWS(ctx.orgId);
   }
 
+  // ── Okta connect / sync ──────────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/okta/connect")
   @UseGuards(OrgContextGuard)
   connectOkta(
     @OrgContext() ctx: OrgCtx,
     @Body() body: { domain: string; apiToken: string },
   ) {
-    if (!body.domain || !body.apiToken) {
-      throw new BadRequestException("domain and apiToken are required");
-    }
+    if (!body.domain || !body.apiToken) throw new BadRequestException("domain and apiToken are required");
     return this.integrationsService.connectOkta(ctx.orgId, body.domain, body.apiToken);
   }
 
@@ -90,18 +100,38 @@ export class IntegrationsController {
     return this.integrationsService.syncOrgOkta(ctx.orgId);
   }
 
+  // ── Cloudflare connect / sync ─────────────────────────────────────────────────
+  @Post("orgs/:orgId/integrations/cloudflare/connect")
+  @UseGuards(OrgContextGuard)
+  connectCloudflare(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { apiToken: string; zoneId: string },
+  ) {
+    if (!body.apiToken || !body.zoneId) throw new BadRequestException("apiToken and zoneId are required");
+    return this.integrationsService.connectCloudflare(ctx.orgId, body.apiToken, body.zoneId);
+  }
+
+  @Post("orgs/:orgId/integrations/cloudflare/sync")
+  @UseGuards(OrgContextGuard)
+  syncCloudflare(@OrgContext() ctx: OrgCtx) {
+    return this.integrationsService.syncOrgCloudflare(ctx.orgId);
+  }
+
+  // ── Demo connect for all other integrations ───────────────────────────────────
   @Post("orgs/:orgId/integrations/:key/demo-connect")
   @UseGuards(OrgContextGuard)
   demoConnect(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
     return this.integrationsService.connectDemo(ctx.orgId, key);
   }
 
+  // ── Generic sync router ────────────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/:key/sync")
   @UseGuards(OrgContextGuard)
   syncIntegration(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
     if (key === "github") return this.integrationsService.syncOrgGitHub(ctx.orgId);
     if (key === "aws") return this.integrationsService.syncOrgAWS(ctx.orgId);
     if (key === "okta") return this.integrationsService.syncOrgOkta(ctx.orgId);
-    return { success: true, message: "No sync available for this integration" };
+    if (key === "cloudflare") return this.integrationsService.syncOrgCloudflare(ctx.orgId);
+    return { success: true, message: "No live sync available for this integration — use demo-connect to simulate." };
   }
 }
