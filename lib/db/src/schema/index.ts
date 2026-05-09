@@ -15,3 +15,4 @@ export * from "./orgScoreHistory";
 export * from "./notifications";
 export * from "./testRuns";
 export * from "./orgStigs";
+export * from "./orgRemediation";
