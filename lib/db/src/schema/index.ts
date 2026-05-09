@@ -7,6 +7,7 @@ export * from "./orgPoam";
 export * from "./orgRisk";
 export * from "./orgAudit";
 export * from "./orgQuestionnaire";
+export * from "./orgAssessment";
 export * from "./orgAccessReview";
 export * from "./orgMonitoring";
 export * from "./orgCustomFramework";
