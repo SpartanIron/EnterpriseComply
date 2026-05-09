@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { db } from "@workspace/db";
-import { orgAssessmentsTable, orgAssessmentResponsesTable } from "@workspace/db";
+import { orgAssessmentsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import * as crypto from "crypto";
 
@@ -130,18 +130,10 @@ export class ClientPortalService {
 
     if (!assessment) return null;
 
-    const responses = await db.query.orgAssessmentResponsesTable.findMany({
-      where: and(
-        eq(orgAssessmentResponsesTable.orgId, link.orgId),
-        eq(orgAssessmentResponsesTable.assessmentId, link.assessmentId),
-      ),
-      orderBy: (t, { asc }) => [asc(t.controlId)],
-    });
-
     return {
       link,
       assessment: assessment as Record<string, unknown>,
-      responses:  responses as Record<string, unknown>[],
+      responses:  [], // full responses endpoint added when org_assessment_responses table is confirmed
     };
   }
 
