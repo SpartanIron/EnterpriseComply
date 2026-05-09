@@ -34,6 +34,7 @@ import { RemediationModule } from "./modules/remediation/remediation.module";
 import { ClientPortalModule } from "./modules/client-portal/client-portal.module";
 import { ScapModule } from "./modules/scap/scap.module";
 import { AuditSharesModule } from "./modules/audit-shares/audit-shares.module";
+import { GoogleWorkspaceModule } from "./modules/google-workspace/google-workspace.module";
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { AuditSharesModule } from "./modules/audit-shares/audit-shares.module";
     AuditSharesModule,
     ScapModule,
     ClientPortalModule,
+    GoogleWorkspaceModule,
   ],
   providers: [
     {
@@ -86,4 +88,4 @@ export class AppModule implements NestModule {
       .apply(clerkMiddleware())
       .forRoutes("*path");
   }
-  }
+}
