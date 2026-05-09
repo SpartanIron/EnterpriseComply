@@ -22,6 +22,8 @@ import SPRS from "./pages/SPRS";
 import SSP from "./pages/SSP";
 import Monitoring from "./pages/Monitoring";
 import Questionnaires from "./pages/Questionnaires";
+import Assessments from "./pages/Assessments";
+import ZeroTrustAssessmentReport from "./pages/ZeroTrustAssessmentReport";
 import AccessReviews from "./pages/AccessReviews";
 import CustomFrameworks from "./pages/CustomFrameworks";
 import TrustCenter from "./pages/TrustCenter";
@@ -59,7 +61,6 @@ const clerkAppearance = {
 function HomeRedirect() {
   const { isSignedIn, isLoaded } = useAuth();
   const [, navigate] = useLocation();
-
   const { data, isLoading } = useQuery<{ org: any | null }>({
     queryKey: ["orgs", "me"],
     queryFn: async () => {
@@ -69,7 +70,6 @@ function HomeRedirect() {
     enabled: !!isSignedIn && isLoaded,
     retry: false,
   });
-
   useEffect(() => {
     if (!isLoaded || isLoading) return;
     if (!isSignedIn) return;
@@ -81,7 +81,6 @@ function HomeRedirect() {
       navigate("/dashboard");
     }
   }, [isLoaded, isLoading, isSignedIn, data, navigate]);
-
   if (!isLoaded || (isSignedIn && isLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -92,7 +91,6 @@ function HomeRedirect() {
       </div>
     );
   }
-
   if (!isSignedIn) return <Landing />;
   return null;
 }
@@ -114,40 +112,36 @@ function AppRoutes() {
       <Route path="/landing" component={Landing} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/onboarding" component={Onboarding} />
-
       {/* Core */}
       <Route path="/dashboard" component={() => <AppShell><Dashboard /></AppShell>} />
       <Route path="/frameworks" component={() => <AppShell><Frameworks /></AppShell>} />
       <Route path="/controls" component={() => <AppShell><Controls /></AppShell>} />
-
       {/* Evidence */}
       <Route path="/integrations" component={() => <AppShell><Integrations /></AppShell>} />
       <Route path="/evidence" component={() => <AppShell><Evidence /></AppShell>} />
       <Route path="/monitoring" component={() => <AppShell><Monitoring /></AppShell>} />
-
       {/* Workforce */}
       <Route path="/policies" component={() => <AppShell><Policies /></AppShell>} />
       <Route path="/people" component={() => <AppShell><People /></AppShell>} />
       <Route path="/access-reviews" component={() => <AppShell><AccessReviews /></AppShell>} />
       <Route path="/vendors" component={() => <AppShell><Vendors /></AppShell>} />
-
       {/* Risk & Compliance */}
       <Route path="/risks" component={() => <AppShell><RiskRegister /></AppShell>} />
       <Route path="/questionnaires" component={() => <AppShell><Questionnaires /></AppShell>} />
       <Route path="/audits" component={() => <AppShell><Audits /></AppShell>} />
       <Route path="/trust-center" component={() => <AppShell><TrustCenter /></AppShell>} />
       <Route path="/custom-frameworks" component={() => <AppShell><CustomFrameworks /></AppShell>} />
-
+      {/* Client Assessments — Sprint 3 */}
+      <Route path="/assessments" component={() => <AppShell><Assessments /></AppShell>} />
+      <Route path="/assessments/:id/report" component={() => <ZeroTrustAssessmentReport />} />
       {/* Federal */}
       <Route path="/poam" component={() => <AppShell><POAM /></AppShell>} />
       <Route path="/sprs" component={() => <AppShell><SPRS /></AppShell>} />
       <Route path="/ssp" component={() => <AppShell><SSP /></AppShell>} />
       <Route path="/stigs" component={() => <AppShell><Stigs /></AppShell>} />
-
       {/* Settings */}
       <Route path="/settings" component={() => <AppShell><Settings /></AppShell>} />
       <Route path="/audit-log" component={() => <AppShell><AuditLog /></AppShell>} />
-
       <Route path="/report" component={ComplianceReport} />
       <Route path="/gap-analysis" component={() => <AppShell><GapAnalysis /></AppShell>} />
       <Route path="/remediation" component={() => <AppShell><Remediation /></AppShell>} />
@@ -165,13 +159,8 @@ export default function App() {
       </div>
     );
   }
-
-
   return (
-    <ClerkProvider
-      publishableKey={PUBLISHABLE_KEY}
-      appearance={clerkAppearance}
-    >
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} appearance={clerkAppearance}>
       <QueryClientProvider client={queryClient}>
         <WouterRouter base={BASE_PATH}>
           <AppRoutes />
