@@ -16,10 +16,39 @@ CREATE TABLE IF NOT EXISTS org_monitoring_jobs (id SERIAL PRIMARY KEY, org_id IN
 CREATE TABLE IF NOT EXISTS org_notification_settings (id SERIAL PRIMARY KEY, org_id INTEGER NOT NULL, slack_webhook_url TEXT, email_enabled BOOLEAN NOT NULL DEFAULT TRUE, slack_enabled BOOLEAN NOT NULL DEFAULT FALSE, notify_on_drift BOOLEAN NOT NULL DEFAULT TRUE, notify_on_evidence_expiry BOOLEAN NOT NULL DEFAULT TRUE, notify_on_poam_overdue BOOLEAN NOT NULL DEFAULT TRUE, notify_on_new_findings BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS org_custom_frameworks (id SERIAL PRIMARY KEY, org_id INTEGER NOT NULL, key TEXT NOT NULL, name TEXT NOT NULL, short_name TEXT NOT NULL, description TEXT, category TEXT NOT NULL DEFAULT 'custom', active BOOLEAN NOT NULL DEFAULT TRUE, compliance_score REAL NOT NULL DEFAULT 0, total_controls INTEGER NOT NULL DEFAULT 0, passing_controls INTEGER NOT NULL DEFAULT 0, failing_controls INTEGER NOT NULL DEFAULT 0, not_tested_controls INTEGER NOT NULL DEFAULT 0, created_by TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS org_custom_controls (id SERIAL PRIMARY KEY, org_id INTEGER NOT NULL, framework_id INTEGER NOT NULL, control_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT, domain TEXT NOT NULL DEFAULT 'General', guidance TEXT, status TEXT NOT NULL DEFAULT 'not_tested', owner_name TEXT, notes TEXT, mapped_uco_control_id TEXT, last_tested_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
-  `);
+  
+    CREATE TABLE IF NOT EXISTS org_assessments (
+      id SERIAL PRIMARY KEY,
+      org_id INTEGER NOT NULL,
+      client_name TEXT NOT NULL,
+      client_email TEXT,
+      client_company TEXT,
+      client_industry TEXT,
+      client_size TEXT,
+      framework_target TEXT NOT NULL,
+      delivery_model TEXT NOT NULL DEFAULT 'guided',
+      status TEXT NOT NULL DEFAULT 'in_progress',
+      questionnaire_id INTEGER,
+      report_url TEXT,
+      report_generated_at TIMESTAMPTZ,
+      domain_scores JSONB,
+      overall_score REAL,
+      rag_status TEXT,
+      executive_summary TEXT,
+      consultant_name TEXT,
+      consultant_email TEXT,
+      notes TEXT,
+      due_date TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+`);
   const r = await pool.query(
     "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
   );
   console.log("Tables in DB:", r.rows.map((x: any) => x.table_name).join(", "));
   await pool.end();
 })().catch((e) => { console.error(e.message); process.exit(1); });
+
