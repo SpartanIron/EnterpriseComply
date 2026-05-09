@@ -1,0 +1,8 @@
+# Global code owners - all changes require review from SpartanIron org
+* @SpartanIron
+
+# Security-critical files require admin review
+.github/ @SpartanIron
+*.env @SpartanIron
+app/auth/ @SpartanIron
+app/middleware/ @SpartanIron
