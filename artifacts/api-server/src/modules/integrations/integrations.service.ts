@@ -3,6 +3,8 @@ import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable } fr
 import { eq, and } from "drizzle-orm";
 import { runAwsChecks } from "./providers/aws.provider";
 import { runOktaChecks } from "./providers/okta.provider";
+import { runGitHubChecks } from "./providers/github.provider";
+import { runCloudflareChecks } from "./providers/cloudflare.provider";
 
 export const INTEGRATION_CATALOG = [
   {
@@ -622,6 +624,106 @@ export class IntegrationsService {
     return { success: true, checksRun, checksPassed };
   }
 
+  async connectGitHub(orgId: number, personalAccessToken: string, orgOrOwner?: string) {
+    const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === "github");
+    if (!catalogItem) throw new BadRequestException("Unknown integration");
+    let integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
+    });
+    if (!integration) {
+      [integration] = await db.insert(orgIntegrationsTable).values({
+        orgId, integrationKey: "github", name: "GitHub", status: "connected",
+        config: { personalAccessToken, orgOrOwner: orgOrOwner ?? "" },
+      }).returning();
+    } else {
+      [integration] = await db.update(orgIntegrationsTable)
+        .set({ status: "connected", config: { personalAccessToken, orgOrOwner: orgOrOwner ?? "" } })
+        .where(eq(orgIntegrationsTable.id, integration.id)).returning();
+    }
+    const syncResult = await runGitHubChecks(personalAccessToken, orgOrOwner);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "github", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  async syncOrgGitHubLive(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("GitHub integration not connected");
+    const cfg = integration.config as { personalAccessToken?: string; orgOrOwner?: string };
+    if (!cfg?.personalAccessToken) throw new BadRequestException("GitHub token not configured");
+    const syncResult = await runGitHubChecks(cfg.personalAccessToken, cfg.orgOrOwner);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "github", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  async connectCloudflare(orgId: number, apiToken: string, zoneId: string) {
+    const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === "cloudflare");
+    if (!catalogItem) throw new BadRequestException("Unknown integration");
+    let integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "cloudflare")),
+    });
+    if (!integration) {
+      [integration] = await db.insert(orgIntegrationsTable).values({
+        orgId, integrationKey: "cloudflare", name: "Cloudflare", status: "connected",
+        config: { apiToken, zoneId },
+      }).returning();
+    } else {
+      [integration] = await db.update(orgIntegrationsTable)
+        .set({ status: "connected", config: { apiToken, zoneId } })
+        .where(eq(orgIntegrationsTable.id, integration.id)).returning();
+    }
+    const syncResult = await runCloudflareChecks(apiToken, zoneId);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "cloudflare", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  async syncOrgCloudflare(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "cloudflare")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("Cloudflare integration not connected");
+    const cfg = integration.config as { apiToken?: string; zoneId?: string };
+    if (!cfg?.apiToken || !cfg?.zoneId) throw new BadRequestException("Cloudflare credentials not configured");
+    const syncResult = await runCloudflareChecks(cfg.apiToken, cfg.zoneId);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "cloudflare", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  private async _persistSyncResults(
+    orgId: number,
+    controlResults: Array<{ ucoControlId: string; status: string; result: string; integrationKey: string }>,
+    evidenceItems: Array<{ ucoControlId: string; title: string; description: string; type: string; source: string }>,
+    integrationKey: string,
+    integrationId: number,
+  ) {
+    for (const cr of controlResults) {
+      const existing = await db.query.orgControlResultsTable.findFirst({
+        where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, cr.ucoControlId)),
+      });
+      if (existing) {
+        await db.update(orgControlResultsTable)
+          .set({ status: cr.status as any, result: cr.result, integrationKey, lastTestedAt: new Date() })
+          .where(eq(orgControlResultsTable.id, existing.id));
+      } else {
+        await db.insert(orgControlResultsTable).values({
+          orgId, ucoControlId: cr.ucoControlId, status: cr.status as any,
+          result: cr.result, integrationKey, lastTestedAt: new Date(),
+        });
+      }
+    }
+    for (const ev of evidenceItems) {
+      await db.insert(orgEvidenceTable).values({
+        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        description: ev.description, type: ev.type as any, source: ev.source,
+        collectedAt: new Date(),
+      });
+    }
+    await db.update(orgIntegrationsTable)
+      .set({ lastSyncAt: new Date(), lastSyncStatus: "success" })
+      .where(eq(orgIntegrationsTable.id, integrationId));
+  }
+
   async connectDemo(orgId: number, integrationKey: string) {
     const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === integrationKey);
     if (!catalogItem) throw new BadRequestException("Unknown integration");
@@ -693,6 +795,18 @@ export class IntegrationsService {
   }
 
   async syncOrgGitHub(orgId: number) {
+    // Route to live provider if token is stored
+    try {
+      const integration = await db.query.orgIntegrationsTable.findFirst({
+        where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
+      });
+      const cfg = integration?.config as { personalAccessToken?: string; accessToken?: string; orgOrOwner?: string } | undefined;
+      const token = cfg?.personalAccessToken ?? cfg?.accessToken;
+      if (token) {
+        return this.syncOrgGitHubLive(orgId);
+      }
+    } catch { /* fall through to demo */ }
+    // Legacy OAuth-based demo sync
     const integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
     });
