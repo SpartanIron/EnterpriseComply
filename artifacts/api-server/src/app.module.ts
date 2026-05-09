@@ -18,6 +18,7 @@ import { PoliciesModule } from "./modules/policies/policies.module";
 import { RisksModule } from "./modules/risks/risks.module";
 import { AuditsModule } from "./modules/audits/audits.module";
 import { QuestionnairesModule } from "./modules/questionnaires/questionnaires.module";
+import { AssessmentsModule } from "./modules/assessments/assessments.module";
 import { SprsModule } from "./modules/sprs/sprs.module";
 import { SspModule } from "./modules/ssp/ssp.module";
 import { TrustCenterModule } from "./modules/trust-center/trust-center.module";
@@ -33,12 +34,7 @@ import { StigsModule } from "./modules/stigs/stigs.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 120,
-      },
-    ]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     StartupModule,
     HealthModule,
     OrgsModule,
@@ -53,6 +49,7 @@ import { StigsModule } from "./modules/stigs/stigs.module";
     RisksModule,
     AuditsModule,
     QuestionnairesModule,
+    AssessmentsModule,
     SprsModule,
     SspModule,
     TrustCenterModule,
@@ -77,7 +74,6 @@ export class AppModule implements NestModule {
     consumer
       .apply(ClerkProxyMiddleware)
       .forRoutes(CLERK_PROXY_PATH);
-
     consumer
       .apply(clerkMiddleware())
       .forRoutes("*path");
