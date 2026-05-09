@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@swc-node/register": "^1.11.1",
+          "@anatine/esbuild-decorators": "^0.2.4",
     "@swc/core": "^1.15.33",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
