@@ -41,7 +41,7 @@ export function EmptyState({
       </div>
       <p className="font-bold text-slate-800 text-base">{title}</p>
       {body && <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto leading-relaxed">{body}</p>}
-      {action && <div className="mt-6">{action}</div>}
+      {action && <div className="mt-6 flex justify-center">{action}</div>}
     </div>
   );
 }
