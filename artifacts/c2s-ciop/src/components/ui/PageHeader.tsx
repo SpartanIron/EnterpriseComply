@@ -54,7 +54,7 @@ export function PrimaryButton({ children, onClick, disabled }: { children: React
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm"
                 >
             {children}
-          </button>button>
+          </button>
         );
 }
 
@@ -66,6 +66,6 @@ export function SecondaryButton({ children, onClick, disabled }: { children: Rea
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
     >
             {children}
-          </button>button>
+          </button>
         );
 }</div>
