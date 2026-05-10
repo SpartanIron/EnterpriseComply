@@ -113,7 +113,7 @@ export default function Frameworks() {
   );
 
   return (
-    <div className="p-6 max-w-screen-xl">
+    <div className="p-6 max-w-screen-xl mx-auto">
       <PageHeader
         title="Frameworks"
         subtitle="Manage your active compliance frameworks"
