@@ -312,16 +312,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate leading-tight" style={{ color: "#e2e8f0" }}>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
-            {/* Cross-product: C2S Intel BD platform */}
+            {/* Product switcher: C2S Intel */}
             <a
               href="https://www.c2sintel.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold rounded-lg border border-amber-400/30 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+              className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg transition-all"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.09)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
             >
-              <span className="flex items-center justify-center w-4 h-4 rounded text-[8px] font-black bg-amber-400 text-amber-900">C2S</span>
-              C2S Intel
-              <span className="ml-auto text-amber-400/70 text-[10px]">BD Platform</span>
+              <div className="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center font-black text-[10px]" style={{ background: "#F5B300", color: "#1a0f00", letterSpacing: "-0.04em" }}>C2S</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold leading-tight truncate" style={{ color: "#f1f5f9" }}>C2S Intel</p>
+                <p className="text-[10px] leading-tight truncate" style={{ color: "rgba(148,163,184,0.7)" }}>Business Development</p>
+              </div>
+              <svg className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "rgba(148,163,184,0.5)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
             </a>
               <button
                 onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
