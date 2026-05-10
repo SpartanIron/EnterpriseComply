@@ -355,7 +355,46 @@ export default function Integrations() {
         </div>
       </div>
 
-      {/* Tabs */}
+      
+        {/* Guided integration quick-connect panel */}
+        <div className="mb-6 p-5 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Quick connect</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Recommended integrations for federal contractors. Connect these first to start collecting evidence automatically.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { name: "Microsoft 365", logo: "🔵", desc: "Email, calendar, and identity evidence", tags: ["CMMC", "FedRAMP"] },
+              { name: "AWS GovCloud", logo: "🟠", desc: "Cloud infrastructure and configuration", tags: ["FedRAMP", "NIST"] },
+              { name: "GitHub", logo: "⚫", desc: "Code repositories and access controls", tags: ["CMMC", "SOC 2"] },
+              { name: "Google Workspace", logo: "🔴", desc: "Workspace identity and device management", tags: ["SOC 2"] },
+            ].map((integration) => (
+              <button
+                key={integration.name}
+                onClick={() => {}}
+                className="text-left p-3 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-sm transition-all group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{integration.logo}</span>
+                  <span className="text-xs font-semibold text-slate-700 group-hover:text-blue-700">{integration.name}</span>
+                </div>
+                <p className="text-xs text-slate-500 mb-2">{integration.desc}</p>
+                <div className="flex gap-1 flex-wrap">
+                  {integration.tags.map(tag => (
+                    <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">{tag}</span>
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-3">
+            Each connected integration automatically collects evidence for your active compliance frameworks. More integrations are available in the catalog below.
+          </p>
+        </div>
+
+{/* Tabs */}
       <div className="flex gap-1.5 mb-6 p-1 bg-slate-100 rounded-xl w-fit">
         {([["catalog", "Integration Catalog"], ["health", "Health Dashboard"]] as const).map(([id, label]) => (
           <button
