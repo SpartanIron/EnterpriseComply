@@ -110,7 +110,23 @@ function AppRoutes() {
         </div>
       )} />
       <Route path="/landing" component={Landing} />
-      <Route path="/pricing" component={Pricing} />
+      <Route path="/demo" component={() => (
+              <div>
+                <div className="fixed top-0 left-0 right-0 z-50 bg-blue-600 px-4 py-2 flex items-center justify-between text-white text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">DEMO</span>
+                    <span>You are viewing a demonstration workspace. Data is sample only.</span>
+                  </div>
+                  <a href="/sign-up" className="flex-shrink-0 px-3 py-1 bg-white text-blue-700 font-bold rounded-full text-xs hover:bg-blue-50 transition-colors">
+                    Start free trial
+                  </a>
+                </div>
+                <div className="pt-9">
+                  <AppShell><Dashboard /></AppShell>
+                </div>
+              </div>
+            )} />
+            <Route path="/pricing" component={Pricing} />
       <Route path="/onboarding" component={Onboarding} />
       {/* Core */}
       <Route path="/dashboard" component={() => <AppShell><Dashboard /></AppShell>} />
