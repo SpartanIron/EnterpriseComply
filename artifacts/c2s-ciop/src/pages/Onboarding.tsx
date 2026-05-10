@@ -248,7 +248,39 @@ export default function Onboarding() {
                   </div>
                 ))}
               </div>
-              <div className="flex gap-3 mt-6">
+              
+              {/* Federal framework quick-start guidance */}
+              {selectedFrameworks.some(fw => ["fedramp", "cmmc", "nist-800-171", "dfars"].includes(fw)) && (
+                <div className="mb-4 p-4 rounded-xl border border-blue-200 bg-blue-50">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg mt-0.5">🏛</span>
+                    <div>
+                      <p className="font-semibold text-blue-900 text-sm mb-1">Federal framework quick-start</p>
+                      <p className="text-xs text-blue-700 mb-3">
+                        {selectedFrameworks.includes("cmmc") && "CMMC Level 2 requires 110 NIST SP 800-171 practices. "}
+                        {selectedFrameworks.includes("fedramp") && "FedRAMP Moderate requires continuous monitoring and a SSP. "}
+                        {selectedFrameworks.includes("nist-800-171") && "NIST 800-171 maps directly to DFARS 252.204-7012 requirements. "}
+                        The highest-priority controls to address first are Access Control (AC), Identification and Authentication (IA), and Incident Response (IR).
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {[
+                          { label: "First 30 days", text: "Complete gap assessment, assign control owners" },
+                          { label: "Days 31-90", text: "Remediate critical gaps, connect evidence sources" },
+                          { label: "Days 91-180", text: "Full implementation, prepare assessment package" },
+                          { label: "Ongoing", text: "Continuous monitoring, annual review cycle" },
+                        ].map((item) => (
+                          <div key={item.label} className="bg-white rounded-lg p-2.5 border border-blue-100">
+                            <p className="font-semibold text-blue-800 mb-0.5">{item.label}</p>
+                            <p className="text-blue-600">{item.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+<div className="flex gap-3 mt-6">
                 <button onClick={() => setStep(1)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-semibold rounded-lg text-sm hover:bg-slate-50 transition-colors">
                   Back
                 </button>
