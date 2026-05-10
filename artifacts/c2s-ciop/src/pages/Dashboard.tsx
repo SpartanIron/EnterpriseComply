@@ -337,7 +337,49 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Compliance Score Trend */}
+        
+          {/* C2S Intel Integration Bridge */}
+          <div className="bg-gradient-to-r from-yellow-900/20 to-amber-900/10 border border-yellow-700/30 rounded-xl p-6 mb-6">
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center justify-center rounded-md w-8 h-8 text-amber-900 font-black text-xs" style={{background: '#F5B300'}}>
+                    C2S
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Connect C2S Intel</h3>
+                    <p className="text-xs text-muted-foreground">Import your federal entity data</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  If you use C2S Intel for federal BD, you can import your SAM.gov entity data, certifications, and NAICS codes directly into your compliance workspace. This pre-populates your company profile and certification evidence.
+                </p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <a
+                    href="https://www.c2sintel.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-amber-900 hover:opacity-80 transition-opacity"
+                    style={{background: '#F5B300'}}
+                  >
+                    Import from C2S Intel
+                  </a>
+                  <span className="text-xs text-muted-foreground">
+                    SAM.gov UEI, CAGE code, certifications, and NAICS codes will sync automatically.
+                  </span>
+                </div>
+              </div>
+              <div className="hidden md:grid grid-cols-2 gap-2 shrink-0 text-xs text-center text-muted-foreground">
+                {['SAM.gov', 'CAGE Code', 'Certifications', 'NAICS Codes'].map((item) => (
+                  <div key={item} className="bg-background/50 border border-border rounded-lg px-3 py-2">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+{/* Compliance Score Trend */}
         <ScoreTrendChart orgId={orgId} />
 
         {/* Framework Compliance */}
