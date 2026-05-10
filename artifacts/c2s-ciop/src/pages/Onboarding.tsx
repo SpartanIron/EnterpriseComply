@@ -5,7 +5,7 @@ import { apiUrl } from "@/lib/queryClient";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-const INDUSTRIES = ["Technology", "Healthcare", "Finance", "Retail", "Manufacturing", "Government", "Education", "Other"];
+const INDUSTRIES = ["Technology", "Healthcare", "Finance", "Retail", "Manufacturing", "Government", "Federal Contractor", "Defense Contractor", "Education", "Other"];
 const SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
 const FRAMEWORKS = [
