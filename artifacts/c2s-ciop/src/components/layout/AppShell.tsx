@@ -313,7 +313,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate leading-tight" style={{ color: "#e2e8f0" }}>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
               <button
-                onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
+                onClick={() => signOut({ redirec
+            {/* Cross-product: C2S Intel BD platform */}
+            <a
+              href="https://www.c2sintel.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold rounded-lg border border-amber-400/30 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              <span className="flex items-center justify-center w-4 h-4 rounded text-[8px] font-black bg-amber-400 text-amber-900">C2S</span>
+              C2S Intel
+              <span className="ml-auto text-amber-400/70 text-[10px]">BD Platform</span>
+            </a>
+tUrl: BASE_PATH + "/" })}
                 className="text-xs leading-tight transition-colors"
                 style={{ color: "rgba(100,116,139,0.8)" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#94a3b8"; }}
