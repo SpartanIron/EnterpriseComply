@@ -11,18 +11,18 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
           <div className="-mx-6 -mt-6 mb-6 px-6 pt-6 pb-5 bg-white border-b border-slate-200">
                 <div className="flex items-start justify-between gap-4">
                         <div>
-                                  <h1 className="text-2xl font-bold text-slate-900 leading-tight">{title}</h1>h1>
-                          {subtitle && <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">{subtitle}</p>p>}
-                        </div>div>
-                  {actions && <div className="flex items-center gap-2 flex-shrink-0 mt-1">{actions}</div>div>}
-                </div>div>
-          </div>div>
+                                  <h1 className="text-2xl font-bold text-slate-900 leading-tight">{title}</h1>
+                          {subtitle && <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">{subtitle}</p>}
+                        </div>
+                  {actions && <div className="flex items-center gap-2 flex-shrink-0 mt-1">{actions}</div>}
+                </div>
+          </div>
         );
 }
 
 export function SectionLabel({ children }: { children: ReactNode }) {
     return (
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">{children}</p>p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">{children}</p>
         );
 }
 
@@ -38,11 +38,11 @@ export function EmptyState({
           <div className="bg-white border border-slate-200 rounded-2xl p-14 text-center shadow-sm">
                 <div className="h-14 w-14 bg-gradient-to-br from-blue-50 to-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-400 ring-1 ring-slate-200">
                   {icon}
-                </div>div>
-                <p className="font-bold text-slate-800 text-base">{title}</p>p>
-            {body && <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto leading-relaxed">{body}</p>p>}
-            {action && <div className="mt-6 flex justify-center">{action}</div>div>}
-          </div>div>
+                </div>
+                <p className="font-bold text-slate-800 text-base">{title}</p>
+            {body && <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto leading-relaxed">{body}</p>}
+            {action && <div className="mt-6 flex justify-center">{action}</div>}
+          </div>
         );
 }
 
