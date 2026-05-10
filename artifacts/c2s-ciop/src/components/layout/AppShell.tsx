@@ -312,8 +312,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate leading-tight" style={{ color: "#e2e8f0" }}>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
-              <button
-                onClick={() => signOut({ redirec
             {/* Cross-product: C2S Intel BD platform */}
             <a
               href="https://www.c2sintel.com"
@@ -325,11 +323,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
               C2S Intel
               <span className="ml-auto text-amber-400/70 text-[10px]">BD Platform</span>
             </a>
-tUrl: BASE_PATH + "/" })}
+              <button
+                onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
                 className="text-xs leading-tight transition-colors"
                 style={{ color: "rgba(100,116,139,0.8)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#94a3b8"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(100,116,139,0.8)"; }}
               >
                 Sign out
               </button>
