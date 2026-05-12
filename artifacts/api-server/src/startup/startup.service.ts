@@ -563,6 +563,33 @@ CREATE TABLE IF NOT EXISTS org_stig_findings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS org_assessments (
+  id SERIAL PRIMARY KEY,
+  org_id INTEGER NOT NULL,
+  client_name TEXT NOT NULL,
+  client_email TEXT,
+  client_company TEXT,
+  client_industry TEXT,
+  client_size TEXT,
+  framework_target TEXT NOT NULL DEFAULT 'zero-trust',
+  delivery_model TEXT NOT NULL DEFAULT 'guided',
+  status TEXT NOT NULL DEFAULT 'in_progress',
+  questionnaire_id INTEGER,
+  report_url TEXT,
+  report_generated_at TIMESTAMPTZ,
+  domain_scores JSONB,
+  overall_score INTEGER,
+  rag_status TEXT,
+  executive_summary TEXT,
+  consultant_name TEXT,
+  notes TEXT,
+  due_date TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_step INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'starter';
