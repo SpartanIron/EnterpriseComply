@@ -31,8 +31,66 @@ export class QuestionnairesService {
   async createQuestionnaire(orgId: number, clerkUserId: string, body: {
     title: string; requesterName?: string; requesterCompany?: string;
     requesterEmail?: string; type?: string; dueDate?: string;
-    questions: string[];
+    template?: string; questions?: string[];
   }) {
+    // Generate questions from template if questions array not provided
+    const TEMPLATE_QUESTIONS: Record<string, string[]> = {
+      'sig-lite': [
+        "Does your organization have a documented information security policy?",
+        "Do you perform regular security risk assessments?",
+        "Is multi-factor authentication enforced for all privileged accounts?",
+        "Do you have a formal incident response plan?",
+        "Is customer data encrypted at rest and in transit?",
+        "Do you perform annual penetration testing?",
+        "Is access to production systems controlled via role-based access control?",
+        "Do you have a vendor/third-party risk management program?",
+        "Is security awareness training provided to all employees annually?",
+        "Do you maintain a System Security Plan (SSP) or equivalent?",
+        "Are security patches applied within a defined SLA?",
+        "Do you perform background checks on employees with access to sensitive data?",
+        "Is there a formal change management process for production changes?",
+        "Do you have a business continuity and disaster recovery plan?",
+        "Are audit logs collected, retained, and reviewed regularly?",
+        "Is there a formal data classification and handling policy?",
+        "Do you have a vulnerability management program with defined SLAs?",
+        "Is network segmentation in place to isolate sensitive systems?",
+        "Do you have endpoint detection and response (EDR) deployed?",
+        "Is there a formal offboarding process that revokes access within 24 hours?",
+      ],
+      'caiq': [
+        "Do you provide tenants with documentation describing your cloud architecture?",
+        "Is data encrypted in transit using TLS 1.2 or higher?",
+        "Is data encrypted at rest using AES-256 or equivalent?",
+        "Do you have SOC 2 Type II or ISO 27001 certification?",
+        "Are customer environments logically isolated from each other?",
+        "Do you perform regular third-party penetration testing?",
+        "Is there a documented and tested incident response procedure?",
+        "Do you notify customers of data breaches within 72 hours?",
+        "Is access to customer data restricted on a need-to-know basis?",
+        "Do you have a formal data retention and deletion policy?",
+        "Are security configurations managed through automated compliance tooling?",
+        "Do you perform background screening for employees with cloud access?",
+        "Is there a formal change management process for infrastructure changes?",
+        "Do you maintain a vulnerability disclosure / responsible disclosure program?",
+        "Are SLAs for availability and uptime documented and monitored?",
+      ],
+      'vsaq': [
+        "What security certifications does your organization hold?",
+        "How is sensitive customer data protected in your systems?",
+        "Describe your incident response and breach notification process.",
+        "What is your policy for managing third-party vendor access?",
+        "How frequently do you perform security audits and penetration tests?",
+        "Describe your access control and identity management practices.",
+        "What is your data retention and deletion policy?",
+        "How do you ensure business continuity in the event of a disaster?",
+        "Describe your employee security awareness training program.",
+        "What encryption standards do you use for data at rest and in transit?",
+      ],
+    };
+    const templateKey = (body.template ?? '').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-lite.*/, '-lite').replace(/-\(.*/, '');
+    const questionsFromTemplate = TEMPLATE_QUESTIONS[templateKey] ?? TEMPLATE_QUESTIONS['sig-lite'];
+    const questions = body.questions && body.questions.length > 0 ? body.questions : questionsFromTemplate;
+
     const [questionnaire] = await db.insert(orgQuestionnairesTable).values({
       orgId,
       title: body.title,
@@ -40,45 +98,33 @@ export class QuestionnairesService {
       requesterCompany: body.requesterCompany,
       requesterEmail: body.requesterEmail,
       type: body.type ?? "custom",
-      totalItems: body.questions.length,
+      totalItems: questions.length,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       createdBy: clerkUserId,
     }).returning();
 
-    const controlResults = await db.query.orgControlResultsTable.findMany({
-      where: eq(orgControlResultsTable.orgId, orgId),
-    });
-    const evidence = await db.query.orgEvidenceTable.findMany({
-      where: eq(orgEvidenceTable.orgId, orgId),
-    });
-
-    const resultMap = new Map(controlResults.map((r) => [r.ucoControlId, r]));
-
     const items = await Promise.all(
-      body.questions.map(async (question, idx) => {
-        const { answer, controlId, confidence } = this.autoAnswer(question, resultMap, evidence);
+      questions.map(async (question, idx) => {
+        const { answer, controlId } = await this.autoAnswer(orgId, question);
         return db.insert(orgQuestionnaireItemsTable).values({
-          orgId,
           questionnaireId: questionnaire.id,
+          orgId,
           question,
           answer,
-          confidence,
-          matchedControlId: controlId,
-          status: answer ? "answered" : "unanswered",
-          sortOrder: idx,
+          controlId,
+          order: idx,
         }).returning();
-      }),
+      })
     );
 
-    const answered = items.filter((i) => i[0]?.answer).length;
     await db.update(orgQuestionnairesTable)
-      .set({ answeredItems: answered })
+      .set({ answeredItems: items.filter(([i]) => i?.answer).length })
       .where(eq(orgQuestionnairesTable.id, questionnaire.id));
 
-    return { questionnaire: { ...questionnaire, answeredItems: answered } };
+    return { questionnaire, items: items.map(([i]) => i) };
   }
 
-  async getItems(orgId: number, questionnaireId: number) {
+    async getItems(orgId: number, questionnaireId: number) {
     const items = await db.query.orgQuestionnaireItemsTable.findMany({
       where: and(
         eq(orgQuestionnaireItemsTable.orgId, orgId),
