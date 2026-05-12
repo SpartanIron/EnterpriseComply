@@ -201,6 +201,186 @@ export const INTEGRATION_CATALOG = [
     available: true,
     controls: ["UCO-VM-001", "UCO-AL-001", "UCO-AC-001", "UCO-CM-003"],
   },
+  {
+    key: "aws-config", name: "AWS Config", category: "cloud-security",
+    description: "Continuous configuration compliance, resource inventory, and change tracking across AWS services.",
+    available: true,
+    controls: ["UCO-CM-003", "UCO-AC-001", "UCO-AL-001", "UCO-VM-001"],
+  },
+  {
+    key: "aws-guardduty", name: "AWS GuardDuty", category: "cloud-security",
+    description: "Intelligent threat detection for AWS accounts, workloads, and data using ML-powered anomaly detection.",
+    available: true,
+    controls: ["UCO-IR-001", "UCO-AL-001", "UCO-VM-001"],
+  },
+  {
+    key: "azure-defender", name: "Microsoft Defender for Cloud", category: "cloud-security",
+    description: "Multi-cloud security posture management and threat protection for Azure, AWS, and GCP workloads.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-AL-001", "UCO-AC-001", "UCO-IR-001"],
+  },
+  {
+    key: "gcp-scc", name: "GCP Security Command Center", category: "cloud-security",
+    description: "Google Cloud security and risk management platform for asset inventory, vulnerability detection, and compliance.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-AL-001", "UCO-AC-001", "UCO-CM-003"],
+  },
+  {
+    key: "prisma-cloud", name: "Prisma Cloud", category: "cspm",
+    description: "Comprehensive CSPM, CWPP, and CIEM platform for securing cloud-native applications and infrastructure.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-DP-001", "UCO-AC-001", "UCO-CM-003"],
+  },
+  {
+    key: "orca", name: "Orca Security", category: "cspm",
+    description: "Agentless cloud security platform covering vulnerabilities, misconfigurations, and data risks across cloud estates.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-VM-002", "UCO-DP-001", "UCO-AC-001"],
+  },
+  {
+    key: "lacework", name: "Lacework", category: "cspm",
+    description: "Automated cloud security using behavioral analytics to detect anomalies, misconfigurations, and threats.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-AL-001", "UCO-IR-001", "UCO-AC-001"],
+  },
+  {
+    key: "github-actions", name: "GitHub Actions", category: "ci-cd",
+    description: "CI/CD pipeline security, secrets scanning enforcement, and workflow audit trails for compliance evidence.",
+    available: true,
+    controls: ["UCO-CM-001", "UCO-CM-002", "UCO-VM-001", "UCO-AL-001"],
+  },
+  {
+    key: "circleci", name: "CircleCI", category: "ci-cd",
+    description: "Pipeline security context controls, secrets management, and deployment approval workflows.",
+    available: true,
+    controls: ["UCO-CM-001", "UCO-CM-003", "UCO-AL-001"],
+  },
+  {
+    key: "jenkins", name: "Jenkins", category: "ci-cd",
+    description: "Build pipeline access controls, plugin audit, credentials management, and change approval records.",
+    available: true,
+    controls: ["UCO-CM-001", "UCO-AC-001", "UCO-AL-001", "UCO-CM-003"],
+  },
+  {
+    key: "amazon-ecr", name: "Amazon ECR", category: "container-registry",
+    description: "Container image vulnerability scanning, image signing enforcement, and repository access policy audit.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-VM-002", "UCO-AC-001", "UCO-CM-001"],
+  },
+  {
+    key: "google-gcr", name: "Google Container Registry", category: "container-registry",
+    description: "Container image security scanning, vulnerability findings, and access control policy compliance.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-VM-002", "UCO-AC-001"],
+  },
+  {
+    key: "kubernetes", name: "Kubernetes", category: "container-orchestration",
+    description: "Cluster RBAC audit, pod security policies, network policy review, and secrets management compliance.",
+    available: true,
+    controls: ["UCO-AC-001", "UCO-CM-003", "UCO-DP-001", "UCO-VM-001"],
+  },
+  {
+    key: "ping", name: "PingIdentity", category: "identity",
+    description: "SSO policy enforcement, MFA configuration audit, federation policy review, and access governance.",
+    available: true,
+    controls: ["UCO-AI-001", "UCO-AC-001", "UCO-AC-003"],
+  },
+  {
+    key: "auth0", name: "Auth0", category: "identity",
+    description: "Identity platform security audit, MFA enforcement rates, anomalous login detection, and policy compliance.",
+    available: true,
+    controls: ["UCO-AI-001", "UCO-AI-003", "UCO-AC-001", "UCO-AC-003"],
+  },
+  {
+    key: "sailpoint", name: "SailPoint", category: "iga",
+    description: "Identity governance, access certification campaigns, role mining, and entitlement review automation.",
+    available: true,
+    controls: ["UCO-AC-001", "UCO-AC-005", "UCO-AI-001", "UCO-ST-001"],
+  },
+  {
+    key: "cyberark", name: "CyberArk", category: "pam",
+    description: "Privileged account governance, session recording, credential vaulting, and just-in-time access audit.",
+    available: true,
+    controls: ["UCO-AC-002", "UCO-AC-003", "UCO-AL-001", "UCO-AI-001"],
+  },
+  {
+    key: "beyondtrust", name: "BeyondTrust", category: "pam",
+    description: "Privileged access management, least privilege enforcement, remote session audit, and credential rotation.",
+    available: true,
+    controls: ["UCO-AC-002", "UCO-AC-003", "UCO-AL-001"],
+  },
+  {
+    key: "aws-secrets-manager", name: "AWS Secrets Manager", category: "secrets-management",
+    description: "Secrets rotation audit, access policy review, cross-account secret usage, and lifecycle management.",
+    available: true,
+    controls: ["UCO-CM-002", "UCO-DP-001", "UCO-AC-002", "UCO-AL-001"],
+  },
+  {
+    key: "azure-key-vault", name: "Azure Key Vault", category: "secrets-management",
+    description: "Key and secret lifecycle management, RBAC policy audit, soft-delete enforcement, and access logs.",
+    available: true,
+    controls: ["UCO-CM-002", "UCO-DP-001", "UCO-AC-002", "UCO-AL-001"],
+  },
+  {
+    key: "elastic-siem", name: "Elastic SIEM", category: "siem",
+    description: "Security event correlation, detection rule configuration, alert triage workflows, and log retention.",
+    available: true,
+    controls: ["UCO-AL-001", "UCO-AL-002", "UCO-IR-001", "UCO-VM-001"],
+  },
+  {
+    key: "veracode", name: "Veracode", category: "application-security",
+    description: "SAST/DAST findings management, policy compliance scoring, remediation SLA tracking, and developer training.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-VM-002", "UCO-CM-001", "UCO-ST-002"],
+  },
+  {
+    key: "checkmarx", name: "Checkmarx", category: "application-security",
+    description: "Static application security testing, IaC scanning, SCA findings, and CI/CD gate enforcement.",
+    available: true,
+    controls: ["UCO-VM-001", "UCO-VM-002", "UCO-CM-001"],
+  },
+  {
+    key: "adp", name: "ADP Workforce Now", category: "hris",
+    description: "Employee roster management, onboarding/offboarding workflows, payroll audit, and HR policy compliance.",
+    available: true,
+    controls: ["UCO-ST-001", "UCO-AC-005", "UCO-AC-001"],
+  },
+  {
+    key: "gusto", name: "Gusto", category: "hris",
+    description: "Employee lifecycle tracking, benefits administration, offboarding automation, and compliance reporting.",
+    available: true,
+    controls: ["UCO-ST-001", "UCO-AC-005"],
+  },
+  {
+    key: "greenhouse", name: "Greenhouse", category: "recruiting",
+    description: "Candidate background check tracking, offer approval workflows, and new hire access provisioning audit.",
+    available: true,
+    controls: ["UCO-ST-001", "UCO-ST-002"],
+  },
+  {
+    key: "microsoft-teams", name: "Microsoft Teams", category: "collaboration",
+    description: "Retention policies, guest access controls, DLP policy enforcement, and admin role audit.",
+    available: true,
+    controls: ["UCO-DP-003", "UCO-AC-001", "UCO-AL-001"],
+  },
+  {
+    key: "zoom", name: "Zoom", category: "collaboration",
+    description: "Meeting security settings, recording retention policies, SSO configuration, and data residency compliance.",
+    available: true,
+    controls: ["UCO-DP-003", "UCO-AC-001", "UCO-AI-001"],
+  },
+  {
+    key: "netsuite", name: "NetSuite", category: "erp",
+    description: "Financial system access controls, audit trail review, role segregation enforcement, and SOX compliance.",
+    available: true,
+    controls: ["UCO-AC-001", "UCO-AC-002", "UCO-AL-001", "UCO-AC-005"],
+  },
+  {
+    key: "zendesk", name: "Zendesk", category: "customer-support",
+    description: "Customer data access controls, PII handling policy audit, ticket retention, and agent permission review.",
+    available: true,
+    controls: ["UCO-DP-001", "UCO-DP-003", "UCO-AC-001", "UCO-AL-001"],
+  },
 ];
 
 const INTEGRATION_EVIDENCE_MAP: Record<string, Array<{ title: string; description: string; ucoControlId?: string }>> = {
@@ -365,6 +545,128 @@ const INTEGRATION_EVIDENCE_MAP: Record<string, Array<{ title: string; descriptio
   "slack": [
     { title: "Slack -- Workspace SSO Configuration", description: "SSO enforced for all workspace members via Okta. Password-based login disabled. 0 accounts with SSO bypass.", ucoControlId: "UCO-AC-001" },
     { title: "Slack -- Message Retention Policy Export", description: "Message retention set to 7 years for compliance channels. DM retention: 1 year. eDiscovery export available.", ucoControlId: "UCO-DP-003" },
+  ],
+  "aws-config": [
+    { title: "AWS Config -- Resource Compliance Summary", description: "Config rules evaluated across 1,847 resources. 94% compliant. 12 non-compliant resources with remediation tickets created.", ucoControlId: "UCO-CM-003" },
+    { title: "AWS Config -- Configuration Change Audit Log", description: "All configuration changes to EC2, IAM, S3, and RDS resources tracked with before/after state for the past 90 days.", ucoControlId: "UCO-AL-001" },
+    { title: "AWS Config -- Unauthorized Resource Detection", description: "Config Aggregator monitoring 4 AWS accounts. Zero unauthorized resource deployments detected outside approved regions.", ucoControlId: "UCO-AC-001" },
+  ],
+  "aws-guardduty": [
+    { title: "AWS GuardDuty -- Threat Detection Summary", description: "GuardDuty active across 4 AWS accounts. 7 medium-severity findings in past 30 days. All investigated and resolved.", ucoControlId: "UCO-IR-001" },
+    { title: "AWS GuardDuty -- Malicious Activity Log", description: "Zero high-severity findings in past 90 days. 3 reconnaissance attempts auto-blocked by network ACL automation.", ucoControlId: "UCO-AL-001" },
+  ],
+  "azure-defender": [
+    { title: "Microsoft Defender for Cloud -- Secure Score Report", description: "Secure Score: 84/100 across Azure subscription. 12 hardening recommendations implemented this quarter.", ucoControlId: "UCO-VM-001" },
+    { title: "Microsoft Defender for Cloud -- Threat Alerts Summary", description: "14 security alerts generated in past 30 days. 12 dismissed as false positives. 2 escalated and resolved.", ucoControlId: "UCO-IR-001" },
+  ],
+  "gcp-scc": [
+    { title: "GCP Security Command Center -- Findings Export", description: "SCC Premium active across 3 GCP projects. 18 findings identified. 15 remediated. 3 risk-accepted with approvals.", ucoControlId: "UCO-VM-001" },
+    { title: "GCP Security Command Center -- Compliance Posture", description: "CIS Google Cloud Benchmark compliance at 87%. PCI DSS and HIPAA built-in standards monitored continuously.", ucoControlId: "UCO-CM-003" },
+  ],
+  "prisma-cloud": [
+    { title: "Prisma Cloud -- CSPM Compliance Report", description: "CIS, NIST, and SOC 2 compliance scores across AWS, Azure, and GCP. Overall posture: 88% compliant across 4,200 resources.", ucoControlId: "UCO-VM-001" },
+    { title: "Prisma Cloud -- IAM Risk Analysis", description: "CIEM analysis identified 34 over-privileged roles. Remediation recommendations actioned within 5 business days.", ucoControlId: "UCO-AC-001" },
+  ],
+  "orca": [
+    { title: "Orca Security -- Cloud Risk Assessment", description: "Agentless scan of full cloud estate. 89 attack path risks identified. 71 remediated. 18 accepted with documented approvals.", ucoControlId: "UCO-VM-001" },
+    { title: "Orca Security -- Sensitive Data Risk Findings", description: "Sensitive data discovered in 3 misconfigured storage buckets. All encrypted and access policies corrected within 48 hours.", ucoControlId: "UCO-DP-001" },
+  ],
+  "lacework": [
+    { title: "Lacework -- Behavioral Anomaly Detection Report", description: "ML baselines established for 1,247 workloads. 6 anomalous sessions investigated in past 30 days. All cleared.", ucoControlId: "UCO-AL-001" },
+    { title: "Lacework -- Cloud Compliance Summary", description: "CIS benchmark compliance across AWS and GCP: 91% overall. Non-compliant resources auto-ticketed for remediation.", ucoControlId: "UCO-VM-001" },
+  ],
+  "github-actions": [
+    { title: "GitHub Actions -- Secrets Scanning Enforcement", description: "Push protection enabled across all repositories. 3 accidental secret commits blocked. Zero secrets exposed in CI logs.", ucoControlId: "UCO-CM-002" },
+    { title: "GitHub Actions -- Deployment Approval Log", description: "Production deployments require 2-person approval via environment protection rules. 89 deployments reviewed this quarter.", ucoControlId: "UCO-CM-003" },
+  ],
+  "circleci": [
+    { title: "CircleCI -- Secrets Management Compliance", description: "All 34 pipeline secrets stored in CircleCI Contexts with RBAC. No plaintext secrets in pipeline configuration files.", ucoControlId: "UCO-CM-003" },
+    { title: "CircleCI -- Deployment Workflow Audit Log", description: "Production deployment pipeline requires manual approval gate. 67 production deployments with full audit trail.", ucoControlId: "UCO-AL-001" },
+  ],
+  "jenkins": [
+    { title: "Jenkins -- Access Control Audit", description: "RBAC plugin configured with least-privilege roles. 12 admin accounts reviewed and reduced to 4 essential admins.", ucoControlId: "UCO-AC-001" },
+    { title: "Jenkins -- Build Approval Workflow Log", description: "Production deployments require manual approval from designated approvers. Change tickets required for all production builds.", ucoControlId: "UCO-CM-003" },
+  ],
+  "amazon-ecr": [
+    { title: "Amazon ECR -- Image Vulnerability Scan Results", description: "Enhanced scanning active for all 23 production repositories. 94% of critical CVEs in base images remediated within 72 hours.", ucoControlId: "UCO-VM-001" },
+    { title: "Amazon ECR -- Image Signing Enforcement Report", description: "Cosign image signing enforced via OPA admission controller. Zero unsigned images deployed to production in past 90 days.", ucoControlId: "UCO-CM-001" },
+  ],
+  "google-gcr": [
+    { title: "Google Container Registry -- Vulnerability Assessment", description: "Container Analysis API scanning active. 89% of critical vulnerabilities remediated within SLA across 18 repositories.", ucoControlId: "UCO-VM-001" },
+    { title: "Google Container Registry -- Binary Authorization Report", description: "Binary Authorization enforcing signed images in GKE production. Zero policy bypass events in past 90 days.", ucoControlId: "UCO-CM-001" },
+  ],
+  "kubernetes": [
+    { title: "Kubernetes -- RBAC Configuration Audit", description: "Zero cluster-admin bindings for non-break-glass accounts across 3 clusters. 47 roles reviewed for least-privilege.", ucoControlId: "UCO-AC-001" },
+    { title: "Kubernetes -- Pod Security Standards Report", description: "Restricted pod security standard enforced in production. All pods pass checks. Zero privileged containers in production.", ucoControlId: "UCO-CM-003" },
+    { title: "Kubernetes -- Secrets Management Audit", description: "Kubernetes secrets encrypted at rest via KMS. 12 secrets rotated this quarter. No hardcoded credentials in pod specs.", ucoControlId: "UCO-CM-002" },
+  ],
+  "ping": [
+    { title: "PingIdentity -- SSO Policy Enforcement Report", description: "SSO enforced for all 341 users across 47 connected applications. Password-based fallback disabled for production systems.", ucoControlId: "UCO-AC-001" },
+    { title: "PingIdentity -- MFA Configuration Audit", description: "Adaptive MFA active for all users with risk-based step-up authentication. 99.3% MFA enrollment rate.", ucoControlId: "UCO-AI-001" },
+  ],
+  "auth0": [
+    { title: "Auth0 -- MFA Enrollment and Enforcement Report", description: "MFA required for all tenant users. 99.1% enrollment rate. Adaptive MFA enabled for anomalous login patterns.", ucoControlId: "UCO-AI-001" },
+    { title: "Auth0 -- Anomalous Login Detection Log", description: "Brute force protection active. 847 blocked login attempts in past 30 days. 12 suspicious logins flagged.", ucoControlId: "UCO-AI-003" },
+  ],
+  "sailpoint": [
+    { title: "SailPoint -- Access Certification Campaign Results", description: "Quarterly access review completed. 1,247 entitlements certified. 89 access rights revoked as no longer required.", ucoControlId: "UCO-AC-001" },
+    { title: "SailPoint -- Separation of Duties Violation Report", description: "SoD policy enforced across 47 ERP roles. Zero active SoD violations. 3 temporary exceptions with documented approvals.", ucoControlId: "UCO-AI-001" },
+  ],
+  "cyberark": [
+    { title: "CyberArk -- Privileged Account Inventory", description: "847 privileged accounts vaulted. Zero unmanaged service accounts with standing admin privileges in production.", ucoControlId: "UCO-AC-002" },
+    { title: "CyberArk -- Session Recording Audit Log", description: "All privileged sessions recorded and retained 12 months. 34 sessions reviewed in audits with full keystroke logs.", ucoControlId: "UCO-AL-001" },
+  ],
+  "beyondtrust": [
+    { title: "BeyondTrust -- Least Privilege Enforcement Report", description: "Privilege Management deployed to 98.4% of endpoints. Local admin rights removed from 247 standard users.", ucoControlId: "UCO-AC-002" },
+    { title: "BeyondTrust -- Remote Session Audit Log", description: "All privileged remote access sessions recorded. 89 vendor sessions completed with full recording and approval.", ucoControlId: "UCO-AL-001" },
+  ],
+  "aws-secrets-manager": [
+    { title: "AWS Secrets Manager -- Rotation Compliance Report", description: "Automatic rotation enabled for 94% of managed secrets. Remaining 6% have documented exceptions with manual schedule.", ucoControlId: "UCO-CM-002" },
+    { title: "AWS Secrets Manager -- Access Policy Audit", description: "All secret resource policies reviewed. Zero secrets accessible by wildcard principal without explicit conditions.", ucoControlId: "UCO-DP-001" },
+  ],
+  "azure-key-vault": [
+    { title: "Azure Key Vault -- Secrets and Keys Lifecycle Report", description: "All keys and certificates reviewed. Zero expired items. Auto-rotation configured for 89% of managed certificates.", ucoControlId: "UCO-CM-002" },
+    { title: "Azure Key Vault -- Diagnostic Logs Export", description: "Full audit log of key and secret access operations. Logs retained 90 days in Log Analytics for compliance review.", ucoControlId: "UCO-AL-001" },
+  ],
+  "elastic-siem": [
+    { title: "Elastic SIEM -- Detection Rule Configuration", description: "347 detection rules covering MITRE ATT&CK framework. Rules tuned quarterly. False positive rate: 2.1%.", ucoControlId: "UCO-AL-001" },
+    { title: "Elastic SIEM -- Security Event Correlation Report", description: "2.3M events ingested per day. 234 alerts in past 30 days. 18 escalated to incident response. MTTD: 4.7 minutes.", ucoControlId: "UCO-IR-001" },
+  ],
+  "veracode": [
+    { title: "Veracode -- SAST Policy Compliance Report", description: "Static analysis run on all 23 production apps. Policy compliance: 91%. 14 critical flaws remediated within SLA.", ucoControlId: "UCO-VM-001" },
+    { title: "Veracode -- Developer Security Training Completion", description: "Security training modules completed by 94% of developers. Training matched to finding types found in their code.", ucoControlId: "UCO-ST-002" },
+  ],
+  "checkmarx": [
+    { title: "Checkmarx -- SAST Findings and Remediation Report", description: "SAST integrated into CI/CD. 89 findings this quarter. 84 remediated. 5 false positives documented.", ucoControlId: "UCO-VM-001" },
+    { title: "Checkmarx -- IaC Security Scan Results", description: "Infrastructure as Code scanned in pipeline. 12 misconfigurations blocked from deployment. 100% IaC scan coverage.", ucoControlId: "UCO-CM-001" },
+  ],
+  "adp": [
+    { title: "ADP Workforce Now -- Employee Roster Export", description: "Active employee roster with hire dates, departments, and job titles. Used as access review baseline for quarterly certification.", ucoControlId: "UCO-ST-001" },
+    { title: "ADP Workforce Now -- Termination Workflow Log", description: "All 11 terminations processed. IT access revocation completed within 1 business day. Zero exceptions.", ucoControlId: "UCO-AC-005" },
+  ],
+  "gusto": [
+    { title: "Gusto -- Employee Lifecycle Audit", description: "All 8 terminations in past 90 days processed with automated deprovisioning across 47 connected applications.", ucoControlId: "UCO-ST-001" },
+    { title: "Gusto -- Offboarding Access Revocation Log", description: "Automated offboarding workflow average completion time: 2.3 hours. Confirmed for 100% of voluntary terminations.", ucoControlId: "UCO-AC-005" },
+  ],
+  "greenhouse": [
+    { title: "Greenhouse -- Background Check Completion Report", description: "94.7% of new hires completed pre-employment background screening. All exceptions documented with risk acceptance.", ucoControlId: "UCO-ST-001" },
+    { title: "Greenhouse -- New Hire Security Compliance Documentation", description: "Security policy acknowledgment and NDA tracked for all hires. 100% completion required before system access provisioned.", ucoControlId: "UCO-ST-002" },
+  ],
+  "microsoft-teams": [
+    { title: "Microsoft Teams -- Retention Policy Audit", description: "Teams channels retained per compliance policy: 7 years for compliance channels, 1 year for general chat.", ucoControlId: "UCO-DP-003" },
+    { title: "Microsoft Teams -- Guest Access Control Report", description: "Guest access reviewed quarterly. 34 active guests with documented justification. 12 stale guests removed.", ucoControlId: "UCO-AC-001" },
+  ],
+  "zoom": [
+    { title: "Zoom -- Meeting Security Configuration Report", description: "Waiting room enabled for all external meetings. Passcodes required for sensitive meetings. Recording encryption enforced.", ucoControlId: "UCO-DP-003" },
+    { title: "Zoom -- SSO and MFA Enforcement Audit", description: "SSO enforced for all company accounts via Okta. MFA required for host accounts. Password-based login disabled.", ucoControlId: "UCO-AI-001" },
+  ],
+  "netsuite": [
+    { title: "NetSuite -- User Access and Role Audit", description: "All 89 NetSuite user roles reviewed. 14 over-privileged roles corrected. Segregation of duties enforced across finance workflows.", ucoControlId: "UCO-AC-001" },
+    { title: "NetSuite -- Financial System Audit Trail", description: "Full audit trail for all financial transactions and configuration changes retained for 7 years per retention policy.", ucoControlId: "UCO-AL-001" },
+  ],
+  "zendesk": [
+    { title: "Zendesk -- Agent Permission and Role Audit", description: "All 47 Zendesk agent roles reviewed. Least-privilege enforced by tier. 6 over-privileged agents corrected during review.", ucoControlId: "UCO-AC-001" },
+    { title: "Zendesk -- Customer PII Handling Compliance", description: "PII masking active for sensitive fields. GDPR and CCPA deletion requests processed within SLA. Data retention enforced.", ucoControlId: "UCO-DP-001" },
   ],
 };
 
