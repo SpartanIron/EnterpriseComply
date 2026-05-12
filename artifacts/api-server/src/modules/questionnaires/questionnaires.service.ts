@@ -91,7 +91,11 @@ export class QuestionnairesService {
     const questionsFromTemplate = TEMPLATE_QUESTIONS[templateKey] ?? TEMPLATE_QUESTIONS['sig-lite'];
     const questions = body.questions && body.questions.length > 0 ? body.questions : questionsFromTemplate;
 
-    const [questionnaire] = await db.insert(orgQuestionnairesTable).values({
+    const controlResults = await db.query.orgControlResultsTable.findMany({ where: eq(orgControlResultsTable.orgId, orgId) });
+    const evidence = await db.query.orgEvidenceTable.findMany({ where: eq(orgEvidenceTable.orgId, orgId) });
+    const resultMap = new Map(controlResults.map(r => [r.ucoControlId, { status: r.status, result: r.result }]));
+
+        const [questionnaire] = await db.insert(orgQuestionnairesTable).values({
       orgId,
       title: body.title,
       requesterName: body.requesterName,
@@ -105,7 +109,7 @@ export class QuestionnairesService {
 
     const items = await Promise.all(
       questions.map(async (question, idx) => {
-        const { answer, controlId } = await this.autoAnswer(orgId, question);
+        const { answer, controlId } = this.autoAnswer(question, resultMap, evidence);
         return db.insert(orgQuestionnaireItemsTable).values({
           questionnaireId: questionnaire.id,
           orgId,
