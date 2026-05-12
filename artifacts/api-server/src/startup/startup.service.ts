@@ -582,6 +582,7 @@ CREATE TABLE IF NOT EXISTS org_assessments (
   rag_status TEXT,
   executive_summary TEXT,
   consultant_name TEXT,
+  consultant_email TEXT,
   notes TEXT,
   due_date TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
@@ -589,6 +590,7 @@ CREATE TABLE IF NOT EXISTS org_assessments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE org_assessments ADD COLUMN IF NOT EXISTS consultant_email TEXT;
 
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_step INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN NOT NULL DEFAULT false;
