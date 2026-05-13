@@ -42,6 +42,9 @@ export default function Remediation() {
   const qc = useQueryClient();
   const [selected, setSelected] = useState<any | null>(null);
   const [filterDomain, setFilterDomain] = useState("all");
+  const [ownerPanelId, setOwnerPanelId] = useState<string | null>(null);
+  const [ownerName, setOwnerName] = useState("");
+  const [ownerDue, setOwnerDue] = useState("");
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -71,7 +74,25 @@ export default function Remediation() {
     },
   });
 
-  const controls: any[] = data?.controls ?? [];
+    const ownerMutation = useMutation({
+    mutationFn: async ({ controlId, ownerName, dueDate }: { controlId: string; ownerName: string; dueDate: string }) => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/controls/${controlId}/result`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ownerName, dueDate: dueDate || undefined }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-controls"] });
+      setOwnerPanelId(null);
+      setOwnerName("");
+      setOwnerDue("");
+    },
+  });
+
+const controls: any[] = data?.controls ?? [];
   const domains = ["all", ...new Set(controls.map(c => c.domain))].sort();
 
   const filtered = filterDomain === "all" ? controls : controls.filter(c => c.domain === filterDomain);
@@ -266,7 +287,67 @@ export default function Remediation() {
                   <p className="text-sm text-red-900">{selected.result.failureReason}</p>
                 </div>
               )}
-              <div className="flex gap-2 pt-2">
+                              {/* Owner / SLA Assignment */}
+                {ownerPanelId === selected.controlId ? (
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 mb-4">
+                    <p className="text-sm font-bold text-slate-800">Assign Owner &amp; SLA</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Owner name</label>
+                        <input
+                          type="text"
+                          value={ownerName}
+                          onChange={e => setOwnerName(e.target.value)}
+                          placeholder="Jane Smith"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Due date</label>
+                        <input
+                          type="date"
+                          value={ownerDue}
+                          onChange={e => setOwnerDue(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => ownerMutation.mutate({ controlId: selected.controlId, ownerName, dueDate: ownerDue })}
+                        disabled={ownerMutation.isPending}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {ownerMutation.isPending ? "Saving..." : "Save"}
+                      </button>
+                      <button onClick={() => setOwnerPanelId(null)} className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 mb-4">
+                    {selected.result?.ownerName && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                        <svg className="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        <span className="font-medium">{selected.result.ownerName}</span>
+                      </div>
+                    )}
+                    {selected.result?.dueDate && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                        <svg className="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span>{new Date(selected.result.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => { setOwnerPanelId(selected.controlId); setOwnerName(selected.result?.ownerName ?? ""); setOwnerDue(selected.result?.dueDate ? new Date(selected.result.dueDate).toISOString().slice(0, 10) : ""); }}
+                      className="text-xs text-slate-400 hover:text-blue-600 font-medium"
+                    >
+                      {selected.result?.ownerName ? "Edit owner" : "Assign owner"}
+                    </button>
+                  </div>
+                )}
+<div className="flex gap-2 pt-2">
                 <button
                   onClick={() => { moveMutation.mutate({ controlId: selected.controlId, status: "passing" }); setSelected(null); }}
                   className="flex-1 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700"
