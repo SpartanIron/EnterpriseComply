@@ -20,6 +20,12 @@ export class QuestionnairesController {
     return this.questionnairesService.createQuestionnaire(ctx.orgId, userId, body);
   }
 
+  @Get("orgs/:orgId/questionnaires/needs-review")
+  @UseGuards(OrgContextGuard)
+  getNeedsReview(@OrgContext() ctx: OrgCtx) {
+    return this.questionnairesService.getNeedsReviewItems(ctx.orgId);
+  }
+
   @Get("orgs/:orgId/questionnaires/:id/items")
   @UseGuards(OrgContextGuard)
   getItems(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
@@ -30,6 +36,12 @@ export class QuestionnairesController {
   @UseGuards(OrgContextGuard)
   updateItem(@OrgContext() ctx: OrgCtx, @Param("itemId") itemId: string, @Body() body: { answer: string }) {
     return this.questionnairesService.updateItem(ctx.orgId, Number(itemId), body);
+  }
+
+  @Patch("orgs/:orgId/questionnaires/items/:itemId/approve")
+  @UseGuards(OrgContextGuard)
+  approveItem(@OrgContext() ctx: OrgCtx, @Param("itemId") itemId: string, @Body() body: { answer?: string }) {
+    return this.questionnairesService.approveItem(ctx.orgId, Number(itemId), body.answer);
   }
 
   @Get("orgs/:orgId/vendor-assessments")
