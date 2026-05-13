@@ -139,10 +139,10 @@ function GettingStarted() {
   return (
     <div>
       <Para>EnterpriseComply is a GRC (Governance, Risk, and Compliance) automation platform purpose-built for small and mid-sized organizations pursuing SOC 2, ISO 27001, CMMC, FedRAMP, and other security certifications. This guide walks you from zero to a fully operational compliance program in under 30 minutes.</Para>
-      <SectionHeading>Quickstart — 5 Steps to Compliance</SectionHeading>
+      <SectionHeading>Quickstart - 5 Steps to Compliance</SectionHeading>
       <StepList steps={[
         { num: 1, title: "Create your account & organization", body: "Sign up at app.enterprisecomply.com. You'll be prompted to enter your organization name, industry, and employee count during onboarding. This seeds your initial control library and risk profile." },
-        { num: 2, title: "Add a compliance framework", body: "Navigate to Compliance → Frameworks and click '+ Add framework'. Select SOC 2, ISO 27001, CMMC, FedRAMP, NIST CSF, or a custom framework. EnterpriseComply maps all applicable controls automatically — no manual work required." },
+        { num: 2, title: "Add a compliance framework", body: "Navigate to Compliance → Frameworks and click '+ Add framework'. Select SOC 2, ISO 27001, CMMC, FedRAMP, NIST CSF, or a custom framework. EnterpriseComply maps all applicable controls automatically - no manual work required." },
         { num: 3, title: "Connect your first integration", body: "Go to Evidence → Integrations and connect GitHub, AWS, Okta, or any of the 60+ supported integrations. Each connection immediately starts collecting evidence and testing controls. Most integrations take under 2 minutes to set up." },
         { num: 4, title: "Review your control status", body: "Visit Compliance → Controls to see which controls are passing, failing, or untested. Use the AI Gap Analysis to generate a prioritized remediation plan. The Remediation Board organizes failing controls into a Kanban board for your team." },
         { num: 5, title: "Build your policy library", body: "Navigate to Workforce → Policies and click '+ Add Policy'. Choose from 30+ professionally drafted templates (Acceptable Use, Incident Response, Access Control, etc.). Publish policies and send acknowledgment requests to your team." },
@@ -151,19 +151,19 @@ function GettingStarted() {
       <SectionHeading>Platform Overview</SectionHeading>
       <Para>EnterpriseComply is organized into six main areas accessible from the left navigation:</Para>
       <BulletList items={[
-        "Overview — Dashboard with your live posture score, control summary, and onboarding checklist",
-        "Compliance — Frameworks, Controls, Risk Register, Remediation Board, and AI Gap Analysis",
-        "Evidence — Integrations, Evidence Vault, Test Run History, and Monitoring",
-        "Workforce — Policies, People roster, Access Reviews, and Vendor management",
-        "Audit & Sales — Auditor Portal, Security Questionnaires, Client Assessments, and Trust Center",
-        "Federal — POA&M, SPRS Score, System Security Plan (SSP), and STIG Findings",
+        "Overview - Dashboard with your live posture score, control summary, and onboarding checklist",
+        "Compliance - Frameworks, Controls, Risk Register, Remediation Board, and AI Gap Analysis",
+        "Evidence - Integrations, Evidence Vault, Test Run History, and Monitoring",
+        "Workforce - Policies, People roster, Access Reviews, and Vendor management",
+        "Audit & Sales - Auditor Portal, Security Questionnaires, Client Assessments, and Trust Center",
+        "Federal - POA&M, SPRS Score, System Security Plan (SSP), and STIG Findings",
       ]} />
       <SectionHeading>User Roles</SectionHeading>
       <BulletList items={[
-        "Admin — Full access including settings, billing, and user management",
-        "Owner — Same as Admin; typically the CISO or compliance lead",
-        "Member — Can view and update controls, evidence, and policies; cannot change org settings",
-        "Auditor — Read-only access via the Auditor Portal; cannot modify any data",
+        "Admin - Full access including settings, billing, and user management",
+        "Owner - Same as Admin; typically the CISO or compliance lead",
+        "Member - Can view and update controls, evidence, and policies; cannot change org settings",
+        "Auditor - Read-only access via the Auditor Portal; cannot modify any data",
       ]} />
       <CalloutBox type="info">Role management is available in Settings → Team. Each user can only belong to one organization at a time.</CalloutBox>
     </div>
@@ -175,20 +175,20 @@ function DashboardGuide() {
     <div>
       <Para>The Dashboard is your real-time compliance command center. It aggregates data from all connected integrations and gives you an at-a-glance view of your security posture.</Para>
       <SectionHeading>Posture Score</SectionHeading>
-      <Para>The circular score (0–100) in the header represents your overall compliance health. It is calculated as a weighted average of: passing controls (60%), published policies (20%), and connected integrations (20%). A score above 80 is considered audit-ready for most frameworks.</Para>
+      <Para>The circular score (0-100) in the header represents your overall compliance health. It is calculated as a weighted average of: passing controls (60%), published policies (20%), and connected integrations (20%). A score above 80 is considered audit-ready for most frameworks.</Para>
       <SectionHeading>Stat Cards</SectionHeading>
       <BulletList items={[
-        "Passing Controls — Total controls currently evidenced as passing across all active frameworks",
-        "Failing Controls — Controls with failing evidence that require remediation action",
-        "Not Tested — Controls with no evidence collected yet — connect integrations to test them automatically",
-        "Integrations Active — Number of integrations actively collecting evidence / total available",
+        "Passing Controls - Total controls currently evidenced as passing across all active frameworks",
+        "Failing Controls - Controls with failing evidence that require remediation action",
+        "Not Tested - Controls with no evidence collected yet - connect integrations to test them automatically",
+        "Integrations Active - Number of integrations actively collecting evidence / total available",
       ]} />
       <SectionHeading>Getting Started Checklist</SectionHeading>
       <Para>The checklist tracks your five onboarding milestones. Each item links directly to the relevant page. The progress bar fills as you complete each step. Once all five are complete, the checklist collapses into a 'Completed' summary.</Para>
       <SectionHeading>C2S Intel Panel</SectionHeading>
       <Para>If your organization is connected to C2S Intel (the federal opportunity intelligence platform), a panel at the bottom of the Dashboard displays upcoming contract opportunities, CAGE code lookup, and SAM.gov links relevant to your compliance certifications.</Para>
       <SectionHeading>Board Report</SectionHeading>
-      <Para>Click 'Board Report (PDF)' to download a formatted executive summary of your compliance posture — suitable for presenting to your board, investors, or enterprise procurement reviewers.</Para>
+      <Para>Click 'Board Report (PDF)' to download a formatted executive summary of your compliance posture - suitable for presenting to your board, investors, or enterprise procurement reviewers.</Para>
     </div>
   );
 }
@@ -196,13 +196,13 @@ function DashboardGuide() {
 function ControlsGuide() {
   return (
     <div>
-      <Para>Controls are the security requirements that frameworks like SOC 2 and ISO 27001 mandate you implement. EnterpriseComply uses a Universal Control Object (UCO) library that maps a single control to multiple frameworks simultaneously — implement once, satisfy many.</Para>
+      <Para>Controls are the security requirements that frameworks like SOC 2 and ISO 27001 mandate you implement. EnterpriseComply uses a Universal Control Object (UCO) library that maps a single control to multiple frameworks simultaneously - implement once, satisfy many.</Para>
       <SectionHeading>Control Statuses</SectionHeading>
       <BulletList items={[
-        "Passing — Evidence has been collected confirming the control is implemented and functioning",
-        "Failing — Evidence was collected but the control did not meet the required threshold",
-        "Not Tested — No evidence has been collected yet; requires integration connection or manual override",
-        "Warning — Evidence collected but a non-critical issue was detected",
+        "Passing - Evidence has been collected confirming the control is implemented and functioning",
+        "Failing - Evidence was collected but the control did not meet the required threshold",
+        "Not Tested - No evidence has been collected yet; requires integration connection or manual override",
+        "Warning - Evidence collected but a non-critical issue was detected",
       ]} />
       <SectionHeading>How to Mark a Control</SectionHeading>
       <StepList steps={[
@@ -213,9 +213,9 @@ function ControlsGuide() {
       ]} />
       <SectionHeading>Automated Testing</SectionHeading>
       <Para>When an integration is connected, EnterpriseComply runs automated tests against that integration daily. For example, connecting GitHub checks branch protection rules, code review enforcement, and Dependabot alerts automatically. Results appear in Evidence → Test Run History.</Para>
-      <CalloutBox type="tip">Click 'Run Tests Now' on the Test Run History page to trigger an immediate test sweep across all connected integrations — useful before an audit.</CalloutBox>
+      <CalloutBox type="tip">Click 'Run Tests Now' on the Test Run History page to trigger an immediate test sweep across all connected integrations - useful before an audit.</CalloutBox>
       <SectionHeading>Framework Impact Modal</SectionHeading>
-      <Para>When you mark a control as Passing, the platform shows a cascade impact modal listing every framework requirement satisfied by that single control. This demonstrates the ROI of the UCO approach — one control can satisfy 5–15 requirements across SOC 2, ISO 27001, CMMC, and NIST simultaneously.</Para>
+      <Para>When you mark a control as Passing, the platform shows a cascade impact modal listing every framework requirement satisfied by that single control. This demonstrates the ROI of the UCO approach - one control can satisfy 5-15 requirements across SOC 2, ISO 27001, CMMC, and NIST simultaneously.</Para>
     </div>
   );
 }
@@ -227,10 +227,10 @@ function PoliciesGuide() {
       <SectionHeading>Policy Lifecycle</SectionHeading>
       <Para>Every policy moves through a four-stage lifecycle:</Para>
       <BulletList items={[
-        "Draft — Policy created from template; editable, not yet visible to staff",
-        "Review Required — Policy flagged for legal or compliance team review before publishing",
-        "Published — Active policy; staff can be sent acknowledgment requests",
-        "Archived — Retired policy; retained for audit trail purposes",
+        "Draft - Policy created from template; editable, not yet visible to staff",
+        "Review Required - Policy flagged for legal or compliance team review before publishing",
+        "Published - Active policy; staff can be sent acknowledgment requests",
+        "Archived - Retired policy; retained for audit trail purposes",
       ]} />
       <SectionHeading>How to Add a Policy</SectionHeading>
       <StepList steps={[
@@ -242,51 +242,51 @@ function PoliciesGuide() {
       <SectionHeading>Available Policy Templates</SectionHeading>
       <SubHeading>Security (12 templates)</SubHeading>
       <BulletList items={[
-        "Acceptable Use Policy — Governs appropriate use of company systems, devices, and data",
-        "Information Security Policy — Master policy defining the overall security program",
-        "Access Control Policy — Principles for granting, reviewing, and revoking access",
-        "Password Policy — Password complexity, rotation, and manager requirements",
-        "Encryption Policy — Standards for encrypting data at rest and in transit",
-        "Incident Response Policy — Detection, containment, eradication, and recovery procedures",
-        "Incident Response Plan — Detailed runbook with roles, escalation paths, and communication templates",
-        "Vulnerability Management Policy — Scanning frequency, severity SLAs, and patch management",
-        "Change Management Policy — Approval workflows for production system changes",
-        "Endpoint Security Policy — Requirements for laptops, mobile devices, and remote access",
-        "Network Security Policy — Firewall rules, segmentation, and monitoring requirements",
-        "Penetration Testing Policy — Frequency, scope, and remediation SLAs for pen tests",
+        "Acceptable Use Policy - Governs appropriate use of company systems, devices, and data",
+        "Information Security Policy - Master policy defining the overall security program",
+        "Access Control Policy - Principles for granting, reviewing, and revoking access",
+        "Password Policy - Password complexity, rotation, and manager requirements",
+        "Encryption Policy - Standards for encrypting data at rest and in transit",
+        "Incident Response Policy - Detection, containment, eradication, and recovery procedures",
+        "Incident Response Plan - Detailed runbook with roles, escalation paths, and communication templates",
+        "Vulnerability Management Policy - Scanning frequency, severity SLAs, and patch management",
+        "Change Management Policy - Approval workflows for production system changes",
+        "Endpoint Security Policy - Requirements for laptops, mobile devices, and remote access",
+        "Network Security Policy - Firewall rules, segmentation, and monitoring requirements",
+        "Penetration Testing Policy - Frequency, scope, and remediation SLAs for pen tests",
       ]} />
       <SubHeading>Privacy (5 templates)</SubHeading>
       <BulletList items={[
-        "Data Classification Policy — Public, Internal, Confidential, and Restricted data handling rules",
-        "Privacy Policy — Customer-facing data collection, use, and rights disclosure",
-        "Data Retention Policy — Retention schedules and secure deletion procedures",
-        "Data Breach Notification Policy — Timelines and procedures for breach disclosure",
-        "GDPR Data Processing Policy — Lawful basis, data subject rights, and processor agreements",
+        "Data Classification Policy - Public, Internal, Confidential, and Restricted data handling rules",
+        "Privacy Policy - Customer-facing data collection, use, and rights disclosure",
+        "Data Retention Policy - Retention schedules and secure deletion procedures",
+        "Data Breach Notification Policy - Timelines and procedures for breach disclosure",
+        "GDPR Data Processing Policy - Lawful basis, data subject rights, and processor agreements",
       ]} />
       <SubHeading>Human Resources (4 templates)</SubHeading>
       <BulletList items={[
-        "Background Check Policy — Pre-employment screening requirements for sensitive roles",
-        "Security Awareness Training Policy — Mandatory training frequency and topic coverage",
-        "Employee Onboarding Security Checklist — Day-one security setup and acknowledgments",
-        "Employee Offboarding Policy — Access revocation and equipment return timelines",
+        "Background Check Policy - Pre-employment screening requirements for sensitive roles",
+        "Security Awareness Training Policy - Mandatory training frequency and topic coverage",
+        "Employee Onboarding Security Checklist - Day-one security setup and acknowledgments",
+        "Employee Offboarding Policy - Access revocation and equipment return timelines",
       ]} />
       <SubHeading>Operations (6 templates)</SubHeading>
       <BulletList items={[
-        "Business Continuity Plan — RTO/RPO objectives and recovery strategies",
-        "Disaster Recovery Policy — Backup procedures, testing schedules, and failover processes",
-        "Third-Party Risk Management Policy — Vendor assessment and ongoing monitoring requirements",
-        "Software Development Lifecycle (SDLC) Security Policy — Secure coding and code review standards",
-        "Asset Management Policy — Inventory, classification, and disposal of IT assets",
-        "Audit Logging Policy — Log collection, retention, and integrity requirements",
+        "Business Continuity Plan - RTO/RPO objectives and recovery strategies",
+        "Disaster Recovery Policy - Backup procedures, testing schedules, and failover processes",
+        "Third-Party Risk Management Policy - Vendor assessment and ongoing monitoring requirements",
+        "Software Development Lifecycle (SDLC) Security Policy - Secure coding and code review standards",
+        "Asset Management Policy - Inventory, classification, and disposal of IT assets",
+        "Audit Logging Policy - Log collection, retention, and integrity requirements",
       ]} />
       <SubHeading>Compliance (2 templates)</SubHeading>
       <BulletList items={[
-        "Risk Management Policy — Risk identification, assessment, and treatment procedures",
-        "Compliance Management Policy — Framework management, evidence collection, and audit readiness",
+        "Risk Management Policy - Risk identification, assessment, and treatment procedures",
+        "Compliance Management Policy - Framework management, evidence collection, and audit readiness",
       ]} />
       <SubHeading>Federal (1 template)</SubHeading>
       <BulletList items={[
-        "System Security Plan Policy (FedRAMP/FISMA) — SSP maintenance, update cycles, and authorization boundaries",
+        "System Security Plan Policy (FedRAMP/FISMA) - SSP maintenance, update cycles, and authorization boundaries",
       ]} />
       <SectionHeading>Acknowledgment Tracking</SectionHeading>
       <Para>Auditors frequently request evidence that employees have read and acknowledged security policies. EnterpriseComply logs each acknowledgment with a timestamp and records it against the policy version. When you publish a new version of a policy, prior acknowledgments are retained and new acknowledgments can be requested for the updated version.</Para>
@@ -302,26 +302,26 @@ function EvidenceGuide() {
       <SectionHeading>Integrations</SectionHeading>
       <Para>EnterpriseComply supports 60+ integrations across all major security tool categories:</Para>
       <BulletList items={[
-        "Cloud Security — AWS Config, AWS GuardDuty, Microsoft Defender for Cloud, GCP Security Command Center, Prisma Cloud, Orca Security, Lacework",
-        "CI/CD — GitHub Actions, CircleCI, Jenkins, GitLab CI",
-        "Container — Kubernetes, Amazon ECR, Google Container Registry",
-        "Identity — PingIdentity, Auth0, SailPoint, Okta",
-        "PAM — CyberArk, BeyondTrust",
-        "Secrets — AWS Secrets Manager, Azure Key Vault",
-        "SIEM — Elastic SIEM, Splunk",
-        "Application Security — Veracode, Checkmarx",
-        "HRIS — ADP Workforce Now, Gusto",
-        "Collaboration — Microsoft Teams, Zoom, Slack",
-        "Recruiting — Greenhouse",
-        "ERP — NetSuite",
-        "Customer Support — Zendesk",
+        "Cloud Security - AWS Config, AWS GuardDuty, Microsoft Defender for Cloud, GCP Security Command Center, Prisma Cloud, Orca Security, Lacework",
+        "CI/CD - GitHub Actions, CircleCI, Jenkins, GitLab CI",
+        "Container - Kubernetes, Amazon ECR, Google Container Registry",
+        "Identity - PingIdentity, Auth0, SailPoint, Okta",
+        "PAM - CyberArk, BeyondTrust",
+        "Secrets - AWS Secrets Manager, Azure Key Vault",
+        "SIEM - Elastic SIEM, Splunk",
+        "Application Security - Veracode, Checkmarx",
+        "HRIS - ADP Workforce Now, Gusto",
+        "Collaboration - Microsoft Teams, Zoom, Slack",
+        "Recruiting - Greenhouse",
+        "ERP - NetSuite",
+        "Customer Support - Zendesk",
       ]} />
       <SectionHeading>How to Connect an Integration</SectionHeading>
       <StepList steps={[
         { num: 1, title: "Go to Evidence → Integrations", body: "The integration catalog shows all available integrations with their category, sync frequency, and connection status." },
         { num: 2, title: "Click 'Connect' on the desired integration", body: "Each integration has a Guide button that opens step-by-step setup instructions specific to that tool." },
         { num: 3, title: "Authorize the connection", body: "OAuth-based integrations (GitHub, Google Workspace) open an authorization flow. API key integrations prompt for your key and optional configuration." },
-        { num: 4, title: "Wait for initial sync", body: "Most integrations complete their first sync within 60–90 seconds. The Sync status shows elapsed time and records collected." },
+        { num: 4, title: "Wait for initial sync", body: "Most integrations complete their first sync within 60-90 seconds. The Sync status shows elapsed time and records collected." },
         { num: 5, title: "Review evidence", body: "Navigate to Evidence Vault to see all collected evidence items, or check Controls to see which controls are now passing." },
       ]} />
       <SectionHeading>Evidence Vault</SectionHeading>
@@ -333,11 +333,11 @@ function EvidenceGuide() {
   );
 }
 
-// ——— Content ———————————————————————————————————————————————————————
+// --- Content -------------------------------------------------------
 const CONTENT: Record<string, { title: string; intro: string; sections: { heading: string; body: string; tips?: string[]; steps?: string[] }[] }> = {
   "getting-started": {
     title: "Getting Started",
-    intro: "Welcome to EnterpriseComply — the unified GRC platform built for DoD contractors, federal vendors, and cloud-native organizations pursuing CMMC, FedRAMP, and SOC 2 compliance.",
+    intro: "Welcome to EnterpriseComply - the unified GRC platform built for DoD contractors, federal vendors, and cloud-native organizations pursuing CMMC, FedRAMP, and SOC 2 compliance.",
     sections: [
       {
         heading: "Prerequisites",
@@ -361,7 +361,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "Schedule your first automated test run"
         ],
         tips: [
-          "Start with CMMC Level 1 if you handle FCI but not CUI — it has only 17 practices",
+          "Start with CMMC Level 1 if you handle FCI but not CUI - it has only 17 practices",
           "Use the bulk-import feature in Asset Inventory to bring in your system boundary assets from a spreadsheet",
           "Link your GitHub repo to auto-populate CI/CD evidence with zero manual uploads"
         ]
@@ -383,10 +383,10 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
     sections: [
       {
         heading: "Compliance Score",
-        body: "Your overall score (0–100) is a weighted average of control pass rates across all active frameworks. Controls with critical severity carry more weight than low-severity controls.",
+        body: "Your overall score (0-100) is a weighted average of control pass rates across all active frameworks. Controls with critical severity carry more weight than low-severity controls.",
         tips: [
           "A score above 85 is generally considered audit-ready for most frameworks",
-          "Score drops are usually caused by expired evidence — check the Evidence page for items needing refresh",
+          "Score drops are usually caused by expired evidence - check the Evidence page for items needing refresh",
           "Filter by framework using the dropdown at the top-right of the score card"
         ]
       },
@@ -406,7 +406,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
   },
   "controls": {
     title: "Controls Library",
-    intro: "The Controls Library is the heart of EnterpriseComply. Every compliance requirement — whether from CMMC, NIST 800-53, ISO 27001, or SOC 2 — is mapped to a structured control with evidence requirements, test criteria, and owner assignment.",
+    intro: "The Controls Library is the heart of EnterpriseComply. Every compliance requirement - whether from CMMC, NIST 800-53, ISO 27001, or SOC 2 - is mapped to a structured control with evidence requirements, test criteria, and owner assignment.",
     sections: [
       {
         heading: "Marking Controls Passing or Failing",
@@ -488,7 +488,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "Authorize access (OAuth) or enter your API credentials",
           "Select which workspaces, repos, or accounts to monitor",
           "Set the sync schedule (real-time, daily, weekly)",
-          "Click Save — initial sync begins immediately"
+          "Click Save - initial sync begins immediately"
         ],
         tips: [
           "GitHub Actions integration automatically pulls CI/CD run logs as SDLC evidence",
@@ -530,7 +530,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "Click Add Risk",
           "Enter risk title and description",
           "Select category and affected assets",
-          "Set Likelihood (1–5) and Impact (1–5)",
+          "Set Likelihood (1-5) and Impact (1-5)",
           "Review the automatically calculated Inherent Risk Score",
           "Select a treatment plan: Accept, Mitigate, Transfer, or Avoid",
           "Assign an owner and target resolution date"
@@ -538,7 +538,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
       },
       {
         heading: "Risk Scoring",
-        body: "Risk scores are calculated as Likelihood × Impact on a 5×5 matrix. Scores 1–5 are Low, 6–12 are Medium, 13–19 are High, and 20–25 are Critical.",
+        body: "Risk scores are calculated as Likelihood × Impact on a 5×5 matrix. Scores 1-5 are Low, 6-12 are Medium, 13-19 are High, and 20-25 are Critical.",
         tips: [
           "Residual risk score is recalculated automatically when linked mitigating controls change status",
           "Use the heat map view to visualize your risk portfolio at a glance",
@@ -593,7 +593,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "Click New Questionnaire → Select Template (SIG-Lite, CAIQ, or custom)",
           "Enter the vendor name and contact email",
           "Set a due date for completion",
-          "Click Send — the vendor receives a secure link to complete the questionnaire"
+          "Click Send - the vendor receives a secure link to complete the questionnaire"
         ]
       },
       {
@@ -664,7 +664,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "Export the SPRS score report for submission to eMASS or PIEE"
         ],
         tips: [
-          "CMMC Level 2 requires a C3PAO assessment — EnterpriseComply generates the documentation package C3PAOs expect",
+          "CMMC Level 2 requires a C3PAO assessment - EnterpriseComply generates the documentation package C3PAOs expect",
           "Keep your POA&M up to date; gaps without a documented plan can be disqualifying",
           "SPRS scores are calculated automatically as you mark practices passing"
         ]
@@ -697,7 +697,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
         body: "When you connect an integration (GitHub, AWS, Okta, etc.), EnterpriseComply creates test definitions that query the integration's API on a schedule. Test results are mapped back to controls and update their pass/fail status automatically.",
         tips: [
           "Tests run nightly by default; enterprise plans support hourly test runs",
-          "A single integration may run dozens of tests — each mapped to a specific control",
+          "A single integration may run dozens of tests - each mapped to a specific control",
           "Failed tests create new findings on the Remediation Board automatically"
         ]
       },
@@ -708,14 +708,14 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "Navigate to Test Run History in the sidebar",
           "Click Run Tests Now (blue button, top right)",
           "A spinner confirms the run has been triggered",
-          "Refresh the page after 30–60 seconds to see the new run results"
+          "Refresh the page after 30-60 seconds to see the new run results"
         ]
       },
       {
         heading: "Interpreting Results",
         body: "Each test run shows a timestamp, duration, total tests run, and counts of passed/failed/errored tests. Click a run row to see the individual test results with the specific control each test maps to.",
         tips: [
-          "Error status (distinct from Fail) means the test could not connect to the integration — check your API credentials",
+          "Error status (distinct from Fail) means the test could not connect to the integration - check your API credentials",
           "A sudden increase in failures after an integration sync may indicate a configuration change in the external system"
         ]
       }
@@ -733,11 +733,11 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "Click Add Asset or Import",
           "Fill in: asset name, type (server, database, SaaS, endpoint, etc.), owner, environment (production, staging, dev), data classification",
           "Tag assets with the relevant frameworks and data types (CUI, PII, PHI, etc.)",
-          "Save — the asset appears in your inventory and system boundary diagram"
+          "Save - the asset appears in your inventory and system boundary diagram"
         ],
         tips: [
           "Connect AWS Config or Azure Policy to auto-discover and import cloud resources",
-          "Tag CUI-bearing assets explicitly — they drive CMMC Level 2/3 scoping",
+          "Tag CUI-bearing assets explicitly - they drive CMMC Level 2/3 scoping",
           "Decommissioned assets should be archived (not deleted) to preserve the audit trail"
         ]
       },
@@ -769,7 +769,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
           "To remove a user, click their row and select Remove from Org"
         ],
         tips: [
-          "Auditor role is read-only with the ability to add comments — ideal for external auditors",
+          "Auditor role is read-only with the ability to add comments - ideal for external auditors",
           "Compliance Manager role can edit controls, policies, and evidence but cannot change org settings",
           "Admin role has full access including billing and user management"
         ]
@@ -797,7 +797,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
         body: "",
         tips: [
           "Q: What frameworks does EnterpriseComply support? A: CMMC Level 1/2/3, NIST SP 800-171, NIST SP 800-53, FedRAMP Low/Moderate/High, SOC 2 Type I/II, ISO 27001:2022, HIPAA, ITAR/EAR, PCI-DSS, and custom frameworks.",
-          "Q: How is my compliance score calculated? A: The score is a weighted average of control pass rates. Critical-severity controls carry higher weight. Evidence freshness also factors in — stale evidence reduces the score for affected controls.",
+          "Q: How is my compliance score calculated? A: The score is a weighted average of control pass rates. Critical-severity controls carry higher weight. Evidence freshness also factors in - stale evidence reduces the score for affected controls.",
           "Q: Can I use EnterpriseComply for multiple organizations? A: Each organization has its own isolated workspace. Contact us to set up a multi-tenant arrangement for MSPs or parent/subsidiary structures.",
           "Q: Is my data secure? A: Yes. All data is encrypted at rest (AES-256) and in transit (TLS 1.3). EnterpriseComply is hosted on FedRAMP-authorized infrastructure and undergoes annual SOC 2 Type II audits.",
           "Q: Can I export my compliance data? A: Yes. Export controls, evidence, risk registers, and POA&Ms as CSV, PDF, or OSCAL-format JSON at any time from each module's export menu."
@@ -854,12 +854,12 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
     intro: "Key terms used throughout EnterpriseComply and the broader GRC landscape.",
     sections: [
       {
-        heading: "A – F",
+        heading: "A - F",
         body: "",
         tips: [
           "ATO (Authority to Operate): A formal authorization from a government agency to operate an IT system, required for FedRAMP.",
           "C3PAO (Certified Third-Party Assessment Organization): An organization authorized by the CMMC Accreditation Body to perform Level 2 and Level 3 CMMC assessments.",
-          "CAGE Code: Commercial and Government Entity code — a 5-character identifier assigned by the DoD to vendors in the defense supply chain.",
+          "CAGE Code: Commercial and Government Entity code - a 5-character identifier assigned by the DoD to vendors in the defense supply chain.",
           "CUI (Controlled Unclassified Information): Government-created information that requires safeguarding per law, regulation, or policy but is not classified.",
           "CMMC (Cybersecurity Maturity Model Certification): A DoD framework that requires contractors handling FCI or CUI to achieve certified cybersecurity practices.",
           "Evidence: Documented proof that a security control is implemented and operating effectively.",
@@ -868,19 +868,19 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
         ]
       },
       {
-        heading: "G – N",
+        heading: "G - N",
         body: "",
         tips: [
           "GRC (Governance, Risk, and Compliance): The integrated approach to managing an organization's governance policies, risk assessments, and compliance requirements.",
           "ITAR (International Traffic in Arms Regulations): U.S. regulations controlling the export of defense-related articles and services.",
           "MFA (Multi-Factor Authentication): A security control requiring two or more verification factors to access a system.",
-          "NAICS Code: North American Industry Classification System code — used to classify business activities and determine set-aside eligibility for government contracts.",
-          "NIST SP 800-53: NIST Special Publication 800-53 — a catalog of security and privacy controls for federal information systems.",
-          "NIST SP 800-171: NIST Special Publication 800-171 — specifies requirements for protecting CUI in non-federal systems; forms the basis of CMMC Level 2."
+          "NAICS Code: North American Industry Classification System code - used to classify business activities and determine set-aside eligibility for government contracts.",
+          "NIST SP 800-53: NIST Special Publication 800-53 - a catalog of security and privacy controls for federal information systems.",
+          "NIST SP 800-171: NIST Special Publication 800-171 - specifies requirements for protecting CUI in non-federal systems; forms the basis of CMMC Level 2."
         ]
       },
       {
-        heading: "P – Z",
+        heading: "P - Z",
         body: "",
         tips: [
           "POA&M (Plan of Action and Milestones): A corrective action plan documenting known security gaps, planned remediation steps, and scheduled completion dates.",
@@ -898,7 +898,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
   }
 };
 
-// ——— Component ——————————————————————————————————————————————————————
+// --- Component ------------------------------------------------------
 export default function Documentation() {
   const [activeSection, setActiveSection] = useState<string>("getting-started");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -1088,26 +1088,26 @@ function RiskGuide() {
       <Para>The Risk Register is a structured inventory of risks that could impact your organization's security, operations, or compliance posture. Maintaining a formal Risk Register is required for SOC 2 CC3.1, ISO 27001 Clause 6.1, and FedRAMP RA-3.</Para>
       <SectionHeading>Risk Fields</SectionHeading>
       <BulletList items={[
-        "Title — Short description of the risk (e.g., 'Unauthorized access to production database')",
-        "Category — Technical, Operational, Compliance, Financial, or Reputational",
-        "Likelihood — How probable is the risk materializing (Low / Medium / High / Critical)",
-        "Impact — The severity of consequences if the risk occurs (Low / Medium / High / Critical)",
-        "Risk Score — Calculated automatically as Likelihood × Impact (scale 1–16)",
-        "Owner — The person responsible for monitoring and mitigating this risk",
-        "Mitigation — Controls or actions in place to reduce the risk",
-        "Status — Open, Mitigated, Accepted, or Transferred",
-        "Review Date — When this risk entry should be re-evaluated",
+        "Title - Short description of the risk (e.g., 'Unauthorized access to production database')",
+        "Category - Technical, Operational, Compliance, Financial, or Reputational",
+        "Likelihood - How probable is the risk materializing (Low / Medium / High / Critical)",
+        "Impact - The severity of consequences if the risk occurs (Low / Medium / High / Critical)",
+        "Risk Score - Calculated automatically as Likelihood × Impact (scale 1-16)",
+        "Owner - The person responsible for monitoring and mitigating this risk",
+        "Mitigation - Controls or actions in place to reduce the risk",
+        "Status - Open, Mitigated, Accepted, or Transferred",
+        "Review Date - When this risk entry should be re-evaluated",
       ]} />
       <SectionHeading>Risk Treatment Options</SectionHeading>
       <BulletList items={[
-        "Mitigate — Implement controls to reduce the likelihood or impact (most common)",
-        "Accept — Formally acknowledge the risk and document the business justification for accepting it",
-        "Transfer — Shift the risk to a third party (e.g., cyber insurance, vendor contract indemnification)",
-        "Avoid — Eliminate the activity that creates the risk altogether",
+        "Mitigate - Implement controls to reduce the likelihood or impact (most common)",
+        "Accept - Formally acknowledge the risk and document the business justification for accepting it",
+        "Transfer - Shift the risk to a third party (e.g., cyber insurance, vendor contract indemnification)",
+        "Avoid - Eliminate the activity that creates the risk altogether",
       ]} />
       <CalloutBox type="warning">Accepted risks must be documented with a rationale and approved by management. Auditors will ask for evidence of formal risk acceptance for any high or critical risks left open.</CalloutBox>
       <SectionHeading>How to Add a Risk</SectionHeading>
-      <Para>Click '+ Add Risk' on the Risk Register page, fill in the required fields, and click Save. The risk score is calculated automatically. Use the AI Gap Analysis to identify risks that stem from failing controls — these are pre-populated as suggestions in the Risk Register.</Para>
+      <Para>Click '+ Add Risk' on the Risk Register page, fill in the required fields, and click Save. The risk score is calculated automatically. Use the AI Gap Analysis to identify risks that stem from failing controls - these are pre-populated as suggestions in the Risk Register.</Para>
     </div>
   );
 }
@@ -1130,20 +1130,20 @@ function WorkforceGuide() {
 function QuestionnairesGuide() {
   return (
     <div>
-      <Para>The Security Questionnaires module helps you respond to inbound customer security questionnaires (SQAs) and send outbound vendor assessments — faster and more accurately than manual copy-paste from spreadsheets.</Para>
+      <Para>The Security Questionnaires module helps you respond to inbound customer security questionnaires (SQAs) and send outbound vendor assessments - faster and more accurately than manual copy-paste from spreadsheets.</Para>
       <SectionHeading>Incoming Questionnaires (SQA)</SectionHeading>
       <Para>When an enterprise customer or prospect sends you a security questionnaire (SIG-Lite, CAIQ, VSAQ, or custom), you can create a questionnaire record and let EnterpriseComply auto-fill answers by matching questions against your compliance controls and evidence. The platform maps question keywords to UCO control IDs and populates answers from your actual control status.</Para>
       <SectionHeading>Supported Templates</SectionHeading>
       <BulletList items={[
-        "SIG-Lite (20 questions) — Standardized Information Gathering; used by enterprise procurement teams during vendor onboarding",
-        "CAIQ (15 questions) — Cloud Controls Matrix assessment; common in financial services, healthcare, and government procurement",
-        "VSAQ (10 questions) — Google's Vendor Security Assessment Questionnaire; used for early-stage vendor triage",
+        "SIG-Lite (20 questions) - Standardized Information Gathering; used by enterprise procurement teams during vendor onboarding",
+        "CAIQ (15 questions) - Cloud Controls Matrix assessment; common in financial services, healthcare, and government procurement",
+        "VSAQ (10 questions) - Google's Vendor Security Assessment Questionnaire; used for early-stage vendor triage",
       ]} />
       <SectionHeading>Needs Review Queue</SectionHeading>
       <Para>Auto-generated answers with confidence below 70% are flagged in the 'Needs Review' tab. These items require a human to verify the answer before the questionnaire is sent. Click through each item, edit the answer if needed, and click 'Approve' to clear it from the queue. This two-step workflow ensures no incorrect answers reach your customers.</Para>
       <SectionHeading>Vendor Assessments</SectionHeading>
-      <Para>From the 'Vendor Assessments' tab, select any vendor from your Vendors roster and send them a SIG-Lite or CAIQ assessment. The vendor receives a link and completes the questionnaire. Responses are tracked per-question and stored as evidence of your vendor due diligence program — satisfying SOC 2 CC9.2, ISO 27001 A.15, and GDPR Article 28.</Para>
-      <CalloutBox type="info">Always review auto-filled answers before sending to a customer. EnterpriseComply uses keyword matching — a human review ensures accuracy and tone consistency with your organization's style.</CalloutBox>
+      <Para>From the 'Vendor Assessments' tab, select any vendor from your Vendors roster and send them a SIG-Lite or CAIQ assessment. The vendor receives a link and completes the questionnaire. Responses are tracked per-question and stored as evidence of your vendor due diligence program - satisfying SOC 2 CC9.2, ISO 27001 A.15, and GDPR Article 28.</Para>
+      <CalloutBox type="info">Always review auto-filled answers before sending to a customer. EnterpriseComply uses keyword matching - a human review ensures accuracy and tone consistency with your organization's style.</CalloutBox>
     </div>
   );
 }
@@ -1151,15 +1151,15 @@ function QuestionnairesGuide() {
 function RemediationGuide() {
   return (
     <div>
-      <Para>The Remediation Board is a Kanban-style workspace for tracking control remediation work. It organizes all controls into three columns — To Do, Failing, and Passing — so your team can visualize progress at a glance.</Para>
+      <Para>The Remediation Board is a Kanban-style workspace for tracking control remediation work. It organizes all controls into three columns - To Do, Failing, and Passing - so your team can visualize progress at a glance.</Para>
       <SectionHeading>Board Columns</SectionHeading>
       <BulletList items={[
-        "To Do — Controls that have not yet been tested; no evidence collected",
-        "Failing — Controls with evidence that did not meet the required threshold; require action",
-        "Passing — Controls with passing evidence; no immediate action needed",
+        "To Do - Controls that have not yet been tested; no evidence collected",
+        "Failing - Controls with evidence that did not meet the required threshold; require action",
+        "Passing - Controls with passing evidence; no immediate action needed",
       ]} />
       <SectionHeading>Assigning Owners and Due Dates</SectionHeading>
-      <Para>Click any control card to open its detail slide-over. In the slide-over, click 'Assign owner' to set a responsible team member and a due date. The owner's name and due date appear on the card so accountability is visible to the whole team. Owner assignments sync with the Controls page — changes made in either place are reflected everywhere.</Para>
+      <Para>Click any control card to open its detail slide-over. In the slide-over, click 'Assign owner' to set a responsible team member and a due date. The owner's name and due date appear on the card so accountability is visible to the whole team. Owner assignments sync with the Controls page - changes made in either place are reflected everywhere.</Para>
       <SectionHeading>Moving Controls</SectionHeading>
       <Para>Use the green checkmark button on a Failing card to mark it Passing after remediation is complete. Use the red X to move a Passing control back to Failing if a regression is detected. You can also use the Mark Passing / Mark Failing buttons in the detail slide-over, optionally adding remediation notes that appear in the audit log.</Para>
       <SectionHeading>Domain Filter</SectionHeading>
@@ -1173,7 +1173,7 @@ function FederalGuide() {
   return (
     <div>
       <Para>The Federal section contains tools specifically required for US federal compliance frameworks: CMMC, FedRAMP, FISMA, and DFARS/ITAR. These are required for organizations pursuing federal contracts or handling Controlled Unclassified Information (CUI).</Para>
-      <SectionHeading>POA&M — Plan of Action & Milestones</SectionHeading>
+      <SectionHeading>POA&M - Plan of Action & Milestones</SectionHeading>
       <Para>A POA&M (pronounced "poe-am") is a formal document required by FISMA, FedRAMP, and CMMC that tracks all known security weaknesses and the plan to remediate them. EnterpriseComply generates a POA&M automatically from your failing controls, populating the required fields: weakness description, resources required, milestones, scheduled completion date, and status.</Para>
       <SectionHeading>SPRS Score</SectionHeading>
       <Para>The Supplier Performance Risk System (SPRS) score is a number from -203 to 110 that represents your NIST SP 800-171 compliance level. It is required for all DoD contractors. EnterpriseComply calculates your SPRS score automatically from your UCO control results. The score updates in real time as controls move between passing and failing states.</Para>
@@ -1193,11 +1193,11 @@ function TestRunsGuide() {
     <div>
       <Para>Test Run History shows a chronological log of every automated security check that EnterpriseComply has run against your connected integrations over the past 30 days.</Para>
       <SectionHeading>How Tests Work</SectionHeading>
-      <Para>When an integration is connected, EnterpriseComply schedules automated tests based on the integration's sync frequency (daily, weekly, or real-time). Each test checks a specific security condition — for example, the GitHub integration checks whether branch protection rules are enabled, whether code reviews are required, and whether Dependabot vulnerability alerts are active. Results are stored as individual test runs with pass/fail status, duration, and error details.</Para>
+      <Para>When an integration is connected, EnterpriseComply schedules automated tests based on the integration's sync frequency (daily, weekly, or real-time). Each test checks a specific security condition - for example, the GitHub integration checks whether branch protection rules are enabled, whether code reviews are required, and whether Dependabot vulnerability alerts are active. Results are stored as individual test runs with pass/fail status, duration, and error details.</Para>
       <SectionHeading>Running Tests Manually</SectionHeading>
       <Para>Click the blue 'Run Tests Now' button to immediately trigger a test sweep across all connected integrations. This is useful when you have made a configuration change and want to verify the control now passes before your next scheduled sync. Results appear in the list within 60 seconds.</Para>
       <SectionHeading>Pass Rate</SectionHeading>
-      <Para>The pass rate bar shows the percentage of test runs that passed over the 30-day window. A target of 80%+ is generally considered healthy. A declining pass rate trend indicates controls are drifting out of compliance — investigate with your security team.</Para>
+      <Para>The pass rate bar shows the percentage of test runs that passed over the 30-day window. A target of 80%+ is generally considered healthy. A declining pass rate trend indicates controls are drifting out of compliance - investigate with your security team.</Para>
       <SectionHeading>Filtering</SectionHeading>
       <Para>Use the search bar to find tests by control name or UCO control ID. Use the Passed / Failed filter buttons to narrow to specific result types. This is useful when investigating a specific integration health issue.</Para>
     </div>
@@ -1210,19 +1210,19 @@ function AssetsGuide() {
       <Para>The Asset Inventory is a catalog of all systems, hardware, software, cloud services, and data stores within your compliance boundary. Maintaining an accurate asset inventory is required by SOC 2 CC6.1, ISO 27001 A.8, and CMMC AC.L1-3.1.1.</Para>
       <SectionHeading>Asset Types</SectionHeading>
       <BulletList items={[
-        "Hardware — Physical servers, laptops, workstations, network equipment",
-        "Software — Applications, operating systems, databases, SaaS tools",
-        "Cloud Service — AWS accounts, Azure subscriptions, GCP projects, SaaS platforms",
-        "Data Store — Databases, file shares, S3 buckets, backup systems",
-        "Network — Firewalls, VPNs, routers, load balancers",
-        "Other — IoT devices, mobile devices, printers",
+        "Hardware - Physical servers, laptops, workstations, network equipment",
+        "Software - Applications, operating systems, databases, SaaS tools",
+        "Cloud Service - AWS accounts, Azure subscriptions, GCP projects, SaaS platforms",
+        "Data Store - Databases, file shares, S3 buckets, backup systems",
+        "Network - Firewalls, VPNs, routers, load balancers",
+        "Other - IoT devices, mobile devices, printers",
       ]} />
       <SectionHeading>Classification Levels</SectionHeading>
       <BulletList items={[
-        "Public — No sensitivity; freely shareable",
-        "Internal — For employees only; not for external distribution",
-        "Confidential — Restricted to authorized personnel; requires need-to-know",
-        "Restricted — Highest sensitivity; CUI, PHI, PCI data; strongest access controls required",
+        "Public - No sensitivity; freely shareable",
+        "Internal - For employees only; not for external distribution",
+        "Confidential - Restricted to authorized personnel; requires need-to-know",
+        "Restricted - Highest sensitivity; CUI, PHI, PCI data; strongest access controls required",
       ]} />
       <SectionHeading>How to Add an Asset</SectionHeading>
       <Para>Click '+ Add Asset' and fill in the asset name, type, classification, owner, environment (production, staging, development), and whether it is in scope for your compliance boundary. The 'In Scope' flag determines which assets appear in your SSP system boundary definition.</Para>
@@ -1245,7 +1245,7 @@ function SettingsGuide() {
       <SectionHeading>Team Management</SectionHeading>
       <Para>Invite team members via email from Settings → Team. Assign each member a role (Admin, Owner, Member). Members receive an email invitation to join your organization workspace. You can deactivate access for departed employees without deleting their audit history.</Para>
       <SectionHeading>Audit Log</SectionHeading>
-      <Para>The Audit Log records every action taken within EnterpriseComply — control updates, policy changes, evidence uploads, user logins, and settings changes. The log is tamper-evident and can be exported as CSV for auditor review. This satisfies the audit trail requirements of SOC 2 CC7.2 and ISO 27001 A.12.4.</Para>
+      <Para>The Audit Log records every action taken within EnterpriseComply - control updates, policy changes, evidence uploads, user logins, and settings changes. The log is tamper-evident and can be exported as CSV for auditor review. This satisfies the audit trail requirements of SOC 2 CC7.2 and ISO 27001 A.12.4.</Para>
       <SectionHeading>Data Export</SectionHeading>
       <Para>From Settings → Data Export, you can download a full export of your compliance data in JSON format, including all controls, evidence items, risks, policies, and people records. This is useful for backup, migration, or providing data to an auditor who prefers working with raw data.</Para>
     </div>
