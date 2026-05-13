@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; dot: string }> = {
-  pass:    { label: "Passed", cls: "bg-green-50 text-green-700 ring-1 ring-green-200", dot: "bg-green-500" },
-  fail:    { label: "Failed", cls: "bg-red-50 text-red-700 ring-1 ring-red-200",       dot: "bg-red-500" },
-  warning: { label: "Warning", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200", dot: "bg-amber-400" },
+  pass:    { label: "Passed",  cls: "bg-green-50 text-green-700 ring-1 ring-green-200",  dot: "bg-green-500" },
+  fail:    { label: "Failed",  cls: "bg-red-50 text-red-700 ring-1 ring-red-200",        dot: "bg-red-500" },
+  warning: { label: "Warning", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",  dot: "bg-amber-400" },
   skip:    { label: "Skipped", cls: "bg-slate-100 text-slate-500 ring-1 ring-slate-200", dot: "bg-slate-300" },
 };
 
@@ -13,17 +13,19 @@ function RelativeTime({ date }: { date: string }) {
   const now = Date.now();
   const ms = now - new Date(date).getTime();
   const mins = Math.floor(ms / 60000);
-  const hrs = Math.floor(ms / 3600000);
+  const hrs  = Math.floor(ms / 3600000);
   const days = Math.floor(ms / 86400000);
   if (mins < 1) return <span>Just now</span>;
-  if (hrs < 1) return <span>{mins}m ago</span>;
+  if (hrs  < 1) return <span>{mins}m ago</span>;
   if (days < 1) return <span>{hrs}h ago</span>;
   return <span>{days}d ago</span>;
 }
 
 export default function TestRunHistory() {
+  const qc = useQueryClient();
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchQ, setSearchQ] = useState("");
+  const [runTriggered, setRunTriggered] = useState(false);
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -37,11 +39,29 @@ export default function TestRunHistory() {
     enabled: !!orgId,
   });
 
+  const triggerMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/test-runs/trigger`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setRunTriggered(true);
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ["test-runs"] });
+        setRunTriggered(false);
+      }, 3000);
+    },
+  });
+
   const runs: any[] = data?.runs ?? [];
   const totalRuns = data?.totalRuns ?? 0;
-  const passing = data?.passing ?? 0;
-  const failing = data?.failing ?? 0;
-  const passRate = totalRuns > 0 ? Math.round((passing / totalRuns) * 100) : 0;
+  const passing   = data?.passing   ?? 0;
+  const failing   = data?.failing   ?? 0;
+  const passRate  = totalRuns > 0 ? Math.round((passing / totalRuns) * 100) : 0;
 
   const filtered = runs.filter(r => {
     if (filterStatus !== "all" && r.status !== filterStatus) return false;
@@ -64,19 +84,40 @@ export default function TestRunHistory() {
           <h1 className="text-xl font-bold text-slate-900">Automated Test Run History</h1>
           <p className="text-sm text-slate-500 mt-1">30-day history of automated control tests and their pass/fail results.</p>
         </div>
-        <a href="/controls" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-          Manage Controls
-        </a>
+        <div className="flex items-center gap-2 flex-wrap">
+          {runTriggered && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium">
+              <svg className="h-4 w-4 text-green-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              Running tests...
+            </div>
+          )}
+          <button
+            onClick={() => triggerMutation.mutate()}
+            disabled={triggerMutation.isPending || runTriggered || !orgId}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className={`h-4 w-4 ${triggerMutation.isPending ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {triggerMutation.isPending
+                ? <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                : <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              }
+            </svg>
+            {triggerMutation.isPending ? "Triggering..." : "Run Tests Now"}
+          </button>
+          <a href="/controls" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+            Manage Controls
+          </a>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total Runs", value: totalRuns, color: "text-slate-900" },
-          { label: "Passed", value: passing, color: "text-green-600" },
-          { label: "Failed", value: failing, color: "text-red-600" },
-          { label: "Pass Rate", value: `${passRate}%`, color: passRate >= 80 ? "text-green-600" : passRate >= 60 ? "text-amber-600" : "text-red-600" },
+          { label: "Total Runs",  value: totalRuns,     color: "text-slate-900" },
+          { label: "Passed",      value: passing,       color: "text-green-600" },
+          { label: "Failed",      value: failing,       color: "text-red-600" },
+          { label: "Pass Rate",   value: `${passRate}%`, color: passRate >= 80 ? "text-green-600" : passRate >= 60 ? "text-amber-600" : "text-red-600" },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3.5">
             <div className={`text-2xl font-extrabold ${color} leading-tight`}>{value}</div>
@@ -132,7 +173,15 @@ export default function TestRunHistory() {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-14 text-center">
           <svg className="h-10 w-10 text-slate-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
           <p className="text-sm font-bold text-slate-700">No test runs yet</p>
-          <p className="text-xs text-slate-400 mt-1">Connect an integration to start collecting automated test results.</p>
+          <p className="text-xs text-slate-400 mt-1 mb-4">Connect an integration to start collecting automated test results.</p>
+          <button
+            onClick={() => triggerMutation.mutate()}
+            disabled={triggerMutation.isPending || !orgId}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg>
+            Run First Test
+          </button>
         </div>
       ) : (
         <div className="space-y-5">
