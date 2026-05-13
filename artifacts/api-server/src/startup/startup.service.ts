@@ -686,7 +686,27 @@ DO $$ BEGIN
     CREATE POLICY tenant_isolation ON feature_flags
       USING (org_id IS NULL OR org_id::text = current_setting('app.current_org_id', true));
   END IF;
-END $$;`;
+END $$;
+  -- Asset Inventory table for system boundary scoping
+  CREATE TABLE IF NOT EXISTS assets (
+    id SERIAL PRIMARY KEY,
+    org_id INTEGER NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'Server',
+    environment TEXT NOT NULL DEFAULT 'Production',
+    owner TEXT,
+    data_classification TEXT NOT NULL DEFAULT 'Confidential',
+    scoping_tag TEXT NOT NULL DEFAULT 'In-Scope',
+    description TEXT,
+    ip_address TEXT,
+    vendor TEXT,
+    data_flows TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_assets_org_id ON assets(org_id);
+  CREATE INDEX IF NOT EXISTS idx_assets_scoping_tag ON assets(org_id, scoping_tag);
+`;
 
 @Injectable()
 export class StartupService implements OnApplicationBootstrap {
