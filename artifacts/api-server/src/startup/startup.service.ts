@@ -604,7 +604,89 @@ ALTER TABLE organizations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 ALTER TABLE org_members ADD COLUMN IF NOT EXISTS first_name TEXT;
 ALTER TABLE org_members ADD COLUMN IF NOT EXISTS last_name TEXT;
 ALTER TABLE org_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'owner';
-`;
+
+
+-- ── Feature Flags Table ──────────────────────────────────────────────────
+-- Enables/disables integrations and features without code deploys.
+-- Used by the integration catalog admin UI.
+CREATE TABLE IF NOT EXISTS feature_flags (
+  id SERIAL PRIMARY KEY,
+  org_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+  flag_key TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  config JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(org_id, flag_key)
+);
+CREATE INDEX IF NOT EXISTS ff_org_flag_idx ON feature_flags(org_id, flag_key);
+
+-- ── Integration Catalog Table ─────────────────────────────────────────────
+-- DB-driven integration catalog — eliminates hardcoded TypeScript arrays.
+-- Enables admin UI toggling without redeploys.
+CREATE TABLE IF NOT EXISTS integration_catalog (
+  id SERIAL PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT,
+  icon_url TEXT,
+  available_globally BOOLEAN NOT NULL DEFAULT true,
+  demo_mode BOOLEAN NOT NULL DEFAULT false,
+  requires_oauth BOOLEAN NOT NULL DEFAULT false,
+  oauth_client_id TEXT,
+  evidence_types TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── Answer Confidence Scores ──────────────────────────────────────────────
+-- Tracks confidence and review status for AI-generated questionnaire answers.
+-- Enables the "Needs Review" workflow for auto-filled answers.
+ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS answer_confidence NUMERIC(4,2);
+ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS answer_source TEXT DEFAULT 'manual';
+ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS needs_review BOOLEAN DEFAULT false;
+ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;
+ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+-- ── Assessment Answer Confidence ──────────────────────────────────────────
+ALTER TABLE assessment_responses ADD COLUMN IF NOT EXISTS answer_confidence NUMERIC(4,2);
+ALTER TABLE assessment_responses ADD COLUMN IF NOT EXISTS answer_source TEXT DEFAULT 'manual';
+ALTER TABLE assessment_responses ADD COLUMN IF NOT EXISTS needs_review BOOLEAN DEFAULT false;
+
+-- ── Row Level Security (Tenant Isolation) ────────────────────────────────
+-- Ensures application-level bugs cannot leak cross-tenant data.
+-- Postgres RLS provides a hard security boundary even if WHERE clauses are wrong.
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE org_assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE org_questionnaires ENABLE ROW LEVEL SECURITY;
+ALTER TABLE org_integrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies: allow access only when current_setting matches org_id
+-- These policies are enforced at the DB level; app sets the setting per request.
+DO $$ BEGIN
+  -- org_assessments RLS
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'org_assessments' AND policyname = 'tenant_isolation') THEN
+    CREATE POLICY tenant_isolation ON org_assessments
+      USING (org_id::text = current_setting('app.current_org_id', true));
+  END IF;
+  -- org_questionnaires RLS
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'org_questionnaires' AND policyname = 'tenant_isolation') THEN
+    CREATE POLICY tenant_isolation ON org_questionnaires
+      USING (org_id::text = current_setting('app.current_org_id', true));
+  END IF;
+  -- org_integrations RLS
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'org_integrations' AND policyname = 'tenant_isolation') THEN
+    CREATE POLICY tenant_isolation ON org_integrations
+      USING (org_id::text = current_setting('app.current_org_id', true));
+  END IF;
+  -- feature_flags RLS
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'feature_flags' AND policyname = 'tenant_isolation') THEN
+    CREATE POLICY tenant_isolation ON feature_flags
+      USING (org_id IS NULL OR org_id::text = current_setting('app.current_org_id', true));
+  END IF;
+END $$;`;
 
 @Injectable()
 export class StartupService implements OnApplicationBootstrap {
