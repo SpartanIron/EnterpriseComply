@@ -158,6 +158,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const currentLabel = (() => {
     if (location === "/settings") return "Settings";
+  if (location === "/docs") return "Documentation";
     if (location === "/audit-log") return "Audit Log";
     for (const group of NAV) {
       for (const item of group.items) {
@@ -274,6 +275,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {[
             { path: "/settings", label: "Settings", Icon: SettingsIcon },
             { path: "/audit-log", label: "Audit Log", Icon: AuditLogIcon },
+            { path: "/docs", label: "Documentation", Icon: DocsIcon },
           ].map(({ path, label, Icon }) => {
             const active = location === path;
             return (
@@ -527,3 +529,98 @@ function SettingsIcon({ active }: { active: boolean }) {
 function AuditLogIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />;
 }
+
+function DocsIcon({ active }: { active: boolean }) {
+  return <Icon active={active} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />;
+}"workforce": (
+  <div>
+    <P>The Workforce module tracks the people, vendors, and access reviews that make up your human security program.</P>
+    <H2>People Roster</H2>
+    <P>Your employee and contractor directory within EnterpriseComply. Each person includes name, email, department, role, and employment type. Sync with an HRIS integration (ADP, Gusto) to keep the roster current automatically. People can receive policy acknowledgment requests and be assigned as control owners.</P>
+    <H2>Access Reviews</H2>
+    <P>SOC 2 CC6.3, ISO 27001 A.9.2, and CMMC AC.L2-3.1.3 all require periodic reviews of who has access to systems. The Access Reviews page lets you create review campaigns, assign reviewers, and track completion. EnterpriseComply can import access lists from connected identity providers to populate reviews automatically.</P>
+    <H2>Vendor Management</H2>
+    <P>Vendors who process your data are a supply-chain risk that auditors scrutinize. The Vendors page tracks third-party relationships with risk tier, contact information, and assessment status. From Questionnaires, you can send a SIG-Lite or CAIQ questionnaire directly to a vendor and track their response.</P>
+  </div>
+),
+"questionnaires": (
+  <div>
+    <P>The Security Questionnaires module helps you respond to inbound customer questionnaires (SQAs) and send outbound vendor assessments — faster than manual spreadsheet copy-paste.</P>
+    <H2>Incoming Questionnaires (SQA)</H2>
+    <P>When a prospect sends a security questionnaire, create a record and let EnterpriseComply auto-fill answers by matching questions against your compliance controls. The platform maps question keywords to UCO control IDs and populates answers from your actual control status.</P>
+    <H2>Supported Templates</H2>
+    <Bullets items={[
+      "SIG-Lite (20 questions) — Standardized Information Gathering; used by enterprise procurement teams during vendor onboarding",
+      "CAIQ (15 questions) — Cloud Controls Matrix; common in financial services, healthcare, and government procurement",
+      "VSAQ (10 questions) — Google's Vendor Security Assessment Questionnaire; used for early-stage vendor triage",
+    ]} />
+    <H2>Needs Review Queue</H2>
+    <P>Auto-generated answers with confidence below 70% are flagged in the 'Needs Review' tab. Verify each item, edit if needed, and click 'Approve' to clear the queue. This two-step workflow ensures no incorrect answers reach your customers.</P>
+    <H2>Vendor Assessments</H2>
+    <P>From the 'Vendor Assessments' tab, select any vendor from your Vendors roster and send a SIG-Lite or CAIQ assessment. Responses are tracked per-question and stored as evidence satisfying SOC 2 CC9.2, ISO 27001 A.15, and GDPR Article 28.</P>
+    <Callout type="info">Always review auto-filled answers before sending to a customer. EnterpriseComply uses keyword matching — a human review ensures accuracy and tone consistency.</Callout>
+  </div>
+),
+"remediation": (
+  <div>
+    <P>The Remediation Board is a Kanban workspace for tracking control remediation. It organizes all controls into three columns so your team can visualize progress at a glance.</P>
+    <H2>Board Columns</H2>
+    <Bullets items={[
+      "To Do — Controls not yet tested; no evidence collected",
+      "Failing — Controls with evidence that didn't meet the threshold; require action",
+      "Passing — Controls with passing evidence; no immediate action needed",
+    ]} />
+    <H2>Assigning Owners and Due Dates</H2>
+    <P>Click any control card to open the detail slide-over. Click 'Assign owner' to set a responsible team member and due date. The owner's name and due date appear on the card for full team visibility. Assignments sync with the Controls page — changes in either place are reflected everywhere.</P>
+    <H2>Moving Controls</H2>
+    <P>Use the green checkmark on a Failing card to mark it Passing after remediation. Use the red X to mark a regression. You can also use the Mark Passing / Mark Failing buttons in the detail slide-over, with optional remediation notes for the audit log.</P>
+    <Callout type="tip">Use AI Gap Analysis to generate a prioritized remediation roadmap — controls ranked by severity and framework impact so you know which to tackle first for maximum audit readiness improvement.</Callout>
+  </div>
+),
+"federal": (
+  <div>
+    <P>The Federal section contains tools required for US federal compliance frameworks: CMMC, FedRAMP, FISMA, and DFARS/ITAR — for organizations pursuing federal contracts or handling Controlled Unclassified Information (CUI).</P>
+    <H2>POA&M — Plan of Action & Milestones</H2>
+    <P>Required by FISMA, FedRAMP, and CMMC. Tracks all known security weaknesses and the plan to remediate them. EnterpriseComply generates a POA&M automatically from failing controls, populating: weakness description, resources required, milestones, scheduled completion, and status.</P>
+    <H2>SPRS Score</H2>
+    <P>The Supplier Performance Risk System score (-203 to 110) represents your NIST SP 800-171 compliance level. Required for all DoD contractors. EnterpriseComply calculates your score automatically from UCO control results — updating in real time as controls pass or fail.</P>
+    <H2>System Security Plan (SSP)</H2>
+    <P>The master compliance document for FedRAMP and FISMA authorizations. EnterpriseComply generates a pre-populated SSP from your organization profile, integrations, control status, and Asset Inventory following the FedRAMP SSP template structure.</P>
+    <H2>STIG Findings</H2>
+    <P>Import STIG scan results, categorize by Category I/II/III severity, and track remediation status. Open STIG findings feed directly into your POA&M.</P>
+    <Callout type="warning">CMMC Level 2 certification requires a C3PAO third-party assessment. EnterpriseComply prepares evidence packages but does not replace the formal assessment. Contact your C3PAO at least 6 months before your contract award date.</Callout>
+  </div>
+),
+"test-runs": (
+  <div>
+    <P>Test Run History shows a chronological log of every automated security check run against your connected integrations over the past 30 days.</P>
+    <H2>How Automated Tests Work</H2>
+    <P>When an integration is connected, EnterpriseComply schedules automated tests based on the integration's sync frequency (daily, weekly, or real-time). Each test checks a specific security condition. For example, the GitHub integration checks branch protection rules, code review requirements, and Dependabot vulnerability alerts. Results are stored with pass/fail status, duration, and error details.</P>
+    <H2>Running Tests Manually</H2>
+    <P>Click the blue 'Run Tests Now' button to immediately trigger a test sweep across all connected integrations. Useful when you have made a configuration change and want to verify the control passes before the next scheduled sync. Results appear within 60 seconds.</P>
+    <H2>Pass Rate</H2>
+    <P>The pass rate bar shows the percentage of test runs that passed over the 30-day window. A target of 80%+ is generally healthy. A declining trend indicates controls drifting out of compliance.</P>
+  </div>
+),
+"assets": (
+  <div>
+    <P>The Asset Inventory catalogs all systems, hardware, software, cloud services, and data stores within your compliance boundary. Required by SOC 2 CC6.1, ISO 27001 A.8, and CMMC AC.L1-3.1.1.</P>
+    <H2>Asset Types</H2>
+    <Bullets items={["Hardware — Servers, laptops, workstations, network equipment","Software — Applications, operating systems, databases, SaaS tools","Cloud Service — AWS accounts, Azure subscriptions, GCP projects","Data Store — Databases, file shares, S3 buckets, backup systems","Network — Firewalls, VPNs, routers, load balancers","Other — IoT devices, mobile devices, printers"]} />
+    <H2>Classification Levels</H2>
+    <Bullets items={["Public — No sensitivity; freely shareable","Internal — For employees only; not for external distribution","Confidential — Restricted to authorized personnel; need-to-know","Restricted — Highest sensitivity; CUI, PHI, PCI data; strongest controls required"]} />
+    <H2>Adding an Asset</H2>
+    <P>Click '+ Add Asset' and fill in: asset name, type, classification, owner, environment (production/staging/development), and whether it is in scope for your compliance boundary. The 'In Scope' flag determines which assets appear in your SSP system boundary definition.</P>
+  </div>
+),
+"settings": (
+  <div>
+    <P>Settings is where administrators manage organization profile, team members, billing, and data export.</P>
+    <H2>Organization Profile</H2>
+    <Bullets items={["Organization name, logo, and industry classification","Primary compliance contact and CISO name","Employee count and primary cloud environment","CAGE Code and DUNS/SAM.gov UEI (for federal contractors)"]} />
+    <H2>Team Management</H2>
+    <P>Invite team members via email from Settings → Team. Assign each member a role. Members receive an email invitation. Deactivate access for departed employees without deleting their audit history.</P>
+    <H2>Audit Log</H2>
+    <P>Records every action — control updates, policy changes, evidence uploads, user logins, and settings changes. The log is tamper-evident and can be exported as CSV for auditor review, satisfying SOC 2 CC7.2 and ISO 27001 A.12.4.</P>
+  </div>
+),
