@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { TestRunsService } from "./test-runs.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
 
@@ -18,5 +18,11 @@ export class TestRunsController {
   @UseGuards(OrgContextGuard)
   getIntegrationHealth(@OrgContext() ctx: OrgCtx) {
     return this.testRunsService.getIntegrationHealth(ctx.orgId);
+  }
+
+  @Post("orgs/:orgId/test-runs/trigger")
+  @UseGuards(OrgContextGuard)
+  triggerTestRuns(@OrgContext() ctx: OrgCtx) {
+    return this.testRunsService.triggerTestRuns(ctx.orgId);
   }
 }
