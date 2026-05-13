@@ -622,7 +622,7 @@ CREATE TABLE IF NOT EXISTS feature_flags (
 CREATE INDEX IF NOT EXISTS ff_org_flag_idx ON feature_flags(org_id, flag_key);
 
 -- ── Integration Catalog Table ─────────────────────────────────────────────
--- DB-driven integration catalog — eliminates hardcoded TypeScript arrays.
+-- DB-driven integration catalog - eliminates hardcoded TypeScript arrays.
 -- Enables admin UI toggling without redeploys.
 CREATE TABLE IF NOT EXISTS integration_catalog (
   id SERIAL PRIMARY KEY,
@@ -803,7 +803,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
 
 4. ANALYSIS AND CLASSIFICATION
 4.1 Upon confirmation of an incident, the Incident Response Lead assigns a ticket and classification level.
-4.2 Evidence preservation begins immediately — disk images, memory dumps, and log exports are collected before any remediation.
+4.2 Evidence preservation begins immediately - disk images, memory dumps, and log exports are collected before any remediation.
 4.3 The incident scope is mapped: affected systems, data types, attack vector, and potential impact.
 
 5. CONTAINMENT STRATEGIES
@@ -814,7 +814,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
 6. ERADICATION AND RECOVERY
 6.1 Remove malicious artifacts, patch vulnerabilities, and restore from verified clean backups.
 6.2 Systems are returned to production only after security validation.
-6.3 Recovery is staged — non-critical systems first, then critical systems with enhanced monitoring.
+6.3 Recovery is staged - non-critical systems first, then critical systems with enhanced monitoring.
 
 7. POST-INCIDENT ACTIVITIES
 7.1 A written incident report is produced within 10 business days covering: timeline, root cause, impact assessment, actions taken, and recommendations.
