@@ -210,7 +210,51 @@ export class QuestionnairesService {
     return { assessment };
   }
 
-  private autoAnswer(
+    async getNeedsReviewItems(orgId: number) {
+    const items = await db.query.orgQuestionnaireItemsTable.findMany({
+      where: and(
+        eq(orgQuestionnaireItemsTable.orgId, orgId),
+        eq(orgQuestionnaireItemsTable.needsReview, true),
+      ),
+      orderBy: (t, { asc }) => [asc(t.createdAt)],
+    });
+
+    // Enrich with questionnaire title
+    const questIds = [...new Set(items.map(i => i.questionnaireId))];
+    const questionnaires = questIds.length > 0
+      ? await db.query.orgQuestionnairesTable.findMany({
+          where: eq(orgQuestionnairesTable.orgId, orgId),
+        })
+      : [];
+    const questMap = new Map(questionnaires.map(q => [q.id, q.title]));
+
+    return {
+      items: items.map(i => ({
+        ...i,
+        questionnaireName: questMap.get(i.questionnaireId) ?? null,
+      })),
+    };
+  }
+
+  async approveItem(orgId: number, itemId: number, answer?: string) {
+    const [item] = await db
+      .update(orgQuestionnaireItemsTable)
+      .set({
+        needsReview: false,
+        status: "answered",
+        ...(answer !== undefined ? { answer } : {}),
+      })
+      .where(
+        and(
+          eq(orgQuestionnaireItemsTable.orgId, orgId),
+          eq(orgQuestionnaireItemsTable.id, itemId),
+        )
+      )
+      .returning();
+    return { item };
+  }
+
+private autoAnswer(
     question: string,
     resultMap: Map<string, { status: string; result?: string | null }>,
     evidence: { title: string; description?: string | null }[],
