@@ -679,6 +679,43 @@ export class IntegrationsService {
     return { integrations: INTEGRATION_CATALOG };
   }
 
+  /**
+   * Returns the integration catalog merged with per-org feature flag overrides.
+   * Admin-toggled flags (from feature_flags DB table) can enable/disable integrations
+   * without requiring a code deploy.
+   */
+  async getCatalogWithFlags(orgId: number) {
+    const flags = await db.execute(
+      `SELECT flag_key, enabled, config FROM feature_flags WHERE org_id = ${orgId} OR org_id IS NULL`
+    ) as any;
+    const flagMap = new Map<string, boolean>(
+      (flags.rows ?? flags).map((r: any) => [r.flag_key, r.enabled])
+    );
+
+    const integrations = INTEGRATION_CATALOG.map(item => ({
+      ...item,
+      // Feature flag override: if flag exists in DB, use it; otherwise fall back to hardcoded
+      available: flagMap.has(`integration:${item.key}`)
+        ? flagMap.get(`integration:${item.key}`)!
+        : item.available,
+    }));
+
+    return { integrations };
+  }
+
+  /**
+   * Admin: enable or disable an integration via feature flag (no deploy required).
+   */
+  async setIntegrationFlag(orgId: number, integrationKey: string, enabled: boolean) {
+    const flagKey = `integration:${integrationKey}`;
+    await db.execute(
+      `INSERT INTO feature_flags (org_id, flag_key, enabled, updated_at)
+       VALUES (${orgId}, '${flagKey}', ${enabled}, NOW())
+       ON CONFLICT (org_id, flag_key) DO UPDATE SET enabled = ${enabled}, updated_at = NOW()`
+    );
+    return { success: true, integrationKey, enabled };
+  }
+
   async getOrgIntegrations(orgId: number) {
     const connected = await db.query.orgIntegrationsTable.findMany({
       where: eq(orgIntegrationsTable.orgId, orgId),
