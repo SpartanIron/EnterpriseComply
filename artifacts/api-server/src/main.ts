@@ -8,7 +8,36 @@ import { join } from "path";
 import { existsSync } from "fs";
 import express from "express";
 
+// ── Startup env validation ─────────────────────────────────────────────────
+// Validates required env vars on startup and refuses to boot if critical ones
+// are missing or malformed. Prevents silent runtime failures (e.g., OAuth typos).
+function validateEnv() {
+  const required = [
+    'DATABASE_URL',
+    'SESSION_SECRET',
+    'NODE_ENV',
+  ];
+  const missing = required.filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    console.error('[STARTUP FAILURE] Missing required env vars:', missing.join(', '));
+    process.exit(1);
+  }
+
+  // Validate GITHUB_CLIENT_ID format (20 alphanumeric chars)
+  const githubId = process.env.GITHUB_CLIENT_ID;
+  if (githubId && !/^[A-Za-z0-9]{20}$/.test(githubId)) {
+    console.error('[STARTUP WARNING] GITHUB_CLIENT_ID appears malformed (expected 20 alphanumeric chars, got:', githubId.length, 'chars). GitHub OAuth may fail.');
+  }
+
+  // Validate STRIPE_SECRET_KEY format
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (stripeKey && !stripeKey.startsWith('sk_')) {
+    console.error('[STARTUP WARNING] STRIPE_SECRET_KEY does not start with sk_ — Stripe payments may fail.');
+  }
+}
+
 async function bootstrap() {
+  validateEnv();
       const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   app.use(
@@ -17,6 +46,27 @@ async function bootstrap() {
                     crossOriginEmbedderPolicy: false,
           }),
         );
+  // ── OpenAPI / Swagger spec ─────────────────────────────────────────────────
+  // Provides auto-generated API documentation and enables typed client generation.
+  // Available at /api/docs in non-production environments.
+  if (process.env.NODE_ENV !== 'production') {
+    const { DocumentBuilder, SwaggerModule } = await import('@nestjs/swagger');
+    const config = new DocumentBuilder()
+      .setTitle('EnterpriseComply API')
+      .setDescription('GRC & Compliance Automation Platform API')
+      .setVersion('1.0')
+      .addCookieAuth('connect.sid')
+      .addTag('assessments', 'Client assessment management')
+      .addTag('questionnaires', 'Vendor questionnaire management')
+      .addTag('audits', 'Auditor engagement management')
+      .addTag('integrations', 'Integration catalog and connections')
+      .addTag('trust-center', 'Public trust center')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+    console.log('[Swagger] API docs available at /api/docs');
+  }
+
 
   app.use(
           pinoHttp({
