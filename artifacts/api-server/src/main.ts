@@ -47,25 +47,11 @@ async function bootstrap() {
           }),
         );
   // ── OpenAPI / Swagger spec ─────────────────────────────────────────────────
-  // Provides auto-generated API documentation and enables typed client generation.
-  // Available at /api/docs in non-production environments.
-  if (process.env.NODE_ENV !== 'production') {
-    const { DocumentBuilder, SwaggerModule } = await import('@nestjs/swagger');
-    const config = new DocumentBuilder()
-      .setTitle('EnterpriseComply API')
-      .setDescription('GRC & Compliance Automation Platform API')
-      .setVersion('1.0')
-      .addCookieAuth('connect.sid')
-      .addTag('assessments', 'Client assessment management')
-      .addTag('questionnaires', 'Vendor questionnaire management')
-      .addTag('audits', 'Auditor engagement management')
-      .addTag('integrations', 'Integration catalog and connections')
-      .addTag('trust-center', 'Public trust center')
-      .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
-    console.log('[Swagger] API docs available at /api/docs');
-  }
+  // Install @nestjs/swagger and uncomment to enable API documentation at /api/docs
+  // Requires: pnpm add @nestjs/swagger swagger-ui-express in api-server
+  // Then uncomment: const { DocumentBuilder, SwaggerModule } = require('@nestjs/swagger');
+  // See docs: https://docs.nestjs.com/openapi/introduction
+  console.log('[API] For Swagger docs, install @nestjs/swagger and enable in main.ts');
 
 
   app.use(
