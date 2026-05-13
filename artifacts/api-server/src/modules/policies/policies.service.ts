@@ -609,7 +609,71 @@ This policy will be reviewed annually or following a security incident where log
   { key: "zero-trust", title: "Zero Trust Architecture Policy", category: "security", description: "Governs implementation of never-trust-always-verify network access and identity verification principles.", content: "[CUSTOMIZE] Update with your specific zero trust tooling and implementation roadmap before publishing.\n\nKey areas to address:\n- Zero trust principles (verify explicitly, use least privilege, assume breach)\n- Identity verification requirements (MFA, continuous authentication)\n- Device health verification requirements\n- Network micro-segmentation approach\n- Application access control (identity-aware proxy, ZTNA)\n- Data protection and DLP integration\n- Monitoring and anomaly detection requirements\n- Migration path from perimeter-based security" },
   { key: "cookie-consent", title: "Cookie & Consent Management Policy", category: "data", description: "Cookie categories, consent banner requirements, and user rights under GDPR and CCPA.", content: "[CUSTOMIZE] Update with your specific cookie categories, consent management platform, and applicable jurisdictions before publishing. Have Legal review before publishing.\n\nKey areas to address:\n- Cookie categories (strictly necessary, functional, analytics, marketing/advertising)\n- Consent requirements by jurisdiction (GDPR opt-in, CCPA opt-out)\n- Consent management platform (CMP) requirements\n- Cookie banner design and consent recording requirements\n- Third-party cookie and pixel inventory\n- Data retention for cookie consent records\n- User rights: withdrawing consent, accessing cookie data\n- Annual cookie audit requirements" },
   { key: "iot-security", title: "IoT & OT Security Policy", category: "security", description: "Security controls for Internet of Things and Operational Technology devices.", content: "[CUSTOMIZE] Update with your specific IoT device inventory, network segmentation approach, and applicable industry standards before publishing.\n\nKey areas to address:\n- IoT/OT device inventory and classification\n- Network isolation requirements (separate VLANs for IoT devices)\n- Default credential change requirements\n- Firmware update and patch management for IoT devices\n- Monitoring and anomaly detection for IoT networks\n- Physical security for OT environments\n- Vendor security requirements for IoT device procurement\n- Incident response considerations specific to OT environments" },
-  { key: "board-cybersecurity", title: "Board-Level Cybersecurity Governance Policy", category: "operations", description: "CISO reporting cadence, board oversight of cyber risk, and governance structure.", content: "[CUSTOMIZE] Update with your organization's board structure, reporting cadence, and applicable governance frameworks (SOX, DORA, etc.) before publishing.\n\nKey areas to address:\n- Board cybersecurity oversight responsibilities\n- CISO reporting cadence to board (quarterly minimum)\n- Cybersecurity metrics to be reported (risk posture, incident summary, program maturity)\n- Board member cybersecurity education requirements\n- Cyber risk appetite statement and approval process\n- Significant incident escalation to board requirements\n- Cyber risk in enterprise risk management (ERM) integration\n- SEC cybersecurity disclosure considerations (for public companies)\n- DORA governance requirements if applicable" },
+  { key: "board-cybersecurity", title: "Board-Level Cybersecurity Governance Policy", category: "operations", description: "CISO reporting cadence, board oversight of cyber risk, and governance structure.", content: "[CUSTOMIZE] Update with your organization's board structure, reporting cadence, and applicable governance frameworks (SOX, DORA, etc.) before publishing.\n\nKey areas to address:\n- Board cybersecurity oversight responsibilities\n- CISO reporting cadence to board (quarterly minimum)\n- Cybersecurity metrics to be reported (risk posture, incident summary, program maturity)\n- Board member cybersecurity education requirements\n- Cyber risk appetite statement and approval process\n- Significant incident escalation to board requirements\n- Cyber risk in enterprise risk management (ERM) integration\n- SEC cybersecurity disclosure considerations (for public companies)\n- DORA governance requirements if applicable" },,
+  {
+    key: "mfa-policy",
+    title: "Multi-Factor Authentication Policy",
+    category: "security",
+    description: "Requires MFA for access to systems and establishes authentication standards.",
+    frameworks: ["CMMC", "FedRAMP", "SOC2", "NIST800-53"],
+    content: `MFA POLICY PLACEHOLDER`,
+  },
+  {
+    key: "privileged-access",
+    title: "Privileged Access Management Policy",
+    category: "security",
+    description: "Controls provisioning, use, and monitoring of privileged and administrative accounts.",
+    frameworks: ["CMMC", "FedRAMP", "SOC2", "ISO27001"],
+    content: `PAM POLICY PLACEHOLDER`,
+  },
+  {
+    key: "endpoint-security",
+    title: "Endpoint Security Policy",
+    category: "security",
+    description: "Requirements for securing workstations, laptops, mobile devices, and servers.",
+    frameworks: ["CMMC", "SOC2", "ISO27001"],
+    content: `ENDPOINT POLICY PLACEHOLDER`,
+  },
+  {
+    key: "data-breach-response",
+    title: "Data Breach Response Policy",
+    category: "security",
+    description: "Procedures for detecting, containing, and notifying from data breaches.",
+    frameworks: ["SOC2", "GDPR", "CCPA"],
+    content: `BREACH RESPONSE PLACEHOLDER`,
+  },
+  {
+    key: "secure-communications",
+    title: "Secure Communications Policy",
+    category: "security",
+    description: "Requirements for encrypted and secure transmission of organizational data.",
+    frameworks: ["CMMC", "FedRAMP", "SOC2"],
+    content: `SECURE COMMS PLACEHOLDER`,
+  },
+  {
+    key: "risk-assessment",
+    title: "Risk Assessment Policy",
+    category: "compliance",
+    description: "Framework for identifying, assessing, and treating organizational risk.",
+    frameworks: ["ISO27001", "NIST-CSF", "FedRAMP", "SOC2"],
+    content: `RISK ASSESSMENT PLACEHOLDER`,
+  },
+  {
+    key: "cmmc-compliance",
+    title: "CMMC Compliance Policy",
+    category: "federal",
+    description: "Policy establishing requirements for CMMC Level 2/3 compliance for DoD contractors.",
+    frameworks: ["CMMC", "NIST800-171", "DFARS"],
+    content: `CMMC COMPLIANCE PLACEHOLDER`,
+  },
+  {
+    key: "fedramp-compliance",
+    title: "FedRAMP Compliance Policy",
+    category: "federal",
+    description: "Policy for achieving and maintaining FedRAMP authorization for cloud services.",
+    frameworks: ["FedRAMP", "NIST800-53", "FISMA"],
+    content: `FEDRAMP COMPLIANCE PLACEHOLDER`,
+  }
 ];
 
 @Injectable()
@@ -635,7 +699,9 @@ export class PoliciesService {
     return {
       policies: policies.map((p) => ({
         ...p,
-        acknowledgmentCount: ackMap.get(p.id) ?? 0,
+        acknowledgedCount: ackMap.get(p.id) ?? 0,
+        lastReviewedAt: (p as any).last_reviewed_at ?? null,
+        version: (p as any).version ?? "1.0",
       })),
     };
   }
@@ -722,4 +788,52 @@ export class PoliciesService {
     await writeAuditLog(orgId, "policy.ack_requested", "policy", String(policyId), { title: policy.title, recipients: people.length });
     return { requested: people.length, policy };
   }
+
+  async getPolicyReviews(orgId: number, policyId: number) {
+    await this.ensurePolicyReviewsTable();
+    const rows = await db.execute(
+      sql\`SELECT * FROM org_policy_reviews WHERE org_id = \${orgId} AND policy_id = \${policyId} ORDER BY reviewed_at DESC LIMIT 50\`
+    );
+    return { reviews: rows.rows ?? rows };
+  }
+
+  async reviewPolicy(orgId: number, id: number, body: { notes?: string; bumpVersion?: boolean }) {
+    await this.ensurePolicyReviewsTable();
+    const existing = await db.query.orgPoliciesTable.findFirst({
+      where: and(eq(orgPoliciesTable.id, id), eq(orgPoliciesTable.orgId, orgId)),
+    });
+    if (!existing) throw new Error("Policy not found");
+    const currentVersion = String((existing as any).version ?? "1.0");
+    let newVersion = currentVersion;
+    if (body.bumpVersion) {
+      const parts = currentVersion.split(".");
+      const minor = parseInt(parts[1] ?? "0", 10) + 1;
+      newVersion = \`\${parts[0]}.\${minor}\`;
+    }
+    const now = new Date();
+    await db.execute(
+      sql\`UPDATE org_policies SET status = 'published', last_reviewed_at = \${now}, version = \${newVersion}, updated_at = \${now} WHERE id = \${id} AND org_id = \${orgId}\`
+    );
+    await db.execute(
+      sql\`INSERT INTO org_policy_reviews (org_id, policy_id, notes, version_before, version_after, reviewed_at) VALUES (\${orgId}, \${id}, \${body.notes ?? null}, \${currentVersion}, \${newVersion}, \${now})\`
+    );
+    await writeAuditLog(orgId, "policy.reviewed", "policy", String(id), { title: existing.title, version: newVersion, notes: body.notes });
+    return { success: true, version: newVersion, reviewedAt: now };
+  }
+
+  private async ensurePolicyReviewsTable() {
+    await db.execute(sql\`
+      CREATE TABLE IF NOT EXISTS org_policy_reviews (
+        id SERIAL PRIMARY KEY,
+        org_id INTEGER NOT NULL,
+        policy_id INTEGER NOT NULL,
+        notes TEXT,
+        version_before TEXT,
+        version_after TEXT,
+        reviewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    \`);
+  }
+
 }
