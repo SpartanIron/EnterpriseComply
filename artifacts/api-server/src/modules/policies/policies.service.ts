@@ -616,7 +616,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "security",
     description: "Requires MFA for access to systems and establishes authentication standards.",
     frameworks: ["CMMC", "FedRAMP", "SOC2", "NIST800-53"],
-    content: `MFA POLICY PLACEHOLDER`,
+    content: "MFA POLICY PLACEHOLDER",
   },
   {
     key: "privileged-access",
@@ -624,7 +624,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "security",
     description: "Controls provisioning, use, and monitoring of privileged and administrative accounts.",
     frameworks: ["CMMC", "FedRAMP", "SOC2", "ISO27001"],
-    content: `PAM POLICY PLACEHOLDER`,
+    content: "PAM POLICY PLACEHOLDER",
   },
   {
     key: "endpoint-security",
@@ -632,7 +632,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "security",
     description: "Requirements for securing workstations, laptops, mobile devices, and servers.",
     frameworks: ["CMMC", "SOC2", "ISO27001"],
-    content: `ENDPOINT POLICY PLACEHOLDER`,
+    content: "ENDPOINT POLICY PLACEHOLDER",
   },
   {
     key: "data-breach-response",
@@ -640,7 +640,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "security",
     description: "Procedures for detecting, containing, and notifying from data breaches.",
     frameworks: ["SOC2", "GDPR", "CCPA"],
-    content: `BREACH RESPONSE PLACEHOLDER`,
+    content: "BREACH RESPONSE PLACEHOLDER",
   },
   {
     key: "secure-communications",
@@ -648,7 +648,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "security",
     description: "Requirements for encrypted and secure transmission of organizational data.",
     frameworks: ["CMMC", "FedRAMP", "SOC2"],
-    content: `SECURE COMMS PLACEHOLDER`,
+    content: "SECURE COMMS PLACEHOLDER",
   },
   {
     key: "risk-assessment",
@@ -656,7 +656,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "compliance",
     description: "Framework for identifying, assessing, and treating organizational risk.",
     frameworks: ["ISO27001", "NIST-CSF", "FedRAMP", "SOC2"],
-    content: `RISK ASSESSMENT PLACEHOLDER`,
+    content: "RISK ASSESSMENT PLACEHOLDER",
   },
   {
     key: "cmmc-compliance",
@@ -664,7 +664,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "federal",
     description: "Policy establishing requirements for CMMC Level 2/3 compliance for DoD contractors.",
     frameworks: ["CMMC", "NIST800-171", "DFARS"],
-    content: `CMMC COMPLIANCE PLACEHOLDER`,
+    content: "CMMC COMPLIANCE PLACEHOLDER",
   },
   {
     key: "fedramp-compliance",
@@ -672,7 +672,7 @@ This policy will be reviewed annually or following a security incident where log
     category: "federal",
     description: "Policy for achieving and maintaining FedRAMP authorization for cloud services.",
     frameworks: ["FedRAMP", "NIST800-53", "FISMA"],
-    content: `FEDRAMP COMPLIANCE PLACEHOLDER`,
+    content: "FEDRAMP COMPLIANCE PLACEHOLDER",
   }
 ];
 
