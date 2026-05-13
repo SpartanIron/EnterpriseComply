@@ -792,7 +792,7 @@ export class PoliciesService {
   async getPolicyReviews(orgId: number, policyId: number) {
     await this.ensurePolicyReviewsTable();
     const rows = await db.execute(
-      sql\`SELECT * FROM org_policy_reviews WHERE org_id = \${orgId} AND policy_id = \${policyId} ORDER BY reviewed_at DESC LIMIT 50\`
+      sql`SELECT * FROM org_policy_reviews WHERE org_id = \${orgId} AND policy_id = \${policyId} ORDER BY reviewed_at DESC LIMIT 50`
     );
     return { reviews: rows.rows ?? rows };
   }
@@ -808,21 +808,21 @@ export class PoliciesService {
     if (body.bumpVersion) {
       const parts = currentVersion.split(".");
       const minor = parseInt(parts[1] ?? "0", 10) + 1;
-      newVersion = \`\${parts[0]}.\${minor}\`;
+      newVersion = `${parts[0]}.${minor}`;
     }
     const now = new Date();
     await db.execute(
-      sql\`UPDATE org_policies SET status = 'published', last_reviewed_at = \${now}, version = \${newVersion}, updated_at = \${now} WHERE id = \${id} AND org_id = \${orgId}\`
+      sql`UPDATE org_policies SET status = 'published', last_reviewed_at = \${now}, version = \${newVersion}, updated_at = \${now} WHERE id = \${id} AND org_id = \${orgId}`
     );
     await db.execute(
-      sql\`INSERT INTO org_policy_reviews (org_id, policy_id, notes, version_before, version_after, reviewed_at) VALUES (\${orgId}, \${id}, \${body.notes ?? null}, \${currentVersion}, \${newVersion}, \${now})\`
+      sql`INSERT INTO org_policy_reviews (org_id, policy_id, notes, version_before, version_after, reviewed_at) VALUES (\${orgId}, \${id}, \${body.notes ?? null}, \${currentVersion}, \${newVersion}, \${now})`
     );
     await writeAuditLog(orgId, "policy.reviewed", "policy", String(id), { title: existing.title, version: newVersion, notes: body.notes });
     return { success: true, version: newVersion, reviewedAt: now };
   }
 
   private async ensurePolicyReviewsTable() {
-    await db.execute(sql\`
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS org_policy_reviews (
         id SERIAL PRIMARY KEY,
         org_id INTEGER NOT NULL,
@@ -833,7 +833,7 @@ export class PoliciesService {
         reviewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
-    \`);
+    `);
   }
 
 }
