@@ -742,5 +742,103 @@ export class StartupService implements OnApplicationBootstrap {
     } catch (err) {
       this.logger.error("Seed check failed - continuing startup", err);
     }
+
+    // Seed policy content for any policies that have no content
+    try {
+      const irPolicyContent = `INCIDENT RESPONSE POLICY
+Version: 1.0 | Review Cycle: Annual | Classification: Internal
+
+PURPOSE
+This policy establishes requirements for detecting, responding to, and recovering from information security incidents affecting systems processing Federal Contract Information (FCI) or Controlled Unclassified Information (CUI). It satisfies NIST SP 800-171 requirements 3.6.1 and 3.6.2 and supports CMMC Level 2 compliance.
+
+SCOPE
+This policy applies to all employees, contractors, and third parties who access, process, or store FCI or CUI, and to all information systems within the organization's compliance boundary.
+
+ROLES AND RESPONSIBILITIES
+- Incident Response Lead: Coordinates response activities and escalation
+- IT/Security Team: Detects, contains, and investigates incidents
+- Legal/Compliance: Manages regulatory notifications and legal holds
+- Executive Sponsor: Authorizes major decisions and resource allocation
+- All Personnel: Required to report suspected incidents immediately
+
+INCIDENT CLASSIFICATION
+Priority 1 (Critical): Confirmed breach of CUI or FCI, active ransomware, complete system unavailability
+Priority 2 (High): Suspected unauthorized access, significant data exposure, major service disruption
+Priority 3 (Medium): Malware detection without confirmed spread, policy violations, suspicious activity
+Priority 4 (Low): Unsuccessful attack attempts, minor policy deviations
+
+INCIDENT RESPONSE PROCEDURES
+1. Detection and Reporting: Any personnel who suspects or detects an incident must report it to the security team within 1 hour via the incident hotline or ticketing system.
+2. Initial Assessment: The security team shall assess the incident within 2 hours to classify severity and activate the appropriate response level.
+3. Containment: Isolate affected systems, preserve evidence, and prevent further damage. Document all actions taken with timestamps.
+4. Eradication: Identify and remove the root cause. Apply patches, reset compromised credentials, and restore from clean backups.
+5. Recovery: Restore systems to normal operations and verify functionality. Monitor for recurrence for at least 72 hours post-recovery.
+6. Post-Incident Review: Within 5 business days, conduct a lessons-learned session and update this policy and procedures as needed.
+
+NOTIFICATION REQUIREMENTS
+- Internal: Notify executive leadership within 4 hours of a Priority 1 or Priority 2 incident
+- DoD/Contracting Officers: Report incidents involving CUI to US-CERT and the relevant contracting officer within 72 hours per DFARS 252.204-7012
+- Law Enforcement: Contact law enforcement if criminal activity is suspected
+
+ENFORCEMENT
+Violations of this policy may result in disciplinary action up to and including termination of employment or contract.
+`;
+
+      const irPlanContent = `INCIDENT RESPONSE PLAN
+Version: 1.0 | Classification: Internal | Review Cycle: Annual
+
+1. INTRODUCTION
+This Incident Response Plan (IRP) operationalizes the Incident Response Policy by providing step-by-step procedures for the incident response team. It is designed to minimize damage, reduce recovery time and costs, and comply with contractual obligations under DFARS 252.204-7012 and CMMC requirements.
+
+2. PREPARATION
+2.1 Response Team Roster: Maintain an up-to-date contact list for all incident response team members including after-hours contacts. Review and update quarterly.
+2.2 Response Toolkit: Maintain ready access to forensic tools, backup media, network diagrams, and asset inventory. Test all tools quarterly.
+2.3 Training: All team members complete annual incident response training. Tabletop exercises conducted semi-annually.
+2.4 Communication Templates: Pre-approved notification templates for customers, regulators, and media are maintained in the secure response folder.
+
+3. DETECTION PHASE
+3.1 Monitoring sources include: SIEM alerts, IDS/IPS notifications, endpoint protection alerts, user reports, and external threat intelligence.
+3.2 All alerts are triaged within 15 minutes during business hours and within 30 minutes after hours.
+3.3 False positives are documented and used to tune detection rules.
+
+4. ANALYSIS AND CLASSIFICATION
+4.1 Upon confirmation of an incident, the Incident Response Lead assigns a ticket and classification level.
+4.2 Evidence preservation begins immediately — disk images, memory dumps, and log exports are collected before any remediation.
+4.3 The incident scope is mapped: affected systems, data types, attack vector, and potential impact.
+
+5. CONTAINMENT STRATEGIES
+5.1 Short-term containment: Network isolation, account lockout, firewall rule changes
+5.2 Long-term containment: System rebuild, credential rotation, patch deployment
+5.3 Evidence is preserved throughout; chain of custody documentation is maintained.
+
+6. ERADICATION AND RECOVERY
+6.1 Remove malicious artifacts, patch vulnerabilities, and restore from verified clean backups.
+6.2 Systems are returned to production only after security validation.
+6.3 Recovery is staged — non-critical systems first, then critical systems with enhanced monitoring.
+
+7. POST-INCIDENT ACTIVITIES
+7.1 A written incident report is produced within 10 business days covering: timeline, root cause, impact assessment, actions taken, and recommendations.
+7.2 The lessons-learned session identifies improvements to controls, detection, and response procedures.
+7.3 The SPRS score and POA&M are updated if the incident revealed control gaps.
+
+8. METRICS AND REPORTING
+- Mean Time to Detect (MTTD): Target < 1 hour
+- Mean Time to Contain (MTTC): Target < 4 hours  
+- Mean Time to Recover (MTTR): Target < 24 hours for Priority 1 incidents
+- Monthly incident metrics reported to leadership
+`;
+
+      await db.execute(sql`
+        UPDATE org_policies SET content = ${irPolicyContent}
+        WHERE name = 'Incident Response Policy' AND (content IS NULL OR content = '')
+      `);
+      await db.execute(sql`
+        UPDATE org_policies SET content = ${irPlanContent}
+        WHERE name = 'Incident Response Plan' AND (content IS NULL OR content = '')
+      `);
+      this.logger.log("Policy content migration complete");
+    } catch (err) {
+      this.logger.error("Policy content migration failed - continuing startup", err);
+    }
   }
 }
