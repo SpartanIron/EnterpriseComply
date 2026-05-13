@@ -12,27 +12,27 @@ import express from "express";
 // Validates required env vars on startup and refuses to boot if critical ones
 // are missing or malformed. Prevents silent runtime failures (e.g., OAuth typos).
 function validateEnv() {
-  const required = [
-    'DATABASE_URL',
-    'SESSION_SECRET',
-    'NODE_ENV',
-  ];
-  const missing = required.filter(k => !process.env[k]);
-  if (missing.length > 0) {
-    console.error('[STARTUP FAILURE] Missing required env vars:', missing.join(', '));
+  // Hard requirement: DATABASE_URL (app cannot function without DB)
+  if (!process.env.DATABASE_URL) {
+    console.error('[STARTUP FAILURE] DATABASE_URL is required but was not provided.');
     process.exit(1);
   }
 
-  // Validate GITHUB_CLIENT_ID format (20 alphanumeric chars)
-  const githubId = process.env.GITHUB_CLIENT_ID;
-  if (githubId && !/^[A-Za-z0-9]{20}$/.test(githubId)) {
-    console.error('[STARTUP WARNING] GITHUB_CLIENT_ID appears malformed (expected 20 alphanumeric chars, got:', githubId.length, 'chars). GitHub OAuth may fail.');
+  // Soft warnings (log but don't exit — these have defaults or are optional)
+  const warnings = [
+    !process.env.NODE_ENV && 'NODE_ENV not set (defaulting to development)',
+    !process.env.GITHUB_CLIENT_ID && 'GITHUB_CLIENT_ID not set — GitHub OAuth will be disabled',
+    !process.env.STRIPE_SECRET_KEY && 'STRIPE_SECRET_KEY not set — billing features will be disabled',
+  ].filter(Boolean);
+
+  for (const w of warnings) {
+    console.warn('[STARTUP WARNING]', w);
   }
 
-  // Validate STRIPE_SECRET_KEY format
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (stripeKey && !stripeKey.startsWith('sk_')) {
-    console.error('[STARTUP WARNING] STRIPE_SECRET_KEY does not start with sk_ — Stripe payments may fail.');
+  // Validate GITHUB_CLIENT_ID format if provided (20 alphanumeric chars)
+  const githubId = process.env.GITHUB_CLIENT_ID;
+  if (githubId && !/^[A-Za-z0-9]{20}$/.test(githubId)) {
+    console.warn('[STARTUP WARNING] GITHUB_CLIENT_ID appears malformed (expected 20 chars, got:', githubId.length, '). GitHub OAuth may fail.');
   }
 }
 
