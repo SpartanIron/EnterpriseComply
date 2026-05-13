@@ -62,4 +62,20 @@ export class PoliciesController {
   requestAcknowledgment(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.policiesService.bulkRequestAcknowledgment(ctx.orgId, Number(id));
   }
+
+  @Get("orgs/:orgId/policies/:id/reviews")
+  @UseGuards(OrgContextGuard)
+  getPolicyReviews(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
+    return this.policiesService.getPolicyReviews(ctx.orgId, Number(id));
+  }
+
+  @Post("orgs/:orgId/policies/:id/review")
+  @UseGuards(OrgContextGuard)
+  reviewPolicy(
+    @OrgContext() ctx: OrgCtx,
+    @Param("id") id: string,
+    @Body() body: { notes?: string; bumpVersion?: boolean },
+  ) {
+    return this.policiesService.reviewPolicy(ctx.orgId, Number(id), body);
+  }
 }
