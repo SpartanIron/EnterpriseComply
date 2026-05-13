@@ -109,7 +109,7 @@ export class QuestionnairesService {
 
     const items = await Promise.all(
       questions.map(async (question, idx) => {
-        const { answer, controlId } = this.autoAnswer(question, resultMap, evidence);
+        const { answer, controlId, confidence: itemConf } = this.autoAnswer(question, resultMap, evidence);
         return db.insert(orgQuestionnaireItemsTable).values({
           questionnaireId: questionnaire.id,
           orgId,
@@ -117,6 +117,9 @@ export class QuestionnairesService {
           answer,
           controlId,
           order: idx,
+          answerConfidence: itemConf,
+          answerSource: 'auto',
+          needsReview: itemConf < 0.7,
         }).returning();
       })
     );
