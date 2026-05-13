@@ -36,6 +36,7 @@ import Pricing from "./pages/Pricing";
 import Stigs from "./pages/Stigs";
 import NotFound from "./pages/not-found";
 import AssetInventory from "./pages/AssetInventory";
+import Documentation from "./pages/Documentation";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -164,6 +165,7 @@ function AppRoutes() {
       <Route path="/remediation" component={() => <AppShell><Remediation /></AppShell>} />
       <Route path="/test-runs" component={() => <AppShell><TestRunHistory /></AppShell>} />
         <Route path="/assets" component={() => <AppShell><AssetInventory /></AppShell>} />
+        <Route path="/docs" component={() => <AppShell><Documentation /></AppShell>} />
       <Route component={NotFound} />
     </Switch>
   );
