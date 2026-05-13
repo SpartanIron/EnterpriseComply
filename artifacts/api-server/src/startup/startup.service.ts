@@ -706,6 +706,18 @@ END $$;
   );
   CREATE INDEX IF NOT EXISTS idx_assets_org_id ON assets(org_id);
   CREATE INDEX IF NOT EXISTS idx_assets_scoping_tag ON assets(org_id, scoping_tag);
+  ALTER TABLE org_policies ADD COLUMN IF NOT EXISTS last_reviewed_at TIMESTAMPTZ;
+  ALTER TABLE org_policies ADD COLUMN IF NOT EXISTS version TEXT DEFAULT '1.0';
+  CREATE TABLE IF NOT EXISTS org_policy_reviews (
+    id SERIAL PRIMARY KEY,
+    org_id INTEGER NOT NULL,
+    policy_id INTEGER NOT NULL,
+    notes TEXT,
+    version_before TEXT,
+    version_after TEXT,
+    reviewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 `;
 
 @Injectable()
@@ -715,6 +727,7 @@ export class StartupService implements OnApplicationBootstrap {
   async onApplicationBootstrap() {
     await this.runMigrations();
     await this.seedIfEmpty();
+    await this.seedNewPolicies();
   }
 
   private async runMigrations() {
@@ -839,6 +852,52 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       this.logger.log("Policy content migration complete");
     } catch (err) {
       this.logger.error("Policy content migration failed - continuing startup", err);
+    }
+  }
+
+  private async seedNewPolicies() {
+    try {
+      const newPolicyKeys = [
+        'mfa-policy', 'privileged-access', 'endpoint-security',
+        'data-breach-response', 'secure-communications',
+        'risk-assessment', 'cmmc-compliance', 'fedramp-compliance'
+      ];
+      const orgs = await db.execute(sql`SELECT id FROM organizations LIMIT 200`);
+      const orgRows = (orgs.rows ?? orgs) as { id: number }[];
+      for (const org of orgRows) {
+        for (const key of newPolicyKeys) {
+          const existing = await db.execute(
+            sql`SELECT id FROM org_policies WHERE org_id = ${org.id} AND template_key = ${key} LIMIT 1`
+          );
+          const rows = (existing.rows ?? existing) as unknown[];
+          if (rows.length === 0) {
+            const titleMap: Record<string, string> = {
+              'mfa-policy': 'Multi-Factor Authentication Policy',
+              'privileged-access': 'Privileged Access Management Policy',
+              'endpoint-security': 'Endpoint Security Policy',
+              'data-breach-response': 'Data Breach Response Policy',
+              'secure-communications': 'Secure Communications Policy',
+              'risk-assessment': 'Risk Assessment Policy',
+              'cmmc-compliance': 'CMMC Compliance Policy',
+              'fedramp-compliance': 'FedRAMP Compliance Policy',
+            };
+            const catMap: Record<string, string> = {
+              'mfa-policy': 'security', 'privileged-access': 'security',
+              'endpoint-security': 'security', 'data-breach-response': 'security',
+              'secure-communications': 'security', 'risk-assessment': 'compliance',
+              'cmmc-compliance': 'federal', 'fedramp-compliance': 'federal',
+            };
+            await db.execute(sql`
+              INSERT INTO org_policies (org_id, template_key, title, category, status, version, created_at, updated_at)
+              VALUES (${org.id}, ${key}, ${titleMap[key]}, ${catMap[key]}, 'draft', '1.0', NOW(), NOW())
+              ON CONFLICT DO NOTHING
+            `);
+          }
+        }
+      }
+      this.logger.log('New policy templates seeded for all orgs');
+    } catch (err) {
+      this.logger.error('Error seeding new policies', err);
     }
   }
 }
