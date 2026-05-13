@@ -35,6 +35,7 @@ import { ClientPortalModule } from "./modules/client-portal/client-portal.module
 import { ScapModule } from "./modules/scap/scap.module";
 import { AuditSharesModule } from "./modules/audit-shares/audit-shares.module";
 import { GoogleWorkspaceModule } from "./modules/google-workspace/google-workspace.module";
+import { AssetsModule } from "./modules/assets/assets.module";
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { GoogleWorkspaceModule } from "./modules/google-workspace/google-workspa
     ScapModule,
     ClientPortalModule,
     GoogleWorkspaceModule,
+		AssetsModule,
   ],
   providers: [
     {
