@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/queryClient";
 import { useOrg } from "@/hooks/useOrg";
@@ -11,6 +11,12 @@ const RISK_COLORS: Record<string, string> = {
   medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
   low: "bg-green-100 text-green-700 border-green-200",
 };
+const RISK_DOT: Record<string, string> = {
+  critical: "bg-red-500",
+  high: "bg-orange-500",
+  medium: "bg-yellow-400",
+  low: "bg-green-500",
+};
 
 function riskLevel(score: number) {
   if (score >= 15) return "critical";
@@ -19,479 +25,647 @@ function riskLevel(score: number) {
   return "low";
 }
 
-function RiskMatrix({ risks }: { risks: any[] }) {
+function riskScore(l: number, i: number) { return l * i; }
+
+const CATEGORIES = [
+  "access_control","application_security","asset_management","audit_logging",
+  "business_continuity","change_management","compliance","configuration_management",
+  "data_protection","governance","human_resources","incident_response",
+  "network_security","operational","physical_security","third_party",
+  "vulnerability_management","other"
+];
+const CATEGORY_LABELS: Record<string, string> = {
+  access_control: "Access Control", application_security: "Application Security",
+  asset_management: "Asset Management", audit_logging: "Audit & Logging",
+  business_continuity: "Business Continuity", change_management: "Change Management",
+  compliance: "Compliance", configuration_management: "Configuration Mgmt",
+  data_protection: "Data Protection", governance: "Governance",
+  human_resources: "Human Resources", incident_response: "Incident Response",
+  network_security: "Network Security", operational: "Operational",
+  physical_security: "Physical Security", third_party: "Third Party / Supply Chain",
+  vulnerability_management: "Vulnerability Mgmt", other: "Other"
+};
+
+function RiskHeatMap({ risks }: { risks: any[] }) {
   const cells: Record<string, any[]> = {};
   risks.forEach((r) => {
     const key = `${r.likelihood}-${r.impact}`;
     if (!cells[key]) cells[key] = [];
     cells[key].push(r);
   });
-
+  const cellColor = (l: number, i: number) => {
+    const s = l * i;
+    if (s >= 15) return "bg-red-500";
+    if (s >= 9) return "bg-orange-400";
+    if (s >= 4) return "bg-yellow-300";
+    return "bg-green-300";
+  };
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-semibold text-slate-800">Risk Heat Map</p>
         <div className="flex items-center gap-3 text-xs">
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-200 inline-block" />Low</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-yellow-200 inline-block" />Medium</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-300 inline-block" />High</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" />Critical</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-300 inline-block" />Low</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-yellow-300 inline-block" />Medium</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-400 inline-block" />High</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" />Critical</span>
         </div>
       </div>
-
-      <div className="flex gap-2">
-        <div className="flex flex-col items-end justify-between" style={{ width: 80, paddingBottom: 28, paddingTop: 0 }}>
-          {[5, 4, 3, 2, 1].map((l) => (
-            <div key={l} className="h-10 flex items-center text-right">
-              <span className="text-xs text-slate-400 leading-tight">{LIKELIHOOD_LABELS[l]}</span>
+      <div className="relative">
+        <div className="text-xs text-slate-500 text-center mb-1">Impact →</div>
+        <div className="flex">
+          <div className="flex flex-col justify-center items-center w-6 mr-1">
+            <span className="text-xs text-slate-500 -rotate-90 whitespace-nowrap" style={{writingMode:'vertical-rl'}}>Likelihood ↑</span>
+          </div>
+          <div className="flex-1">
+            <div className="grid grid-cols-5 gap-0.5 mb-0.5">
+              {[1,2,3,4,5].map(i => <div key={i} className="text-center text-xs text-slate-400 pb-0.5">{IMPACT_LABELS[i].slice(0,3)}</div>)}
             </div>
-          ))}
-        </div>
-        <div>
-          <div className="flex flex-col gap-1">
-            {[5, 4, 3, 2, 1].map((l) => (
-              <div key={l} className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((i) => {
-                  const score = l * i;
-                  const level = riskLevel(score);
-                  const count = cells[`${l}-${i}`]?.length ?? 0;
-                  const bgColor =
-                    level === "critical" ? "bg-red-400 border-red-500" :
-                    level === "high" ? "bg-orange-300 border-orange-400" :
-                    level === "medium" ? "bg-yellow-200 border-yellow-300" :
-                    "bg-green-100 border-green-200";
-                  const textColor =
-                    level === "critical" ? "text-white" :
-                    level === "high" ? "text-orange-900" :
-                    level === "medium" ? "text-yellow-800" :
-                    "text-green-700";
-
+            {[5,4,3,2,1].map(l => (
+              <div key={l} className="flex gap-0.5 mb-0.5 items-center">
+                <span className="text-xs text-slate-400 w-16 text-right pr-1">{LIKELIHOOD_LABELS[l].slice(0,4)}</span>
+                {[1,2,3,4,5].map(i => {
+                  const key = `${l}-${i}`;
+                  const count = cells[key]?.length ?? 0;
                   return (
-                    <div key={i}
-                      className={`h-10 w-10 rounded flex items-center justify-center text-sm font-bold border ${bgColor} ${textColor} relative group`}
-                      title={`Likelihood: ${LIKELIHOOD_LABELS[l]}, Impact: ${IMPACT_LABELS[i]}, Score: ${score} (${level.toUpperCase()})`}
-                    >
-                      {count > 0 ? (
-                        <span className="text-xs font-bold">{count}</span>
-                      ) : (
-                        <span className="text-xs opacity-30">{score}</span>
-                      )}
+                    <div key={i} className={`${cellColor(l,i)} rounded flex items-center justify-center text-xs font-bold text-white w-9 h-9 cursor-default transition-transform hover:scale-110`}
+                      title={count > 0 ? cells[key].map((r:any)=>r.title).join(', ') : 'No risks'}>
+                      {count > 0 ? count : <span className="text-white/40">{l*i}</span>}
                     </div>
                   );
                 })}
               </div>
             ))}
           </div>
-          <div className="flex gap-1 mt-1">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-10 w-10 flex flex-col items-center justify-start pt-1 text-center">
-                <span className="text-xs text-slate-400 leading-tight">{IMPACT_LABELS[i]}</span>
-              </div>
-            ))}
-          </div>
-          <div className="text-xs text-slate-400 text-center mt-1 font-medium">Impact &rarr;</div>
         </div>
       </div>
-      <div className="text-xs text-slate-400 text-center mt-3">
-        Numbers in cells = risks at that score. Hover for details.
-      </div>
-
-      {risks.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Risk Summary</p>
-          <div className="grid grid-cols-4 gap-2">
-            {["critical", "high", "medium", "low"].map((level) => {
-              const count = risks.filter(r => riskLevel(r.inherentScore) === level).length;
-              return (
-                <div key={level} className={`rounded-lg p-2 text-center border ${RISK_COLORS[level]}`}>
-                  <p className="text-lg font-bold">{count}</p>
-                  <p className="text-xs capitalize">{level}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <p className="text-xs text-slate-400 mt-2 text-center">Numbers in cells = risk count. Hover for details.</p>
     </div>
   );
 }
 
-const BLANK_FORM = {
-  title: "", description: "", category: "operational", asset: "",
-  threat: "", likelihood: 3, impact: 3, treatment: "mitigate",
-  treatmentPlan: "", ownerName: "", ownerEmail: "", dueDate: "", ucoControlId: "",
-};
+function RiskAppetiteBar({ risks }: { risks: any[] }) {
+  const critical = risks.filter(r => riskLevel(riskScore(r.likelihood, r.impact)) === 'critical').length;
+  const high = risks.filter(r => riskLevel(riskScore(r.likelihood, r.impact)) === 'high').length;
+  const mitigated = risks.filter(r => r.status === 'mitigated' || r.status === 'closed').length;
+  const appetiteScore = Math.max(0, 100 - (critical * 20) - (high * 8) + (mitigated * 5));
+  const color = appetiteScore >= 80 ? 'bg-green-500' : appetiteScore >= 60 ? 'bg-yellow-400' : 'bg-red-500';
+  const label = appetiteScore >= 80 ? 'Within Risk Appetite' : appetiteScore >= 60 ? 'Approaching Threshold' : 'Exceeds Risk Appetite';
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold text-slate-800">Risk Appetite</p>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${appetiteScore >= 80 ? 'bg-green-100 text-green-700' : appetiteScore >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{label}</span>
+      </div>
+      <div className="w-full bg-slate-100 rounded-full h-3 mb-1">
+        <div className={`${color} h-3 rounded-full transition-all`} style={{width: appetiteScore + '%'}} />
+      </div>
+      <div className="flex justify-between text-xs text-slate-500">
+        <span>Risk Posture Score: {appetiteScore}/100</span>
+        <span>{critical} critical · {high} high · {mitigated} mitigated</span>
+      </div>
+    </div>
+  );
+}
+const EMPTY_RISK = { title:'', description:'', category:'operational', likelihood:3, impact:3, treatment:'mitigate', treatment_plan:'', owner_name:'', owner_email:'', related_control_id:'' };
+const EMPTY_EXCEPTION = { title:'', description:'', exception_type:'risk_acceptance', business_justification:'', compensating_controls:'', residual_risk:'medium', expires_at:'', requested_by:'' };
 
 export default function RiskRegister() {
   const { orgId } = useOrg();
   const qc = useQueryClient();
-  const [showAdd, setShowAdd] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [filter, setFilter] = useState<string>("all");
-  const [form, setForm] = useState({ ...BLANK_FORM });
-  const [showSuggest, setShowSuggest] = useState(false);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<'risks'|'exceptions'|'calendar'>('risks');
+  const [showForm, setShowForm] = useState(false);
+  const [showExcForm, setShowExcForm] = useState(false);
+  const [editRisk, setEditRisk] = useState<any>(null);
+  const [viewRisk, setViewRisk] = useState<any>(null);
+  const [form, setForm] = useState<any>(EMPTY_RISK);
+  const [excForm, setExcForm] = useState<any>(EMPTY_EXCEPTION);
+  const [search, setSearch] = useState('');
+  const [filterCat, setFilterCat] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterSeverity, setFilterSeverity] = useState('all');
+  const [filterTreatment, setFilterTreatment] = useState('all');
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showBulk, setShowBulk] = useState(false);
 
-  const { data, isLoading } = useQuery<{ risks: any[]; summary: any }>({
-    queryKey: ["risks", orgId],
+  const { data: risks = [], isLoading } = useQuery({
+    queryKey: ['risks', orgId],
     queryFn: () => apiFetch(`/orgs/${orgId}/risks`),
     enabled: !!orgId,
   });
 
-  const createMutation = useMutation({
-    mutationFn: (body: typeof form) => apiFetch(`/orgs/${orgId}/risks`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["risks"] }); setShowAdd(false); setForm({ ...BLANK_FORM }); },
+  const { data: exceptions = [] } = useQuery({
+    queryKey: ['exceptions', orgId],
+    queryFn: () => apiFetch(`/orgs/${orgId}/exceptions`).catch(()=>[]),
+    enabled: !!orgId,
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, ...body }: any) => apiFetch(`/orgs/${orgId}/risks/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["risks"] }); setEditing(null); },
+  const { data: calendar = [] } = useQuery({
+    queryKey: ['calendar', orgId],
+    queryFn: () => apiFetch(`/orgs/${orgId}/compliance-calendar`).catch(()=>[]),
+    enabled: !!orgId,
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiFetch(`/orgs/${orgId}/risks/${id}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["risks"] }),
+  const createRisk = useMutation({
+    mutationFn: (data: any) => apiFetch(`/orgs/${orgId}/risks`, { method:'POST', body:JSON.stringify(data) }),
+    onSuccess: () => { qc.invalidateQueries({queryKey:['risks',orgId]}); setShowForm(false); setForm(EMPTY_RISK); setEditRisk(null); },
+  });
+  const updateRisk = useMutation({
+    mutationFn: ({id,data}: any) => apiFetch(`/orgs/${orgId}/risks/${id}`, { method:'PATCH', body:JSON.stringify(data) }),
+    onSuccess: () => { qc.invalidateQueries({queryKey:['risks',orgId]}); setShowForm(false); setEditRisk(null); setViewRisk(null); },
+  });
+  const deleteRisk = useMutation({
+    mutationFn: (id: number) => apiFetch(`/orgs/${orgId}/risks/${id}`, { method:'DELETE' }),
+    onSuccess: () => { qc.invalidateQueries({queryKey:['risks',orgId]}); setViewRisk(null); },
+  });
+  const createException = useMutation({
+    mutationFn: (data: any) => apiFetch(`/orgs/${orgId}/exceptions`, { method:'POST', body:JSON.stringify(data) }).catch(()=>({})),
+    onSuccess: () => { qc.invalidateQueries({queryKey:['exceptions',orgId]}); setShowExcForm(false); setExcForm(EMPTY_EXCEPTION); },
   });
 
-  const { data: suggestData, isLoading: suggestLoading, refetch: fetchSuggestions } = useQuery<{ suggestions: any[] }>({
-    queryKey: ["risk-suggestions", orgId],
-    queryFn: () => apiFetch(`/orgs/${orgId}/risks/suggestions`),
-    enabled: false,
+  const filteredRisks = (risks as any[]).filter((r: any) => {
+    if (search && !r.title?.toLowerCase().includes(search.toLowerCase()) && !r.description?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterCat !== 'all' && r.category !== filterCat) return false;
+    if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+    const lvl = riskLevel(riskScore(r.likelihood??1, r.impact??1));
+    if (filterSeverity !== 'all' && lvl !== filterSeverity) return false;
+    if (filterTreatment !== 'all' && r.treatment !== filterTreatment) return false;
+    return true;
   });
 
-  const importMutation = useMutation({
-    mutationFn: (controlIds: string[]) => apiFetch(`/orgs/${orgId}/risks/import-suggestions`, { method: "POST", body: JSON.stringify({ controlIds }) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["risks"] }); setShowSuggest(false); setSelectedSuggestions(new Set()); },
-  });
+  const criticalCount = (risks as any[]).filter((r:any)=>riskLevel(riskScore(r.likelihood,r.impact))==='critical').length;
+  const highCount = (risks as any[]).filter((r:any)=>riskLevel(riskScore(r.likelihood,r.impact))==='high').length;
+  const openCount = (risks as any[]).filter((r:any)=>r.status==='open').length;
+  const mitigatedCount = (risks as any[]).filter((r:any)=>r.status==='mitigated'||r.status==='closed').length;
 
-  useEffect(() => {
-    if (showSuggest) fetchSuggestions();
-  }, [showSuggest]);
+  function exportCSV() {
+    const rows = filteredRisks.map((r:any)=>
+      [`"${r.title}"`,CATEGORY_LABELS[r.category]??r.category,r.likelihood,r.impact,riskScore(r.likelihood,r.impact),riskLevel(riskScore(r.likelihood,r.impact)),r.treatment,r.status,r.owner_name||''].join(',')
+    );
+    const csv = 'Title,Category,Likelihood,Impact,Score,Level,Treatment,Status,Owner\n' + rows.join('\n');
+    const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'risk-register.csv'; a.click();
+  }
 
-  const suggestions = suggestData?.suggestions ?? [];
-  const risks = data?.risks ?? [];
-  const summary = data?.summary ?? {};
-  const filtered = filter === "all" ? risks : risks.filter((r) => r.status === filter || riskLevel(r.inherentScore) === filter);
-  const inherentScore = form.likelihood * form.impact;
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const score = riskScore(Number(form.likelihood), Number(form.impact));
+    const rl = Math.max(1, Number(form.likelihood)-1); const ri = Math.max(1, Number(form.impact)-1);
+    const data = {...form, likelihood:Number(form.likelihood), impact:Number(form.impact), inherent_score:score, residual_likelihood:rl, residual_impact:ri, residual_score:rl*ri};
+    if (editRisk) updateRisk.mutate({id:editRisk.id, data});
+    else createRisk.mutate(data);
+  }
 
-  const openEdit = (risk: any) => {
-    setEditing(risk);
-    setForm({
-      title: risk.title ?? "",
-      description: risk.description ?? "",
-      category: risk.category ?? "operational",
-      asset: risk.asset ?? "",
-      threat: risk.threat ?? "",
-      likelihood: risk.likelihood ?? 3,
-      impact: risk.impact ?? 3,
-      treatment: risk.treatment ?? "mitigate",
-      treatmentPlan: risk.treatmentPlan ?? "",
-      ownerName: risk.ownerName ?? "",
-      ownerEmail: risk.ownerEmail ?? "",
-      dueDate: risk.dueDate ? new Date(risk.dueDate).toISOString().slice(0, 10) : "",
-      ucoControlId: risk.ucoControlId ?? "",
-    });
-  };
+  const toggleSelect = (id: number) => setSelectedIds(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id]);
+  const selectAll = () => setSelectedIds(filteredRisks.map((r:any)=>r.id));
+  const clearSelect = () => setSelectedIds([]);
 
-  const showModal = showAdd || !!editing;
-  const closeModal = () => { setShowAdd(false); setEditing(null); setForm({ ...BLANK_FORM }); };
+  const calendarItems = (calendar as any[]).sort((a:any,b:any)=>new Date(a.due_date).getTime()-new Date(b.due_date).getTime());
+  const overdueCal = calendarItems.filter((e:any)=>new Date(e.due_date)<new Date()&&e.status==='upcoming');
+  const upcomingCal = calendarItems.filter((e:any)=>new Date(e.due_date)>=new Date()&&e.status==='upcoming');
 
   return (
-    <div className="p-6 max-w-screen-xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Risk Register</h1>
-          <p className="text-sm text-slate-500 mt-0.5">5x5 risk matrix - ISO 31000 / NIST SP 800-30 methodology</p>
+          <h1 className="text-2xl font-bold text-slate-900">Risk Register</h1>
+          <p className="text-slate-500 text-sm mt-0.5">ISO 31000 / NIST SP 800-30 methodology - 5x5 risk matrix</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowSuggest(true)}
-            className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors"
-          >
-            <svg className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            Suggest from controls
+          <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Export CSV
           </button>
-          <button onClick={() => { setForm({ ...BLANK_FORM }); setShowAdd(true); }} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+          <button onClick={()=>setShowExcForm(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-orange-200 text-orange-700 bg-orange-50 rounded-lg hover:bg-orange-100">
+            + Exception
+          </button>
+          <button onClick={()=>{setEditRisk(null);setForm(EMPTY_RISK);setShowForm(true);}} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             + Add Risk
           </button>
         </div>
       </div>
-
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: "Total Risks", value: summary.total ?? 0, color: "text-slate-700" },
-          { label: "Critical", value: summary.critical ?? 0, color: "text-red-600" },
-          { label: "High", value: summary.high ?? 0, color: "text-orange-600" },
-          { label: "Medium", value: summary.medium ?? 0, color: "text-yellow-600" },
-          { label: "Open", value: summary.open ?? 0, color: "text-blue-600" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-white border border-slate-200 rounded-lg p-4">
-            <p className="text-xs text-slate-500 font-medium">{label}</p>
-            <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+          {label:'Total Risks', val:(risks as any[]).length, color:'text-slate-800', bg:'bg-slate-50'},
+          {label:'Critical', val:criticalCount, color:'text-red-700', bg:'bg-red-50'},
+          {label:'High', val:highCount, color:'text-orange-700', bg:'bg-orange-50'},
+          {label:'Open', val:openCount, color:'text-blue-700', bg:'bg-blue-50'},
+          {label:'Mitigated', val:mitigatedCount, color:'text-green-700', bg:'bg-green-50'},
+        ].map(c=>(
+          <div key={c.label} className={`${c.bg} rounded-xl p-4 border border-slate-200`}>
+            <p className="text-xs text-slate-500">{c.label}</p>
+            <p className={`text-3xl font-bold mt-1 ${c.color}`}>{c.val}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-6">
-        <div className="col-span-2">
-          <div className="flex gap-2 mb-4">
-            {["all", "open", "mitigated", "critical", "high"].map((f) => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors capitalize ${filter === f ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
-                {f === "all" ? "All Risks" : f}
-              </button>
-            ))}
+      {/* Risk Appetite bar */}
+      <RiskAppetiteBar risks={risks as any[]} />
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+        {(['risks','exceptions','calendar'] as const).map(t=>(
+          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${tab===t?'bg-white shadow text-slate-900':'text-slate-500 hover:text-slate-700'}`}>
+            {t==='risks'?'Risk Register':t==='exceptions'?'Exceptions & Waivers':'Compliance Calendar'}
+            {t==='exceptions'&&(exceptions as any[]).length>0&&<span className="ml-1.5 bg-orange-100 text-orange-700 text-xs px-1.5 rounded-full">{(exceptions as any[]).length}</span>}
+            {t==='calendar'&&overdueCal.length>0&&<span className="ml-1.5 bg-red-100 text-red-700 text-xs px-1.5 rounded-full">{overdueCal.length}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* RISK REGISTER TAB */}
+      {tab==='risks'&&<>
+        {/* Heat map + filters row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2"><RiskHeatMap risks={filteredRisks}/></div>
+          <div className="space-y-3">
+            <input placeholder="Search risks..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+            <select value={filterSeverity} onChange={e=>setFilterSeverity(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <option value="all">All Severity Levels</option>
+              <option value="critical">Critical</option><option value="high">High</option>
+              <option value="medium">Medium</option><option value="low">Low</option>
+            </select>
+            <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <option value="all">All Categories</option>
+              {CATEGORIES.map(c=><option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+            </select>
+            <select value={filterTreatment} onChange={e=>setFilterTreatment(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <option value="all">All Treatments</option>
+              <option value="mitigate">Mitigate</option><option value="accept">Accept</option>
+              <option value="transfer">Transfer</option><option value="avoid">Avoid</option>
+            </select>
+            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <option value="all">All Statuses</option>
+              <option value="open">Open</option><option value="in_progress">In Progress</option>
+              <option value="mitigated">Mitigated</option><option value="accepted">Accepted</option><option value="closed">Closed</option>
+            </select>
+            {selectedIds.length>0&&(
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-blue-800 mb-2">{selectedIds.length} selected</p>
+                <div className="flex gap-2">
+                  <button onClick={()=>{selectedIds.forEach(id=>updateRisk.mutate({id,data:{status:'mitigated'}}));clearSelect();}} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Mark Mitigated</button>
+                  <button onClick={()=>{selectedIds.forEach(id=>updateRisk.mutate({id,data:{status:'accepted'}}));clearSelect();}} className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Accept Risk</button>
+                  <button onClick={clearSelect} className="text-xs bg-slate-200 text-slate-700 px-2 py-1 rounded">Clear</button>
+                </div>
+              </div>
+            )}
           </div>
-          {isLoading ? (
-            <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />)}</div>
-          ) : filtered.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-lg p-12 text-center">
-              <p className="text-slate-400 text-sm">No risks found. Add your first risk to get started.</p>
+        </div>
+
+        {/* Risks table */}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" checked={selectedIds.length===filteredRisks.length&&filteredRisks.length>0} onChange={e=>e.target.checked?selectAll():clearSelect()} className="rounded"/>
+              <p className="text-sm text-slate-500">{filteredRisks.length} risks</p>
             </div>
-          ) : (
+            <p className="text-xs text-slate-400">Click row to view details · Hover score for residual risk</p>
+          </div>
+          {isLoading&&<div className="p-8 text-center text-slate-400">Loading risks...</div>}
+          {!isLoading&&filteredRisks.length===0&&(
+            <div className="p-12 text-center">
+              <div className="text-4xl mb-3">⚠️</div>
+              <p className="text-slate-600 font-medium">No risks found</p>
+              <p className="text-slate-400 text-sm mt-1">Adjust filters or add your first risk</p>
+              <button onClick={()=>setShowForm(true)} className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">Add First Risk</button>
+            </div>
+          )}
+          {filteredRisks.map((r:any)=>{
+            const score = riskScore(r.likelihood??1, r.impact??1);
+            const lvl = riskLevel(score);
+            const residualScore = riskScore(r.residual_likelihood??1, r.residual_impact??1);
+            const residualLvl = riskLevel(residualScore);
+            return (
+              <div key={r.id} onClick={()=>setViewRisk(r)} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer group">
+                <input type="checkbox" checked={selectedIds.includes(r.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelect(r.id)} className="rounded flex-shrink-0"/>
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${RISK_DOT[lvl]}`}/>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{r.title}</p>
+                  <p className="text-xs text-slate-400">{CATEGORY_LABELS[r.category]??r.category} · {r.owner_name||'Unassigned'}</p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div title={`Residual: ${residualLvl} (${residualScore})`} className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${RISK_COLORS[lvl]}`}>
+                    {lvl.charAt(0).toUpperCase()+lvl.slice(1)} ({score})
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${r.treatment==='mitigate'?'bg-blue-50 text-blue-700':r.treatment==='accept'?'bg-orange-50 text-orange-700':r.treatment==='transfer'?'bg-purple-50 text-purple-700':'bg-slate-100 text-slate-600'}`}>
+                    {r.treatment?.charAt(0).toUpperCase()+(r.treatment?.slice(1)||'')}
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${r.status==='open'?'bg-red-50 text-red-700':r.status==='mitigated'||r.status==='closed'?'bg-green-50 text-green-700':r.status==='in_progress'?'bg-blue-50 text-blue-700':'bg-slate-100 text-slate-600'}`}>
+                    {r.status?.replace('_',' ')?.charAt(0).toUpperCase()+(r.status?.replace('_',' ')?.slice(1)||'')}
+                  </span>
+                  <button onClick={e=>{e.stopPropagation();setEditRisk(r);setForm({title:r.title,description:r.description||'',category:r.category,likelihood:r.likelihood,impact:r.impact,treatment:r.treatment,treatment_plan:r.treatment_plan||'',owner_name:r.owner_name||'',owner_email:r.owner_email||'',related_control_id:r.related_control_id||''});setShowForm(true);}} className="text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 text-xs">Edit</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>}
+      {/* EXCEPTIONS TAB */}
+      {tab==='exceptions'&&<>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Exceptions & Waivers</h2>
+            <p className="text-sm text-slate-500">Formal risk acceptances, compensating controls, and time-limited waivers</p>
+          </div>
+          <button onClick={()=>setShowExcForm(true)} className="px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700">+ New Exception</button>
+        </div>
+        {(exceptions as any[]).length===0&&(
+          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+            <div className="text-4xl mb-3">📋</div>
+            <p className="text-slate-600 font-medium">No exceptions or waivers</p>
+            <p className="text-slate-400 text-sm mt-1">When a control cannot be fully implemented, document a formal exception with business justification and expiry date.</p>
+            <button onClick={()=>setShowExcForm(true)} className="mt-4 px-4 py-2 bg-orange-600 text-white text-sm rounded-lg">Create First Exception</button>
+          </div>
+        )}
+        <div className="space-y-3">
+          {(exceptions as any[]).map((exc:any)=>{
+            const expired = exc.expires_at && new Date(exc.expires_at)<new Date();
+            const expiringSoon = exc.expires_at && !expired && (new Date(exc.expires_at).getTime()-Date.now())<30*86400000;
+            return (
+              <div key={exc.id} className={`bg-white border rounded-xl p-4 ${expired?'border-red-200 bg-red-50':expiringSoon?'border-orange-200 bg-orange-50':'border-slate-200'}`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-semibold text-slate-800">{exc.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${exc.status==='approved'?'bg-green-100 text-green-700':exc.status==='pending'?'bg-yellow-100 text-yellow-700':exc.status==='rejected'?'bg-red-100 text-red-700':'bg-slate-100 text-slate-600'}`}>
+                        {exc.status?.charAt(0).toUpperCase()+(exc.status?.slice(1)||'')}
+                      </span>
+                      {expired&&<span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">EXPIRED</span>}
+                      {expiringSoon&&<span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Expiring Soon</span>}
+                    </div>
+                    <p className="text-sm text-slate-600 mb-2">{exc.description}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div><p className="text-slate-400">Exception Type</p><p className="font-medium text-slate-700">{exc.exception_type?.replace(/_/g,' ')?.charAt(0).toUpperCase()+(exc.exception_type?.replace(/_/g,' ')?.slice(1)||'')}</p></div>
+                      <div><p className="text-slate-400">Residual Risk</p><p className={`font-medium ${exc.residual_risk==='high'?'text-red-600':exc.residual_risk==='medium'?'text-orange-600':'text-green-600'}`}>{exc.residual_risk?.charAt(0).toUpperCase()+(exc.residual_risk?.slice(1)||'')}</p></div>
+                      <div><p className="text-slate-400">Requested By</p><p className="font-medium text-slate-700">{exc.requested_by||'—'}</p></div>
+                      <div><p className="text-slate-400">Expires</p><p className={`font-medium ${expired?'text-red-600':expiringSoon?'text-orange-600':'text-slate-700'}`}>{exc.expires_at?new Date(exc.expires_at).toLocaleDateString():'No expiry'}</p></div>
+                    </div>
+                    {exc.business_justification&&<div className="mt-2 bg-slate-50 rounded p-2 text-xs text-slate-600"><span className="font-medium">Justification: </span>{exc.business_justification}</div>}
+                    {exc.compensating_controls&&<div className="mt-1 bg-slate-50 rounded p-2 text-xs text-slate-600"><span className="font-medium">Compensating Controls: </span>{exc.compensating_controls}</div>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+          <p className="font-semibold mb-1">Exception Management Best Practices</p>
+          <ul className="space-y-1 text-xs text-blue-700 list-disc list-inside">
+            <li>All exceptions require documented business justification and executive approval</li>
+            <li>Maximum exception duration is 12 months - all exceptions must be reviewed annually</li>
+            <li>Compensating controls must be implemented and documented for all accepted risks</li>
+            <li>Exceptions approaching expiry are flagged 30 days before the deadline</li>
+            <li>Expired exceptions are escalated to the CISO and risk committee automatically</li>
+          </ul>
+        </div>
+      </>}
+
+      {/* COMPLIANCE CALENDAR TAB */}
+      {tab==='calendar'&&<>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">Compliance Calendar</h2>
+          <p className="text-sm text-slate-500">{calendarItems.length} scheduled compliance events · {overdueCal.length} overdue</p>
+        </div>
+        {overdueCal.length>0&&(
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-red-800 mb-2">🚨 Overdue Events ({overdueCal.length})</p>
             <div className="space-y-2">
-              {filtered.map((risk) => {
-                const level = riskLevel(risk.inherentScore);
-                return (
-                  <div key={risk.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${RISK_COLORS[level]}`}>
-                            {level.toUpperCase()}
-                          </span>
-                          <span className="text-xs text-slate-400 capitalize">{risk.category}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${risk.status === "open" ? "bg-blue-50 text-blue-600" : risk.status === "mitigated" ? "bg-green-50 text-green-600" : "bg-slate-100 text-slate-500"}`}>
-                            {risk.status}
-                          </span>
-                        </div>
-                        <p className="text-sm font-medium text-slate-800">{risk.title}</p>
-                        {risk.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{risk.description}</p>}
-                        <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                          <span>L: {LIKELIHOOD_LABELS[risk.likelihood]} ({risk.likelihood})</span>
-                          <span>I: {IMPACT_LABELS[risk.impact]} ({risk.impact})</span>
-                          <span className={`font-semibold ${level === "critical" ? "text-red-600" : level === "high" ? "text-orange-600" : level === "medium" ? "text-yellow-600" : "text-green-600"}`}>
-                            Score: {risk.inherentScore}
-                          </span>
-                          {risk.ownerName && <span>Owner: {risk.ownerName}</span>}
-                          {risk.ucoControlId && <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">{risk.ucoControlId}</span>}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => openEdit(risk)}
-                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors">
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        </button>
-                        {risk.status === "open" && (
-                          <button onClick={() => updateMutation.mutate({ id: risk.id, status: "mitigated" })}
-                            className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded border border-green-200 hover:bg-green-100">
-                            Mitigate
-                          </button>
-                        )}
-                        <button onClick={() => deleteMutation.mutate(risk.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
+              {overdueCal.map((e:any)=>(
+                <div key={e.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-100">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{e.title}</p>
+                    <p className="text-xs text-red-600">Was due {new Date(e.due_date).toLocaleDateString()} · {e.event_type?.replace('_',' ')}</p>
+                  </div>
+                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Overdue</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="space-y-3">
+          {upcomingCal.map((e:any)=>{
+            const daysUntil = Math.ceil((new Date(e.due_date).getTime()-Date.now())/86400000);
+            const urgent = daysUntil<=14;
+            const soon = daysUntil<=30;
+            const typeIcon: Record<string,string> = { review:'📋', audit:'🔍', assessment:'📊', report:'📄', access_review:'👥', vendor_review:'🏢', training:'🎓', test:'🧪' };
+            return (
+              <div key={e.id} className={`bg-white border rounded-xl p-4 ${urgent?'border-orange-200':soon?'border-yellow-200':'border-slate-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{typeIcon[e.event_type]||'📅'}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{e.title}</p>
+                      <p className="text-xs text-slate-500">{e.description}</p>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-sm font-semibold ${urgent?'text-orange-700':soon?'text-yellow-700':'text-slate-700'}`}>
+                      {daysUntil===0?'Today':daysUntil===1?'Tomorrow':`In ${daysUntil} days`}
+                    </p>
+                    <p className="text-xs text-slate-400">{new Date(e.due_date).toLocaleDateString()}</p>
+                    <div className="flex gap-1 mt-1 justify-end">
+                      {e.framework_key&&<span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{e.framework_key.toUpperCase()}</span>}
+                      <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{e.recurrence}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {upcomingCal.length===0&&calendarItems.length===0&&(
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+              <div className="text-4xl mb-3">📅</div>
+              <p className="text-slate-600 font-medium">No compliance events scheduled</p>
+              <p className="text-slate-400 text-sm mt-1">Compliance calendar events are auto-generated based on your active frameworks and policies.</p>
             </div>
           )}
         </div>
-        <RiskMatrix risks={risks} />
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">{editing ? "Edit Risk" : "Add Risk"}</h2>
-              <button onClick={closeModal} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+      </>}
+      {/* RISK DETAIL MODAL */}
+      {viewRisk&&(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={()=>setViewRisk(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`w-3 h-3 rounded-full ${RISK_DOT[riskLevel(riskScore(viewRisk.likelihood,viewRisk.impact))]}`}/>
+                  <h2 className="text-lg font-bold text-slate-900">{viewRisk.title}</h2>
+                </div>
+                <p className="text-sm text-slate-500">{CATEGORY_LABELS[viewRisk.category]??viewRisk.category}</p>
+              </div>
+              <button onClick={()=>setViewRisk(null)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
             </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Title *</label>
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Risk title" />
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-700">{viewRisk.description}</p>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                {[
+                  {label:'Inherent Risk', score:riskScore(viewRisk.likelihood,viewRisk.impact), lvl:riskLevel(riskScore(viewRisk.likelihood,viewRisk.impact))},
+                  {label:'Residual Risk', score:riskScore(viewRisk.residual_likelihood||1,viewRisk.residual_impact||1), lvl:riskLevel(riskScore(viewRisk.residual_likelihood||1,viewRisk.residual_impact||1))},
+                  {label:'Target Risk', score:riskScore(Math.max(1,viewRisk.likelihood-2),Math.max(1,viewRisk.impact-2)), lvl:riskLevel(riskScore(Math.max(1,viewRisk.likelihood-2),Math.max(1,viewRisk.impact-2)))},
+                ].map(rs=>(
+                  <div key={rs.label} className={`rounded-xl p-3 border ${RISK_COLORS[rs.lvl]}`}>
+                    <p className="text-xs mb-1">{rs.label}</p>
+                    <p className="text-2xl font-bold">{rs.score}</p>
+                    <p className="text-xs font-medium">{rs.lvl.charAt(0).toUpperCase()+rs.lvl.slice(1)}</p>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-slate-400">Likelihood</p><p className="font-medium">{viewRisk.likelihood} - {LIKELIHOOD_LABELS[viewRisk.likelihood]||''}</p></div>
+                <div><p className="text-xs text-slate-400">Impact</p><p className="font-medium">{viewRisk.impact} - {IMPACT_LABELS[viewRisk.impact]||''}</p></div>
+                <div><p className="text-xs text-slate-400">Treatment Strategy</p><p className="font-medium capitalize">{viewRisk.treatment}</p></div>
+                <div><p className="text-xs text-slate-400">Status</p><p className={`font-medium capitalize ${viewRisk.status==='open'?'text-red-600':viewRisk.status==='mitigated'?'text-green-600':'text-slate-700'}`}>{viewRisk.status?.replace('_',' ')}</p></div>
+                <div><p className="text-xs text-slate-400">Risk Owner</p><p className="font-medium">{viewRisk.owner_name||'Unassigned'}</p></div>
+                <div><p className="text-xs text-slate-400">Related Control</p><p className="font-medium">{viewRisk.related_control_id||'None'}</p></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
-                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {["operational", "technical", "legal", "financial", "reputational", "compliance"].map((c) => (
-                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Treatment</label>
-                  <select value={form.treatment} onChange={(e) => setForm({ ...form, treatment: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {["mitigate", "accept", "transfer", "avoid"].map((t) => (
-                      <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                    ))}
-                  </select>
-                </div>
+              {viewRisk.treatment_plan&&<div className="bg-slate-50 rounded-xl p-4"><p className="text-xs text-slate-400 mb-1 font-medium">Treatment Plan</p><p className="text-sm text-slate-700">{viewRisk.treatment_plan}</p></div>}
+              <div className="flex gap-2 pt-2">
+                <button onClick={()=>{setEditRisk(viewRisk);setForm({title:viewRisk.title,description:viewRisk.description||'',category:viewRisk.category,likelihood:viewRisk.likelihood,impact:viewRisk.impact,treatment:viewRisk.treatment,treatment_plan:viewRisk.treatment_plan||'',owner_name:viewRisk.owner_name||'',owner_email:viewRisk.owner_email||'',related_control_id:viewRisk.related_control_id||''});setShowForm(true);setViewRisk(null);}} className="flex-1 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Edit Risk</button>
+                <button onClick={()=>updateRisk.mutate({id:viewRisk.id,data:{status:'mitigated'}})} className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">Mark Mitigated</button>
+                <button onClick={()=>{if(confirm('Delete this risk?'))deleteRisk.mutate(viewRisk.id);}} className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100">Delete</button>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">Likelihood (1-5): <span className="font-semibold text-slate-800">{form.likelihood} - {LIKELIHOOD_LABELS[form.likelihood]}</span></label>
-                <input type="range" min={1} max={5} value={form.likelihood} onChange={(e) => setForm({ ...form, likelihood: Number(e.target.value) })} className="w-full accent-blue-600" />
-                <div className="flex justify-between text-xs text-slate-400 mt-0.5">
-                  {LIKELIHOOD_LABELS.slice(1).map(l => <span key={l}>{l.slice(0, 3)}</span>)}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">Impact (1-5): <span className="font-semibold text-slate-800">{form.impact} - {IMPACT_LABELS[form.impact]}</span></label>
-                <input type="range" min={1} max={5} value={form.impact} onChange={(e) => setForm({ ...form, impact: Number(e.target.value) })} className="w-full accent-blue-600" />
-                <div className="flex justify-between text-xs text-slate-400 mt-0.5">
-                  {IMPACT_LABELS.slice(1).map(l => <span key={l}>{l.slice(0, 3)}</span>)}
-                </div>
-              </div>
-              <div className={`p-3 rounded-lg text-center border ${RISK_COLORS[riskLevel(inherentScore)]}`}>
-                <p className="text-sm font-bold">Inherent Risk Score: {inherentScore} - {riskLevel(inherentScore).toUpperCase()}</p>
-                <p className="text-xs mt-0.5 opacity-70">Likelihood {form.likelihood} x Impact {form.impact}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Owner Name</label>
-                  <input value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="Owner" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Due Date</label>
-                  <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Related UCO Control</label>
-                  <input value={form.ucoControlId} onChange={(e) => setForm({ ...form, ucoControlId: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none font-mono" placeholder="UCO-AC-001" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Asset at Risk</label>
-                  <input value={form.asset} onChange={(e) => setForm({ ...form, asset: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Customer DB" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Treatment Plan</label>
-                <textarea value={form.treatmentPlan} onChange={(e) => setForm({ ...form, treatmentPlan: e.target.value })}
-                  rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="Describe mitigation steps..." />
-              </div>
-            </div>
-            <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
-              <button onClick={closeModal} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button
-                onClick={() => editing ? updateMutation.mutate({ id: editing.id, ...form }) : createMutation.mutate(form)}
-                disabled={!form.title || (editing ? updateMutation.isPending : createMutation.isPending)}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {(editing ? updateMutation.isPending : createMutation.isPending) ? "Saving..." : editing ? "Save Changes" : "Add Risk"}
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      {showSuggest && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      {/* ADD/EDIT RISK MODAL */}
+      {showForm&&(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={()=>setShowForm(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">{editRisk?'Edit Risk':'Add New Risk'}</h2>
+              <button onClick={()=>setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Risk Suggestions from Failing Controls</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Select risks to automatically create based on your currently failing controls</p>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Risk Title *</label>
+                <input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. Inadequate MFA enforcement" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"/>
               </div>
-              <button onClick={() => { setShowSuggest(false); setSelectedSuggestions(new Set()); }}
-                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-5">
-              {suggestLoading ? (
-                <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />)}</div>
-              ) : suggestions.length === 0 ? (
-                <div className="text-center py-10">
-                  <svg className="h-10 w-10 text-green-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-sm font-medium text-slate-700">No new suggestions</p>
-                  <p className="text-xs text-slate-500 mt-1">Either no controls are currently failing, or all suggested risks have already been created.</p>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
+                  <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                    {CATEGORIES.map(c=><option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+                  </select>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs text-slate-500">{suggestions.length} suggestion{suggestions.length !== 1 ? "s" : ""} based on failing controls</p>
-                    <button
-                      onClick={() => {
-                        if (selectedSuggestions.size === suggestions.length) {
-                          setSelectedSuggestions(new Set());
-                        } else {
-                          setSelectedSuggestions(new Set(suggestions.map((s: any) => s.relatedControlId)));
-                        }
-                      }}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-700"
-                    >
-                      {selectedSuggestions.size === suggestions.length ? "Deselect all" : "Select all"}
-                    </button>
-                  </div>
-                  {suggestions.map((s: any) => {
-                    const level = riskLevel(s.inherentScore);
-                    const isSelected = selectedSuggestions.has(s.relatedControlId);
-                    return (
-                      <div
-                        key={s.relatedControlId}
-                        onClick={() => {
-                          const next = new Set(selectedSuggestions);
-                          if (isSelected) next.delete(s.relatedControlId); else next.add(s.relatedControlId);
-                          setSelectedSuggestions(next);
-                        }}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${isSelected ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300"}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`h-4 w-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center ${isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
-                            {isSelected && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-xs px-2 py-0.5 rounded font-semibold border ${RISK_COLORS[level]}`}>{level.toUpperCase()}</span>
-                              <span className="text-xs font-mono text-slate-500">{s.relatedControlId}</span>
-                            </div>
-                            <p className="text-sm font-medium text-slate-800">{s.title}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{s.description}</p>
-                            <p className="text-xs text-slate-400 mt-1">L:{s.likelihood} x I:{s.impact} = Score {s.inherentScore}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Treatment Strategy</label>
+                  <select value={form.treatment} onChange={e=>setForm({...form,treatment:e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                    <option value="mitigate">Mitigate</option><option value="accept">Accept</option>
+                    <option value="transfer">Transfer</option><option value="avoid">Avoid</option>
+                  </select>
                 </div>
-              )}
-            </div>
-            {suggestions.length > 0 && (
-              <div className="p-5 border-t border-slate-100 flex gap-3 justify-end flex-shrink-0">
-                <button onClick={() => { setShowSuggest(false); setSelectedSuggestions(new Set()); }}
-                  className="px-4 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
-                <button
-                  onClick={() => importMutation.mutate(Array.from(selectedSuggestions))}
-                  disabled={selectedSuggestions.size === 0 || importMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                  {importMutation.isPending ? "Importing..." : `Import ${selectedSuggestions.size} Risk${selectedSuggestions.size !== 1 ? "s" : ""}`}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Likelihood (1-5): {LIKELIHOOD_LABELS[form.likelihood]||''}</label>
+                  <input type="range" min={1} max={5} value={form.likelihood} onChange={e=>setForm({...form,likelihood:Number(e.target.value)})} className="w-full accent-blue-600"/>
+                  <div className="flex justify-between text-xs text-slate-400"><span>Rare</span><span>Almost Certain</span></div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Impact (1-5): {IMPACT_LABELS[form.impact]||''}</label>
+                  <input type="range" min={1} max={5} value={form.impact} onChange={e=>setForm({...form,impact:Number(e.target.value)})} className="w-full accent-blue-600"/>
+                  <div className="flex justify-between text-xs text-slate-400"><span>Negligible</span><span>Critical</span></div>
+                </div>
+              </div>
+              <div className={`text-center py-2 rounded-lg border font-semibold text-sm ${RISK_COLORS[riskLevel(riskScore(form.likelihood,form.impact))]}`}>
+                Risk Score: {riskScore(Number(form.likelihood),Number(form.impact))} - {riskLevel(riskScore(Number(form.likelihood),Number(form.impact))).charAt(0).toUpperCase()+riskLevel(riskScore(Number(form.likelihood),Number(form.impact))).slice(1)}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Treatment Plan</label>
+                <textarea value={form.treatment_plan} onChange={e=>setForm({...form,treatment_plan:e.target.value})} rows={3} placeholder="Detail the steps being taken to address this risk..." className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Risk Owner</label>
+                  <input value={form.owner_name} onChange={e=>setForm({...form,owner_name:e.target.value})} placeholder="e.g. CISO" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Related Control ID</label>
+                  <input value={form.related_control_id} onChange={e=>setForm({...form,related_control_id:e.target.value})} placeholder="e.g. UCO-AC-001" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={()=>setShowForm(false)} className="flex-1 py-2 border border-slate-200 rounded-lg text-sm">Cancel</button>
+                <button type="submit" disabled={createRisk.isPending||updateRisk.isPending} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                  {createRisk.isPending||updateRisk.isPending?'Saving...':editRisk?'Update Risk':'Add Risk'}
                 </button>
               </div>
-            )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EXCEPTION FORM MODAL */}
+      {showExcForm&&(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={()=>setShowExcForm(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">New Exception / Waiver</h2>
+                <p className="text-sm text-slate-500">Document a formal risk acceptance or compensating control</p>
+              </div>
+              <button onClick={()=>setShowExcForm(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+            </div>
+            <form onSubmit={e=>{e.preventDefault();createException.mutate(excForm);}} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Exception Title *</label>
+                <input required value={excForm.title} onChange={e=>setExcForm({...excForm,title:e.target.value})} placeholder="e.g. MFA exception for legacy system" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Description *</label>
+                <textarea required value={excForm.description} onChange={e=>setExcForm({...excForm,description:e.target.value})} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Exception Type</label>
+                  <select value={excForm.exception_type} onChange={e=>setExcForm({...excForm,exception_type:e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                    <option value="risk_acceptance">Risk Acceptance</option>
+                    <option value="compensating_control">Compensating Control</option>
+                    <option value="time_limited_waiver">Time-Limited Waiver</option>
+                    <option value="policy_exception">Policy Exception</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Residual Risk</label>
+                  <select value={excForm.residual_risk} onChange={e=>setExcForm({...excForm,residual_risk:e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                    <option value="low">Low</option><option value="medium">Medium</option>
+                    <option value="high">High</option><option value="critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Business Justification *</label>
+                <textarea required value={excForm.business_justification} onChange={e=>setExcForm({...excForm,business_justification:e.target.value})} rows={3} placeholder="Explain why this exception is necessary and what business need it serves..." className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Compensating Controls</label>
+                <textarea value={excForm.compensating_controls} onChange={e=>setExcForm({...excForm,compensating_controls:e.target.value})} rows={2} placeholder="List any compensating controls in place to reduce risk while the exception is active..." className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Requested By *</label>
+                  <input required value={excForm.requested_by} onChange={e=>setExcForm({...excForm,requested_by:e.target.value})} placeholder="Name / Email" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Expiry Date *</label>
+                  <input required type="date" value={excForm.expires_at} onChange={e=>setExcForm({...excForm,expires_at:e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"/>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={()=>setShowExcForm(false)} className="flex-1 py-2 border border-slate-200 rounded-lg text-sm">Cancel</button>
+                <button type="submit" disabled={createException.isPending} className="flex-1 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium">
+                  {createException.isPending?'Submitting...':'Submit Exception'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
