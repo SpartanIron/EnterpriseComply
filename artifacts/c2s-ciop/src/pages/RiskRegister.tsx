@@ -148,23 +148,26 @@ export default function RiskRegister() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showBulk, setShowBulk] = useState(false);
 
-  const { data: risks = [], isLoading } = useQuery({
+  const { data: risksData, isLoading } = useQuery({
     queryKey: ['risks', orgId],
     queryFn: () => apiFetch(`/orgs/${orgId}/risks`),
     enabled: !!orgId,
   });
+  const risks: any[] = Array.isArray(risksData) ? risksData : (risksData as any)?.risks ?? [];
 
-  const { data: exceptions = [] } = useQuery({
+  const { data: excData } = useQuery({
     queryKey: ['exceptions', orgId],
     queryFn: () => apiFetch(`/orgs/${orgId}/exceptions`).catch(()=>[]),
     enabled: !!orgId,
   });
+  const exceptions: any[] = Array.isArray(excData) ? excData : (excData as any)?.exceptions ?? [];
 
-  const { data: calendar = [] } = useQuery({
+  const { data: calData } = useQuery({
     queryKey: ['calendar', orgId],
     queryFn: () => apiFetch(`/orgs/${orgId}/compliance-calendar`).catch(()=>[]),
     enabled: !!orgId,
   });
+  const calendar: any[] = Array.isArray(calData) ? calData : (calData as any)?.events ?? [];
 
   const createRisk = useMutation({
     mutationFn: (data: any) => apiFetch(`/orgs/${orgId}/risks`, { method:'POST', body:JSON.stringify(data) }),
