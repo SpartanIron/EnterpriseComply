@@ -268,5 +268,153 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
         </div>
       </div>
     </div>
+
+      {/* SSO/SAML Configuration */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100">
+            <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 10c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-800">SSO / SAML Configuration</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Single Sign-On for enterprise authentication</p>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Provider</label>
+              <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">Disabled</option>
+                <option value="okta">Okta</option>
+                <option value="azure_ad">Microsoft Entra ID (Azure AD)</option>
+                <option value="google">Google Workspace</option>
+                <option value="onelogin">OneLogin</option>
+                <option value="ping">PingIdentity</option>
+                <option value="saml">Generic SAML 2.0</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Domain</label>
+              <input type="text" placeholder="company.com" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"/>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">SAML Metadata URL</label>
+            <input type="url" placeholder="https://your-idp.com/saml/metadata" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"/>
+            <p className="text-xs text-slate-400 mt-1">Provide your IdP metadata URL or upload the XML file directly</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Entity ID (SP)</label>
+              <div className="flex items-center gap-2">
+                <input type="text" readOnly value="https://app.enterprisecomply.com/saml/sp" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-500 bg-slate-50"/>
+                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap">Copy</button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">ACS URL</label>
+              <div className="flex items-center gap-2">
+                <input type="text" readOnly value="https://app.enterprisecomply.com/saml/acs" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-500 bg-slate-50"/>
+                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap">Copy</button>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+            <input type="checkbox" id="enforce_sso" className="rounded"/>
+            <label htmlFor="enforce_sso" className="text-sm text-slate-700">Enforce SSO — prevent password-based login for all team members</label>
+          </div>
+          <button className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Save SSO Configuration</button>
+        </div>
+      </div>
+
+      {/* Notification Preferences */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-100">
+            <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-800">Notification Preferences</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Control when and how you receive compliance alerts</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[
+            {key:'evidence_expiry', label:'Evidence expiring within 30 days', desc:'Get notified when evidence items are about to expire', default:true},
+            {key:'policy_review', label:'Policies due for annual review', desc:'Reminder when policies pass their review date', default:true},
+            {key:'risk_overdue', label:'Risk treatment plans overdue', desc:'Alert when open risks have past-due treatment plans', default:true},
+            {key:'training_incomplete', label:'Security training overdue', desc:'Reminder when team members have incomplete training', default:true},
+            {key:'vendor_assessment', label:'Vendor assessments overdue', desc:'Alert when vendor security assessments are past due', default:false},
+            {key:'control_failing', label:'Controls failing for over 24 hours', desc:'Critical alert when controls remain in failing state', default:true},
+            {key:'audit_ready', label:'Audit readiness score changes', desc:'Notification when your compliance score changes significantly', default:false},
+            {key:'new_framework', label:'New framework best practices available', desc:'Updates when new compliance frameworks or templates are added', default:false},
+          ].map(pref => (
+            <div key={pref.key} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
+              <div>
+                <p className="text-sm font-medium text-slate-800">{pref.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{pref.desc}</p>
+              </div>
+              <input type="checkbox" defaultChecked={pref.default} className="h-4 w-4 text-blue-600 rounded"/>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Notification Delivery</label>
+            <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <option>In-app only</option>
+              <option>Email + In-app</option>
+              <option>Slack + In-app</option>
+              <option>All channels</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Digest Frequency</label>
+            <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <option>Real-time</option>
+              <option>Daily digest</option>
+              <option>Weekly digest</option>
+            </select>
+          </div>
+        </div>
+        <button className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Save Preferences</button>
+      </div>
+
+      {/* Risk Appetite Configuration */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-100">
+            <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-800">Risk Appetite</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Define your organization's tolerance for compliance risk</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[
+            {val:'conservative', label:'Conservative', desc:'Minimal risk tolerance. All critical and high risks must be mitigated within 30 days. Board-level reporting on any risk score > 8.'},
+            {val:'moderate', label:'Moderate', desc:'Balanced approach. Critical risks mitigated within 60 days, high within 90 days. Standard quarterly risk reviews.'},
+            {val:'aggressive', label:'Aggressive', desc:'Higher tolerance for operational risk. Focus on critical risks only. Semi-annual risk reviews.'},
+          ].map(opt => (
+            <label key={opt.val} className="flex items-start gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:border-blue-300 hover:bg-blue-50/30">
+              <input type="radio" name="risk_appetite" value={opt.val} defaultChecked={opt.val==='moderate'} className="mt-0.5"/>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">{opt.label}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        <button className="mt-4 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700">Save Risk Appetite</button>
+      </div>
+
   );
 }
