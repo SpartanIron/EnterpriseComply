@@ -185,4 +185,53 @@ export class RisksService {
     }
     return { created: created.length, risks: created };
   }
+  async getComplianceCalendar(orgId: number) {
+    try {
+      const { sql } = await import("drizzle-orm");
+      const events = await db.execute(sql.raw(
+        "SELECT * FROM org_compliance_calendar WHERE org_id = " + orgId + " ORDER BY due_date ASC LIMIT 100"
+      ));
+      const rows = (events.rows ?? events) as any[];
+      const overdue = rows.filter((e: any) => new Date(e.due_date) < new Date() && e.status === 'upcoming').length;
+      return { events: rows, total: rows.length, overdue };
+    } catch { return { events: [], total: 0, overdue: 0 }; }
+  }
+
+  async createCalendarEvent(orgId: number, data: any) {
+    try {
+      const { sql } = await import("drizzle-orm");
+      const result = await db.execute(sql.raw(
+        "INSERT INTO org_compliance_calendar (org_id, title, description, event_type, due_date, recurrence, framework_key, assigned_to, status) VALUES (" +
+        orgId + ", '" + (data.title||'').replace(/'/g,"''") + "', '" + (data.description||'').replace(/'/g,"''") + "', '" +
+        (data.event_type||'review') + "', '" + (data.due_date||new Date().toISOString()) + "', '" +
+        (data.recurrence||'annual') + "', '" + (data.framework_key||'') + "', '" +
+        (data.assigned_to||'').replace(/'/g,"''") + "', 'upcoming') RETURNING *"
+      ));
+      return { event: ((result.rows ?? result) as any[])[0] };
+    } catch (err) { return { event: null, error: String(err) }; }
+  }
+
+  async updateCalendarEvent(orgId: number, eventId: number, data: any) {
+    try {
+      const { sql } = await import("drizzle-orm");
+      const sets: string[] = [];
+      if (data.status) sets.push("status = '" + data.status + "'");
+      if (data.title) sets.push("title = '" + data.title.replace(/'/g,"''") + "'");
+      if (data.assigned_to) sets.push("assigned_to = '" + data.assigned_to.replace(/'/g,"''") + "'");
+      if (data.status === 'completed') sets.push("completed_at = NOW()");
+      sets.push("updated_at = NOW()");
+      await db.execute(sql.raw("UPDATE org_compliance_calendar SET " + sets.join(", ") + " WHERE id = " + eventId + " AND org_id = " + orgId));
+      return { success: true };
+    } catch (err) { return { success: false, error: String(err) }; }
+  }
+
+  async getSubProcessors(orgId: number) {
+    try {
+      const { sql } = await import("drizzle-orm");
+      const result = await db.execute(sql.raw("SELECT * FROM org_sub_processors WHERE org_id = " + orgId + " ORDER BY name ASC"));
+      const rows = (result.rows ?? result) as any[];
+      return { subProcessors: rows, total: rows.length };
+    } catch { return { subProcessors: [], total: 0 }; }
+  }
+
 }
