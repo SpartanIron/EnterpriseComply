@@ -316,6 +316,132 @@ export default function People() {
           </div>
         </div>
       )}
+
+      {/* Segregation of Duties (SoD) Alert Section */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Segregation of Duties (SoD)</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Detect access conflicts that violate separation of duties controls</p>
+          </div>
+          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">Auto-detected</span>
+        </div>
+        <div className="space-y-2">
+          {[
+            {conflict:'Finance Approver + Finance Submitter', users:'2 users', risk:'critical', desc:'Users can both create and approve financial transactions - violates COSO and SOX controls'},
+            {conflict:'System Admin + Audit Log Access', users:'1 user', risk:'high', desc:'Admin users can modify systems and also control audit logs, creating potential for evidence manipulation'},
+            {conflict:'Developer + Production Deploy', users:'3 users', risk:'medium', desc:'Developers with direct production access bypass change management controls'},
+          ].map((s,i)=>(
+            <div key={i} className={`flex items-start justify-between p-3 rounded-lg border ${s.risk==='critical'?'border-red-200 bg-red-50':s.risk==='high'?'border-orange-200 bg-orange-50':'border-yellow-200 bg-yellow-50'}`}>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-semibold ${s.risk==='critical'?'text-red-700':s.risk==='high'?'text-orange-700':'text-yellow-700'}`}>{s.conflict}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${s.risk==='critical'?'bg-red-100 text-red-600':s.risk==='high'?'bg-orange-100 text-orange-600':'bg-yellow-100 text-yellow-600'}`}>{s.risk}</span>
+                </div>
+                <p className="text-xs text-slate-600">{s.desc}</p>
+              </div>
+              <div className="flex-shrink-0 ml-4 text-right">
+                <p className="text-xs font-medium text-slate-700">{s.users}</p>
+                <button className="text-xs text-blue-600 hover:underline mt-1">Review →</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-500">
+          SoD conflicts are automatically detected based on role assignments. Connect HRIS integrations (Gusto, ADP, BambooHR) for real-time access mapping.
+        </div>
+      </div>
+
+      {/* Training Campaigns */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Security Training Campaigns</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Track completion rates and manage mandatory training assignments</p>
+          </div>
+          <button className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ New Campaign</button>
+        </div>
+        <div className="space-y-3">
+          {[
+            {name:'Annual Security Awareness Training 2026', type:'security_awareness', assigned:48, completed:36, due:'2026-06-30', status:'active'},
+            {name:'CMMC Level 2 Compliance Training', type:'compliance', assigned:48, completed:12, due:'2026-05-31', status:'active'},
+            {name:'Phishing Simulation Q2 2026', type:'phishing_sim', assigned:48, completed:48, due:'2026-04-30', status:'completed'},
+            {name:'Data Handling & CUI Protection', type:'security_awareness', assigned:25, completed:25, due:'2026-03-15', status:'completed'},
+          ].map((c,i)=>{
+            const pct = c.assigned > 0 ? Math.round(c.completed/c.assigned*100) : 0;
+            const overdue = new Date(c.due) < new Date() && c.status === 'active';
+            return (
+              <div key={i} className={`border rounded-xl p-4 ${overdue?'border-red-200 bg-red-50':c.status==='completed'?'border-green-200 bg-green-50':'border-slate-200'}`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{c.name}</p>
+                    <p className="text-xs text-slate-400 capitalize">{c.type.replace(/_/g,' ')} · Due {new Date(c.due).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {overdue&&<span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Overdue</span>}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${c.status==='completed'?'bg-green-100 text-green-700':'bg-blue-100 text-blue-700'}`}>{c.status==='completed'?'Completed':'Active'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-slate-200 rounded-full h-2">
+                    <div className={`h-2 rounded-full ${pct===100?'bg-green-500':pct>=50?'bg-blue-500':'bg-orange-500'}`} style={{width:pct+'%'}}/>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700 flex-shrink-0">{c.completed}/{c.assigned} ({pct}%)</span>
+                  {c.status==='active'&&<button className="text-xs text-blue-600 hover:underline flex-shrink-0">Send Reminder</button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
+          {[
+            {label:'Overall Completion', val:'82%', color:'text-blue-700'},
+            {label:'Overdue Completions', val:'12', color:'text-red-700'},
+            {label:'Certificates Issued', val:'73', color:'text-green-700'},
+          ].map(m=>(
+            <div key={m.label} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <p className="text-xs text-slate-500">{m.label}</p>
+              <p className={`text-xl font-bold mt-1 ${m.color}`}>{m.val}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bulk Policy Acknowledgment Campaign */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Bulk Policy Acknowledgment Campaigns</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Assign multiple policies to groups of people and track completion</p>
+          </div>
+          <button className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700">+ New Campaign</button>
+        </div>
+        <div className="space-y-3">
+          {[
+            {name:'Annual Policy Acknowledgment 2026', policies:['Acceptable Use', 'Security Awareness', 'Data Classification', '+7 more'], assigned:48, completed:35, due:'2026-06-15'},
+            {name:'New Employee Onboarding Acks', policies:['Code of Conduct', 'IT Acceptable Use', 'Privacy Policy'], assigned:8, completed:6, due:'2026-05-20'},
+          ].map((c,i)=>{
+            const pct = c.assigned > 0 ? Math.round(c.completed/c.assigned*100) : 0;
+            return (
+              <div key={i} className="border border-slate-200 rounded-xl p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{c.name}</p>
+                    <p className="text-xs text-slate-400">Policies: {c.policies.join(' · ')} · Due {new Date(c.due).toLocaleDateString()}</p>
+                  </div>
+                  <button className="text-xs text-blue-600 hover:underline flex-shrink-0 ml-4">Send Reminder</button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-slate-200 rounded-full h-2">
+                    <div className={`h-2 rounded-full ${pct===100?'bg-green-500':pct>=50?'bg-purple-500':'bg-orange-500'}`} style={{width:pct+'%'}}/>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700">{c.completed}/{c.assigned} ({pct}%)</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
