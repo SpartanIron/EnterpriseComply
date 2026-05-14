@@ -20,6 +20,8 @@ const BLANK_FORM = { name: "", website: "", category: "saas", riskLevel: "medium
 
 export default function Vendors() {
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState("vendors");
+  const [assessTarget, setAssessTarget] = useState<any>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState({ ...BLANK_FORM });
@@ -30,6 +32,15 @@ export default function Vendors() {
     queryFn: async () => (await fetch(apiUrl("/orgs/me"), { credentials: "include" })).json(),
   });
   const orgId = orgData?.org?.id;
+
+  const { data: spData } = useQuery({
+    queryKey: ["sub-processors", orgId],
+    queryFn: async () => {
+      try { const r = await fetch(apiUrl(`/orgs/${orgId}/sub-processors`), {credentials:"include"}); return r.ok ? r.json() : []; } catch { return []; }
+    },
+    enabled: !!orgId,
+  });
+  const subProcessors: any[] = Array.isArray(spData) ? spData : (spData as any)?.sub_processors ?? [];
 
   const { data, isLoading } = useQuery<{ vendors: any[] }>({
     queryKey: ["org-vendors", orgId],
@@ -133,6 +144,106 @@ export default function Vendors() {
         </div>
       </div>
 
+
+      {/* Tab navigation */}
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit mb-4">
+        {["vendors", "assessments", "sub_processors"].map(t => (
+          <button key={t} onClick={() => setActiveTab(t)}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === t ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"}`}>
+            {t === "vendors" ? "Vendor Directory" : t === "assessments" ? "Assessments & Queue" : `Sub-Processors (${subProcessors.length})`}
+          </button>
+        ))}
+      </div>
+
+      {/* ASSESSMENTS TAB */}
+      {activeTab === "assessments" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              {type:"sig-lite", label:"SIG-Lite", count:"20 questions", desc:"Full vendor security assessment - industry standard for enterprise procurement and DoD supply chain.", badge:"Industry Standard"},
+              {type:"caiq", label:"CAIQ", count:"15 questions", desc:"Cloud Controls Matrix questionnaire for cloud providers. Pre-mapped to CSA CCM.", badge:"Cloud Focus"},
+              {type:"vsaq", label:"VSAQ", count:"10 questions", desc:"Quick vendor risk triage before requiring a full SIG-Lite assessment.", badge:"Quick Triage"},
+            ].map(t => (
+              <div key={t.type} className="bg-white border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-slate-800">{t.label}</span>
+                  <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{t.badge}</span>
+                </div>
+                <p className="text-xs text-slate-400 mb-1">{t.count}</p>
+                <p className="text-xs text-slate-600 mb-3">{t.desc}</p>
+                {vendors.length > 0 && (
+                  <button onClick={() => setAssessTarget({vendorId: vendors[0].id, type: t.type})}
+                    className="w-full text-xs py-1.5 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50">
+                    Send to Vendor
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-blue-800 mb-2">TPRM Assessment Schedule</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-blue-700">
+              <div className="bg-white/60 rounded-lg p-2"><p className="font-medium text-red-700">Tier 1 - Critical</p><p>Annual full SIG + quarterly check-ins + DPA required</p></div>
+              <div className="bg-white/60 rounded-lg p-2"><p className="font-medium text-orange-700">Tier 2 - High</p><p>Annual SIG-Lite + bi-annual review + DPA required</p></div>
+              <div className="bg-white/60 rounded-lg p-2"><p className="font-medium text-yellow-700">Tier 3 - Standard</p><p>Bi-annual VSAQ or CAIQ questionnaire</p></div>
+              <div className="bg-white/60 rounded-lg p-2"><p className="font-medium text-green-700">Tier 4 - Low</p><p>Annual VSAQ self-attestation</p></div>
+            </div>
+          </div>
+          {vendors.filter((v:any) => !v.lastAssessedAt).length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-2">Vendors never assessed ({vendors.filter((v:any) => !v.lastAssessedAt).length})</p>
+              {vendors.filter((v:any) => !v.lastAssessedAt).slice(0, 6).map((v:any) => (
+                <div key={v.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-3 mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">{v.name?.charAt(0)?.toUpperCase()}</div>
+                    <div><p className="text-sm font-medium text-slate-800">{v.name}</p><p className="text-xs text-slate-400 capitalize">{v.riskLevel} risk</p></div>
+                  </div>
+                  <button className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">Send SIG-Lite</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SUB-PROCESSORS TAB */}
+      {activeTab === "sub_processors" && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Sub-Processors</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Third parties processing personal data on your behalf - required for GDPR/CCPA disclosure</p>
+          </div>
+          {subProcessors.length === 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-10 text-center">
+              <div className="text-4xl mb-3">🔄</div>
+              <p className="text-slate-600 font-medium">No sub-processors configured</p>
+              <p className="text-slate-400 text-sm mt-1">Sub-processors are auto-seeded on next deployment restart.</p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {subProcessors.map((sp: any) => (
+              <div key={sp.id || sp.name} className="bg-white border border-slate-200 rounded-xl p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-slate-800">{sp.name}</p>
+                    <p className="text-xs text-slate-400 capitalize">{sp.category} · {sp.country}</p>
+                  </div>
+                  {sp.has_dpa ? <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">DPA Signed</span> : <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded-full">No DPA</span>}
+                </div>
+                <p className="text-xs text-slate-600 mb-2">{sp.purpose}</p>
+                {sp.security_page_url && <a href={sp.security_page_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Security Page ↗</a>}
+              </div>
+            ))}
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+            <p className="font-semibold text-amber-800 mb-1">Compliance Requirement</p>
+            <p className="text-xs text-amber-700">Under GDPR Article 28 and CCPA, maintain a current sub-processor list, ensure equivalent data protection guarantees, notify data subjects of changes, and maintain signed DPAs for all sub-processors handling personal data.</p>
+          </div>
+        </div>
+      )}
+
+      {/* VENDOR DIRECTORY TAB */}
+      {activeTab === "vendors" && <>
       {isLoading ? (
         <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />)}</div>
       ) : vendors.length === 0 ? (
