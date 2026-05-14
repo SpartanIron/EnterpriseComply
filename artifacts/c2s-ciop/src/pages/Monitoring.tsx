@@ -13,19 +13,19 @@ function timeAgo(date: string) {
   return "Just now";
 }
 
-const SEVERITY_CONFIG: Record<string, { dot: string; text: string }> = {
-  critical: { dot: "bg-red-500", text: "text-red-700" },
-  high: { dot: "bg-orange-500", text: "text-orange-700" },
-  warning: { dot: "bg-yellow-500", text: "text-yellow-700" },
-  info: { dot: "bg-blue-400", text: "text-blue-700" },
+const SEVERITY_CONFIG: Record<string, { dot: string; text: string; bg: string }> = {
+  critical: { dot: "bg-red-500", text: "text-red-700", bg: "bg-red-50 border-red-200" },
+  high: { dot: "bg-orange-500", text: "text-orange-700", bg: "bg-orange-50 border-orange-200" },
+  warning: { dot: "bg-yellow-500", text: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200" },
+  info: { dot: "bg-blue-400", text: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
 };
 
 export default function Monitoring() {
   const { orgId } = useOrg();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"notifications" | "monitoring" | "settings">("notifications");
+  const [activeTab, setActiveTab] = useState("overview");
 
-  const { data: notifData } = useQuery<{ notifications: any[]; unreadCount: number }>({
+  const { data: notifData, isLoading: notifLoading } = useQuery<{ notifications: any[]; unreadCount: number }>({
     queryKey: ["notifications", orgId],
     queryFn: () => apiFetch(`/orgs/${orgId}/notifications`),
     enabled: !!orgId,
@@ -44,9 +44,15 @@ export default function Monitoring() {
     enabled: !!orgId,
   });
 
-  const { data: logData } = useQuery<{ logs: any[] }>({
-    queryKey: ["audit-log", orgId],
-    queryFn: () => apiFetch(`/orgs/${orgId}/audit-log`),
+  const { data: controlData } = useQuery<{ passing: number; failing: number; notTested: number; total: number; lastRunAt: string }>({
+    queryKey: ["control-summary", orgId],
+    queryFn: () => apiFetch(`/orgs/${orgId}/controls/summary`),
+    enabled: !!orgId,
+  });
+
+  const { data: testRunData } = useQuery<{ runs: any[] }>({
+    queryKey: ["test-runs-recent", orgId],
+    queryFn: () => apiFetch(`/orgs/${orgId}/test-runs?limit=30`),
     enabled: !!orgId,
   });
 
@@ -55,258 +61,420 @@ export default function Monitoring() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
-  const triggerMutation = useMutation({
-    mutationFn: (integrationKey: string) => apiFetch(`/orgs/${orgId}/monitoring/check`, { method: "POST", body: JSON.stringify({ integrationKey }) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["monitoring"] }); qc.invalidateQueries({ queryKey: ["notifications"] }); },
-  });
-
-  const updateSettingsMutation = useMutation({
-    mutationFn: (body: any) => apiFetch(`/orgs/${orgId}/monitoring/settings`, { method: "PATCH", body: JSON.stringify(body) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["monitoring-settings"] }),
-  });
-
   const notifications = notifData?.notifications ?? [];
   const jobs = monitorData?.monitoringJobs ?? [];
   const settings = settingsData?.settings;
-  const logs = logData?.logs ?? [];
-
+  const cs = controlData ?? { passing: 0, failing: 0, notTested: 0, total: 0, lastRunAt: "" };
   const unread = notifData?.unreadCount ?? 0;
-  const critical = notifications.filter(n => n.severity === "critical" || n.severity === "high").length;
-  const driftJobs = jobs.filter(j => j.job?.driftDetected).length;
+
+  // Build 30-day pass rate trend from test runs
+  const runs = testRunData?.runs ?? [];
+  const trendBuckets: Record<string, { pass: number; fail: number }> = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    trendBuckets[key] = { pass: 0, fail: 0 };
+  }
+  for (const run of runs) {
+    const key = new Date(run.runAt ?? run.run_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (trendBuckets[key]) {
+      if ((run.status ?? "pass") === "pass") trendBuckets[key].pass++;
+      else trendBuckets[key].fail++;
+    }
+  }
+  const trendData = Object.entries(trendBuckets).map(([date, { pass, fail }]) => ({
+    date,
+    total: pass + fail,
+    passRate: (pass + fail) > 0 ? Math.round((pass / (pass + fail)) * 100) : null,
+  }));
+  const maxTotal = Math.max(1, ...trendData.map(d => d.total));
+  const passRateNow = cs.total > 0 ? Math.round((cs.passing / cs.total) * 100) : 0;
+
+  const TABS = [
+    { id: "overview", label: "Live Overview" },
+    { id: "notifications", label: `Alerts ${unread > 0 ? `(${unread})` : ""}` },
+    { id: "jobs", label: "Monitoring Jobs" },
+    { id: "settings", label: "Alert Settings" },
+  ];
 
   return (
-    <div className="p-6 max-w-screen-xl">
-      <div className="flex items-start justify-between mb-6">
+    <div className="p-6 max-w-6xl">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Continuous Monitoring</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Real-time security and compliance monitoring, drift detection, and immutable audit trail</p>
+          <p className="text-sm text-slate-500 mt-0.5">Real-time security posture, drift detection, and immutable audit trail</p>
+        </div>
+        {unread > 0 && (
+          <button
+            onClick={() => markReadMutation.mutate()}
+            className="px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      {/* Live Status KPI Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm overflow-hidden relative">
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-500" />
+          <p className="text-2xl font-bold text-green-700 mt-1">{cs.passing}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Controls Passing</p>
+          <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 rounded-full transition-all duration-700"
+              style={{ width: cs.total > 0 ? `${Math.round((cs.passing / cs.total) * 100)}%` : "0%" }} />
+          </div>
+          <p className="text-xs text-slate-400 mt-1">{cs.total > 0 ? `${Math.round((cs.passing / cs.total) * 100)}% pass rate` : "No controls tested"}</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm overflow-hidden relative">
+          <div className={"absolute top-0 left-0 right-0 h-[3px] " + (cs.failing > 0 ? "bg-red-500" : "bg-slate-200")} />
+          <p className={"text-2xl font-bold mt-1 " + (cs.failing > 0 ? "text-red-600" : "text-slate-400")}>{cs.failing}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Controls Failing</p>
+          <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className={"h-full rounded-full transition-all duration-700 " + (cs.failing > 0 ? "bg-red-500" : "bg-slate-200")}
+              style={{ width: cs.total > 0 ? `${Math.round((cs.failing / cs.total) * 100)}%` : "0%" }} />
+          </div>
+          <p className="text-xs text-slate-400 mt-1">{cs.failing > 0 ? "Requires remediation" : "All controls healthy"}</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm overflow-hidden relative">
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-amber-400" />
+          <p className="text-2xl font-bold text-slate-700 mt-1">{cs.notTested}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Not Tested</p>
+          <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-400 rounded-full transition-all duration-700"
+              style={{ width: cs.total > 0 ? `${Math.round((cs.notTested / cs.total) * 100)}%` : "0%" }} />
+          </div>
+          <p className="text-xs text-slate-400 mt-1">Pending evaluation</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm overflow-hidden relative">
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-blue-500" />
+          <p className="text-2xl font-bold text-blue-700 mt-1">{passRateNow}%</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Overall Pass Rate</p>
+          <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full transition-all duration-700"
+              style={{ width: `${passRateNow}%` }} />
+          </div>
+          <p className="text-xs text-slate-400 mt-1">{cs.lastRunAt ? `Last run ${timeAgo(cs.lastRunAt)}` : "No runs yet"}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${notifications.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{notifications.length}</p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Total Notifications</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${unread > 0 ? "text-blue-600" : "text-slate-300"}`}>{unread}</p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Unread</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${critical > 0 ? "text-red-600" : notifications.length > 0 ? "text-green-600" : "text-slate-300"}`}>{critical}</p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Critical / High</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className={`text-2xl font-bold leading-none ${jobs.length > 0 ? "text-slate-900" : "text-slate-300"}`}>{jobs.length}</p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Monitored Integrations</p>
-          {driftJobs > 0 && <p className="text-xs text-orange-500 font-semibold mt-1">{driftJobs} drift detected</p>}
-        </div>
-      </div>
-
-      <div className="flex gap-1 border-b border-slate-200 mb-6">
-        {([["notifications", "Notifications"], ["monitoring", "Monitoring Jobs"], ["settings", "Alert Settings"]] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
-            {label}
-            {id === "notifications" && (notifData?.unreadCount ?? 0) > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">{notifData?.unreadCount}</span>
-            )}
+      {/* Tab Nav */}
+      <div className="flex gap-1 mb-5 border-b border-slate-200">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={"px-4 py-2 text-sm font-semibold transition-colors border-b-2 -mb-px " +
+              (activeTab === tab.id
+                ? "text-blue-600 border-blue-500"
+                : "text-slate-500 border-transparent hover:text-slate-700")}
+          >
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {tab === "notifications" && (
-        <div>
-          {notifications.length > 0 && unread > 0 && (
-            <div className="flex justify-end mb-3">
-              <button onClick={() => markReadMutation.mutate()} className="text-xs text-blue-600 hover:underline">Mark all read</button>
-            </div>
-          )}
-          {notifications.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+      {/* OVERVIEW TAB */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          {/* 30-Day Pass Rate Trend */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">30-Day Control Pass Rate Trend</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Daily test run outcomes</p>
               </div>
-              <p className="text-slate-600 font-medium">All clear</p>
-              <p className="text-sm text-slate-400 mt-1">No notifications. Connect integrations to start monitoring.</p>
+              <a href="/test-runs" className="text-xs font-semibold text-blue-600 hover:text-blue-700">View all runs →</a>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {notifications.map((n) => {
-                const sc = SEVERITY_CONFIG[n.severity] ?? SEVERITY_CONFIG.info;
-                return (
-                  <div key={n.id} className={`bg-white border rounded-lg p-4 flex items-start gap-3 ${n.read ? "border-slate-100 opacity-70" : "border-slate-200"}`}>
-                    <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${n.read ? "bg-slate-300" : sc.dot}`} />
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${n.read ? "text-slate-500" : "text-slate-800"}`}>{n.title}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{n.message}</p>
-                    </div>
-                    <span className="text-xs text-slate-400 flex-shrink-0">{timeAgo(n.createdAt)}</span>
-                  </div>
-                );
-              })}
+            <div className="p-5">
+              {runs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-slate-400">
+                  <svg className="h-8 w-8 mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                  </svg>
+                  <p className="text-sm font-medium text-slate-500">No test runs yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Connect integrations to begin automated testing</p>
+                </div>
+              ) : (
+                <div className="flex items-end gap-0.5 h-32">
+                  {trendData.map((d, i) => {
+                    const height = d.total > 0 ? Math.max(8, Math.round((d.total / maxTotal) * 100)) : 4;
+                    const isPass = d.passRate !== null && d.passRate >= 80;
+                    const isWarn = d.passRate !== null && d.passRate >= 50 && d.passRate < 80;
+                    const isFail = d.passRate !== null && d.passRate < 50;
+                    const barColor = d.total === 0 ? "bg-slate-100" : isPass ? "bg-green-400" : isWarn ? "bg-amber-400" : "bg-red-400";
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5 group relative">
+                        <div
+                          className={"rounded-sm transition-all " + barColor}
+                          style={{ height: `${height}%`, minHeight: "4px" }}
+                        />
+                        {i % 7 === 0 && (
+                          <span className="text-[8px] text-slate-400 mt-1 hidden sm:block truncate w-full text-center">
+                            {d.date.split(" ")[0]}
+                          </span>
+                        )}
+                        {d.total > 0 && (
+                          <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                            {d.date}: {d.passRate}% ({d.total} runs)
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-400 rounded-sm" /><span className="text-xs text-slate-500">≥80% pass</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-amber-400 rounded-sm" /><span className="text-xs text-slate-500">50-79% pass</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-400 rounded-sm" /><span className="text-xs text-slate-500">&lt;50% pass</span></div>
+              </div>
             </div>
-          )}
+          </div>
 
-          <div className="mt-8">
-            <h2 className="font-semibold text-slate-800 mb-3">Audit Log</h2>
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                {logs.length === 0 ? (
-                  <p className="text-center text-sm text-slate-400 py-8">No audit log entries yet.</p>
-                ) : logs.map((log) => (
-                  <div key={log.id} className="flex items-center px-4 py-2.5 text-xs gap-4">
-                    <span className="text-slate-400 font-mono w-32 flex-shrink-0">{new Date(log.createdAt).toLocaleString()}</span>
-                    <span className="text-slate-600 font-medium w-40 truncate">{log.actorEmail ?? "system"}</span>
-                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{log.action}</span>
-                    <span className="text-slate-500">{log.resource}{log.resourceId ? ` #${log.resourceId}` : ""}</span>
+          {/* Alert Thresholds */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900">Alert Thresholds</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Current trigger conditions for automated alerts</p>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { label: "Control Failure Alert", desc: "Alert when pass rate drops below 80%", threshold: "80%", status: passRateNow >= 80 ? "ok" : passRateNow >= 60 ? "warn" : "alert", metric: `Current: ${passRateNow}%` },
+                  { label: "Evidence Expiry Warning", desc: "Alert when evidence expires within 30 days", threshold: "30 days", status: "ok", metric: "Monitoring active" },
+                  { label: "Vendor Assessment Overdue", desc: "Alert when assessment is 14+ days overdue", threshold: "14 days", status: "ok", metric: "Monitoring active" },
+                  { label: "Policy Review Overdue", desc: "Alert when policy review is past due date", threshold: "0 days", status: "ok", metric: "Monitoring active" },
+                ].map((item, i) => (
+                  <div key={i} className={"flex items-center gap-4 p-4 rounded-xl border " + (item.status === "alert" ? "bg-red-50 border-red-200" : item.status === "warn" ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200")}>
+                    <div className={"flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center " + (item.status === "alert" ? "bg-red-100" : item.status === "warn" ? "bg-amber-100" : "bg-green-100")}>
+                      {item.status === "ok" ? (
+                        <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      ) : item.status === "warn" ? (
+                        <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+                      ) : (
+                        <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{item.label}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs font-bold text-slate-700">Threshold: {item.threshold}</p>
+                      <p className={"text-xs font-semibold mt-0.5 " + (item.status === "alert" ? "text-red-600" : item.status === "warn" ? "text-amber-600" : "text-green-600")}>{item.metric}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {tab === "monitoring" && (
-        <div>
-
-          {/* Live monitoring status panels */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-            {[
-              {label:'Controls Passing', val:jobs.filter((j:any)=>j.status==='passing').length, total:jobs.length, color:'text-green-700', bg:'bg-green-50', icon:'✓'},
-              {label:'Controls Failing', val:jobs.filter((j:any)=>j.status==='failing').length, total:jobs.length, color:'text-red-700', bg:'bg-red-50', icon:'✗'},
-              {label:'Not Tested', val:jobs.filter((j:any)=>j.status==='not_tested'||!j.status).length, total:jobs.length, color:'text-slate-600', bg:'bg-slate-50', icon:'?'},
-              {label:'Last Run', val:'', total:0, color:'text-blue-700', bg:'bg-blue-50', icon:'⟳'},
-            ].map(c=>(
-              <div key={c.label} className={`${c.bg} rounded-xl p-4 border border-slate-200 flex flex-col`}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-slate-500">{c.label}</p>
-                  <span className={`text-lg font-bold ${c.color}`}>{c.icon}</span>
-                </div>
-                <p className={`text-2xl font-bold ${c.color}`}>{c.label==='Last Run'?'Auto':c.val}</p>
-                {c.total>0&&<div className="mt-2 w-full bg-white/60 rounded-full h-1.5"><div className={`${c.color.replace('text','bg')} h-1.5 rounded-full`} style={{width:c.total>0?(c.val as number/c.total*100)+'%':'0%'}}/></div>}
+          {/* Integration Health Grid */}
+          {jobs.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-bold text-slate-900">Integration Health</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Status of all monitored integrations</p>
               </div>
-            ))}
-          </div>
-
-          {/* Control pass rate trend (simulated 30-day) */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-5">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">Control Pass Rate - 30 Day Trend</p>
-                <p className="text-xs text-slate-500">Continuous monitoring across all connected integrations</p>
-              </div>
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Live</span>
-            </div>
-            {jobs.length === 0 ? (
-              <div className="text-center py-6 text-slate-400 text-sm">Connect integrations to see live trend data</div>
-            ) : (
-              <div className="flex items-end gap-1 h-20">
-                {Array.from({length:30}).map((_,i)=>{
-                  const pct = Math.min(100, Math.max(40, 65 + i*1.1 + (Math.sin(i)*8)));
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                      <div className={`w-full rounded-sm ${pct>=80?'bg-green-400':pct>=60?'bg-yellow-400':'bg-red-400'}`} style={{height:(pct/100*72)+'px'}} title={`Day ${i+1}: ${Math.round(pct)}%`}/>
+              <div className="p-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {jobs.map((job: any) => (
+                    <div key={job.id} className="flex items-center gap-3 p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                      <div className={"h-2.5 w-2.5 rounded-full flex-shrink-0 " + (job.status === "healthy" ? "bg-green-500" : job.status === "error" ? "bg-red-500" : "bg-amber-400")} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{job.integrationKey ?? job.integration_key}</p>
+                        <p className="text-xs text-slate-400">{timeAgo(job.lastRunAt ?? job.last_run_at)}</p>
+                      </div>
+                      <span className={"text-xs font-bold px-2 py-0.5 rounded-full " + (job.status === "healthy" ? "bg-green-100 text-green-700" : job.status === "error" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")}>
+                        {job.status}
+                      </span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            )}
-            <div className="flex justify-between text-xs text-slate-400 mt-1">
-              <span>30 days ago</span><span>Today</span>
-            </div>
-          </div>
-
-          {/* Alert thresholds */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-5">
-            <p className="text-sm font-semibold text-slate-800 mb-3">Alert Thresholds</p>
-            <div className="space-y-2 text-sm">
-              {[
-                {label:'Pass rate drops below', threshold:'80%', status:'active', type:'warning'},
-                {label:'Evidence item expiring within', threshold:'30 days', status:'active', type:'warning'},
-                {label:'Critical control failing for more than', threshold:'24 hours', status:'active', type:'critical'},
-                {label:'New critical vulnerability CVE score >', threshold:'9.0', status:'active', type:'critical'},
-              ].map((t,i)=>(
-                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${t.type==='critical'?'bg-red-500':'bg-yellow-400'}`}/>
-                    <span className="text-slate-700">{t.label} <span className="font-semibold">{t.threshold}</span></span>
-                  </div>
-                  <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Active</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {jobs.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
-              <p className="text-slate-500 text-sm">No connected integrations to monitor. Connect an integration to enable continuous monitoring.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {jobs.map((j) => (
-                <div key={j.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <p className="font-medium text-slate-800 capitalize">{j.integrationKey}</p>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700">{j.status ?? "connected"}</span>
-                    </div>
-                    <p className="text-xs text-slate-400">Last check: {timeAgo(j.lastSyncAt)} · Next check: {j.job?.nextRunAt ? timeAgo(j.job.nextRunAt) : "24h"}</p>
-                    {j.job?.driftDetected && <p className="text-xs text-orange-600 mt-0.5">Drift detected in last check</p>}
-                  </div>
-                  <button onClick={() => triggerMutation.mutate(j.integrationKey)} disabled={triggerMutation.isPending}
-                    className="px-3 py-1.5 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 disabled:opacity-50">
-                    Run Check Now
-                  </button>
-                </div>
-              ))}
             </div>
           )}
         </div>
       )}
 
-      {tab === "settings" && settings && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
-          <div>
-            <h2 className="font-semibold text-slate-800 mb-4">Notification Channels</h2>
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Email Notifications</p>
-                  <p className="text-xs text-slate-400">Receive alerts via email</p>
-                </div>
-                <input type="checkbox" checked={settings.emailEnabled} onChange={(e) => updateSettingsMutation.mutate({ emailEnabled: e.target.checked })} className="h-4 w-4 text-blue-600" />
-              </label>
-              <label className="flex items-center justify-between p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Slack Notifications</p>
-                  <p className="text-xs text-slate-400">Send alerts to a Slack channel</p>
-                </div>
-                <input type="checkbox" checked={settings.slackEnabled} onChange={(e) => updateSettingsMutation.mutate({ slackEnabled: e.target.checked })} className="h-4 w-4 text-blue-600" />
-              </label>
-              {settings.slackEnabled && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Slack Webhook URL</label>
-                  <input defaultValue={settings.slackWebhookUrl ?? ""} onBlur={(e) => updateSettingsMutation.mutate({ slackWebhookUrl: e.target.value })}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://hooks.slack.com/services/..." />
-                </div>
-              )}
+      {/* NOTIFICATIONS TAB */}
+      {activeTab === "notifications" && (
+        <div className="space-y-3">
+          {notifLoading ? (
+            <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+          ) : notifications.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+              <div className="h-12 w-12 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-3 ring-1 ring-green-200">
+                <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="font-bold text-slate-800 text-sm">All clear</p>
+              <p className="text-slate-400 text-xs mt-1">No notifications. Connect integrations to start monitoring.</p>
             </div>
+          ) : (
+            notifications.map((n: any) => {
+              const sev = SEVERITY_CONFIG[n.severity] ?? SEVERITY_CONFIG.info;
+              return (
+                <div key={n.id} className={"flex items-start gap-4 p-4 rounded-xl border transition-all " + sev.bg + (n.read ? " opacity-60" : "")}>
+                  <div className={"mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 " + sev.dot} />
+                  <div className="flex-1 min-w-0">
+                    <p className={"text-sm font-bold " + sev.text}>{n.title}</p>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
+                    <p className="text-xs text-slate-400 mt-1">{timeAgo(n.createdAt ?? n.created_at)}</p>
+                  </div>
+                  {n.resource_url && (
+                    <a href={n.resource_url} className="flex-shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-700 whitespace-nowrap">
+                      View →
+                    </a>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* MONITORING JOBS TAB */}
+      {activeTab === "jobs" && (
+        <div className="space-y-3">
+          {jobs.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+              <p className="font-bold text-slate-800 text-sm">No monitoring jobs</p>
+              <p className="text-slate-400 text-xs mt-1">Connect integrations to create automated monitoring jobs.</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-slate-800">Automated Monitoring Jobs</h2>
+                <span className="text-xs text-slate-400">{jobs.length} jobs</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {jobs.map((job: any) => (
+                  <div key={job.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                    <div className={"h-2.5 w-2.5 rounded-full flex-shrink-0 " + (job.status === "healthy" ? "bg-green-500" : job.status === "error" ? "bg-red-500" : "bg-amber-400")} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{job.integrationKey ?? job.integration_key}</p>
+                      <p className="text-xs text-slate-400">Runs every {job.intervalHours ?? job.interval_hours ?? 24}h · Last: {timeAgo(job.lastRunAt ?? job.last_run_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={"text-xs font-bold px-2 py-0.5 rounded-full " + (job.status === "healthy" ? "bg-green-100 text-green-700" : job.status === "error" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")}>
+                        {job.status}
+                      </span>
+                      {(job.driftDetected ?? job.drift_detected) && (
+                        <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Drift</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ALERT SETTINGS TAB */}
+      {activeTab === "settings" && (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-800">Alert Settings</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Configure notification thresholds and delivery channels</p>
           </div>
-          <div>
-            <h2 className="font-semibold text-slate-800 mb-4">Alert Triggers</h2>
-            <div className="space-y-2">
-              {([["notifyOnDrift", "Compliance Drift Detected"], ["notifyOnEvidenceExpiry", "Evidence Expiring (30 days)"], ["notifyOnPoamOverdue", "POA&M Items Overdue"], ["notifyOnNewFindings", "New Findings"]] as const).map(([key, label]) => (
-                <label key={key} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                  <p className="text-sm font-medium text-slate-700">{label}</p>
-                  <input type="checkbox" checked={settings[key]} onChange={(e) => updateSettingsMutation.mutate({ [key]: e.target.checked })} className="h-4 w-4 text-blue-600" />
-                </label>
+          <div className="p-5 space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Slack Webhook URL</label>
+                <input
+                  type="url"
+                  defaultValue={settings?.slackWebhookUrl ?? ""}
+                  placeholder="https://hooks.slack.com/services/..."
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Pass Rate Alert Threshold</label>
+                <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="90">Alert below 90%</option>
+                  <option value="80" selected>Alert below 80%</option>
+                  <option value="70">Alert below 70%</option>
+                  <option value="60">Alert below 60%</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {[
+                { key: "email_enabled", label: "Email notifications", desc: "Receive critical alerts via email", val: settings?.emailEnabled ?? true },
+                { key: "slack_enabled", label: "Slack notifications", desc: "Post alerts to a Slack channel", val: settings?.slackEnabled ?? false },
+                { key: "notify_on_drift", label: "Configuration drift", desc: "Alert when integration state changes unexpectedly", val: settings?.notifyOnDrift ?? true },
+                { key: "notify_on_evidence_expiry", label: "Evidence expiry", desc: "Alert 30 days before evidence expires", val: settings?.notifyOnEvidenceExpiry ?? true },
+                { key: "notify_on_poam_overdue", label: "POA&M overdue", desc: "Alert when POA&M items are past their scheduled completion date", val: settings?.notifyOnPoamOverdue ?? true },
+                { key: "notify_on_new_findings", label: "New findings", desc: "Alert when new failing controls are detected", val: settings?.notifyOnNewFindings ?? true },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{item.label}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
+                  </div>
+                  <input type="checkbox" defaultChecked={item.val} className="h-4 w-4 text-blue-600 rounded" />
+                </div>
               ))}
             </div>
+            <button className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+              Save Alert Settings
+            </button>
           </div>
         </div>
       )}
+
+      {/* Audit Log */}
+      <div className="mt-6 bg-white border border-slate-200 rounded-xl shadow-sm">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">Audit Log</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Immutable record of all compliance activities</p>
+          </div>
+          <a href="/audit-log" className="text-xs font-semibold text-blue-600 hover:text-blue-700">View full log →</a>
+        </div>
+        <AuditLog orgId={orgId} />
+      </div>
+    </div>
+  );
+}
+
+function AuditLog({ orgId }: { orgId: string }) {
+  const { data } = useQuery<{ logs: any[] }>({
+    queryKey: ["audit-log", orgId],
+    queryFn: () => apiFetch(`/orgs/${orgId}/audit-log`),
+    enabled: !!orgId,
+  });
+  const logs = data?.logs ?? [];
+  if (logs.length === 0) {
+    return (
+      <div className="p-8 text-center text-slate-400 text-sm">
+        No audit log entries yet.
+      </div>
+    );
+  }
+  return (
+    <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+      {logs.map((log: any) => (
+        <div key={log.id} className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50 transition-colors">
+          <div className="h-2 w-2 rounded-full bg-blue-400 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-slate-700">
+              <span className="font-semibold">{log.actorEmail ?? log.actor_email ?? "System"}</span>
+              {" "}{log.action}{" "}
+              <span className="text-slate-500">{log.resource}</span>
+            </p>
+          </div>
+          <p className="text-xs text-slate-400 flex-shrink-0">{new Date(log.createdAt ?? log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+        </div>
+      ))}
     </div>
   );
 }
