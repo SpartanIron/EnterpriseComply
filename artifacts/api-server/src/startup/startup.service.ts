@@ -1039,9 +1039,9 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       const orgs = await db.execute(sql.raw('SELECT id FROM organizations LIMIT 200'));
       const orgRows = (orgs.rows ?? orgs) as Array<{ id: number }>;
       for (const org of orgRows) {
-        const seededCheck = await db.execute(sql.raw('SELECT id FROM org_risks_seeded WHERE org_id = ' + org.id + ' LIMIT 1'));
-        const seededRows = (seededCheck.rows ?? seededCheck) as unknown[];
-        if (seededRows.length > 0) continue;
+        const riskCountCheck = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM org_risks WHERE org_id = ' + org.id));
+        const riskCnt = parseInt(((riskCountCheck.rows ?? riskCountCheck) as Array<Record<string, string>>)[0]?.cnt ?? '0');
+        if (riskCnt >= 10) { this.logger.log('Risks already seeded for org ' + org.id + ' (' + riskCnt + ' risks)'); continue; }
         type RiskSeed = { title: string; description: string; category: string; likelihood: number; impact: number; treatment: string; treatment_plan: string; owner_name: string; related_control_id?: string };
         const risks: RiskSeed[] = [
           { title: 'Inadequate MFA enforcement', description: 'Admin accounts lack mandatory multi-factor authentication exposing systems to credential-based attacks.', category: 'access_control', likelihood: 4, impact: 5, treatment: 'mitigate', treatment_plan: 'Enable MFA for all privileged accounts. Enforce via conditional access policy. Target: 30 days.', owner_name: 'CISO', related_control_id: 'UCO-AI-001' },
@@ -1086,7 +1086,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
             ));
           } catch (_e) { /* skip duplicates */ }
         }
-        await db.execute(sql.raw('INSERT INTO org_risks_seeded (org_id) VALUES (' + org.id + ') ON CONFLICT DO NOTHING'));
+        // risks seeded - count check above prevents re-seeding
         this.logger.log('Seeded 20 common risks for org ' + org.id);
       }
     } catch (err) {
