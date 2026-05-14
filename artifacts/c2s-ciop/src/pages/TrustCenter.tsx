@@ -23,12 +23,16 @@ function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
 }
 
 const SUBPROCESSORS = [
-  { name: "Amazon Web Services", purpose: "Cloud infrastructure and data hosting", region: "US (us-east-1, us-west-2)", link: "https://aws.amazon.com/compliance/data-privacy-faq/" },
-  { name: "Clerk", purpose: "User authentication and identity management", region: "US", link: "https://clerk.com/legal/privacy" },
-  { name: "Neon (PostgreSQL)", purpose: "Database hosting and storage", region: "US (us-east-2)", link: "https://neon.tech/privacy-policy" },
-  { name: "Railway", purpose: "Application deployment and hosting", region: "US (us-west-2)", link: "https://railway.app/legal/privacy" },
-  { name: "OpenAI", purpose: "AI-assisted questionnaire responses (opt-in)", region: "US", link: "https://openai.com/policies/privacy-policy" },
-  { name: "GitHub", purpose: "Source code repository and CI/CD", region: "US", link: "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" },
+  { name: "Amazon Web Services", purpose: "Cloud infrastructure, compute, storage, and database services", region: "US (us-east-1, us-west-2)", category: "Infrastructure", has_dpa: true, data_types: "All system data, PII, CUI", link: "https://aws.amazon.com/compliance/data-privacy-faq/" },
+  { name: "Cloudflare", purpose: "CDN, DDoS protection, DNS management, and WAF", region: "Global", category: "Security", has_dpa: true, data_types: "Network traffic metadata", link: "https://www.cloudflare.com/gdpr/introduction/" },
+  { name: "Clerk", purpose: "User authentication and identity management", region: "US", category: "Identity", has_dpa: true, data_types: "PII, Authentication data", link: "https://clerk.com/legal/privacy" },
+  { name: "Neon (PostgreSQL)", purpose: "Database hosting and storage", region: "US (us-east-2)", category: "Infrastructure", has_dpa: true, data_types: "All database content", link: "https://neon.tech/privacy-policy" },
+  { name: "Railway", purpose: "Application deployment and hosting", region: "US (us-west-2)", category: "Infrastructure", has_dpa: true, data_types: "Application code, logs", link: "https://railway.app/legal/privacy" },
+  { name: "Stripe", purpose: "Payment processing and subscription billing", region: "US", category: "Payments", has_dpa: true, data_types: "Financial data, PII", link: "https://stripe.com/privacy" },
+  { name: "SendGrid (Twilio)", purpose: "Transactional email delivery", region: "US", category: "Communications", has_dpa: true, data_types: "Email addresses, notification content", link: "https://www.twilio.com/legal/privacy" },
+  { name: "GitHub (Microsoft)", purpose: "Source code repository and CI/CD", region: "US", category: "Development", has_dpa: true, data_types: "Source code, configuration", link: "https://github.com/site/privacy" },
+  { name: "Sentry", purpose: "Application error monitoring", region: "US", category: "Monitoring", has_dpa: true, data_types: "Error logs, partial PII in traces", link: "https://sentry.io/privacy/" },
+  { name: "Intercom", purpose: "Customer support and in-app messaging", region: "US", category: "Support", has_dpa: true, data_types: "PII, Support communications", link: "https://www.intercom.com/legal/privacy" },
 ];
 
 const SECURITY_PRACTICES = [
@@ -259,18 +263,27 @@ export default function TrustCenter() {
             </div>
             <div className="divide-y divide-slate-100">
               {SUBPROCESSORS.map((sp) => (
-                <div key={sp.name} className="px-5 py-4 flex items-start justify-between gap-4">
+                <div key={sp.name} className="px-5 py-4 flex items-start justify-between gap-4 hover:bg-slate-50 transition-colors">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-semibold text-slate-800">{sp.name}</p>
+                      <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{(sp as any).category || 'Service'}</span>
                       <a href={sp.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600">
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                       </a>
                     </div>
-                    <p className="text-xs text-slate-500">{sp.purpose}</p>
+                    <p className="text-xs text-slate-500 mb-1">{sp.purpose}</p>
+                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                      <span>Region: {sp.region}</span>
+                      {(sp as any).data_types && <span>Data: {(sp as any).data_types}</span>}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg">{sp.region}</span>
+                  <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                    {(sp as any).has_dpa !== false ? (
+                      <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">DPA Signed</span>
+                    ) : (
+                      <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-medium">No DPA</span>
+                    )}
                   </div>
                 </div>
               ))}
