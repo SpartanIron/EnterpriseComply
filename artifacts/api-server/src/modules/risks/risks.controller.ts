@@ -43,4 +43,28 @@ export class RisksController {
   importSuggestions(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: { controlIds: string[] }) {
     return this.risksService.importRiskSuggestions(ctx.orgId, userId, body.controlIds ?? []);
   }
+  @Get("orgs/:orgId/compliance-calendar")
+  @UseGuards(OrgContextGuard)
+  async getComplianceCalendar(@OrgContext() ctx: OrgCtx) {
+    return this.risksService.getComplianceCalendar(ctx.orgId);
+  }
+
+  @Post("orgs/:orgId/compliance-calendar")
+  @UseGuards(OrgContextGuard)
+  async createCalendarEvent(@OrgContext() ctx: OrgCtx, @Body() body: any) {
+    return this.risksService.createCalendarEvent(ctx.orgId, body);
+  }
+
+  @Patch("orgs/:orgId/compliance-calendar/:eventId")
+  @UseGuards(OrgContextGuard)
+  async updateCalendarEvent(@OrgContext() ctx: OrgCtx, @Param("eventId") eventId: string, @Body() body: any) {
+    return this.risksService.updateCalendarEvent(ctx.orgId, parseInt(eventId), body);
+  }
+
+  @Get("orgs/:orgId/sub-processors")
+  @UseGuards(OrgContextGuard)
+  async getSubProcessors(@OrgContext() ctx: OrgCtx) {
+    return this.risksService.getSubProcessors(ctx.orgId);
+  }
+
 }
