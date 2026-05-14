@@ -267,7 +267,6 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
           <a href="/trust-center" className="text-blue-600 hover:underline font-medium flex-shrink-0 ml-3">View portability policy</a>
         </div>
       </div>
-    </div>
 
       {/* SSO/SAML Configuration */}
       <div className="bg-white border border-slate-200 rounded-xl p-6">
@@ -416,5 +415,6 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
         <button className="mt-4 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700">Save Risk Appetite</button>
       </div>
 
+    </div>
   );
 }
