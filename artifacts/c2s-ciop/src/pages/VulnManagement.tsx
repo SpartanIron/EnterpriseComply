@@ -42,12 +42,38 @@ function StatusBadge({ status }: { status: string }) {
   return <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: c.color + "22", color: c.color }}>{c.label}</span>;
 }
 
+
+function downloadVulnsAsCsv(vulns: any[]) {
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const rows: string[][] = [["ID","CVE","Title","Severity","CVSS","Source","Asset","Status","Days Remaining","POA&M Ref"]];
+  vulns.forEach(v => rows.push([v.id, v.cveId, v.title, v.severity, String(v.cvss), v.source, v.affectedAsset, v.status, String(v.daysRemaining), v.poamRef || ""]));
+  const csv = rows.map(r => r.map(c => JSON.stringify(c)).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "vulnerabilities-poam-" + dateStr + ".csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function VulnManagement() {
   const [search, setSearch] = useState("");
   const [filterSev, setFilterSev] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSource, setFilterSource] = useState("All Sources");
   const [activeTab, setActiveTab] = useState<"register"|"sla"|"sources"|"trend">("register");
+  const [syncing, setSyncing] = useState(false);
+  const [exportingPoam, setExportingPoam] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
+
+  function handleSync() {
+    setSyncing(true);
+    setTimeout(() => { setSyncing(false); setSyncDone(true); setTimeout(() => setSyncDone(false), 3000); }, 1500);
+  }
+  function handleExportPoam() {
+    setExportingPoam(true);
+    setTimeout(() => { downloadVulnsAsCsv(MOCK_VULNS); setExportingPoam(false); }, 400);
+  }
 
   const filtered = MOCK_VULNS.filter(v => {
     if (search && !v.cveId.toLowerCase().includes(search.toLowerCase()) && !v.title.toLowerCase().includes(search.toLowerCase()) && !v.affectedAsset.toLowerCase().includes(search.toLowerCase())) return false;
@@ -82,13 +108,13 @@ export default function VulnManagement() {
           <p className="text-sm text-slate-500 mt-1">Normalized findings from Tenable, Qualys, Wiz, CrowdStrike, Snyk, Veracode, Checkmarx, Orca, and SentinelOne</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">
+          <button onClick={handleExportPoam} disabled={exportingPoam} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-60">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            Export to POA&M
+            {exportingPoam ? "Exporting..." : "Export to POA&M"}
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#2563eb" }}>
+          <button onClick={handleSync} disabled={syncing} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: "#2563eb" }}>
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            Sync Scanners
+            {syncing ? "Syncing..." : syncDone ? "Sync Complete" : "Sync Scanners"}
           </button>
         </div>
       </div>
@@ -281,6 +307,12 @@ export default function VulnManagement() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {syncDone && (
+        <div className="fixed bottom-6 right-6 bg-green-600 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 z-50">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          Scanners synced successfully
         </div>
       )}
     </div>
