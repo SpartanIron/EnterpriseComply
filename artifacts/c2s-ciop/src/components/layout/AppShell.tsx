@@ -63,6 +63,17 @@ const NAV = [
       { path: "/custom-frameworks", label: "Custom Frameworks", icon: CustomFwIcon },
     ],
   },
+  {
+    section: "Vulnerability",
+    items: [
+      { path: "/vuln-management", label: "Vuln Management", icon: VulnIcon },
+      { path: "/control-crosswalk", label: "Control Crosswalk", icon: CrosswalkIcon },
+      { path: "/system-boundary", label: "System Boundary", icon: BoundaryIcon },
+      { path: "/nist-800-171", label: "NIST 800-171 Rev 3", icon: NistIcon },
+      { path: "/fisma-reporting", label: "FISMA Reporting", icon: FismaIcon },
+      { path: "/conmon", label: "ConMon Program", icon: ConMonIcon },
+    ],
+  },
 ];
 
 function getActiveSection(location: string): string {
@@ -536,4 +547,23 @@ function AuditLogIcon({ active }: { active: boolean }) {
 
 function DocsIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />;
+}
+
+function BoundaryIcon({ active }: { active: boolean }) {
+return <Icon active={active} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />;
+}
+function NistIcon({ active }: { active: boolean }) {
+return <Icon active={active} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />;
+}
+function FismaIcon({ active }: { active: boolean }) {
+return <Icon active={active} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />;
+}
+function ConMonIcon({ active }: { active: boolean }) {
+return <Icon active={active} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />;
+}
+function VulnIcon({ active }: { active: boolean }) {
+return <Icon active={active} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />;
+}
+function CrosswalkIcon({ active }: { active: boolean }) {
+return <Icon active={active} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />;
 }
