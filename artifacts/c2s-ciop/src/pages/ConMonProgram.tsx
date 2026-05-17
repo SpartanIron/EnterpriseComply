@@ -1,8 +1,5 @@
 import { useState } from "react";
 
-// ISCM - Information Security Continuous Monitoring Program
-// Per NIST SP 800-137A, FISMA, OMB Circular A-130, and FedRAMP ConMon requirements
-
 const MONITORING_STRATEGY = [
   { category: "Ongoing", frequency: "Continuous (Real-time)", controls: ["AC-2", "AC-11", "AU-2", "AU-6", "IR-4", "SI-4", "SI-4(1)"], method: "Automated", tools: ["Splunk SIEM", "CrowdStrike Falcon", "PagerDuty"], riskLevel: "High/Critical" },
   { category: "Weekly", frequency: "Every 7 days", controls: ["RA-5", "SI-2", "CM-7", "CM-8(1)", "AU-11"], method: "Automated", tools: ["Tenable.io", "Qualys", "Wiz", "CrowdStrike Falcon"], riskLevel: "High" },
@@ -31,10 +28,10 @@ const DRIFT_EVENTS = [
 ];
 
 function StatusIndicator({ status }: { status: string }) {
-  const cfg: Record<string, { label: string; color: string; bg: string }> = {
-    normal: { label: "Normal", color: "#22c55e", bg: "#22c55e22" },
-    warning: { label: "Warning", color: "#f59e0b", bg: "#f59e0b22" },
-    alert: { label: "Alert", color: "#ef4444", bg: "#ef444422" },
+  const cfg: Record<string, { label: string; color: string }> = {
+    normal: { label: "Normal", color: "#22c55e" },
+    warning: { label: "Warning", color: "#f59e0b" },
+    alert: { label: "Alert", color: "#ef4444" },
   };
   const c = cfg[status] ?? cfg.normal;
   return (
@@ -45,9 +42,54 @@ function StatusIndicator({ status }: { status: string }) {
   );
 }
 
+function downloadConMonReport() {
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const reportLines: string[] = [];
+  reportLines.push("CONTINUOUS MONITORING PROGRAM REPORT");
+  reportLines.push("Generated: " + now.toLocaleString());
+  reportLines.push("Framework: NIST SP 800-137A | FISMA ISCM | FedRAMP ConMon | OMB A-130");
+  reportLines.push("");
+  reportLines.push("=== EXECUTIVE SUMMARY ===");
+  reportLines.push("Metrics Monitored: " + METRIC_EVENTS.length);
+  reportLines.push("Normal: " + METRIC_EVENTS.filter(m => m.status === "normal").length);
+  reportLines.push("Warnings: " + METRIC_EVENTS.filter(m => m.status === "warning").length);
+  reportLines.push("Active Alerts: " + METRIC_EVENTS.filter(m => m.status === "alert").length);
+  reportLines.push("");
+  reportLines.push("=== METRIC STATUS ===");
+  METRIC_EVENTS.forEach(m => {
+    reportLines.push("[" + m.status.toUpperCase() + "] " + m.id + " - " + m.name);
+    reportLines.push("  Source: " + m.integration + " | Current: " + m.lastValue + " | Threshold: " + m.threshold);
+    reportLines.push("  Last Run: " + new Date(m.lastRun).toLocaleString());
+    reportLines.push("");
+  });
+  reportLines.push("=== SCORE DRIFT EVENTS ===");
+  DRIFT_EVENTS.forEach(d => {
+    reportLines.push(d.date + " | " + d.metric + ": " + d.previousValue + " -> " + d.currentValue + " (" + d.changePercent + "%)");
+    reportLines.push("  Trigger: " + d.trigger);
+    reportLines.push("");
+  });
+  const blob = new Blob([reportLines.join("\n")], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "conmon-report-" + dateStr + ".txt"; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ConMonProgram() {
   const [activeTab, setActiveTab] = useState<"dashboard"|"strategy"|"metrics"|"drift"|"reports">("dashboard");
   const [filterType, setFilterType] = useState("all");
+  const [exporting, setExporting] = useState(false);
+
+  const alertCount = METRIC_EVENTS.filter(m => m.status === "alert").length;
+  const warningCount = METRIC_EVENTS.filter(m => m.status === "warning").length;
+  const normalCount = METRIC_EVENTS.filter(m => m.status === "normal").length;
+  const filteredMetrics = filterType === "all" ? METRIC_EVENTS : METRIC_EVENTS.filter(m => m.type === filterType);
+
+  function handleExport() {
+    setExporting(true);
+    setTimeout(() => { downloadConMonReport(); setExporting(false); }, 400);
+  }
 
   const tabs = [
     { id: "dashboard" as const, label: "ISCM Dashboard" },
@@ -56,12 +98,6 @@ export default function ConMonProgram() {
     { id: "drift" as const, label: "Score Drift Detection" },
     { id: "reports" as const, label: "ConMon Reports" },
   ];
-
-  const alertCount = METRIC_EVENTS.filter(m => m.status === "alert").length;
-  const warningCount = METRIC_EVENTS.filter(m => m.status === "warning").length;
-  const normalCount = METRIC_EVENTS.filter(m => m.status === "normal").length;
-
-  const filteredMetrics = filterType === "all" ? METRIC_EVENTS : METRIC_EVENTS.filter(m => m.type === filterType);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -72,14 +108,13 @@ export default function ConMonProgram() {
         </div>
         <div className="flex items-center gap-2">
           {alertCount > 0 && <span className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "#ef4444" }}><span className="h-1.5 w-1.5 rounded-full bg-white" />{alertCount} Active Alert{alertCount > 1 ? "s" : ""}</span>}
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#2563eb" }}>
+          <button onClick={handleExport} disabled={exporting} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: "#2563eb" }}>
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            Export ConMon Report
+            {exporting ? "Exporting..." : "Export ConMon Report"}
           </button>
         </div>
       </div>
 
-      {/* Status Banner */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
           { label: "Metrics Monitored", value: METRIC_EVENTS.length, color: "#2563eb" },
@@ -94,7 +129,6 @@ export default function ConMonProgram() {
         ))}
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 mb-6">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors" style={{ background: activeTab === t.id ? "#2563eb" : "#fff", color: activeTab === t.id ? "#fff" : "#64748b", border: "1px solid", borderColor: activeTab === t.id ? "#2563eb" : "#e2e8f0" }}>
@@ -141,7 +175,7 @@ export default function ConMonProgram() {
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-800">ISCM Monitoring Strategy (NIST SP 800-137A)</h3>
-            <p className="text-xs text-slate-500 mt-1">Define monitoring frequency per control family based on risk level and automation capability</p>
+            <p className="text-xs text-slate-500 mt-1">Monitoring frequency per control family based on risk level and automation capability</p>
           </div>
           <table className="w-full text-sm">
             <thead><tr className="bg-slate-50 border-b border-slate-200">
@@ -188,10 +222,7 @@ export default function ConMonProgram() {
               <tbody className="divide-y divide-slate-100">
                 {filteredMetrics.map(m => (
                   <tr key={m.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-slate-800">{m.name}</p>
-                      <p className="text-xs text-slate-400 capitalize">{m.type}</p>
-                    </td>
+                    <td className="px-4 py-3"><p className="text-sm font-medium text-slate-800">{m.name}</p><p className="text-xs text-slate-400 capitalize">{m.type}</p></td>
                     <td className="px-4 py-3 font-bold text-slate-800">{m.lastValue}</td>
                     <td className="px-4 py-3 text-slate-500">{m.threshold}</td>
                     <td className="px-4 py-3"><StatusIndicator status={m.status} /></td>
@@ -235,20 +266,20 @@ export default function ConMonProgram() {
           <h3 className="text-sm font-bold text-slate-800 mb-4">ConMon Report Schedule</h3>
           <div className="space-y-3">
             {[
-              { name: "Monthly Vulnerability Scan Summary", due: "15th of each month", status: "overdue", lastGenerated: "Oct 15, 2024" },
-              { name: "Quarterly Control Assessment Report", due: "Jan 15, Apr 15, Jul 15, Oct 15", status: "completed", lastGenerated: "Oct 15, 2024" },
-              { name: "Annual ISCM Program Review", due: "September 30, 2025", status: "upcoming", lastGenerated: "Sep 30, 2024" },
-              { name: "FedRAMP Monthly ConMon Report", due: "1st business day of each month", status: "completed", lastGenerated: "Nov 1, 2024" },
-              { name: "CDM Dashboard Data Feed", due: "Weekly (Mondays)", status: "completed", lastGenerated: "Nov 25, 2024" },
+              { name: "Monthly Vulnerability Scan Summary", due: "15th of each month", status: "overdue", lastGenerated: "Apr 15, 2026" },
+              { name: "Quarterly Control Assessment Report", due: "Jan 15, Apr 15, Jul 15, Oct 15", status: "completed", lastGenerated: "Apr 15, 2026" },
+              { name: "Annual ISCM Program Review", due: "September 30, 2026", status: "upcoming", lastGenerated: "Sep 30, 2025" },
+              { name: "FedRAMP Monthly ConMon Report", due: "1st business day of each month", status: "completed", lastGenerated: "May 1, 2026" },
+              { name: "CDM Dashboard Data Feed", due: "Weekly (Mondays)", status: "completed", lastGenerated: "May 12, 2026" },
             ].map(r => (
               <div key={r.name} className="flex items-center justify-between p-4 rounded-xl border border-slate-200">
                 <div>
                   <p className="text-sm font-medium text-slate-800">{r.name}</p>
-                  <p className="text-xs text-slate-500">Due: {r.due}</p>
+                  <p className="text-xs text-slate-500">Due: {r.due} -- Last: {r.lastGenerated}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: r.status === "completed" ? "#22c55e22" : r.status === "overdue" ? "#ef444422" : "#f59e0b22", color: r.status === "completed" ? "#22c55e" : r.status === "overdue" ? "#ef4444" : "#f59e0b" }}>{r.status.charAt(0).toUpperCase() + r.status.slice(1)}</span>
-                  <button className="text-xs font-semibold text-blue-600 hover:text-blue-700">Generate</button>
+                  <button onClick={handleExport} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Generate</button>
                 </div>
               </div>
             ))}
