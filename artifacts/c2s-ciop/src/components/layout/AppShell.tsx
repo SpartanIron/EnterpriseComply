@@ -23,6 +23,7 @@ const NAV = [
       { path: "/remediation", label: "Remediation Board", icon: RemediationIcon },
       { path: "/gap-analysis", label: "AI Gap Analysis", icon: GapIcon },
       { path: "/assets", label: "Asset Inventory", icon: AssetIcon },
+      { path: "/custom-frameworks", label: "Custom Frameworks", icon: CustomFwIcon },
     ],
   },
   {
@@ -60,7 +61,10 @@ const NAV = [
       { path: "/ssp", label: "SSP Generator", icon: SspIcon },
       { path: "/stigs", label: "STIG Findings", icon: StigIcon },
       { path: "/zero-trust", label: "Zero Trust Assessment", icon: ZtaIcon },
-      { path: "/custom-frameworks", label: "Custom Frameworks", icon: CustomFwIcon },
+      { path: "/system-boundary", label: "System Boundary", icon: BoundaryIcon },
+      { path: "/nist-800-171", label: "NIST 800-171 Rev 3", icon: NistIcon },
+      { path: "/fisma-reporting", label: "FISMA Reporting", icon: FismaIcon },
+      { path: "/conmon", label: "ConMon Program", icon: ConMonIcon },
     ],
   },
   {
@@ -68,10 +72,6 @@ const NAV = [
     items: [
       { path: "/vuln-management", label: "Vuln Management", icon: VulnIcon },
       { path: "/control-crosswalk", label: "Control Crosswalk", icon: CrosswalkIcon },
-      { path: "/system-boundary", label: "System Boundary", icon: BoundaryIcon },
-      { path: "/nist-800-171", label: "NIST 800-171 Rev 3", icon: NistIcon },
-      { path: "/fisma-reporting", label: "FISMA Reporting", icon: FismaIcon },
-      { path: "/conmon", label: "ConMon Program", icon: ConMonIcon },
     ],
   },
 ];
