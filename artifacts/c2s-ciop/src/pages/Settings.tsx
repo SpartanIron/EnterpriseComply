@@ -148,6 +148,7 @@ export default function Settings() {
 
 function DataPortabilityExport({ orgId }: { orgId: string }) {
   const [exporting, setExporting] = useState<string | null>(null);
+  const [confirmExportAll, setConfirmExportAll] = useState(false);
 
   async function exportEvidence() {
     setExporting("evidence");
@@ -217,7 +218,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
           <p className="text-xs text-slate-500 mt-0.5">Your compliance data is yours. Export it any time, no questions asked.</p>
         </div>
         <button
-          onClick={exportAll}
+          onClick={() => setConfirmExportAll(true)}
           disabled={!!exporting}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
