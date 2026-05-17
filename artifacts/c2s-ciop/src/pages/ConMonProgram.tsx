@@ -12,22 +12,22 @@ const MONITORING_STRATEGY = [
 ];
 
 const METRIC_EVENTS = [
-  { id: "M-001", name: "Unauthorized Access Attempts", type: "security", lastValue: 23, threshold: 50, status: "normal", frequency: "real_time", integration: "Okta", lastRun: "2024-11-28T10:32:00Z" },
-  { id: "M-002", name: "Failed MFA Authentications (>3/user/day)", type: "identity", lastValue: 8, threshold: 15, status: "normal", frequency: "real_time", integration: "Cisco Duo", lastRun: "2024-11-28T10:30:00Z" },
-  { id: "M-003", name: "Critical Vulnerabilities Unpatched (>30d)", type: "vulnerability", lastValue: 2, threshold: 0, status: "alert", frequency: "weekly", integration: "Tenable.io", lastRun: "2024-11-28T02:00:00Z" },
-  { id: "M-004", name: "Endpoint Compliance Rate (MDM-enrolled)", type: "configuration", lastValue: 94, threshold: 95, status: "warning", frequency: "daily", integration: "Intune", lastRun: "2024-11-28T06:00:00Z" },
-  { id: "M-005", name: "Privileged Account Activity (off-hours)", type: "audit", lastValue: 0, threshold: 5, status: "normal", frequency: "real_time", integration: "Splunk SIEM", lastRun: "2024-11-28T10:28:00Z" },
-  { id: "M-006", name: "Data Exfiltration Anomalies", type: "dlp", lastValue: 0, threshold: 1, status: "normal", frequency: "real_time", integration: "Zscaler", lastRun: "2024-11-28T10:31:00Z" },
-  { id: "M-007", name: "Certificate Expiration (within 30 days)", type: "pki", lastValue: 3, threshold: 5, status: "warning", frequency: "daily", integration: "AWS Certificate Manager", lastRun: "2024-11-28T07:00:00Z" },
-  { id: "M-008", name: "Malware Detection Events", type: "malware", lastValue: 1, threshold: 3, status: "normal", frequency: "real_time", integration: "CrowdStrike Falcon", lastRun: "2024-11-28T10:25:00Z" },
-  { id: "M-009", name: "Container Image Vulnerabilities (Critical)", type: "container", lastValue: 4, threshold: 0, status: "alert", frequency: "weekly", integration: "Wiz", lastRun: "2024-11-28T02:30:00Z" },
-  { id: "M-010", name: "Audit Log Coverage (% of systems)", type: "audit", lastValue: 98, threshold: 100, status: "warning", frequency: "daily", integration: "Splunk SIEM", lastRun: "2024-11-28T08:00:00Z" },
+  { id: "M-001", name: "Unauthorized Access Attempts", type: "security", lastValue: 23, threshold: 50, status: "normal", frequency: "real_time", integration: "Okta", lastRun: "2026-05-13T10:32:00Z" },
+  { id: "M-002", name: "Failed MFA Authentications (>3/user/day)", type: "identity", lastValue: 8, threshold: 15, status: "normal", frequency: "real_time", integration: "Cisco Duo", lastRun: "2026-05-13T10:30:00Z" },
+  { id: "M-003", name: "Critical Vulnerabilities Unpatched (>30d)", type: "vulnerability", lastValue: 2, threshold: 0, status: "alert", frequency: "weekly", integration: "Tenable.io", lastRun: "2026-05-13T02:00:00Z" },
+  { id: "M-004", name: "Endpoint Compliance Rate (MDM-enrolled)", type: "configuration", lastValue: 94, threshold: 95, status: "warning", frequency: "daily", integration: "Intune", lastRun: "2026-05-13T06:00:00Z" },
+  { id: "M-005", name: "Privileged Account Activity (off-hours)", type: "audit", lastValue: 0, threshold: 5, status: "normal", frequency: "real_time", integration: "Splunk SIEM", lastRun: "2026-05-13T10:28:00Z" },
+  { id: "M-006", name: "Data Exfiltration Anomalies", type: "dlp", lastValue: 0, threshold: 1, status: "normal", frequency: "real_time", integration: "Zscaler", lastRun: "2026-05-13T10:31:00Z" },
+  { id: "M-007", name: "Certificate Expiration (within 30 days)", type: "pki", lastValue: 3, threshold: 5, status: "warning", frequency: "daily", integration: "AWS Certificate Manager", lastRun: "2026-05-13T07:00:00Z" },
+  { id: "M-008", name: "Malware Detection Events", type: "malware", lastValue: 1, threshold: 3, status: "normal", frequency: "real_time", integration: "CrowdStrike Falcon", lastRun: "2026-05-13T10:25:00Z" },
+  { id: "M-009", name: "Container Image Vulnerabilities (Critical)", type: "container", lastValue: 4, threshold: 0, status: "alert", frequency: "weekly", integration: "Wiz", lastRun: "2026-05-13T02:30:00Z" },
+  { id: "M-010", name: "Audit Log Coverage (% of systems)", type: "audit", lastValue: 98, threshold: 100, status: "warning", frequency: "daily", integration: "Splunk SIEM", lastRun: "2026-05-13T08:00:00Z" },
 ];
 
 const DRIFT_EVENTS = [
-  { date: "2024-11-25", metric: "Endpoint Compliance Rate", previousValue: 97, currentValue: 94, changePercent: -3.1, trigger: "15 new endpoints added without Intune enrollment" },
-  { date: "2024-11-22", metric: "Certificate Coverage", previousValue: 100, currentValue: 97, changePercent: -3.0, trigger: "3 legacy certificates approaching expiry in staging environment" },
-  { date: "2024-11-20", metric: "Critical Vuln Unpatched", previousValue: 0, currentValue: 2, changePercent: 200, trigger: "CVE-2024-1234 (OpenSSL) and CVE-2024-3322 (Docker) detected" },
+  { date: "2026-05-10", metric: "Endpoint Compliance Rate", previousValue: 97, currentValue: 94, changePercent: -3.1, trigger: "15 new endpoints added without Intune enrollment" },
+  { date: "2026-05-07", metric: "Certificate Coverage", previousValue: 100, currentValue: 97, changePercent: -3.0, trigger: "3 legacy certificates approaching expiry in staging environment" },
+  { date: "2026-05-05", metric: "Critical Vuln Unpatched", previousValue: 0, currentValue: 2, changePercent: 200, trigger: "CVE-2024-1234 (OpenSSL) and CVE-2024-3322 (Docker) detected" },
 ];
 
 function StatusIndicator({ status }: { status: string }) {
