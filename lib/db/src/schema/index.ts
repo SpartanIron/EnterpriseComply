@@ -16,3 +16,4 @@ export * from "./notifications";
 export * from "./testRuns";
 export * from "./orgStigs";
 export * from "./orgRemediation";
+export * from "./orgZeroTrust";
