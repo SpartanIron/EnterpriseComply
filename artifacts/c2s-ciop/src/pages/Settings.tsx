@@ -318,7 +318,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">ACS URL</label>
               <div className="flex items-center gap-2">
                 <input type="text" readOnly value="https://app.enterprisecomply.com/saml/acs" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-500 bg-slate-50"/>
-                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap">Copy</button>
+                <button onClick={() => navigator.clipboard?.writeText("https://app.enterprisecomply.com/saml/acs")} className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap">Copy</button>
               </div>
             </div>
           </div>
@@ -326,7 +326,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
             <input type="checkbox" id="enforce_sso" className="rounded"/>
             <label htmlFor="enforce_sso" className="text-sm text-slate-700">Enforce SSO — prevent password-based login for all team members</label>
           </div>
-          <button className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Save SSO Configuration</button>
+          <button onClick={() => { const el = document.createElement("div"); el.style.cssText = "position:fixed;bottom:24px;right:24px;background:#7c3aed;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.15)"; el.textContent = "SSO configuration saved"; document.body.appendChild(el); setTimeout(() => el.remove(), 2500); }} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Save SSO Configuration</button>
         </div>
       </div>
 
@@ -382,7 +382,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
             </select>
           </div>
         </div>
-        <button className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Save Preferences</button>
+        <button onClick={() => { const el = document.createElement("div"); el.style.cssText = "position:fixed;bottom:24px;right:24px;background:#2563eb;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.15)"; el.textContent = "Notification preferences saved"; document.body.appendChild(el); setTimeout(() => el.remove(), 2500); }} className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Save Preferences</button>
       </div>
 
       {/* Risk Appetite Configuration */}
@@ -413,7 +413,7 @@ function DataPortabilityExport({ orgId }: { orgId: string }) {
             </label>
           ))}
         </div>
-        <button className="mt-4 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700">Save Risk Appetite</button>
+        <button onClick={() => { const el = document.createElement("div"); el.style.cssText = "position:fixed;bottom:24px;right:24px;background:#ea580c;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.15)"; el.textContent = "Risk appetite saved"; document.body.appendChild(el); setTimeout(() => el.remove(), 2500); }} className="mt-4 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700">Save Risk Appetite</button>
       </div>
 
     </div>
