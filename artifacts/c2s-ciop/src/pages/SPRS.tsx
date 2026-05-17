@@ -228,7 +228,7 @@ export default function SPRS() {
           <h1 className="text-xl font-bold text-slate-900">SPRS Score Calculator</h1>
           <p className="text-sm text-slate-500 mt-0.5">Supplier Performance Risk System - NIST SP 800-171 / CMMC Level 2 DoD Assessment Methodology v1.2.1</p>
         </div>
-        <a href="https://www.nist.gov/system/files/documents/2021/11/01/NIST%20SP%20800-171%20DoD%20Assessment%20Methodology%20Version%201.2.1%20September%202020.pdf"
+        <a href="https://www.acq.osd.mil/asda/dpc/cp/cyber/docs/safeguarding/NIST-SP-800-171-Assessment-Methodology-Version-1.2.1-6.24.2020.pdf"
           target="_blank" rel="noopener noreferrer"
           className="text-xs text-blue-600 hover:underline">DoD Methodology PDF</a>
       </div>
