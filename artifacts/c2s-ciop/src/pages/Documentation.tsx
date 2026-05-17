@@ -38,6 +38,9 @@ const NAV_SECTIONS = [
   { id: "questionnaires",  label: "Questionnaires",  icon: "question" },
   { id: "remediation",     label: "Remediation Board", icon: "flag" },
   { id: "federal",         label: "Federal Compliance", icon: "globe" },
+  { id: "zero-trust",      label: "Zero Trust Assessment", icon: "shield" },
+  { id: "conmon",          label: "ConMon Program",        icon: "activity" },
+  { id: "crosswalk",       label: "Control Crosswalk",     icon: "grid" },
   { id: "test-runs",       label: "Test Run History", icon: "check" },
   { id: "assets",          label: "Asset Inventory", icon: "lock" },
   { id: "settings",        label: "Settings & Admin", icon: "cog" },
@@ -688,7 +691,138 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
       }
     ]
   },
-  "test-runs": {
+    "zero-trust": {
+    title: "Zero Trust Assessment",
+    intro: "The Zero Trust Assessment module evaluates your organization against CISA ZTMM v2.0 (Zero Trust Maturity Model) across 5 pillars: Identity, Devices, Networks, Applications & Workloads, and Data. Each pillar is scored from Traditional (0%) through Initial, Advanced, to Optimal (100%). Overall maturity is captured as a RAG (Red/Amber/Green) status.",
+    items: [
+      {
+        heading: "Running Your ZTA Score",
+        body: "Click the Run ZTA Score button in the top-right of the Zero Trust Assessment page to trigger an automated scoring pass. The engine reads your current control evidence and generates per-pillar maturity scores, dependency cap violations, and gap findings.",
+        steps: [
+          "Navigate to Federal > Zero Trust Assessment",
+          "Click Run ZTA Score (or Run First Score on a fresh account)",
+          "Wait for the Scoring... indicator to resolve",
+          "Review the pillar score cards - each shows a maturity stage badge (Traditional/Initial/Advanced/Optimal)",
+          "Click any pillar card to see the function-level breakdown in the right panel",
+          "Check the Gap Analysis tab for prioritized remediation findings mapped to NIST 800-53 and UCO controls"
+        ]
+      },
+      {
+        heading: "Understanding Pillar Scores",
+        body: "Each of the 5 ZTMM pillars is scored 0-100%. Scores are capped by dependency rules: for example, Networks cannot advance to Advanced if Identity remains at Traditional. The Dependency Cap Violations panel in the overview tab highlights any active caps and explains the rule.",
+        steps: [
+          "Traditional (0-25%): Basic controls in place but not systematic",
+          "Initial (25-50%): Defined processes and some automation",
+          "Advanced (50-75%): Automated enforcement with visibility",
+          "Optimal (75-100%): Adaptive, continuously monitored ZT architecture",
+          "A red warning badge on a pillar card indicates an active dependency cap"
+        ]
+      },
+      {
+        heading: "ZTMM Crosswalk Tab",
+        body: "The ZTMM Crosswalk tab maps every Zero Trust function to corresponding NIST SP 800-53 Rev 5 controls, UCO controls, and evidence artifacts. Use this to demonstrate ZT compliance posture during audits.",
+        steps: [
+          "Click the ZTMM Crosswalk tab on the Zero Trust Assessment page",
+          "Review the mapping of each pillar function to NIST 800-53 controls",
+          "Use the UCO control column to trace evidence artifacts",
+          "Export the crosswalk data for audit documentation"
+        ]
+      },
+      {
+        heading: "Score Trend History",
+        body: "The Score Trend tab shows your ZTA score history over the last 90 days. Run the assessment regularly (at least monthly) to build a trend graph. Each snapshot records the overall score, maturity level, and a delta versus the previous run.",
+        steps: [
+          "Click the Score Trend tab",
+          "Run multiple ZTA Scores over time to generate trend data",
+          "Green delta (+%) indicates improvement; red indicates regression",
+          "Export trend data for CISA ZTMM compliance reporting"
+        ]
+      }
+    ]
+  },
+  "conmon": {
+    title: "Continuous Monitoring Program",
+    intro: "The ConMon Program page implements NIST SP 800-137A ISCM (Information Security Continuous Monitoring) requirements, FedRAMP ConMon, and OMB Circular A-130. It provides a live dashboard of 10 automated security metrics from integrated tools including Okta, Splunk SIEM, Tenable.io, Wiz, and CrowdStrike Falcon.",
+    items: [
+      {
+        heading: "ISCM Dashboard",
+        body: "The ISCM Dashboard shows the current status of all monitored metrics segmented by Normal, Warning, and Alert states. Metrics that breach their thresholds are highlighted in red (Alert) or amber (Warning). Normal metrics are grouped at the bottom.",
+        steps: [
+          "Navigate to Federal > ConMon Program",
+          "Review the status banner (Metrics Monitored, Normal, Warnings, Active Alerts)",
+          "Active Alert metrics are listed first with source tool and last check timestamp",
+          "Click Export ConMon Report to download a text report of all metric statuses and drift events"
+        ]
+      },
+      {
+        heading: "Monitoring Strategy",
+        body: "The Monitoring Strategy tab documents your ISCM monitoring frequency per control family per NIST SP 800-137A. Five categories are defined: Ongoing (real-time), Weekly, Monthly, Quarterly, and Annual - each mapped to specific NIST 800-53 controls, methods, and tools.",
+        steps: [
+          "Click the Monitoring Strategy tab",
+          "Review frequency cadences mapped to control families",
+          "Continuous monitoring covers AC-2, AU-6, IR-4, SI-4, and related high-risk controls",
+          "Use this table as evidence for FedRAMP ConMon program documentation"
+        ]
+      },
+      {
+        heading: "Score Drift Detection",
+        body: "The Score Drift Detection tab tracks regression events - significant drops in metric values that indicate a deteriorating security posture. Any regression > 2% triggers notification. Each drift event includes the trigger cause, before/after values, and percentage change.",
+        steps: [
+          "Click the Score Drift Detection tab",
+          "Review recent drift events with dates and trigger causes",
+          "Red negative percentages indicate score regression",
+          "Drift events that meet POA&M thresholds should be elevated to the Risk Register"
+        ]
+      },
+      {
+        heading: "Exporting ConMon Reports",
+        body: "The Export ConMon Report button (top-right) and the Generate button on individual report schedules both download a structured text report. The report includes the ISCM executive summary, all metric statuses with thresholds and sources, and all drift events - suitable for FedRAMP monthly ConMon submission.",
+        steps: [
+          "Click Export ConMon Report from any tab",
+          "A .txt file downloads named conmon-report-[date].txt",
+          "The ConMon Reports tab shows scheduled report due dates",
+          "Click Generate next to any scheduled report to download the same report"
+        ]
+      }
+    ]
+  },
+  "crosswalk": {
+    title: "Control Crosswalk Engine",
+    intro: "The Control Crosswalk Engine provides a single-pane multi-framework mapping of your UCO (Universal Control Object) controls to NIST 800-53 Rev 5, CMMC 2.0, NIST 800-171 Rev 3, SOC 2 TSC, and ISO 27001:2022. 14 UCO controls are mapped across 5 frameworks with coverage percentages and integration sources.",
+    items: [
+      {
+        heading: "Viewing the Crosswalk",
+        body: "The crosswalk table lists each UCO control with its status (Passing/Partial/Failing) and the corresponding control identifiers from each active framework. Coverage bars show what percentage of framework requirements are satisfied.",
+        steps: [
+          "Navigate to Compliance > Controls, then select Control Crosswalk from the breadcrumb or direct navigation",
+          "Review the summary stats: total UCO controls, passing/partial/failing counts, and average coverage",
+          "Toggle individual framework columns using the Active Frameworks selector",
+          "Click any row to expand the full framework mapping and see all connected integrations"
+        ]
+      },
+      {
+        heading: "Filtering and Searching",
+        body: "Use the search bar to filter by UCO ID or control name. Filter by control family (Access Control, Configuration Management, Vulnerability Management, etc.) and by status (Passing, Partial, Failing).",
+        steps: [
+          "Type a UCO ID (e.g. UCO-AC-001) or control name in the search bar",
+          "Select a family from the dropdown to view controls by domain",
+          "Set status filter to Failing to see gaps requiring remediation",
+          "Combine filters for targeted analysis"
+        ]
+      },
+      {
+        heading: "Exporting the Crosswalk",
+        body: "Click Export Crosswalk to download a CSV file of all filtered crosswalk data. The export includes UCO ID, control name, family, status, coverage percentage, all active framework control mappings, and integration sources. Use this for audit evidence packages and gap analysis documentation.",
+        steps: [
+          "Apply any desired filters to narrow the crosswalk data",
+          "Click the Export Crosswalk button (top-right)",
+          "A CSV file downloads named control-crosswalk-[date].csv",
+          "Import the CSV into Excel or your GRC documentation system"
+        ]
+      }
+    ]
+  },
+"test-runs": {
     title: "Test Run History",
     intro: "Automated control tests run on a schedule against your connected integrations to provide continuous compliance monitoring. The Test Run History page shows all past runs, their results, and any failures.",
     sections: [
