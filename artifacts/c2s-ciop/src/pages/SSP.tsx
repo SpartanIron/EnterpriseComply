@@ -548,11 +548,18 @@ export default function SSP() {
             )}
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex items-center justify-between pt-2">
+            {(!form.systemName || !form.systemOwner || !form.systemOwnerEmail) ? (
+              <p className="text-xs text-amber-600 flex items-center gap-1.5">
+                <svg className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                Complete required (*) fields to continue
+              </p>
+            ) : <span />}
             <button onClick={() => setStep(2)}
               disabled={!form.systemName || !form.systemOwner || !form.systemOwnerEmail}
-              className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              Next
+              className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+              Next: Environment
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
         </div>
@@ -681,7 +688,10 @@ export default function SSP() {
           </div>
 
           <div className="flex justify-between pt-2">
-            <button onClick={() => setStep(1)} className="px-5 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50">Back</button>
+            <button onClick={() => setStep(1)} className="px-5 py-2 text-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 flex items-center gap-2">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                Back: System Info
+              </button>
             <button onClick={() => generateMutation.mutate(form)} disabled={generateMutation.isPending}
               className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
               {generateMutation.isPending ? "Generating SSP..." : "Generate SSP"}
