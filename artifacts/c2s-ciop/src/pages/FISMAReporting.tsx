@@ -58,7 +58,10 @@ export default function FISMAReporting() {
         </div>
         <div className="flex items-center gap-2">
           <select value={activeQuarter} onChange={e => setActiveQuarter(e.target.value)} className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="fy2025">Q1 FY2025 (Oct-Dec 2024)</option>
+            <option value="fy2026q3">Q3 FY2026 (Apr-Jun 2026)</option>
+            <option value="fy2026q2">Q2 FY2026 (Jan-Mar 2026)</option>
+            <option value="fy2026q1">Q1 FY2026 (Oct-Dec 2025)</option>
+            <option value="fy2025">Q4 FY2025 (Jul-Sep 2025)</option>
             <option value="fy2024q4">Q4 FY2024 (Jul-Sep 2024)</option>
           </select>
           <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#2563eb" }}>
