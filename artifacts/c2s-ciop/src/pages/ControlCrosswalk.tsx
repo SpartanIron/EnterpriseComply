@@ -137,8 +137,37 @@ function StatusBadge({ status }: { status: string }) {
   return <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: c.color + "22", color: c.color }}>{c.label}</span>;
 }
 
+
+function exportCrosswalkCsv(data: typeof CROSSWALK_DATA, activeFrameworks: string[], frameworks: typeof FRAMEWORKS) {
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const activeFrameworkList = frameworks.filter(f => activeFrameworks.includes(f.key));
+  const headers = ["UCO ID", "Control Name", "Family", "Status", "Coverage %"];
+  activeFrameworkList.forEach(fw => headers.push(fw.label));
+  headers.push("Integrations");
+  const rows: string[][] = [headers];
+  data.forEach(ctrl => {
+    const row = [ctrl.ucoId, ctrl.ucoName, ctrl.family, ctrl.status, String(ctrl.coverage)];
+    activeFrameworkList.forEach(fw => row.push((ctrl as any)[fw.key]?.join("; ") || ""));
+    row.push(ctrl.integrations.join("; "));
+    rows.push(row);
+  });
+  const csv = rows.map(r => r.map(c => JSON.stringify(c)).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "control-crosswalk-" + dateStr + ".csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ControlCrosswalk() {
   const [search, setSearch] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  function handleExport() {
+    setExporting(true);
+    setTimeout(() => { exportCrosswalkCsv(filtered, activeFrameworks, FRAMEWORKS); setExporting(false); }, 400);
+  }
   const [filterFamily, setFilterFamily] = useState("All");
   const [filterStatus, setFilterStatus] = useState("all");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -170,9 +199,9 @@ export default function ControlCrosswalk() {
           <h1 className="text-2xl font-bold text-slate-900">Control Crosswalk Engine</h1>
           <p className="text-sm text-slate-500 mt-1">Single-pane multi-framework mapping: UCO controls to NIST 800-53, CMMC, NIST 800-171, SOC 2, and ISO 27001</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#2563eb" }}>
+        <button onClick={handleExport} disabled={exporting} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: "#2563eb" }}>
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-          Export Crosswalk
+          {exporting ? "Exporting..." : "Export Crosswalk"}
         </button>
       </div>
 
