@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import AppShell from "./components/layout/AppShell";
 import Landing from "./pages/Landing";
 import Onboarding from "./pages/Onboarding";
-import Dashboard from "./pages/Dashboard";
 import Frameworks from "./pages/Frameworks";
 import Controls from "./pages/Controls";
 import Integrations from "./pages/Integrations";
@@ -38,6 +37,12 @@ import NotFound from "./pages/not-found";
 import AssetInventory from "./pages/AssetInventory";
 import Documentation from "./pages/Documentation";
 import ZeroTrustAssessment from "./pages/ZeroTrustAssessment";
+import SystemBoundary from "./pages/SystemBoundary";
+import ControlCrosswalk from "./pages/ControlCrosswalk";
+import VulnManagement from "./pages/VulnManagement";
+import NIST800171 from "./pages/NIST800171";
+import ConMonProgram from "./pages/ConMonProgram";
+import FISMAReporting from "./pages/FISMAReporting";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -168,6 +173,12 @@ function AppRoutes() {
         <Route path="/assets" component={() => <AppShell><AssetInventory /></AppShell>} />
         <Route path="/docs" component={() => <AppShell><Documentation /></AppShell>} />
       <Route path="/zero-trust" component={() => <AppShell><ZeroTrustAssessment /></AppShell>} />
+<Route path="/system-boundary" component={() => <AppShell><SystemBoundary /></AppShell>} />
+<Route path="/control-crosswalk" component={() => <AppShell><ControlCrosswalk /></AppShell>} />
+<Route path="/vuln-management" component={() => <AppShell><VulnManagement /></AppShell>} />
+<Route path="/nist-800-171" component={() => <AppShell><NIST800171 /></AppShell>} />
+<Route path="/conmon" component={() => <AppShell><ConMonProgram /></AppShell>} />
+<Route path="/fisma-reporting" component={() => <AppShell><FISMAReporting /></AppShell>} />
       <Route component={NotFound} />
     </Switch>
   );
