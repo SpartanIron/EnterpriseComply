@@ -36,6 +36,7 @@ import { ScapModule } from "./modules/scap/scap.module";
 import { AuditSharesModule } from "./modules/audit-shares/audit-shares.module";
 import { GoogleWorkspaceModule } from "./modules/google-workspace/google-workspace.module";
 import { AssetsModule } from "./modules/assets/assets.module";
+import { ZeroTrustModule } from "./modules/zero-trust/zero-trust.module";
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { AssetsModule } from "./modules/assets/assets.module";
     ClientPortalModule,
     GoogleWorkspaceModule,
 		AssetsModule,
+    ZeroTrustModule,
   ],
   providers: [
     {
