@@ -31,11 +31,14 @@ const CONTROL_INHERITANCE = [
 const MOCK_SYSTEMS = [
   { id: 1, name: "Core Identity Platform", systemId: "EC-SYS-001", fipsConfidentiality: "Moderate", fipsIntegrity: "Moderate", fipsAvailability: "Moderate", overallCategory: "Moderate", atoStatus: "authorized", atoExpires: "2026-11-15", authorizingOfficial: "John Smith, AO", systemOwner: "Alice Johnson", issm: "Bob Williams", description: "Primary identity & access management infrastructure including Okta, Entra ID, and supporting SSO services.", infoTypes: ["C.2.8.3", "D.9.1.1"], components: ["Okta Identity Cloud", "Microsoft Entra ID", "Cisco Duo MFA", "HashiCorp Vault"], interconnections: ["EC-SYS-002 (read)", "EC-SYS-004 (bidirectional)"], commonControls: ["AC-2", "IA-2", "SC-7", "AU-2"] },
   { id: 2, name: "Endpoint Security Platform", systemId: "EC-SYS-002", fipsConfidentiality: "Moderate", fipsIntegrity: "High", fipsAvailability: "Low", overallCategory: "High", atoStatus: "in_progress", atoExpires: null, authorizingOfficial: "TBD", systemOwner: "Carol Davis", issm: "David Lee", description: "Endpoint detection, response, and device management including CrowdStrike Falcon, Intune, and Jamf.", infoTypes: ["C.3.2.1", "C.3.5.1"], components: ["CrowdStrike Falcon", "Microsoft Intune", "Jamf Pro", "SentinelOne"], interconnections: ["EC-SYS-001 (read)", "EC-SYS-003 (write)"], commonControls: ["CM-6", "SI-3", "SC-8", "AU-2"] },
-  { id: 3, name: "DevSecOps Pipeline", systemId: "EC-SYS-003", fipsConfidentiality: "Low", fipsIntegrity: "Moderate", fipsAvailability: "Low", overallCategory: "Moderate", atoStatus: "authorized", atoExpires: "2025-08-30", authorizingOfficial: "Jane Miller, AO", systemOwner: "Eve Martinez", issm: "Frank Thompson", description: "CI/CD pipeline, application security scanning, and code repository services.", infoTypes: ["C.3.2.1", "C.3.5.1", "D.17.1"], components: ["GitHub Enterprise", "Snyk", "Veracode", "Checkmarx", "SonarQube"], interconnections: ["EC-SYS-002 (read)", "EC-SYS-004 (write)"], commonControls: ["SA-11", "CM-3", "AU-12", "SI-7"] },
+  { id: 3, name: "DevSecOps Pipeline", systemId: "EC-SYS-003", fipsConfidentiality: "Low", fipsIntegrity: "Moderate", fipsAvailability: "Low", overallCategory: "Moderate", atoStatus: "authorized", atoExpires: "2027-08-30", authorizingOfficial: "Jane Miller, AO", systemOwner: "Eve Martinez", issm: "Frank Thompson", description: "CI/CD pipeline, application security scanning, and code repository services.", infoTypes: ["C.3.2.1", "C.3.5.1", "D.17.1"], components: ["GitHub Enterprise", "Snyk", "Veracode", "Checkmarx", "SonarQube"], interconnections: ["EC-SYS-002 (read)", "EC-SYS-004 (write)"], commonControls: ["SA-11", "CM-3", "AU-12", "SI-7"] },
   { id: 4, name: "Cloud Infrastructure", systemId: "EC-SYS-004", fipsConfidentiality: "High", fipsIntegrity: "High", fipsAvailability: "High", overallCategory: "High", atoStatus: "authorized", atoExpires: "2027-03-22", authorizingOfficial: "Jane Miller, AO", systemOwner: "George Brown", issm: "Helen Clark", description: "AWS GovCloud workloads, containerized services, and network security infrastructure.", infoTypes: ["C.2.8.3", "C.3.2.1", "C.3.3.1", "D.17.1"], components: ["AWS GovCloud", "Wiz", "Orca Security", "Lacework", "Cisco Umbrella"], interconnections: ["EC-SYS-001 (bidirectional)", "EC-SYS-003 (read)"], commonControls: ["SC-7", "SC-8", "AC-17", "CA-3", "AU-6"] },
 ];
 
-function getStatusMeta(status: string) {
+function getStatusMeta(status: string, atoExpires?: string | null) {
+  if (status === "authorized" && atoExpires && new Date(atoExpires) < new Date()) {
+    return ATO_STATUSES.find(s => s.value === "ato_expired") ?? ATO_STATUSES[0];
+  }
   return ATO_STATUSES.find(s => s.value === status) ?? ATO_STATUSES[0];
 }
 
@@ -93,7 +96,7 @@ export default function SystemBoundary() {
       <div className="flex gap-4">
         <div className="w-72 flex-shrink-0 space-y-2">
           {systems.map(sys => {
-            const sm = getStatusMeta(sys.atoStatus);
+            const sm = getStatusMeta(sys.atoStatus, sys.atoExpires);
             const active = activeSystem?.id === sys.id;
             return (
               <button key={sys.id} onClick={() => { setActiveSystem(sys); setActiveTab("overview"); }} className="w-full text-left p-4 rounded-xl border transition-all" style={{ background: active ? "#eff6ff" : "#fff", borderColor: active ? "#2563eb" : "#e2e8f0" }}>
@@ -124,7 +127,7 @@ export default function SystemBoundary() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-mono text-slate-400">{activeSystem.systemId}</span>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: getStatusMeta(activeSystem.atoStatus).color + "22", color: getStatusMeta(activeSystem.atoStatus).color }}>{getStatusMeta(activeSystem.atoStatus).label}</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: getStatusMeta(activeSystem.atoStatus, activeSystem.atoExpires).color + "22", color: getStatusMeta(activeSystem.atoStatus, activeSystem.atoExpires).color }}>{getStatusMeta(activeSystem.atoStatus, activeSystem.atoExpires).label}</span>
                     </div>
                     <h2 className="text-lg font-bold text-slate-900">{activeSystem.name}</h2>
                     <p className="text-sm text-slate-500 mt-1 max-w-xl">{activeSystem.description}</p>
@@ -149,7 +152,7 @@ export default function SystemBoundary() {
                           { label: "Authorizing Official", value: activeSystem.authorizingOfficial || "Not assigned" },
                           { label: "System Owner", value: activeSystem.systemOwner },
                           { label: "ISSM", value: activeSystem.issm },
-                          { label: "ATO Status", value: getStatusMeta(activeSystem.atoStatus).label },
+                          { label: "ATO Status", value: getStatusMeta(activeSystem.atoStatus, activeSystem.atoExpires).label },
                           { label: "ATO Expiration", value: activeSystem.atoExpires ? new Date(activeSystem.atoExpires).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "Not authorized" },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex items-start gap-2">
