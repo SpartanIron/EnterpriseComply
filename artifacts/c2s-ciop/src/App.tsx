@@ -104,6 +104,12 @@ function HomeRedirect() {
   return null;
 }
 
+function RedirectTo({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate(to); }, [to, navigate]);
+  return null;
+}
+
 function AppRoutes() {
   return (
     <Switch>
@@ -152,6 +158,8 @@ function AppRoutes() {
       <Route path="/vendors" component={() => <AppShell><Vendors /></AppShell>} />
       {/* Risk & Compliance */}
       <Route path="/risks" component={() => <AppShell><RiskRegister /></AppShell>} />
+      <Route path="/risk-register" component={() => <RedirectTo to="/risks" />} />
+      <Route path="/compliance" component={() => <RedirectTo to="/frameworks" />} />
       <Route path="/questionnaires" component={() => <AppShell><Questionnaires /></AppShell>} />
       <Route path="/audits" component={() => <AppShell><Audits /></AppShell>} />
       <Route path="/trust-center" component={() => <AppShell><TrustCenter /></AppShell>} />
