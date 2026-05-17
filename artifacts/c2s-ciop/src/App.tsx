@@ -5,6 +5,7 @@ import { queryClient } from "./lib/queryClient";
 import { useEffect } from "react";
 import AppShell from "./components/layout/AppShell";
 import Landing from "./pages/Landing";
+import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import Frameworks from "./pages/Frameworks";
 import Controls from "./pages/Controls";
