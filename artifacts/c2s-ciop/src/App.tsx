@@ -37,6 +37,7 @@ import Stigs from "./pages/Stigs";
 import NotFound from "./pages/not-found";
 import AssetInventory from "./pages/AssetInventory";
 import Documentation from "./pages/Documentation";
+import ZeroTrustAssessment from "./pages/ZeroTrustAssessment";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -166,6 +167,7 @@ function AppRoutes() {
       <Route path="/test-runs" component={() => <AppShell><TestRunHistory /></AppShell>} />
         <Route path="/assets" component={() => <AppShell><AssetInventory /></AppShell>} />
         <Route path="/docs" component={() => <AppShell><Documentation /></AppShell>} />
+      <Route path="/zero-trust" component={() => <AppShell><ZeroTrustAssessment /></AppShell>} />
       <Route component={NotFound} />
     </Switch>
   );
