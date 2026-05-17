@@ -284,6 +284,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         {/* Bottom */}
         <div className="px-2.5 pb-3 pt-2 space-y-0.5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="px-2.5 py-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(100,116,139,0.9)" }}>Account</span>
+          </div>
           {[
             { path: "/settings", label: "Settings", Icon: SettingsIcon },
             { path: "/audit-log", label: "Audit Log", Icon: AuditLogIcon },
