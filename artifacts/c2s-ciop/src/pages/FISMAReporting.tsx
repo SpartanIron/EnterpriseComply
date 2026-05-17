@@ -38,9 +38,36 @@ function StatusDot({ status }: { status: string }) {
   return <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: c }} />;
 }
 
+
+function downloadFISMAReport(quarter: string, reportingPeriod: string, domains: any[], title: string) {
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const rLines: string[] = [];
+  rLines.push("FISMA REPORTING PACKAGE - " + title);
+  rLines.push("Quarter: " + quarter);
+  rLines.push("Reporting Period: " + reportingPeriod);
+  rLines.push("Generated: " + now.toLocaleString());
+  rLines.push("Framework: OMB M-21-02 | CISA FISMA Metrics | FITARA");
+  rLines.push("");
+  rLines.push("=== CIO METRICS SCORECARD ===");
+  domains.forEach((d: any) => {
+    rLines.push(d.name + ": " + d.score + "% [" + d.grade + "] - " + d.status.toUpperCase());
+    rLines.push("  NIST: " + d.nistControls.join(", "));
+    rLines.push("  " + d.details);
+    rLines.push("");
+  });
+  const blob = new Blob([rLines.join("\n")], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "fisma-report-" + dateStr + ".txt"; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function FISMAReporting() {
   const [activeTab, setActiveTab] = useState<"scorecard"|"poam"|"incidents"|"ato"|"export">("scorecard");
   const [activeQuarter, setActiveQuarter] = useState("fy2026q3");
+  const [exporting, setExporting] = useState(false);
+  function handleReport(t = "FISMA") { setExporting(true); setTimeout(() => { downloadFISMAReport(metrics.quarter, metrics.reportingPeriod, metrics.domains, t); setExporting(false); }, 400); }
   const metrics = FISMA_METRICS[activeQuarter as keyof typeof FISMA_METRICS] ?? FISMA_METRICS.fy2026q3;
   const tabs = [
     { id: "scorecard" as const, label: "FISMA Scorecard" },
@@ -64,9 +91,9 @@ export default function FISMAReporting() {
             <option value="fy2025">Q4 FY2025 (Jul-Sep 2025)</option>
             <option value="fy2024q4">Q4 FY2024 (Jul-Sep 2024)</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#2563eb" }}>
+          <button onClick={() => handleReport()} disabled={exporting} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: "#2563eb" }}>
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            Generate Report
+            {exporting ? "Generating..." : "Generate Report"}
           </button>
         </div>
       </div>
@@ -226,10 +253,10 @@ export default function FISMAReporting() {
                   <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600">{p.format}</span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed mb-3">{p.desc}</p>
-                <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700">
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                  Generate & Download
-                </button>
+                <button onClick={() => handleReport(p.title)} className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Generate & Download
+              </button>
               </div>
             ))}
           </div>
