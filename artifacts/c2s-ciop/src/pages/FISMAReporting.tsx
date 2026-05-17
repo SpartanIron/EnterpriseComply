@@ -5,10 +5,10 @@ import { apiUrl } from "@/lib/queryClient";
 // FISMA Annual & Quarterly Reporting - CIO Metrics for FITARA Scorecard
 
 const FISMA_METRICS = {
-  fy2025: {
-    quarter: "Q1 FY2025",
-    reportingPeriod: "Oct 1 - Dec 31, 2024",
-    dueDate: "February 14, 2025",
+  fy2026q3: {
+    quarter: "Q3 FY2026",
+    reportingPeriod: "Apr 1 - Jun 30, 2026",
+    dueDate: "August 14, 2026",
     overallScore: "B+",
     domains: [
       { id: "id_mgmt", name: "Identity Management", score: 92, weight: 11, grade: "A", trend: "up", nistControls: ["IA-2", "IA-5", "IA-8"], status: "green", details: "MFA enforced for 98% of users. ICAM program active. PIV-compatible authentication deployed." },
@@ -40,8 +40,8 @@ function StatusDot({ status }: { status: string }) {
 
 export default function FISMAReporting() {
   const [activeTab, setActiveTab] = useState<"scorecard"|"poam"|"incidents"|"ato"|"export">("scorecard");
-  const [activeQuarter, setActiveQuarter] = useState("fy2025");
-  const metrics = FISMA_METRICS.fy2025;
+  const [activeQuarter, setActiveQuarter] = useState("fy2026q3");
+  const metrics = FISMA_METRICS[activeQuarter as keyof typeof FISMA_METRICS] ?? FISMA_METRICS.fy2026q3;
   const tabs = [
     { id: "scorecard" as const, label: "FISMA Scorecard" },
     { id: "poam" as const, label: "POA&M Summary" },
