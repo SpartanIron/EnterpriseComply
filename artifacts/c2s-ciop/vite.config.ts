@@ -4,8 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 const isProduction = process.env.NODE_ENV === "production";
-const isReplit = process.env.REPL_ID !== undefined;
-
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 5173;
 
@@ -18,6 +16,7 @@ if (rawPort && (Number.isNaN(port) || port <= 0)) {
 const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
+  cacheDir: false,
   base: basePath,
   plugins: [
     react(),
