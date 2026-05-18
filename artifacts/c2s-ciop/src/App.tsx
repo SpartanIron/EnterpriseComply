@@ -46,6 +46,7 @@ import ConMonProgram from "./pages/ConMonProgram";
 import FISMAReporting from "./pages/FISMAReporting";
 import SuperAdmin from "./pages/SuperAdmin";
 import RoleManagement from "./pages/RoleManagement";
+// RBAC v3
 import { RoleProvider } from "./context/RoleContext";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
