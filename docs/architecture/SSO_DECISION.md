@@ -139,10 +139,23 @@ When a path is selected and executed, append the post-execution runbook to this 
 
 ## 7. Decision
 
-- [ ] Path 1 — Migrate C2S Intel to Clerk. Stated goal achieved cleanly.
+- [x] **Path 1 — Migrate C2S Intel to Clerk.** Stated goal achieved cleanly.
 - [ ] Path 2 — Federate via OIDC. Smaller change, ongoing maintenance.
 - [ ] Path 3 — Two separate auth systems. Reword launcher copy honestly.
 
-Decided by: __________________________
-Date: __________________________
-Notes: __________________________
+**Decided by:** Account owner (annankwekujude@gmail.com), recorded via chat with platform engineer.
+**Date:** 2026-05-18
+**Rationale (summary):**
+- Federal-customer expectation: platform-level SSO is baseline, not luxury. Two-login experience is a credibility problem at security review.
+- Native Clerk features (SAML/Okta/AzureAD, MFA, audit logs, SCIM, RBAC) avoid the build-twice tax across products.
+- Migration is bounded (2–5 focused engineering days), reversible at planning stage, and fully stageable on Railway preview before any production cutover.
+- Closes the incidentally-bifurcated identity architecture before C2S Intel user base scales further.
+
+**Next deliverable:** `docs/architecture/SSO_MIGRATION_PLAN.md` — engineer-executable work-breakdown for the C2S Intel Clerk migration.
+
+**Sequencing (locked):**
+1. clerk-proxy Worker deploy (held until Cloudflare dashboard healthy; see `artifacts/cloudflare-workers/clerk-proxy/DEPLOY_CHECKLIST.md`).
+2. C2S Intel Clerk migration on a branch in `SpartanIron/C2S-Contract-Intelligence-Platform`; staged and verified on Railway preview environment.
+3. Cut over C2S Intel Railway production service to Clerk-only auth; 1-hour log watch; rollback path defined in migration plan.
+4. Map `govcon.colorcodesolutions.com` to the existing `c2s-api-server` Railway service via Railway custom-domain + Cloudflare proxied CNAME (no Worker proxy — simpler than the superseded c2s-intel-proxy approach).
+5. Flip launcher card COMING SOON → LIVE; add health-monitor probe.
