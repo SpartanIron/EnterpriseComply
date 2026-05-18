@@ -1041,7 +1041,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
         ]
       }
     ]
-  }
+  },
   "vuln-management": {
     title: "Vulnerability Management",
     intro: "The Vulnerability Management page normalizes findings from Tenable, Qualys, Wiz, CrowdStrike, Snyk, Veracode, Checkmarx, Orca, and SentinelOne into a single register with FedRAMP/CMMC SLA tracking.",
