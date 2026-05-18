@@ -206,9 +206,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
-          {NAV.map(({
-          if (!canSeeSection(section)) return null; section, items }) => {
-            const isOpen = openSections.has(section);
+          {NAV.map(({ section, items }) => {
+            if (!canSeeSection(section)) return null;
+          const isOpen = openSections.has(section);
             const hasActive = items.some(
               (item) => location === item.path || location.startsWith(item.path + "/"),
             );
