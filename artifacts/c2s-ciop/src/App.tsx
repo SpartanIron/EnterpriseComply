@@ -44,6 +44,7 @@ import VulnManagement from "./pages/VulnManagement";
 import NIST800171 from "./pages/NIST800171";
 import ConMonProgram from "./pages/ConMonProgram";
 import FISMAReporting from "./pages/FISMAReporting";
+import SuperAdmin from "./pages/SuperAdmin";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -188,6 +189,7 @@ function AppRoutes() {
 <Route path="/nist-800-171" component={() => <AppShell><NIST800171 /></AppShell>} />
 <Route path="/conmon" component={() => <AppShell><ConMonProgram /></AppShell>} />
 <Route path="/fisma-reporting" component={() => <AppShell><FISMAReporting /></AppShell>} />
+        <Route path="/super-admin" component={() => <AppShell><SuperAdmin /></AppShell>} />
       <Route component={NotFound} />
     </Switch>
   );
