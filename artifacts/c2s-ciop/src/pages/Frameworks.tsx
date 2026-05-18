@@ -3,383 +3,127 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import { PageHeader, EmptyState, PrimaryButton, SectionLabel } from "@/components/ui/PageHeader";
 
-const CATEGORY_CONFIG: Record<string, { badge: string; label: string; accent: string }> = {
-  commercial: { badge: "bg-blue-50 text-blue-700 ring-1 ring-blue-200", label: "Commercial", accent: "#2563eb" },
-  federal: { badge: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", label: "Federal", accent: "#7c3aed" },
-  "best-practice": { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: "Best Practice", accent: "#64748b" },
+const FRAMEWORK_INFO: Record<string, {summary:string;scope:string;controls:string;audience:string;tip:string}> = {
+  "fedramp-moderate":{summary:"FedRAMP Moderate authorization for cloud services handling federal data with moderate impact.",scope:"Cloud Service Providers (CSPs) serving US federal agencies",controls:"~325 NIST SP 800-53 controls",audience:"Federal agencies, CSPs, cloud vendors",tip:"Required before selling cloud software to most federal agencies"},
+  "fedramp-high":{summary:"Highest FedRAMP authorization tier for systems handling highly sensitive federal data.",scope:"CSPs processing law enforcement, financial, or health data for federal agencies",controls:"~421 NIST SP 800-53 controls",audience:"Defense, intelligence, and high-sensitivity federal systems",tip:"Needed for DoD, law enforcement, and emergency services cloud contracts"},
+  "cmmc-level-2":{summary:"CMMC Level 2 protects Controlled Unclassified Information (CUI) for DoD contractors.",scope:"All DoD contractors and subcontractors handling CUI",controls:"110 practices aligned to NIST 800-171",audience:"Defense Industrial Base (DIB) suppliers",tip:"Mandatory for DoD prime/sub contractors as of 2025 — required for contract awards"},
+  "cmmc-level-1":{summary:"CMMC Level 1 covers basic cybersecurity hygiene for federal contract information (FCI).",scope:"DoD contractors handling Federal Contract Information (FCI)",controls:"17 basic safeguarding practices",audience:"All DoD contractors — the entry level tier",tip:"Annual self-assessment is allowed at Level 1; no third-party audit required"},
+  "nist-800-171":{summary:"NIST SP 800-171 protects Controlled Unclassified Information in non-federal systems.",scope:"Contractors and organizations holding CUI from federal agencies",controls:"110 security requirements across 14 families",audience:"Universities, research institutions, defense contractors",tip:"The technical backbone of CMMC Level 2 — same 110 controls"},
+  stateramp:{summary:"StateRAMP mirrors FedRAMP for state and local government cloud procurement.",scope:"Cloud providers selling to US state/local/tribal governments",controls:"Aligned to NIST 800-53 (Low/Moderate/High)",audience:"SaaS vendors targeting state and municipal contracts",tip:"Recognized in 20+ states — growing rapidly as FedRAMP equivalent for state gov"},
+  "soc2-type2":{summary:"SOC 2 Type II validates ongoing security controls over a 6-12 month audit period.",scope:"SaaS, cloud, and technology service providers",controls:"Trust Service Criteria: Security, Availability, Confidentiality, Privacy, Processing Integrity",audience:"B2B SaaS companies, managed service providers",tip:"Type II is time-period evidence; most enterprise customers require it for procurement"},
+  "iso-27001":{summary:"ISO 27001 is the global standard for Information Security Management Systems (ISMS).",scope:"Any organization globally — sector agnostic",controls:"114 controls across 14 domains (Annex A)",audience:"Enterprises seeking international recognition",tip:"The most widely recognized global security certification — required in EU and APAC deals"},
+  "pci-dss":{summary:"PCI DSS protects cardholder data for entities that store, process, or transmit payment card data.",scope:"Merchants, payment processors, banks handling card data",controls:"12 requirements with 250+ sub-requirements",audience:"E-commerce, retail, fintech, any business accepting cards",tip:"Non-compliance can result in card brand fines and loss of payment processing ability"},
+  "sox-itgc":{summary:"SOX ITGC ensures financial reporting IT controls for publicly traded US companies.",scope:"US public companies and their IT service providers",controls:"IT General Controls: access, change management, operations, security",audience:"Public companies, their auditors and IT service vendors",tip:"Required for SEC-listed companies under Sarbanes-Oxley Act Section 404"},
+  "nycrr-500":{summary:"NYDFS 23 NYCRR 500 is New York state cybersecurity regulation for financial services.",scope:"Banks, insurers, and financial institutions licensed in New York State",controls:"23 sections covering security program, testing, incident response",audience:"Financial services firms regulated by NYDFS",tip:"Applies to any financial company doing business in NY — including foreign entities"},
+  hipaa:{summary:"HIPAA protects patient health information (PHI) in the US healthcare system.",scope:"Covered entities and business associates handling PHI",controls:"Administrative, Physical, and Technical safeguards",audience:"Hospitals, insurers, health tech companies, billing services",tip:"Violations can result in fines up to $1.9M per category per year"},
+  "hitrust-csf":{summary:"HITRUST CSF combines HIPAA, ISO 27001, NIST, and PCI into one prescriptive framework.",scope:"Healthcare organizations and their technology partners",controls:"135+ control categories with 14 control domains",audience:"Health IT vendors, payers, providers seeking unified compliance",tip:"HITRUST e1/i1/r2 certifications are increasingly required by large health systems"},
+  gdpr:{summary:"GDPR is the EU data protection regulation covering personal data of EU residents.",scope:"Any organization processing personal data of EU/EEA residents",controls:"Principles, rights, obligations, and breach notification rules",audience:"Any business with EU customers or employees",tip:"Fines up to 4% of global annual turnover — applies outside the EU too"},
+  ccpa:{summary:"CCPA gives California residents rights over their personal data and imposes obligations on businesses.",scope:"For-profit businesses meeting revenue or data thresholds in California",controls:"Consumer rights: access, delete, opt-out, non-discrimination",audience:"US companies with California customers",tip:"CPRA (2023 amendment) added sensitive data categories and enforcement agency"},
+  "iso-27701":{summary:"ISO 27701 extends ISO 27001 to include a Privacy Information Management System (PIMS).",scope:"Organizations that process personal data as controller or processor",controls:"Extends ISO 27001/27002 with 49 privacy-specific controls",audience:"GDPR-regulated companies, data processors worldwide",tip:"Demonstrates GDPR compliance readiness — recognized by EU supervisory authorities"},
+  "cis-controls":{summary:"CIS Controls v8 are 18 prioritized security best practices from the Center for Internet Security.",scope:"Any organization regardless of size or sector",controls:"18 Controls, 153 Safeguards across Implementation Groups 1-3",audience:"SMBs to enterprises seeking foundational security hygiene",tip:"IG1 (56 safeguards) is the minimum standard for all organizations — start here"},
+  "nist-csf":{summary:"NIST Cybersecurity Framework organizes security around Identify, Protect, Detect, Respond, Recover.",scope:"Critical infrastructure and any US organization",controls:"6 Functions, 22 Categories, 106 Subcategories (CSF 2.0)",audience:"Critical infrastructure, federal suppliers, general enterprises",tip:"CSF 2.0 (2024) adds Govern function and supply chain risk management"},
+  "nist-ai-rmf":{summary:"NIST AI RMF provides a framework for managing risks from AI systems throughout their lifecycle.",scope:"Organizations developing, deploying, or using AI systems",controls:"4 core functions: GOVERN, MAP, MEASURE, MANAGE",audience:"AI developers, deployers, and affected organizations",tip:"Increasingly referenced in EU AI Act compliance and US executive orders on AI"},
+  "cyber-essentials":{summary:"Cyber Essentials is a UK government-backed scheme for basic cyber hygiene certification.",scope:"UK businesses, especially those seeking government contracts",controls:"5 technical controls: firewalls, secure config, access control, malware protection, patching",audience:"UK SMEs and government suppliers",tip:"Cyber Essentials Plus adds independent verification — required for some UK gov contracts"},
+  "nist-800-53":{summary:"NIST SP 800-53 Rev 5 is the comprehensive catalog of security and privacy controls for federal systems.",scope:"Federal information systems and organizations",controls:"1000+ controls across 20 control families",audience:"Federal agencies, their contractors, and critical infrastructure",tip:"The master control catalog — FedRAMP, CMMC, and FISMA all derive from this"},
 };
 
-function ProgressRing({ score, size = 64, hasActivity }: { score: number; size?: number; hasActivity: boolean }) {
-  const r = (size - 8) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (hasActivity ? (score / 100) * circ : 0);
-  const color = !hasActivity ? "#cbd5e1" : score >= 75 ? "#16a34a" : score >= 50 ? "#f59e0b" : "#ef4444";
-  const textFill = !hasActivity ? "#94a3b8" : score >= 75 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
+const CATEGORY_CONFIG: Record<string,{badge:string;label:string;accent:string}> = {
+  commercial:{badge:"bg-blue-50 text-blue-700 ring-1 ring-blue-200",label:"Commercial",accent:"#2563eb"},
+  federal:{badge:"bg-violet-50 text-violet-700 ring-1 ring-violet-200",label:"Federal",accent:"#7c3aed"},
+  "best-practice":{badge:"bg-slate-100 text-slate-600 ring-1 ring-slate-200",label:"Best Practice",accent:"#64748b"},
+};
+
+function FrameworkTooltip({fwKey,name}:{fwKey:string;name:string}) {
+  const info = FRAMEWORK_INFO[fwKey];
+  if (!info) return null;
   return (
-    <svg width={size} height={size} className="flex-shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={6} />
-      <circle
-        cx={size / 2} cy={size / 2} r={r}
-        fill="none" stroke={color} strokeWidth={6}
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        style={{ transition: "stroke-dashoffset 0.8s ease" }}
-      />
-      <text x={size / 2} y={size / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-        fontSize={13} fontWeight="bold" fill={textFill}>
-        {Math.round(score)}%
-      </text>
-      {!hasActivity && (
-        <text x={size / 2} y={size / 2 + 14} textAnchor="middle" dominantBaseline="middle"
-          fontSize={8} fill="#94a3b8">
-          not started
-        </text>
-      )}
-    </svg>
-  );
-}
-
-export default function Frameworks() {
-  const qc = useQueryClient();
-  const [showAdd, setShowAdd] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState<{ key: string; name: string } | null>(null);
-
-  const { data: orgData } = useQuery<{ org: any }>({
-    queryKey: ["orgs", "me"],
-    queryFn: async () => (await fetch(apiUrl("/orgs/me"), { credentials: "include" })).json(),
-  });
-  const orgId = orgData?.org?.id;
-
-  const { data: fwData, isLoading } = useQuery<{ frameworks: any[] }>({
-    queryKey: ["org-frameworks", orgId],
-    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/frameworks`), { credentials: "include" })).json(),
-    enabled: !!orgId,
-  });
-
-  const { data: catalogData } = useQuery<{ frameworks: any[] }>({
-    queryKey: ["framework-catalog"],
-    queryFn: async () => (await fetch(apiUrl("/frameworks/catalog"), { credentials: "include" })).json(),
-  });
-
-  const activateMutation = useMutation({
-    mutationFn: async (keys: string[]) => {
-      const res = await fetch(apiUrl(`/orgs/${orgId}/frameworks`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ frameworkKeys: keys }),
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["org-frameworks"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      setShowAdd(false);
-    },
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: async (key: string) => {
-      const res = await fetch(apiUrl(`/orgs/${orgId}/frameworks/${key}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["org-frameworks"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      setConfirmRemove(null);
-    },
-  });
-
-  const frameworks = fwData?.frameworks ?? [];
-  const catalog = catalogData?.frameworks ?? [];
-  const activeKeys = new Set(frameworks.map(f => f.frameworkKey));
-  const available = catalog.filter(f => !activeKeys.has(f.key));
-
-  const CATALOG_CATS: Record<string, string> = {
-    commercial: "Commercial",
-    federal: "Federal (US Gov)",
-    "best-practice": "Best Practice",
-  };
-
-  const ShieldIcon = (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-    </svg>
-  );
-
-  return (
-    <div className="p-6 max-w-screen-xl mx-auto">
-      <PageHeader
-        title="Frameworks"
-        subtitle="Manage your active compliance frameworks"
-        actions={
-          <PrimaryButton onClick={() => setShowAdd(true)}>
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Framework
-          </PrimaryButton>
-        }
-      />
-
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => <div key={i} className="h-52 bg-slate-100 rounded-xl animate-pulse" />)}
+    <div className="absolute z-50 bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2 w-80 pointer-events-none animate-in fade-in duration-150" style={{filter:"drop-shadow(0 8px 24px rgba(0,0,0,0.22))"}}>
+      <div className="absolute bottom-[-7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-slate-900 rotate-45 rounded-sm" />
+      <div className="bg-slate-900 text-white rounded-xl p-4 relative">
+        <p className="font-bold text-sm mb-1.5 text-white leading-snug">{name}</p>
+        <p className="text-xs text-slate-300 leading-relaxed mb-3">{info.summary}</p>
+        <div className="space-y-1.5 border-t border-slate-700 pt-2.5">
+          <div className="flex gap-2 text-xs"><span className="text-slate-400 w-20 flex-shrink-0">Scope</span><span className="text-slate-200">{info.scope}</span></div>
+          <div className="flex gap-2 text-xs"><span className="text-slate-400 w-20 flex-shrink-0">Controls</span><span className="text-slate-200">{info.controls}</span></div>
+          <div className="flex gap-2 text-xs"><span className="text-slate-400 w-20 flex-shrink-0">Audience</span><span className="text-slate-200">{info.audience}</span></div>
         </div>
-      ) : frameworks.length === 0 ? (
-        <>
-          <EmptyState
-            icon={ShieldIcon}
-            title="No frameworks activated"
-            body="Add SOC 2, FedRAMP, CMMC, ISO 27001, or any of 12 supported frameworks to start tracking compliance."
-            action={<PrimaryButton onClick={() => setShowAdd(true)}>Add your first framework</PrimaryButton>}
-          />
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { icon: "shield", title: "Universal Control Objectives", body: "Add a framework and your 41 UCO controls automatically map to it. Implement once, satisfy all simultaneously." },
-              { icon: "chart", title: "Real-time Compliance Score", body: "Track your compliance posture with live scoring. Connect integrations to run automated tests against your controls." },
-              { icon: "check", title: "Audit-ready Evidence", body: "Every passing control generates evidence. Share your Trust Center URL with auditors instead of filling spreadsheets." },
-            ].map(({ icon, title, body }) => (
-              <div key={title} className="bg-white border border-slate-200 rounded-xl p-5">
-                <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
-                  {icon === "shield" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
-                  {icon === "chart" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
-                  {icon === "check" && <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                </div>
-                <p className="font-semibold text-slate-800 text-sm mb-1">{title}</p>
-                <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {frameworks.map((fw: any) => (
-              <FrameworkDetailCard
-                key={fw.id}
-                fw={fw}
-                onRemove={() => setConfirmRemove({ key: fw.frameworkKey, name: fw.name })}
-              />
-            ))}
-          </div>
-          {available.length > 0 && (
-            <div className="mt-8">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Available to add ({available.length})</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Adding any of these reuses your existing UCO control work - no duplicate effort</p>
-                </div>
-                <PrimaryButton onClick={() => setShowAdd(true)}>
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                  Add Framework
-                </PrimaryButton>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {available.slice(0, 6).map((f: any) => {
-                  const cat = CATEGORY_CONFIG[f.category] ?? { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", accent: "#64748b" };
-                  return (
-                    <button
-                      key={f.key}
-                      onClick={() => activateMutation.mutate([f.key])}
-                      disabled={activateMutation.isPending}
-                      className="bg-white border border-dashed border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-left group disabled:opacity-60"
-                    >
-                      <div className="h-[2px] -mt-4 -mx-4 mb-3 rounded-t-xl" style={{ background: cat.accent }} />
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-slate-700 text-sm group-hover:text-blue-700 transition-colors truncate">{f.name}</p>
-                          <p className="text-xs text-slate-400 mt-0.5 capitalize">{CATALOG_CATS[f.category] ?? f.category}</p>
-                        </div>
-                        <svg className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Add Framework Modal */}
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[82vh] flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Add Framework</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Select a framework to start tracking compliance</p>
-              </div>
-              <button onClick={() => setShowAdd(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="overflow-y-auto p-5 flex-1">
-              {available.length === 0 ? (
-                <p className="text-center text-slate-500 text-sm py-8">All available frameworks are already activated.</p>
-              ) : (
-                Object.entries(CATALOG_CATS).map(([cat, label]) => {
-                  const catFws = available.filter(f => f.category === cat);
-                  if (catFws.length === 0) return null;
-                  return (
-                    <div key={cat} className="mb-5">
-                      <SectionLabel>{label}</SectionLabel>
-                      <div className="space-y-1.5">
-                        {catFws.map((f: any) => (
-                          <button
-                            key={f.key}
-                            onClick={() => activateMutation.mutate([f.key])}
-                            disabled={activateMutation.isPending}
-                            className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left group disabled:opacity-60"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">{f.name}</p>
-                              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{f.description}</p>
-                            </div>
-                            <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-                              <span className="text-xs text-slate-400 font-medium">{f.controlCount} controls</span>
-                              <svg className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                              </svg>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+        <div className="mt-2.5 pt-2.5 border-t border-slate-700 flex gap-2 items-start">
+          <svg className="h-3.5 w-3.5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p className="text-xs text-amber-300 leading-relaxed">{info.tip}</p>
         </div>
-      )}
-
-      {/* Remove Confirmation Modal */}
-      {confirmRemove && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-red-50 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900">Remove framework?</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{confirmRemove.name}</p>
-              </div>
-            </div>
-            <p className="text-sm text-slate-500 mb-5 leading-relaxed">
-              This will remove <span className="font-semibold text-slate-700">{confirmRemove.name}</span> from your active frameworks. Your compliance data and evidence will not be deleted - you can re-add this framework at any time.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConfirmRemove(null)}
-                className="flex-1 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => removeMutation.mutate(confirmRemove.key)}
-                disabled={removeMutation.isPending}
-                className="flex-1 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {removeMutation.isPending ? "Removing..." : "Remove"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FrameworkDetailCard({ fw, onRemove }: { fw: any; onRemove: () => void }) {
-  const score = fw.complianceScore ?? 0;
-  const passing = fw.passingControls ?? 0;
-  const failing = fw.failingControls ?? 0;
-  const untested = fw.notTestedControls ?? 0;
-  const total = passing + failing + untested;
-  const hasActivity = passing > 0 || failing > 0;
-
-  const cat = CATEGORY_CONFIG[fw.category] ?? { badge: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", label: fw.category, accent: "#64748b" };
-  const statusLabel = !hasActivity ? "Not started" : score >= 75 ? "On track" : score >= 50 ? "Needs attention" : "At risk";
-  const statusColor = !hasActivity ? "text-slate-400" : score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-600";
-  const statusBg = !hasActivity ? "bg-slate-50" : score >= 75 ? "bg-green-50" : score >= 50 ? "bg-amber-50" : "bg-red-50";
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden">
-      {/* Colored top accent */}
-      <div className="h-[3px]" style={{ background: cat.accent }} />
-
-      <div className="p-5">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${cat.badge}`}>{cat.label}</span>
-            </div>
-            <p className="font-bold text-slate-900 text-base leading-snug">{fw.name}</p>
-            <span className={`inline-flex items-center gap-1 text-xs font-semibold mt-1.5 px-2 py-0.5 rounded-md ${statusBg} ${statusColor}`}>
-              {!hasActivity ? (
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-300 inline-block" />
-              ) : score >= 75 ? (
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              ) : (
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01" /></svg>
-              )}
-              {statusLabel}
-            </span>
-          </div>
-          <div className="flex items-start gap-2 flex-shrink-0">
-            <ProgressRing score={score} size={64} hasActivity={hasActivity} />
-            <button
-              onClick={onRemove}
-              title="Remove framework"
-              className="mt-0.5 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2">
-          <Stat label="Passing" value={passing} activeColor="bg-green-50" activeText="text-green-700" activeSub="text-green-600" active={passing > 0} />
-          <Stat label="Failing" value={failing} activeColor="bg-red-50" activeText="text-red-600" activeSub="text-red-500" active={failing > 0} />
-          <Stat label="Untested" value={untested} activeColor="bg-slate-50" activeText="text-slate-600" activeSub="text-slate-400" active={true} neutral />
-        </div>
-
-        {total > 0 && (
-          <div className="mt-3 flex gap-0.5 h-1.5 rounded-full overflow-hidden">
-            {passing > 0 && <div className="bg-green-400" style={{ width: `${(passing / total) * 100}%` }} />}
-            {failing > 0 && <div className="bg-red-400" style={{ width: `${(failing / total) * 100}%` }} />}
-            {untested > 0 && <div className="bg-slate-200" style={{ width: `${(untested / total) * 100}%` }} />}
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, activeColor, activeText, activeSub, active, neutral }: {
-  label: string; value: number; activeColor: string; activeText: string; activeSub: string; active: boolean; neutral?: boolean;
-}) {
-  const bg = (active && !neutral) || neutral ? activeColor : "bg-slate-50";
-  const textCls = (active && !neutral) ? activeText : "text-slate-400";
-  const subCls = (active && !neutral) ? activeSub : "text-slate-400";
+function ProgressRing({score,size=64,hasActivity}:{score:number;size?:number;hasActivity:boolean}) {
+  const r=(size-8)/2,circ=2*Math.PI*r,offset=circ-(hasActivity?(score/100)*circ:0);
+  const color=!hasActivity?"#cbd5e1":score>=75?"#16a34a":score>=50?"#f59e0b":"#ef4444";
+  const textFill=!hasActivity?"#94a3b8":score>=75?"#16a34a":score>=50?"#d97706":"#dc2626";
+  return (<svg width={size} height={size} className="flex-shrink-0"><circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={6}/><circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={6} strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} transform={`rotate(-90 ${size/2} ${size/2})`} style={{transition:"stroke-dashoffset 0.8s ease"}}/><text x={size/2} y={size/2+1} textAnchor="middle" dominantBaseline="middle" fontSize={13} fontWeight="bold" fill={textFill}>{Math.round(score)}%</text>{!hasActivity&&<text x={size/2} y={size/2+14} textAnchor="middle" dominantBaseline="middle" fontSize={8} fill="#94a3b8">not started</text>}</svg>);
+}
+
+export default function Frameworks() {
+  const qc=useQueryClient();
+  const [showAdd,setShowAdd]=useState(false);
+  const [confirmRemove,setConfirmRemove]=useState<{key:string;name:string}|null>(null);
+  const {data:orgData}=useQuery<{org:any}>({queryKey:["orgs","me"],queryFn:async()=>(await fetch(apiUrl("/orgs/me"),{credentials:"include"})).json()});
+  const orgId=orgData?.org?.id;
+  const {data:fwData,isLoading}=useQuery<{frameworks:any[]}>({queryKey:["org-frameworks",orgId],queryFn:async()=>(await fetch(apiUrl(`/orgs/${orgId}/frameworks`),{credentials:"include"})).json(),enabled:!!orgId});
+  const {data:catalogData}=useQuery<{frameworks:any[]}>({queryKey:["framework-catalog"],queryFn:async()=>(await fetch(apiUrl("/frameworks/catalog"),{credentials:"include"})).json()});
+  const activateMutation=useMutation({mutationFn:async(keys:string[])=>{const res=await fetch(apiUrl(`/orgs/${orgId}/frameworks`),{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({frameworkKeys:keys})});return res.json();},onSuccess:()=>{qc.invalidateQueries({queryKey:["org-frameworks"]});qc.invalidateQueries({queryKey:["dashboard"]});setShowAdd(false);}});
+  const removeMutation=useMutation({mutationFn:async(key:string)=>{const res=await fetch(apiUrl(`/orgs/${orgId}/frameworks/${key}`),{method:"DELETE",credentials:"include"});return res.json();},onSuccess:()=>{qc.invalidateQueries({queryKey:["org-frameworks"]});qc.invalidateQueries({queryKey:["dashboard"]});setConfirmRemove(null);}});
+  const frameworks=fwData?.frameworks??[];
+  const catalog=catalogData?.frameworks??[];
+  const activeKeys=new Set(frameworks.map((f:any)=>f.frameworkKey));
+  const available=catalog.filter((f:any)=>!activeKeys.has(f.key));
+  const CATS:Record<string,string>={commercial:"Commercial",federal:"Federal (US Gov)","best-practice":"Best Practice"};
+  const ShieldIcon=(<svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>);
   return (
-    <div className={`rounded-lg p-2.5 text-center ${bg}`}>
-      <p className={`text-base font-bold leading-none ${textCls}`}>{value}</p>
-      <p className={`text-xs font-medium mt-0.5 ${subCls}`}>{label}</p>
+    <div className="p-6 max-w-screen-xl mx-auto">
+      <PageHeader title="Frameworks" subtitle="Manage your active compliance frameworks" actions={<PrimaryButton onClick={()=>setShowAdd(true)}><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>Add Framework</PrimaryButton>}/>
+      {isLoading?(<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{[...Array(6)].map((_,i)=><div key={i} className="h-52 bg-slate-100 rounded-xl animate-pulse"/>)}</div>
+      ):frameworks.length===0?(
+        <><EmptyState icon={ShieldIcon} title="No frameworks activated" body="Add SOC 2, FedRAMP, CMMC, ISO 27001, or any of 12 supported frameworks to start tracking compliance." action={<PrimaryButton onClick={()=>setShowAdd(true)}>Add your first framework</PrimaryButton>}/>
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">{[{icon:"shield",title:"Universal Control Objectives",body:"Add a framework and your 41 UCO controls automatically map to it. Implement once, satisfy all simultaneously."},{icon:"chart",title:"Real-time Compliance Score",body:"Track your compliance posture with live scoring. Connect integrations to run automated tests against your controls."},{icon:"check",title:"Audit-ready Evidence",body:"Every passing control generates evidence. Share your Trust Center URL with auditors instead of filling spreadsheets."}].map(({icon,title,body})=>(<div key={title} className="bg-white border border-slate-200 rounded-xl p-5"><div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">{icon==="shield"&&<svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>}{icon==="chart"&&<svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>}{icon==="check"&&<svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}</div><p className="font-semibold text-slate-800 text-sm mb-1">{title}</p><p className="text-xs text-slate-500 leading-relaxed">{body}</p></div>))}</div></> 
+      ):(
+        <><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{frameworks.map((fw:any)=><FrameworkDetailCard key={fw.id} fw={fw} onRemove={()=>setConfirmRemove({key:fw.frameworkKey,name:fw.name})}/>)}</div>
+          {available.length>0&&(<div className="mt-8"><div className="flex items-center justify-between mb-3"><div><p className="text-sm font-semibold text-slate-700">Available to add ({available.length})</p><p className="text-xs text-slate-400 mt-0.5">Adding any of these reuses your existing UCO control work</p></div><PrimaryButton onClick={()=>setShowAdd(true)}><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>Add Framework</PrimaryButton></div><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">{available.slice(0,9).map((f:any)=>{const cat=CATEGORY_CONFIG[f.category]??{badge:"bg-slate-100 text-slate-600 ring-1 ring-slate-200",accent:"#64748b"};return <CatalogCard key={f.key} f={f} cat={cat} onActivate={()=>activateMutation.mutate([f.key])} isPending={activateMutation.isPending} catLabel={CATS[f.category]??f.category}/>;})}</div></div>)}</>
+      )}
+      {showAdd&&(<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[82vh] flex flex-col"><div className="p-5 border-b border-slate-100 flex items-center justify-between"><div><h2 className="text-base font-bold text-slate-900">Add Framework</h2><p className="text-xs text-slate-400 mt-0.5">Select a framework to start tracking compliance</p></div><button onClick={()=>setShowAdd(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div className="overflow-y-auto p-5 flex-1">{available.length===0?<p className="text-center text-slate-500 text-sm py-8">All available frameworks are already activated.</p>:Object.entries(CATS).map(([cat,label])=>{const catFws=available.filter((f:any)=>f.category===cat);if(catFws.length===0)return null;return <div key={cat} className="mb-5"><SectionLabel>{label}</SectionLabel><div className="space-y-1.5">{catFws.map((f:any)=><button key={f.key} onClick={()=>activateMutation.mutate([f.key])} disabled={activateMutation.isPending} className="w-full flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left group disabled:opacity-60"><div className="min-w-0 flex-1"><p className="font-semibold text-slate-900 text-sm group-hover:text-blue-700">{f.name}</p><p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{f.description}</p></div><div className="flex items-center gap-3 ml-4 flex-shrink-0"><span className="text-xs text-slate-400 font-medium">{f.controlCount} controls</span><svg className="h-4 w-4 text-slate-300 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg></div></button>)}</div></div>;})}</div></div></div>)}
+      {confirmRemove&&(<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"><div className="flex items-center gap-3 mb-4"><div className="h-10 w-10 bg-red-50 rounded-full flex items-center justify-center flex-shrink-0"><svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div><h3 className="font-bold text-slate-900">Remove framework?</h3><p className="text-xs text-slate-400 mt-0.5">{confirmRemove.name}</p></div></div><p className="text-sm text-slate-500 mb-5 leading-relaxed">This will remove <span className="font-semibold text-slate-700">{confirmRemove.name}</span> from your active frameworks. Your data will not be deleted.</p><div className="flex gap-2"><button onClick={()=>setConfirmRemove(null)} className="flex-1 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Cancel</button><button onClick={()=>removeMutation.mutate(confirmRemove.key)} disabled={removeMutation.isPending} className="flex-1 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50">{removeMutation.isPending?"Removing...":"Remove"}</button></div></div></div>)}
     </div>
   );
+}
+
+function CatalogCard({f,cat,onActivate,isPending,catLabel}:{f:any;cat:any;onActivate:()=>void;isPending:boolean;catLabel:string}) {
+  const [hovered,setHovered]=useState(false);
+  return (<div className="relative" onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}>{hovered&&<FrameworkTooltip fwKey={f.key} name={f.name}/>}<button onClick={onActivate} disabled={isPending} className="w-full bg-white border border-dashed border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-left group disabled:opacity-60"><div className="h-[2px] -mt-4 -mx-4 mb-3 rounded-t-xl" style={{background:cat.accent}}/><div className="flex items-center justify-between"><div className="min-w-0 flex-1"><p className="font-semibold text-slate-700 text-sm group-hover:text-blue-700 truncate">{f.name}</p><p className="text-xs text-slate-400 mt-0.5 capitalize">{catLabel}</p></div><svg className="h-4 w-4 text-slate-300 group-hover:text-blue-500 flex-shrink-0 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg></div></button></div>);
+}
+
+function FrameworkDetailCard({fw,onRemove}:{fw:any;onRemove:()=>void}) {
+  const [hovered,setHovered]=useState(false);
+  const score=fw.complianceScore??0,passing=fw.passingControls??0,failing=fw.failingControls??0,untested=fw.notTestedControls??0,total=passing+failing+untested,hasActivity=passing>0||failing>0;
+  const cat=CATEGORY_CONFIG[fw.category]??{badge:"bg-slate-100 text-slate-600 ring-1 ring-slate-200",label:fw.category,accent:"#64748b"};
+  const statusLabel=!hasActivity?"Not started":score>=75?"On track":score>=50?"Needs attention":"At risk";
+  const statusColor=!hasActivity?"text-slate-400":score>=75?"text-green-600":score>=50?"text-amber-600":"text-red-600";
+  const statusBg=!hasActivity?"bg-slate-50":score>=75?"bg-green-50":score>=50?"bg-amber-50":"bg-red-50";
+  return (
+    <div className="relative" onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}>
+      {hovered&&<FrameworkTooltip fwKey={fw.frameworkKey} name={fw.name}/>}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden">
+        <div className="h-[3px]" style={{background:cat.accent}}/>
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-3 mb-4"><div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-1.5"><span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${cat.badge}`}>{cat.label}</span></div><p className="font-bold text-slate-900 text-base leading-snug">{fw.name}</p><span className={`inline-flex items-center gap-1 text-xs font-semibold mt-1.5 px-2 py-0.5 rounded-md ${statusBg} ${statusColor}`}>{!hasActivity?<span className="h-1.5 w-1.5 rounded-full bg-slate-300 inline-block"/>:score>=75?<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>:<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01"/></svg>}{statusLabel}</span></div><div className="flex items-start gap-2 flex-shrink-0"><ProgressRing score={score} size={64} hasActivity={hasActivity}/><button onClick={onRemove} title="Remove" className="mt-0.5 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div></div>
+          <div className="grid grid-cols-3 gap-2"><Stat label="Passing" value={passing} activeColor="bg-green-50" activeText="text-green-700" activeSub="text-green-600" active={passing>0}/><Stat label="Failing" value={failing} activeColor="bg-red-50" activeText="text-red-600" activeSub="text-red-500" active={failing>0}/><Stat label="Untested" value={untested} activeColor="bg-slate-50" activeText="text-slate-600" activeSub="text-slate-400" active={true} neutral/></div>
+          {total>0&&<div className="mt-3 flex gap-0.5 h-1.5 rounded-full overflow-hidden">{passing>0&&<div className="bg-green-400" style={{width:`${(passing/total)*100}%`}}/>}{failing>0&&<div className="bg-red-400" style={{width:`${(failing/total)*100}%`}}/>}{untested>0&&<div className="bg-slate-200" style={{width:`${(untested/total)*100}%`}}/>}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({label,value,activeColor,activeText,activeSub,active,neutral}:{label:string;value:number;activeColor:string;activeText:string;activeSub:string;active:boolean;neutral?:boolean}) {
+  const bg=(active&&!neutral)||neutral?activeColor:"bg-slate-50",textCls=(active&&!neutral)?activeText:"text-slate-400",subCls=(active&&!neutral)?activeSub:"text-slate-400";
+  return <div className={`rounded-lg p-2.5 text-center ${bg}`}><p className={`text-base font-bold leading-none ${textCls}`}>{value}</p><p className={`text-xs font-medium mt-0.5 ${subCls}`}>{label}</p></div>;
 }
