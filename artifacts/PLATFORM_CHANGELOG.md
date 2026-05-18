@@ -118,3 +118,68 @@ rescheduled to a healthy-dashboard session.
 Account owner task - Railway service creation touches billing surface. Once
 the service exists and its *.up.railway.app hostname is known, the cutover
 is the engineer-executable sequence documented in CUTOVER_PLAN.md.
+
+### Ground-truth reconciliation: C2S Intel is NOT on Clerk
+
+Direct inspection of `SpartanIron/C2S-Contract-Intelligence-Platform` (.env.example
++ repo-wide code search for "clerk" returning zero matches) confirmed C2S Intel
+uses its own express-session + Google OAuth, NOT Clerk. Earlier session notes
+that assumed Clerk on C2S Intel were factually wrong.
+
+Direct inspection of the Railway project `c2s-intel-platform` confirmed the
+C2S Intel app is already deployed as service `c2s-api-server` (service ID
+`a1b02044-90f5-4403-b63f-f27318bae3b9`), Online, bound to `www.c2sintel.com`
+and `app.c2sintel.com` plus the Railway-assigned
+`c2s-api-server-production.up.railway.app` host. No Railway service creation
+is needed; that prior deferral item was based on incorrect assumptions.
+
+Implications: prior c2s-intel-proxy artifacts (CUTOVER_PLAN aa8549e, README
+5e1bfa3, worker.js 06e4ab8) are factually wrong about Clerk allowed-origins
+being sufficient for SSO. They are flagged superseded.
+
+### Decision: Platform-wide SSO via Path 1 (migrate C2S Intel to Clerk)
+
+Documented in `docs/architecture/SSO_DECISION.md` (commits 12aff3a +
+4b4d0cf). Engineer-executable migration plan at
+`docs/architecture/SSO_MIGRATION_PLAN.md`.
+
+Rationale: federal-customer expectation; native Clerk SAML/MFA/audit/SCIM
+avoid build-twice tax; bounded 2-5 day migration is reversible at planning
+stage and stageable on Railway preview; closes the incidentally-bifurcated
+identity architecture before the C2S Intel user base scales further.
+
+Locked sequencing:
+1. clerk-proxy Worker deploy (still held - Cloudflare dashboard observed
+   degraded today, GCR Caution 50/100, splash never resolved across 30+s).
+2. C2S Intel Clerk migration on branch; staged on Railway preview.
+3. Cut over C2S Intel Railway production to Clerk-only auth; 1-hour log watch.
+4. Map govcon.colorcodesolutions.com to c2s-api-server via Railway
+   custom-domain + Cloudflare proxied CNAME (simpler than the superseded
+   c2s-intel-proxy Worker approach).
+5. Flip launcher card COMING SOON -> LIVE; add health-monitor probe.
+
+### Added: clerk-proxy DEPLOY_CHECKLIST.md
+
+Codified the 60-second clerk-proxy production deploy sequence with explicit
+pre-flight gates, three verification curls (200 health, CORS preflight,
+secret-leak check), rollback to deployment
+`3ba3482d-4fc3-4ca4-adf8-54c65126bcc6`, Clerk proxy-mode toggle steps,
+10-minute observation window, index.html shim cleanup, and a Hard NO list.
+Located at `artifacts/cloudflare-workers/clerk-proxy/DEPLOY_CHECKLIST.md`.
+
+### Verified: Cloudflare dashboard health (deploy gate)
+
+Re-probed dash.cloudflare.com Workers editor today: still degraded.
+GCR indicator reads Caution (50/100), splash loading screen did not resolve
+after 30+ seconds across multiple reload attempts. Per PRODUCT_CUTOVER.md
+codified rule, clerk-proxy production deploy remains deferred until the
+dashboard returns to healthy state.
+
+### Production state at end of 2026-05-18 session
+
+- grc.colorcodesolutions.com -> EnterpriseComply (Clerk, working)
+- app.colorcodesolutions.com -> Launcher (Clerk session on .colorcodesolutions.com, working)
+- govcon.colorcodesolutions.com -> govcon-placeholder Worker (unchanged)
+- www.c2sintel.com / app.c2sintel.com -> c2s-api-server Railway (own auth, untouched)
+- clerk-proxy production Worker -> previous (broken) version still serving 525 baseline
+- colorcodesolutions.com/__clerk/* route -> wired (added prior session); awaiting healthy-dashboard deploy of corrected worker.js (committed at a83a21c)
