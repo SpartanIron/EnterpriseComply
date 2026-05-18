@@ -292,6 +292,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             { path: "/settings", label: "Settings", Icon: SettingsIcon },
             { path: "/audit-log", label: "Audit Log", Icon: AuditLogIcon },
             { path: "/docs", label: "Documentation", Icon: DocsIcon },
+        { path: "/super-admin", label: "Owner Panel", Icon: SuperAdminIcon },
           ].map(({ path, label, Icon }) => {
             const active = location === path;
             return (
