@@ -71,6 +71,7 @@ const clerkAppearance = {
   },
 };
 
+const APP_VERSION = "rbac-1.0";// RBAC enabled
 function HomeRedirect() {
   const { isSignedIn, isLoaded } = useAuth();
   const [, navigate] = useLocation();
