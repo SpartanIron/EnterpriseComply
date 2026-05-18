@@ -44,6 +44,18 @@ const NAV_SECTIONS = [
   { id: "test-runs",       label: "Test Run History", icon: "check" },
   { id: "assets",          label: "Asset Inventory", icon: "lock" },
   { id: "settings",        label: "Settings & Admin", icon: "cog" },
+    { id: "vuln-management",  label: "Vulnerability Mgmt",   icon: "warning" },
+  { id: "fisma-reporting",  label: "FISMA Reporting",      icon: "flag" },
+  { id: "poam",             label: "POA\u0026M",             icon: "doc" },
+  { id: "sprs",             label: "SPRS Score",           icon: "chart" },
+  { id: "ssp",              label: "SSP Generator",        icon: "doc" },
+  { id: "stigs",            label: "STIG Findings",        icon: "shield" },
+  { id: "system-boundary",  label: "System Boundary",      icon: "globe" },
+  { id: "nist-800-171",     label: "NIST 800-171 Rev 3",   icon: "check" },
+  { id: "monitoring",       label: "Monitoring",           icon: "activity" },
+  { id: "vendors",          label: "Vendors",              icon: "user" },
+  { id: "trust-center",     label: "Trust Center",         icon: "lock" },
+  { id: "audit-log",        label: "Audit Log",            icon: "book" },
   { id: "faq",             label: "FAQ",             icon: "question" },
   { id: "glossary",        label: "Glossary",        icon: "book" },
 ];
@@ -1030,6 +1042,154 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
       }
     ]
   }
+  "vuln-management": {
+    title: "Vulnerability Management",
+    intro: "The Vulnerability Management page normalizes findings from Tenable, Qualys, Wiz, CrowdStrike, Snyk, Veracode, Checkmarx, Orca, and SentinelOne into a single register with FedRAMP/CMMC SLA tracking.",
+    sections: [
+      {
+        heading: "Viewing the Vulnerability Register",
+        body: "The Vulnerability Register tab lists all CVE findings with severity, affected asset, source scanner, status, SLA countdown, and linked POA&M ID. Filter by severity, status, or source using the dropdowns.",
+        steps: ["Navigate to Vulnerability > Vuln Management", "Review Critical and High findings at the top", "Use the Search bar to find specific CVEs or assets", "Filter by severity, status, or source scanner using the dropdown menus"]
+      },
+      {
+        heading: "Syncing Scanners",
+        body: "The Sync Scanners button triggers a refresh of all connected scanner feeds. Click to pull the latest findings and update SLA countdowns. The button shows Syncing... during the operation and confirms with a success notification.",
+        steps: ["Click Sync Scanners (top-right of page)", "Wait for the Syncing... loading state to complete", "Review the updated finding counts in the dashboard tiles"]
+      },
+      {
+        heading: "Exporting to POA\u0026M",
+        body: "Click Export to POA&M to download a CSV of all open findings formatted for FedRAMP and CMMC POA&M submission, including CVE ID, severity, asset, source, SLA status, and linked POA&M references.",
+        steps: ["Click Export to POA\u0026M (top-left of page)", "Wait for Exporting... state to complete", "Open the downloaded CSV in Excel or import into eMASS"]
+      }
+    ]
+  },
+  "fisma-reporting": {
+    title: "FISMA Reporting",
+    intro: "The FISMA Reporting module provides Federal Information Security Modernization Act CIO metrics, FITARA scorecard preparation, and quarterly compliance package generation per OMB M-21-02 and CISA guidance.",
+    sections: [
+      {
+        heading: "Generating Your FISMA Report",
+        body: "Select the reporting quarter from the dropdown in the top-right, then click Generate Report to download a comprehensive FISMA compliance package as a text file including CIO metrics, domain scores, and remediation summaries.",
+        steps: ["Navigate to Federal > FISMA Reporting", "Select the target quarter from the dropdown", "Click Generate Report", "The report downloads as a .txt file", "Submit to agency leadership per your reporting schedule"]
+      },
+      {
+        heading: "Reading the FISMA Scorecard",
+        body: "The FISMA Scorecard tab shows CIO Metrics per OMB M-21-02 with scores and grades for Identity, Device Management, Data, Network Security, Vulnerability Management, Security Awareness, Continuous Monitoring, and Incident Response.",
+        steps: ["Review the Overall Grade in the banner", "Check Metrics Green/Yellow/Red counts", "Red metrics indicate areas requiring immediate attention", "Use the Export Packages tab for domain-specific compliance exports"]
+      }
+    ]
+  },
+  "poam": {
+    title: "Plan of Action & Milestones",
+    intro: "The POA&M module tracks remediation of security weaknesses per FedRAMP, FISMA, and CMMC requirements. Each item includes the weakness, point of contact, risk classification, and scheduled completion milestones.",
+    sections: [
+      {
+        heading: "Creating and Managing POA\u0026M Items",
+        body: "Click + New Item to open the creation form with all FedRAMP-required fields. Use Import from failing controls to automatically populate items from Failing controls, ensuring every unmitigated weakness has a corresponding POA&M entry.",
+        steps: ["Navigate to Federal > POA\u0026M", "Click + New Item", "Enter Title, Weakness Name, Owner, Severity, Risk levels, Framework, and Completion Date", "Click Create Item", "OR click Import from failing controls for automatic population"]
+      }
+    ]
+  },
+  "sprs": {
+    title: "SPRS Score",
+    intro: "The SPRS Score Calculator computes your Supplier Performance Risk System score per NIST SP 800-171 / CMMC Level 2 DoD Assessment Methodology v1.2.1. Scores range from -203 to +110.",
+    sections: [
+      {
+        heading: "Reading Your SPRS Score",
+        body: "Your SPRS score is displayed at the top with status (Critical / At Risk / On Track). Top Gaps by Point Value shows which failing controls have the highest score impact. The DoD Assessment Methodology table shows all 110 practices with point values.",
+        steps: ["Navigate to Federal > SPRS Score", "Review your current score and status", "Check Controls Met, Not Met, and Not Yet Assessed counts", "Focus remediation on top gaps by point value", "Click DoD Methodology PDF for the official scoring guide", "Target +110 for full DoD contract eligibility"]
+      }
+    ]
+  },
+  "ssp": {
+    title: "SSP Generator",
+    intro: "The SSP Generator creates formatted System Security Plans for FedRAMP, CMMC, NIST 800-53, SOC 2, ISO 27001, and HIPAA. The 3-step wizard collects system information, environment details, and exports a ready-to-submit document.",
+    sections: [
+      {
+        heading: "Generating Your SSP",
+        body: "Complete the 3-step wizard: Step 1 (System Info) captures name, description, owner, framework, data classification, and authorizing official. Step 2 (Environment) captures boundary and interconnections. Step 3 (Review & Export) provides PDF and DOCX export.",
+        steps: ["Navigate to Federal > SSP Generator", "Complete Step 1: enter all required system information fields", "Click Next: Environment", "Complete Step 2: describe environment and system components", "Click Next: Review & Export", "Review the generated SSP", "Click Export as PDF or Export as DOCX"]
+      }
+    ]
+  },
+  "stigs": {
+    title: "STIG Findings",
+    intro: "The STIG Findings module imports and tracks DISA Security Technical Implementation Guide checklists. CAT I/II/III findings are mapped to UCO controls and required for FedRAMP and CMMC assessments.",
+    sections: [
+      {
+        heading: "Importing a STIG Checklist",
+        body: "Export your checklist from DISA STIG Viewer as a .ckl file, then import it. Findings are parsed and categorized as CAT I (critical - immediate risk), CAT II (high risk - requires mitigation), or CAT III (medium risk), and mapped to UCO controls.",
+        steps: ["Export your checklist from DISA STIG Viewer as a .ckl file", "Navigate to Federal > STIG Findings", "Click + New Checklist", "Upload the .ckl file", "Review findings organized by CAT level", "Link findings to UCO controls for evidence collection"]
+      }
+    ]
+  },
+  "system-boundary": {
+    title: "System Boundary",
+    intro: "The System Boundary Registry implements NIST RMF system categorization and ATO status tracking per FIPS 199. Register each information system with authorization details, FIPS categorization, components, and control inheritance.",
+    sections: [
+      {
+        heading: "Registering and Viewing Systems",
+        body: "Click a system card to view its details across four tabs: System Overview (authorization details, ATO status, system components), FIPS 199 Categorization (CIA impact levels), Control Inheritance (common controls), and Interconnections (ISAs/MOUs). Use + Register System to add new systems.",
+        steps: ["Navigate to Federal > System Boundary", "Click a system card to view details", "Review System Overview for ATO status and expiration", "Check FIPS 199 Categorization for impact levels", "Review Control Inheritance for inherited controls", "Click + Register System to add a new system"]
+      }
+    ]
+  },
+  "nist-800-171": {
+    title: "NIST 800-171 Rev 3",
+    intro: "The NIST 800-171 Rev 3 module tracks DFARS 252.204-7012 and CMMC 2.0 readiness across all 191 Rev 3 controls, including the 83 new controls added in the May 2024 revision, with a CMMC 2.0 practice crosswalk.",
+    sections: [
+      {
+        heading: "Reviewing Readiness & Exporting Gaps",
+        body: "The Rev 3 Overview tab shows overall readiness %, compliant vs. gap families, and a readiness-by-family chart. Use Export Gap Report for a CSV of non-compliant practices. The CMMC 2.0 Crosswalk tab maps Rev 3 gaps to CMMC practices.",
+        steps: ["Navigate to Federal > NIST 800-171 Rev 3", "Review overall readiness percentage", "Check Critical Gaps for DFARS Compliance panel", "Click Expand all domains to see individual practice status", "Click Export Gap Report for formatted gap analysis CSV", "Use CMMC 2.0 Crosswalk tab to map to CMMC practices"]
+      }
+    ]
+  },
+  "monitoring": {
+    title: "Continuous Monitoring",
+    intro: "The Monitoring module provides real-time security posture tracking, automated drift detection, and an immutable audit trail. Tests run on schedule against connected integrations and alert when configured thresholds are breached.",
+    sections: [
+      {
+        heading: "Live Overview, Jobs & Alert Settings",
+        body: "The Live Overview tab shows the 30-day pass rate trend and alert threshold status cards. Monitoring Jobs shows all scheduled test runs. Alert Settings lets you configure thresholds and notification preferences for each alert type.",
+        steps: ["Navigate to Evidence > Monitoring", "Review the 30-day trend chart and alert threshold cards", "Click Alerts tab to see active alert history", "Click Monitoring Jobs to view scheduled tests", "Click Alert Settings to configure thresholds and notification delivery"]
+      }
+    ]
+  },
+  "vendors": {
+    title: "Vendors",
+    intro: "The Vendors module manages third-party vendor risk per SOC 2 CC9.2 and GDPR/DPA requirements. Track vendor risk tiers, DPA status, schedule security assessments, and maintain your sub-processor register.",
+    sections: [
+      {
+        heading: "Managing Your Vendor Directory",
+        body: "Click + Add Vendor to register vendors with risk tier (Critical/High/Medium/Low) and DPA status. Use the Assessments & Queue tab to schedule security assessments for high-risk vendors, and the Sub-Processors tab for GDPR sub-processor disclosure.",
+        steps: ["Navigate to Workforce > Vendors", "Click + Add Vendor", "Enter vendor name, contact, and risk tier", "Set DPA status (signed/pending/not required)", "Schedule an assessment for High/Critical vendors", "Track sub-processors in the Sub-Processors tab"]
+      }
+    ]
+  },
+  "trust-center": {
+    title: "Trust Center",
+    intro: "The Trust Center is your public-facing security and compliance page. Share the URL with prospects, customers, and auditors to demonstrate live compliance posture instead of filling out manual security questionnaires.",
+    sections: [
+      {
+        heading: "Setting Up and Sharing Your Trust Center",
+        body: "Click Setup guide for configuration. The Trust Center auto-populates from live compliance data. Add certifications, list sub-processors, and configure security practices. Click Share Trust Center to get your public URL to embed in your security page or vendor portal.",
+        steps: ["Navigate to Audit & Sales > Trust Center", "Click Setup guide to configure your public page", "Activate frameworks to show compliance scores", "Add certifications in the Certifications tab", "List sub-processors in the Sub-processors tab", "Add security practices in the Security Practices tab", "Click Share Trust Center to get and share your public URL"]
+      }
+    ]
+  },
+  "audit-log": {
+    title: "Audit Log",
+    intro: "The Audit Log provides an immutable record of all changes and actions across your organization. Entries are retained for 12 months and serve as required audit evidence for SOC 2 Type II, FedRAMP, and CMMC assessments.",
+    sections: [
+      {
+        heading: "Reading and Filtering the Audit Log",
+        body: "The Audit Log table shows Timestamp, Actor (user or system), Action (e.g. policy.published, control.updated, evidence.deleted), and Resource. Filter entries using the Filter logs search bar. The Deletions counter flags potentially sensitive deletion activity.",
+        steps: ["Navigate to Account > Audit Log", "Review recent entries in reverse chronological order", "Use the Filter logs... search bar to find specific actions or actors", "Monitor the Deletions counter for unexpected activity", "Export log entries as needed for your auditor or ISSM"]
+      }
+    ]
+  },
+
 };
 
 // --- Component ------------------------------------------------------
