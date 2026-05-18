@@ -57,6 +57,8 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Pre-load Clerk JS from accounts.dev to work around clerk.colorcodesolutions.com CDN 503 on script-tag requests -->
+    <script src="https://0z4untqapeo2.clerk.accounts.dev/npm/@clerk/clerk-js@6.11.1/dist/clerk.browser.js" crossorigin="anonymous"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
