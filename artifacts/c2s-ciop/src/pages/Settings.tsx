@@ -156,7 +156,8 @@ export default function Settings() {
       </div>
 
       <DataPortabilityExport orgId={orgId} />
-    </div></div>
+    </div>
+    </div>
   );
 }
 
