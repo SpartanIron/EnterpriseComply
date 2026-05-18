@@ -476,7 +476,7 @@ export default function SuperAdmin() {
   const [tab, setTab] = useState<Tab>("tenants");
 
   // Guard: only render for designated super-admin emails
-  const ADMIN_EMAILS = ["admin@colorcodesolutions.com", "ops@colorcodesolutions.com", "support@colorcodesolutions.com"];
+  const ADMIN_EMAILS = ["annankwekujude@gmail.com", "admin@colorcodesolutions.com", "ops@colorcodesolutions.com", "support@colorcodesolutions.com"];
   const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
   const isSuperAdmin = ADMIN_EMAILS.some(e => e === userEmail) || userEmail.endsWith("@colorcodesolutions.com");
 
