@@ -253,7 +253,7 @@ export default function RoleManagement() {
 
 // ─── Mock members (shown when API not yet implemented) ───────────────────────
 const MOCK_MEMBERS: OrgMember[] = [
-  { id: "m1", clerkUserId: "u1", email: "kweku@colorcodesolutions.com", firstName: "Kweku", lastName: "Annan", role: "org_admin", joinedAt: "2024-01-15" },
+  { id: "m1", clerkUserId: "u1", email: "annankwekujude@gmail.com", firstName: "Kweku", lastName: "Annan", role: "super_admin", joinedAt: "2024-01-15" },
   { id: "m2", clerkUserId: "u2", email: "sarah.chen@company.com", firstName: "Sarah", lastName: "Chen", role: "compliance_manager", joinedAt: "2024-02-20" },
   { id: "m3", clerkUserId: "u3", email: "j.williams@company.com", firstName: "James", lastName: "Williams", role: "analyst", joinedAt: "2024-04-10" },
   { id: "m4", clerkUserId: "u4", email: "auditor@external.com", firstName: "Alex", lastName: "Rivera", role: "auditor", joinedAt: "2024-06-01" },
