@@ -1,7 +1,9 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl, apiFetch } from "@/lib/queryClient";
 import { useOrg } from "@/hooks/useOrg";
+import RoleManagement from "./RoleManagement";
+import { useRole } from "@/context/RoleContext";
 
 function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -56,12 +58,24 @@ export default function Settings() {
     },
   });
 
+  const { can } = useRole();
+  const [settingsTab, setSettingsTab] = React.useState<"general"|"roles">("general");
+
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900 leading-tight">Settings</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Manage your organization settings</p>
+    <div className="p-6 max-w-4xl">
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 leading-tight">Settings</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Manage your organization settings</p>
+        </div>
       </div>
+      {/* Tab switcher */}
+      <div className="flex items-center gap-1 mb-6 bg-slate-100 rounded-xl p-1 w-fit">
+        <button onClick={() => setSettingsTab("general")} className={"px-4 py-2 rounded-lg text-sm font-semibold transition-all " + (settingsTab === "general" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>General</button>
+        {can("org_admin") && <button onClick={() => setSettingsTab("roles")} className={"px-4 py-2 rounded-lg text-sm font-semibold transition-all " + (settingsTab === "roles" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Users &amp; Roles</button>}
+      </div>
+      {settingsTab === "roles" && can("org_admin") && <RoleManagement />}
+      {settingsTab === "general" && <div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
         <div className="px-5 py-3.5 border-b border-slate-100">
@@ -142,7 +156,7 @@ export default function Settings() {
       </div>
 
       <DataPortabilityExport orgId={orgId} />
-    </div>
+    </div></div>
   );
 }
 
