@@ -694,7 +694,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
     "zero-trust": {
     title: "Zero Trust Assessment",
     intro: "The Zero Trust Assessment module evaluates your organization against CISA ZTMM v2.0 (Zero Trust Maturity Model) across 5 pillars: Identity, Devices, Networks, Applications & Workloads, and Data. Each pillar is scored from Traditional (0%) through Initial, Advanced, to Optimal (100%). Overall maturity is captured as a RAG (Red/Amber/Green) status.",
-    items: [
+    sections: [
       {
         heading: "Running Your ZTA Score",
         body: "Click the Run ZTA Score button in the top-right of the Zero Trust Assessment page to trigger an automated scoring pass. The engine reads your current control evidence and generates per-pillar maturity scores, dependency cap violations, and gap findings.",
@@ -743,7 +743,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
   "conmon": {
     title: "Continuous Monitoring Program",
     intro: "The ConMon Program page implements NIST SP 800-137A ISCM (Information Security Continuous Monitoring) requirements, FedRAMP ConMon, and OMB Circular A-130. It provides a live dashboard of 10 automated security metrics from integrated tools including Okta, Splunk SIEM, Tenable.io, Wiz, and CrowdStrike Falcon.",
-    items: [
+    sections: [
       {
         heading: "ISCM Dashboard",
         body: "The ISCM Dashboard shows the current status of all monitored metrics segmented by Normal, Warning, and Alert states. Metrics that breach their thresholds are highlighted in red (Alert) or amber (Warning). Normal metrics are grouped at the bottom.",
@@ -789,7 +789,7 @@ const CONTENT: Record<string, { title: string; intro: string; sections: { headin
   "crosswalk": {
     title: "Control Crosswalk Engine",
     intro: "The Control Crosswalk Engine provides a single-pane multi-framework mapping of your UCO (Universal Control Object) controls to NIST 800-53 Rev 5, CMMC 2.0, NIST 800-171 Rev 3, SOC 2 TSC, and ISO 27001:2022. 14 UCO controls are mapped across 5 frameworks with coverage percentages and integration sources.",
-    items: [
+    sections: [
       {
         heading: "Viewing the Crosswalk",
         body: "The crosswalk table lists each UCO control with its status (Passing/Partial/Failing) and the corresponding control identifiers from each active framework. Coverage bars show what percentage of framework requirements are satisfied.",
