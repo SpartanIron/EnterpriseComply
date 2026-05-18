@@ -5,12 +5,12 @@ import { apiUrl } from "@/lib/queryClient";
 
 // ─── Role Definitions ────────────────────────────────────────────────────────
 export type AppRole =
-| "super_admin"        // ColorCode Solutions platform owner
-| "org_admin"          // Client org administrator
-| "compliance_manager" // Power user — all GRC features
-| "analyst"            // Day-to-day contributor
-| "auditor"            // Read-only, auditor portal only
-| "viewer";            // Dashboard + reports only
+| "super_admin"
+| "org_admin"
+| "compliance_manager"
+| "analyst"
+| "auditor"
+| "viewer";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: "Super Admin",
@@ -30,13 +30,10 @@ export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   viewer: "Dashboard and compliance reports only. No editing.",
 };
 
-// Ordered from highest to lowest privilege
 export const ROLE_ORDER: AppRole[] = [
   "super_admin", "org_admin", "compliance_manager", "analyst", "auditor", "viewer"
 ];
 
-// ─── Permission Matrix ───────────────────────────────────────────────────────
-// Maps each nav section to the minimum role required to see it
 export const SECTION_MIN_ROLE: Record<string, AppRole> = {
   Overview:           "viewer",
   Compliance:         "analyst",
@@ -47,7 +44,6 @@ export const SECTION_MIN_ROLE: Record<string, AppRole> = {
   Vulnerability:      "compliance_manager",
 };
 
-// Maps each route to the minimum role required
 export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   "/dashboard":         "viewer",
   "/frameworks":        "analyst",
@@ -87,17 +83,14 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   "/report":            "viewer",
 };
 
-// ─── Role Helpers ────────────────────────────────────────────────────────────
 export function roleIndex(role: AppRole): number {
   return ROLE_ORDER.indexOf(role);
 }
 
-// Returns true if userRole meets or exceeds the required minimum role
 export function hasMinRole(userRole: AppRole, minRole: AppRole): boolean {
   return roleIndex(userRole) <= roleIndex(minRole);
 }
 
-// ─── Context ─────────────────────────────────────────────────────────────────
 interface RoleContextValue {
   role: AppRole;
   isLoading: boolean;
@@ -106,7 +99,6 @@ interface RoleContextValue {
   canVisitRoute: (route: string) => boolean;
 }
 
-// Default context while loading: show everything (analyst defaults)
 const RoleContext = createContext<RoleContextValue>({
   role: "analyst",
   isLoading: true,
@@ -115,17 +107,23 @@ const RoleContext = createContext<RoleContextValue>({
   canVisitRoute: () => true,
 });
 
-// Super admin emails (platform owner level)
 const SUPER_ADMIN_EMAILS = [
   "annankwekujude@gmail.com",
   "admin@colorcodesolutions.com",
   "ops@colorcodesolutions.com",
 ];
 
+// Get current user email from window.Clerk (most reliable source)
+function getClerkEmail(): string {
+  try {
+    const w = window as any;
+    return w.Clerk?.user?.primaryEmailAddress?.emailAddress ?? "";
+  } catch { return ""; }
+}
+
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
 
-  // Fetch role from org membership API
   const { data: memberData, isLoading: memberLoading } = useQuery<{ role: AppRole | null }>({
     queryKey: ["member-role"],
     queryFn: async () => {
@@ -138,54 +136,77 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     retry: false,
   });
 
-  // Start as "analyst" — ensures full nav is visible during Clerk load
   const [role, setRole] = useState<AppRole>("analyst");
   const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    if (!isLoaded) return; // Wait for Clerk to initialise
-
-    const email = user?.primaryEmailAddress?.emailAddress ?? "";
-
-    // Platform owner check
-    if (email && (SUPER_ADMIN_EMAILS.includes(email) || email.endsWith("@colorcodesolutions.com"))) {
+    // Check window.Clerk first — it reflects auth state even before React hook resolves
+    const clerkEmail = getClerkEmail();
+    if (clerkEmail && (SUPER_ADMIN_EMAILS.includes(clerkEmail) || clerkEmail.endsWith("@colorcodesolutions.com"))) {
       setRole("super_admin");
       setResolved(true);
       return;
     }
 
-    // Not signed in
+    // Fall back to Clerk React hook
+    if (!isLoaded) return;
+
+    const hookEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+    if (hookEmail && (SUPER_ADMIN_EMAILS.includes(hookEmail) || hookEmail.endsWith("@colorcodesolutions.com"))) {
+      setRole("super_admin");
+      setResolved(true);
+      return;
+    }
+
     if (!user) {
       setRole("viewer");
       setResolved(true);
       return;
     }
 
-    // Wait for member role API response
     if (memberLoading) return;
 
     setRole(memberData?.role ?? "analyst");
     setResolved(true);
   }, [isLoaded, user, memberData, memberLoading]);
 
-  // isLoading = true while either Clerk or the role API hasn't resolved yet
-  const isLoading = !isLoaded || (!resolved && memberLoading);
+  // Poll window.Clerk every 500ms until super_admin email is detected
+  // This handles the case where Clerk React hook resolves slowly
+  useEffect(() => {
+    if (resolved) return;
+    const interval = setInterval(() => {
+      const clerkEmail = getClerkEmail();
+      if (clerkEmail && (SUPER_ADMIN_EMAILS.includes(clerkEmail) || clerkEmail.endsWith("@colorcodesolutions.com"))) {
+        setRole("super_admin");
+        setResolved(true);
+        clearInterval(interval);
+      }
+    }, 500);
+    // Stop polling after 10s regardless
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      if (!resolved) setResolved(true);
+    }, 10000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, [resolved]);
+
+  const isLoading = !resolved;
 
   const value = useMemo<RoleContextValue>(() => ({
     role,
     isLoading,
     can: (minRole) => {
-      if (isLoading) return true; // Show all during load
+      if (isLoading) return true;
       return hasMinRole(role, minRole);
     },
     canSeeSection: (section) => {
-      if (isLoading) return true; // Show all sections during load
+      if (isLoading) return true;
       const min = SECTION_MIN_ROLE[section];
       if (!min) return true;
       return hasMinRole(role, min);
     },
     canVisitRoute: (route) => {
-      if (isLoading) return true; // Allow all routes during load
+      if (isLoading) return true;
       const min = ROUTE_MIN_ROLE[route];
       if (!min) return true;
       return hasMinRole(role, min);
