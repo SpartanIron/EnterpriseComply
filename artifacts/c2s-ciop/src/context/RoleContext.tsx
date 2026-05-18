@@ -138,13 +138,13 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   });
 
   const role = useMemo<AppRole>(() => {
-    if (!isLoaded || !user) return "viewer";
-    const email = user.primaryEmailAddress?.emailAddress ?? "";
-    // Platform owner always gets super_admin
-    if (SUPER_ADMIN_EMAILS.includes(email) || email.endsWith("@colorcodesolutions.com")) {
+    // Check email first — even before full Clerk load
+    const email = user?.primaryEmailAddress?.emailAddress ?? "";
+    if (email && (SUPER_ADMIN_EMAILS.includes(email) || email.endsWith("@colorcodesolutions.com"))) {
       return "super_admin";
     }
-    // Use DB-stored role if available, default to analyst
+    if (!isLoaded || !user) return "viewer";
+    // Use DB-stored role if available, default to analyst for all other authenticated users
     return memberData?.role ?? "analyst";
   }, [isLoaded, user, memberData]);
 
