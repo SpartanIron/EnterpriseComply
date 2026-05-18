@@ -1,3 +1,4 @@
+// RBAC v2 — role-aware nav
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
