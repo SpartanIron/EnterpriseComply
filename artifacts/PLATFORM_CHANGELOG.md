@@ -791,3 +791,41 @@ dashboard returns to healthy state.
 - www.c2sintel.com / app.c2sintel.com -> c2s-api-server Railway (own auth, untouched)
 - clerk-proxy production Worker -> previous (broken) version still serving 525 baseline
 - colorcodesolutions.com/__clerk/* route -> wired (added prior session); awaiting healthy-dashboard deploy of corrected worker.js (committed at a83a21c)
+
+---
+
+## Entry 8 — 2026-05-18 — FIELD_ENCRYPTION_KEY rotation and removal (C2S Intel)
+
+### Context
+
+During the pre-Clerk-migration auth-surface review of `SpartanIron/C2S-Contract-Intelligence-Platform`, a plaintext AES-256-GCM key was found committed in the `.replit` file on `main`:
+
+```
+[userenv.shared]
+FIELD_ENCRYPTION_KEY = "<64-char hex string — real production key>"
+```
+
+This key drives field-level encryption for sensitive columns. Treated as High severity.
+
+### Cross-product impact
+
+None to EnterpriseComply directly (separate repo, separate Clerk app, separate database). Logged here because EnterpriseComply's PLATFORM_CHANGELOG is the canonical platform-wide history and because ColorCode SSO will soon link the two products.
+
+### Resolution
+
+1. Incident note committed on `migration/clerk-prep`: `docs/security/INCIDENT_2026_05_18_FIELD_ENCRYPTION_KEY_EXPOSED.md` (commit `bf352a2`).
+2. Rotation runbook committed on `migration/clerk-prep`: `docs/security/RUNBOOK_2026_05_18_ROTATE_FIELD_ENCRYPTION_KEY.md` (commit `8eb3c3c`).
+3. Owner generated a new 64-char hex key locally with `openssl rand -hex 32` and pasted it into the Railway service `c2s-api-server` env var `FIELD_ENCRYPTION_KEY`. Railway auto-redeployed; owner confirmed service healthy.
+4. Plaintext key line removed from `.replit` on `main` of C2S Intel repo (commit `c85a45c` on `main`). Replaced with a comment block pointing to the incident note and runbook.
+5. Resolution log appended to incident note (commit `7a76440` on `migration/clerk-prep`).
+
+### Residual risk
+
+The old key value is still present in C2S Intel git history. Step 7 of the runbook (`git filter-repo` scrub on a fresh clone, then force push) is owner-executed locally and remains open. Live blast radius is closed because the rotated key value cannot decrypt any production data.
+
+### Status board after this entry
+
+- C2S Intel `FIELD_ENCRYPTION_KEY` exposure — live blast radius **closed**, source-tree **closed**, git-history **open** (owner action pending).
+- C2S Intel Clerk migration — branch `migration/clerk-prep` is now ready for code-level Clerk integration. Next commits will land `@clerk/express` on `artifacts/api-server`, `@clerk/clerk-react` on `artifacts/c2s-dashboard`, and a `clerk_user_id` column on the `users` table. Re-onboarding strategy (no users to import) confirmed by owner.
+- EnterpriseComply production — unchanged. No deploys, no DNS, no Clerk toggles this session.
+- clerk-proxy Worker — corrected source still committed-only (commit `a83a21c`); deploy still gated on Cloudflare dashboard health.
