@@ -70,3 +70,51 @@ No production identity or edge toggle is flipped without:
 4. Health monitoring confirmed healthy at the time of change.
 
 This policy is enforced for all SOC 2 CC8.1 / FedRAMP Moderate CM-3 changes.
+
+## 2026-05-18 (additional)
+
+### Added: C2S Intel cutover artifacts (reviewable, not deployed)
+
+- artifacts/cloudflare-workers/c2s-intel-proxy/CUTOVER_PLAN.md - full cutover
+  sequence, prerequisites (Railway service creation by account owner),
+  rollback decision tree, and control mappings.
+- artifacts/cloudflare-workers/c2s-intel-proxy/worker.js - the Worker source
+  that will forward govcon.colorcodesolutions.com to the C2S Intel Railway
+  service. No secrets at the proxy layer.
+- artifacts/cloudflare-workers/c2s-intel-proxy/README.md - route contract,
+  bindings, deployment procedure, rollback procedure, and the explicit Clerk
+  allowed-origins step (so it is not forgotten at cutover).
+- Controls: SOC 2 CC8.1, NIST 800-53 CM-3, CM-4.
+
+### Added: docs/runbooks/PRODUCT_CUTOVER.md
+
+Standard runbook for bringing any new product live on the platform. Codifies
+prerequisites, engineer-executable cutover steps, vanity-domain pattern,
+rollback decision tree, and hard rules (no deploy when Cloudflare dashboard
+is degraded, no chaining cutover with vanity-domain mapping in the same
+session). Future product launches follow this recipe.
+
+### Architectural confirmation: single Clerk instance across platform
+
+C2S Intel will use the same Clerk app (app_3DRbXxZH4HekcgVQHeV8Xgx1RTc) and
+production instance (ins_3DRmbNwnYkR8t0LXkqwPnDahXkw) as EnterpriseComply.
+- Same publishable key pk_live_Y2xlcmsuY29sb3Jjb2Rlc29sdXRpb25zLmNvbSQ.
+- Same Google OAuth client - the redirect URIs added on 2026-05-18 cover
+  C2S Intel too (OAuth callbacks always land on accounts.colorcodesolutions.com).
+- Only Clerk-side change needed at cutover: add govcon.colorcodesolutions.com
+  to the instance's allowed origins.
+
+### Deferred: clerk-proxy Worker deployment
+
+Cloudflare dashboard observed as degraded (Caution 50/100 indicator, loading
+screen exceeding 16s on the workers/services view) during this session.
+Per the change management policy now codified in PRODUCT_CUTOVER.md hard
+rules: identity toggles are not flipped when observability is degraded.
+Deployment of the corrected clerk-proxy worker.js (committed at a83a21c)
+rescheduled to a healthy-dashboard session.
+
+### Deferred: C2S Intel Railway service creation
+
+Account owner task - Railway service creation touches billing surface. Once
+the service exists and its *.up.railway.app hostname is known, the cutover
+is the engineer-executable sequence documented in CUTOVER_PLAN.md.
