@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { useUser } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
@@ -137,15 +137,19 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     retry: false,
   });
 
-  const role = useMemo<AppRole>(() => {
-    // Check email first — even before full Clerk load
+  const [role, setRole] = useState<AppRole>("viewer");
+
+  useEffect(() => {
     const email = user?.primaryEmailAddress?.emailAddress ?? "";
     if (email && (SUPER_ADMIN_EMAILS.includes(email) || email.endsWith("@colorcodesolutions.com"))) {
-      return "super_admin";
+      setRole("super_admin");
+      return;
     }
-    if (!isLoaded || !user) return "viewer";
-    // Use DB-stored role if available, default to analyst for all other authenticated users
-    return memberData?.role ?? "analyst";
+    if (!isLoaded || !user) {
+      setRole("viewer");
+      return;
+    }
+    setRole(memberData?.role ?? "analyst");
   }, [isLoaded, user, memberData]);
 
   const value = useMemo<RoleContextValue>(() => ({
