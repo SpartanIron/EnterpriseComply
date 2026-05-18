@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
+import { useRole, ROLE_LABELS } from "@/context/RoleContext";
 import type { ReactNode } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -89,6 +90,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { role, canSeeSection, can } = useRole();
   const qc = useQueryClient();
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -204,7 +206,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
-          {NAV.map(({ section, items }) => {
+          {NAV.map(({
+          if (!canSeeSection(section)) return null; section, items }) => {
             const isOpen = openSections.has(section);
             const hasActive = items.some(
               (item) => location === item.path || location.startsWith(item.path + "/"),
@@ -292,7 +295,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             { path: "/settings", label: "Settings", Icon: SettingsIcon },
             { path: "/audit-log", label: "Audit Log", Icon: AuditLogIcon },
             { path: "/docs", label: "Documentation", Icon: DocsIcon },
-        { path: "/super-admin", label: "Owner Panel", Icon: SuperAdminIcon },
+        ...(can("org_admin") ? [{ path: "/role-management", label: "Users & Roles", Icon: UsersRolesIcon }] : []),
+        ...(can("super_admin") ? [{ path: "/super-admin", label: "Owner Panel", Icon: SuperAdminIcon }] : []),
           ].map(({ path, label, Icon }) => {
             const active = location === path;
             return (
@@ -356,6 +360,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               >
                 Sign out
               </button>
+          <span style={{fontSize:"10px",fontWeight:700,marginTop:"3px",padding:"1px 7px",borderRadius:"999px",display:"inline-block",background:"rgba(37,99,235,0.18)",color:"#93c5fd"}}>{ROLE_LABELS[role]}</span>
             </div>
           </div>
         </div>
@@ -552,6 +557,9 @@ function AuditLogIcon({ active }: { active: boolean }) {
 
 function DocsIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />;
+}
+function UsersRolesIcon({ active }: { active: boolean }) {
+  return <Icon active={active} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />;
 }
 function SuperAdminIcon({ active }: { active: boolean }) {
   return <Icon active={active} d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />;
