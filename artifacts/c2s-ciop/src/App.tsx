@@ -209,7 +209,7 @@ export default function App() {
     );
   }
   return (
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} appearance={clerkAppearance} __internal_clerkJSVersion="6.11.1">
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} appearance={clerkAppearance} __internal_clerkJSUrl="https://0z4untqapeo2.clerk.accounts.dev/npm/@clerk/clerk-js@6.11.1/dist/clerk.browser.js">
       <QueryClientProvider client={queryClient}>
         <WouterRouter base={BASE_PATH}>
           <AppRoutes />
