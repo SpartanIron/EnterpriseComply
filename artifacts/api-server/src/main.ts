@@ -8,7 +8,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import express from "express";
 
-// ── Startup env validation ─────────────────────────────────────────────────
+// ── Startup env validation ───────────────────────────────────────────────────────────────────
 // Validates required env vars on startup and refuses to boot if critical ones
 // are missing or malformed. Prevents silent runtime failures (e.g., OAuth typos).
 function validateEnv() {
@@ -36,12 +36,7 @@ function validateEnv() {
   }
 }
 
-// ── CORS origin resolution ─────────────────────────────────────────────────
-// Supports:
-//   ALLOWED_ORIGINS=https://app.enterprisecomply.com,https://grc.colorcodesolutions.com
-//   ALLOWED_ORIGIN=https://app.enterprisecomply.com  (legacy single-origin support)
-// In development (NODE_ENV != production): all origins allowed.
-// In production with no env var set: origins blocked.
+// ── CORS origin resolution ───────────────────────────────────────────────────────────────────
 function resolveAllowedOrigins(): string[] | boolean {
   const multiOrigin = process.env.ALLOWED_ORIGINS;
   const singleOrigin = process.env.ALLOWED_ORIGIN;
@@ -73,18 +68,17 @@ async function bootstrap() {
   validateEnv();
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
-  // ── Security headers (Phase 5 / SOC2 / FedRAMP-ready) ─────────────────
+  // ── Security headers ───────────────────────────────────────────────────────────────────
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://clerk.browser.accounts.dev", "https://*.clerk.accounts.dev"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: [
             "'self'",
-            "https://*.clerk.accounts.dev",
             "https://*.colorcodesolutions.com",
             "https://app.enterprisecomply.com",
             "https://grc.colorcodesolutions.com",
@@ -99,7 +93,7 @@ async function bootstrap() {
       hsts: {
         maxAge: 31536000,
         includeSubDomains: true,
-        preload: false, // Set to true only after DNS is fully stable
+        preload: false,
       },
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       xContentTypeOptions: true,
@@ -107,7 +101,7 @@ async function bootstrap() {
     }),
   );
 
-  // ── Request logging ────────────────────────────────────────────────────
+  // ── Request logging ───────────────────────────────────────────────────────────────────
   app.use(
     pinoHttp({
       logger,
@@ -122,7 +116,7 @@ async function bootstrap() {
     }),
   );
 
-  // ── CORS ───────────────────────────────────────────────────────────────
+  // ── CORS ─────────────────────────────────────────────────────────────────────────────────────
   const allowedOrigins = resolveAllowedOrigins();
   app.enableCors({
     credentials: true,
@@ -134,7 +128,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api");
 
-  // ── Frontend static files (SPA) ────────────────────────────────────────
+  // ── Frontend static files (SPA) ────────────────────────────────────────────────────────
   const frontendDist = join(process.cwd(), "artifacts/c2s-ciop/dist/public");
   if (existsSync(frontendDist)) {
     app.use(express.static(frontendDist));
