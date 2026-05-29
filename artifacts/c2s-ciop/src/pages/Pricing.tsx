@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/react";
+import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -267,7 +267,8 @@ function CompareCell({ value }: { value: boolean | string }) {
 }
 
 export default function Pricing() {
-  const { isSignedIn } = useAuth();
+  const session = authClient.useSession();
+  const isSignedIn = !!session.data?.user;
   const [annual, setAnnual] = useState(true);
 
   return (

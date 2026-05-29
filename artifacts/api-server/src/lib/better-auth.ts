@@ -7,7 +7,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins";
 import { twoFactor } from "better-auth/plugins";
 import { organization } from "better-auth/plugins";
-import { dash } from "@better-auth/infra";
 import { db } from "@workspace/db";
 import { sendWelcomeEmail } from "./email";
 import { logger } from "./logger";
@@ -81,7 +80,6 @@ export const auth = betterAuth({
       },
     }),
 
-    ...(process.env.BETTER_AUTH_API_KEY ? [dash()] : []),
   ],
 
   user: {

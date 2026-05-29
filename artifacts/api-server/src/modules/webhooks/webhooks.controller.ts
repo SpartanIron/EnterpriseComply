@@ -1,6 +1,6 @@
 // webhooks.controller.ts — BetterAuth lifecycle webhook controller
 import { Controller, Post, Req, Res, HttpCode, Logger } from "@nestjs/common";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { WebhooksService } from "./webhooks.service";
 
 @Controller("webhooks")

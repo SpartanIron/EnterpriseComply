@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useUser } from "@clerk/react";
+import { authClient } from "@/lib/auth-client";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Plan = "starter" | "professional" | "enterprise" | "federal";
@@ -472,12 +472,12 @@ function ImpersonateTab() {
 
 // ─── Main SuperAdmin Component ────────────────────────────────────────────────
 export default function SuperAdmin() {
-  const { user } = useUser();
+  const session = authClient.useSession();
   const [tab, setTab] = useState<Tab>("tenants");
 
   // Guard: only render for designated super-admin emails
   const ADMIN_EMAILS = ["annankwekujude@gmail.com", "admin@colorcodesolutions.com", "ops@colorcodesolutions.com", "support@colorcodesolutions.com"];
-  const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const userEmail = session.data?.user?.email ?? "";
   const isSuperAdmin = ADMIN_EMAILS.some(e => e === userEmail) || userEmail.endsWith("@colorcodesolutions.com");
 
   if (!isSuperAdmin) {

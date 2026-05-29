@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiUrl } from "@/lib/queryClient";
 import { useEffect } from "react";
-import { useUser } from "@clerk/react";
+import { authClient } from "@/lib/auth-client";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 const CATEGORY_COLORS: Record<string, { badge: string; label: string }> = {
@@ -57,7 +57,8 @@ function ScoreRingSmall({ score }: { score: number }) {
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
-  const { user } = useUser();
+  const session = authClient.useSession();
+  const user = session.data?.user;
 
   const { data: orgData, isLoading: orgLoading } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -105,7 +106,7 @@ export default function Dashboard() {
     return "Good evening";
   })();
 
-  const firstName = user?.firstName ?? user?.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "";
+  const firstName = user?.name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "";
 
   const policiesCount = dashData?.policiesCount ?? 0;
   const peopleCount = dashData?.peopleCount ?? 0;

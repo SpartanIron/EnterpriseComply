@@ -1,7 +1,7 @@
 // RBAC v2 — role-aware nav
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useUser, useClerk } from "@clerk/react";
+import { authClient } from "@/lib/auth-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import { useRole, ROLE_LABELS } from "@/context/RoleContext";
@@ -89,8 +89,8 @@ function getActiveSection(location: string): string {
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const session = authClient.useSession();
+  const user = session.data?.user;
   const { role, canSeeSection, can } = useRole();
   const qc = useQueryClient();
   const notifRef = useRef<HTMLDivElement>(null);
@@ -348,14 +348,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </a>
           {/* User profile */}
           <div className="flex items-center gap-2.5 px-2.5 py-2 mt-1">
-            {user?.imageUrl
-              ? <img src={user.imageUrl} className="h-7 w-7 rounded-full flex-shrink-0" style={{ outline: "1.5px solid rgba(255,255,255,0.15)" }} />
-              : <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">{user?.firstName?.[0] ?? "U"}</div>
+            {user?.image
+              ? <img src={user.image} className="h-7 w-7 rounded-full flex-shrink-0" style={{ outline: "1.5px solid rgba(255,255,255,0.15)" }} />
+              : <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">{user?.name?.[0] ?? "U"}</div>
             }
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate leading-tight" style={{ color: "#e2e8f0" }}>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</p>
+              <p className="text-sm font-medium truncate leading-tight" style={{ color: "#e2e8f0" }}>{user?.name ?? user?.email}</p>
             <button
-                onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
+                onClick={() => authClient.signOut().then(() => navigate("/"))}
                 className="text-xs leading-tight transition-colors mt-1"
                 style={{ color: "rgba(100,116,139,0.8)" }}
               >
@@ -445,9 +445,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
               )}
             </div>
             <div className="h-8 w-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-slate-100">
-              {user?.imageUrl
-                ? <img src={user.imageUrl} className="h-full w-full object-cover" />
-                : <div className="h-full w-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white">{user?.firstName?.[0] ?? "U"}</div>
+              {user?.image
+                ? <img src={user.image} className="h-full w-full object-cover" />
+                : <div className="h-full w-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white">{user?.name?.[0] ?? "U"}</div>
               }
             </div>
           </div>

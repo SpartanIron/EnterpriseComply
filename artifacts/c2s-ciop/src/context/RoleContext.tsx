@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState, useEffect } from "react";
-import { useUser } from "@clerk/react";
+import { authClient } from "@/lib/auth-client";
 import { useQuery } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 
@@ -113,16 +113,10 @@ const SUPER_ADMIN_EMAILS = [
   "ops@colorcodesolutions.com",
 ];
 
-// Get current user email from window.Clerk (most reliable source)
-function getClerkEmail(): string {
-  try {
-    const w = window as any;
-    return w.Clerk?.user?.primaryEmailAddress?.emailAddress ?? "";
-  } catch { return ""; }
-}
-
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const { user, isLoaded } = useUser();
+  const session = authClient.useSession();
+  const userEmail = session.data?.user?.email ?? "";
+  const isLoaded = !session.isPending;
 
   const { data: memberData, isLoading: memberLoading } = useQuery<{ role: AppRole | null }>({
     queryKey: ["member-role"],
@@ -131,7 +125,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return { role: null };
       return res.json();
     },
-    enabled: !!isLoaded && !!user,
+    enabled: isLoaded && !!session.data?.user,
     staleTime: 60000,
     retry: false,
   });
@@ -140,25 +134,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    // Check window.Clerk first — it reflects auth state even before React hook resolves
-    const clerkEmail = getClerkEmail();
-    if (clerkEmail && (SUPER_ADMIN_EMAILS.includes(clerkEmail) || clerkEmail.endsWith("@colorcodesolutions.com"))) {
-      setRole("super_admin");
-      setResolved(true);
-      return;
-    }
-
-    // Fall back to Clerk React hook
     if (!isLoaded) return;
 
-    const hookEmail = user?.primaryEmailAddress?.emailAddress ?? "";
-    if (hookEmail && (SUPER_ADMIN_EMAILS.includes(hookEmail) || hookEmail.endsWith("@colorcodesolutions.com"))) {
+    if (userEmail && (SUPER_ADMIN_EMAILS.includes(userEmail) || userEmail.endsWith("@colorcodesolutions.com"))) {
       setRole("super_admin");
       setResolved(true);
       return;
     }
 
-    if (!user) {
+    if (!session.data?.user) {
       setRole("viewer");
       setResolved(true);
       return;
@@ -168,27 +152,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
     setRole(memberData?.role ?? "analyst");
     setResolved(true);
-  }, [isLoaded, user, memberData, memberLoading]);
-
-  // Poll window.Clerk every 500ms until super_admin email is detected
-  // This handles the case where Clerk React hook resolves slowly
-  useEffect(() => {
-    if (resolved) return;
-    const interval = setInterval(() => {
-      const clerkEmail = getClerkEmail();
-      if (clerkEmail && (SUPER_ADMIN_EMAILS.includes(clerkEmail) || clerkEmail.endsWith("@colorcodesolutions.com"))) {
-        setRole("super_admin");
-        setResolved(true);
-        clearInterval(interval);
-      }
-    }, 500);
-    // Stop polling after 10s regardless
-    const timeout = setTimeout(() => {
-      clearInterval(interval);
-      if (!resolved) setResolved(true);
-    }, 10000);
-    return () => { clearInterval(interval); clearTimeout(timeout); };
-  }, [resolved]);
+  }, [isLoaded, userEmail, session.data?.user, memberData, memberLoading]);
 
   const isLoading = !resolved;
 

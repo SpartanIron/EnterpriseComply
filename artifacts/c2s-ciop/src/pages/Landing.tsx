@@ -1,4 +1,4 @@
-import { useAuth, useClerk } from "@clerk/react";
+import { authClient } from "@/lib/auth-client";
 import { useState, useEffect } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -106,8 +106,8 @@ const FOOTER_LINKS = {
 };
 
 function NavBar() {
-  const { isSignedIn } = useAuth();
-  const { signOut } = useClerk();
+  const session = authClient.useSession();
+  const isSignedIn = !!session.data?.user;
   return (
     <nav className="sticky top-0 z-50 border-b" style={{ background: "rgba(255,255,255,0.97)", borderColor: "rgba(15,23,42,0.08)", backdropFilter: "blur(12px)" }}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
@@ -123,7 +123,7 @@ function NavBar() {
           {isSignedIn ? (
             <>
               <button
-                onClick={() => signOut({ redirectUrl: BASE_PATH + "/" })}
+                onClick={() => authClient.signOut().then(() => { window.location.href = BASE_PATH + "/"; })}
                 className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 style={{ color: "#64748b", background: "transparent" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#0f172a"; }}
@@ -472,7 +472,8 @@ function ProductMockup() {
 }
 
 export default function Landing() {
-  const { isSignedIn } = useAuth();
+  const session = authClient.useSession();
+  const isSignedIn = !!session.data?.user;
 
   return (
     <div style={{ fontFamily: "Inter, -apple-system, sans-serif", background: "#030712", color: "white" }}>

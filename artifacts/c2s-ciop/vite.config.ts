@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 const isProduction = process.env.NODE_ENV === "production";
+const isReplit = !!process.env.REPL_ID;
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 5173;
 

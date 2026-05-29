@@ -10,14 +10,14 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - offered 
 - `pnpm run build` - typecheck + build all packages
 - `psql "$DATABASE_URL" -f <sql-file>` - push schema changes (drizzle-kit push blocks interactively; use psql directly)
 - `cd lib/db && /home/runner/workspace/artifacts/c2s-ciop/node_modules/.bin/tsx src/seed-colorcomply.ts` - re-seed UCO controls, 147 framework mappings, automated tests
-- Required env: `DATABASE_URL`, `SESSION_SECRET`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`
+- Required env: `DATABASE_URL`, `SESSION_SECRET`
 - Optional: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` for GitHub OAuth integration
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- Frontend: React + Vite (port 19222), Tailwind CSS v4, Wouter routing, @clerk/react
-- API: NestJS 11 (port 8080, path `/api`), @clerk/express, modular controller/service/module pattern
+- Frontend: React + Vite (port 19222), Tailwind CSS v4, Wouter routing, better-auth/react
+- API: NestJS 11 (port 8080, path `/api`), better-auth, modular controller/service/module pattern
 - DB: PostgreSQL + Drizzle ORM (multi-tenant schema, 28 tables)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - Build: esbuild (ESM bundle for API server production); SWC (`@swc-node/register`) for dev runner
@@ -37,9 +37,9 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - offered 
 
 ## Architecture decisions
 
-- **Multi-tenant by orgId**: every table has `org_id`; all routes scoped to `/orgs/:orgId/...` with Clerk auth middleware
+- **Multi-tenant by orgId**: every table has `org_id`; all routes scoped to `/orgs/:orgId/...` with better-auth session middleware
 - **UCO (Universal Control Objectives)**: 41 canonical controls mapped to 147 framework entries across 12 frameworks - implement once, satisfy all simultaneously
-- **Clerk proxy only in production**: `proxyUrl` on ClerkProvider is only set when `import.meta.env.PROD`; dev mode loads Clerk JS directly from CDN
+- **better-auth**: `authClient` from `better-auth/react` in frontend (`src/lib/auth-client.ts`); backend config at `artifacts/api-server/src/lib/better-auth.ts`; auth routes at `/api/auth`
 - **NestJS modular architecture**: each domain is a self-contained module (controller + service + module); guards in `src/guards/`
 - **DB migrations via psql**: `drizzle-kit push` blocks interactively on existing constraints; use `psql "$DATABASE_URL" -c "CREATE TABLE IF NOT EXISTS..."` for new tables
 - **GitHub OAuth connector**: `GET /api/integrations/github/connect` - GitHub OAuth - callback stores token + syncs repos/members/MFA
