@@ -204,3 +204,20 @@ export async function sendTrialExpiredEmail(opts: {
     `),
   });
 }
+
+export async function sendMagicLinkEmail(opts: {
+  to: string;
+  magicLink: string;
+}): Promise<void> {
+  await send({
+    to: opts.to,
+    subject: 'Sign in to EnterpriseComply',
+    tags: { type: 'magic_link' },
+    html: wrap(`
+<h2>Sign in to EnterpriseComply</h2>
+<p>Click the button below to sign in. This link expires in 15 minutes.</p>
+<a href="${opts.magicLink}" class="btn">Sign in →</a>
+<p style="font-size:12px;color:#6b7280;margin-top:16px;">If you did not request this, you can safely ignore this email.</p>
+`),
+  });
+}
