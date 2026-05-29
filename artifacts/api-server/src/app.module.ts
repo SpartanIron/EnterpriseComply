@@ -2,8 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
-import { clerkMiddleware } from "@clerk/express";
-import { ClerkProxyMiddleware, CLERK_PROXY_PATH } from "./middlewares/clerk-proxy.middleware";
+import { AuthModule } from "./modules/auth/auth.module";
 import { StartupModule } from "./startup/startup.module";
 import { HealthModule } from "./modules/health/health.module";
 import { OrgsModule } from "./modules/orgs/orgs.module";
@@ -44,6 +43,7 @@ import { SchedulerModule } from "./modules/scheduler/scheduler.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    AuthModule,
     StartupModule,
     HealthModule,
     OrgsModule,
@@ -89,11 +89,7 @@ import { SchedulerModule } from "./modules/scheduler/scheduler.module";
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(ClerkProxyMiddleware)
-      .forRoutes(CLERK_PROXY_PATH);
-    consumer
-      .apply(clerkMiddleware())
-      .forRoutes("*path");
+    // BetterAuth handles /api/auth/* via AuthModule/AuthController
+    // No Clerk middleware needed
   }
 }
