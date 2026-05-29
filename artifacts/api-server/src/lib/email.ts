@@ -11,23 +11,35 @@ const REPLY_TO = process.env["SMTP_REPLY_TO"] || "support@enterprisecomply.com";
 const BASE_URL = process.env["APP_URL"] || "https://app.enterprisecomply.com";
 
 function createTransport() {
-  const host = process.env["SMTP_HOST"];
-  const port = Number(process.env["SMTP_PORT"] || 587);
-  const user = process.env["SMTP_USER"];
-  const pass = process.env["SMTP_PASS"];
+// Prefer Resend SMTP if RESEND_API_KEY is set
+const resendKey = process.env["RESEND_API_KEY"];
+if (resendKey) {
+return nodemailer.createTransport({
+host: "smtp.resend.com",
+port: 465,
+secure: true,
+auth: { user: "resend", pass: resendKey },
+});
+}
 
-  if (!host || !user || !pass) {
-    logger.warn("[email] SMTP not configured — emails will be logged only");
-    return null;
-  }
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-    pool: true,
-    maxConnections: 5,
-  });
+// Fall back to custom SMTP
+const host = process.env["SMTP_HOST"];
+const port = Number(process.env["SMTP_PORT"] || 587);
+const user = process.env["SMTP_USER"];
+const pass = process.env["SMTP_PASS"];
+
+if (!host || !user || !pass) {
+logger.warn("[email] SMTP not configured — emails will be logged only");
+return null;
+}
+return nodemailer.createTransport({
+host,
+port,
+secure: port === 465,
+auth: { user, pass },
+pool: true,
+maxConnections: 5,
+});
 }
 
 const transport = createTransport();
