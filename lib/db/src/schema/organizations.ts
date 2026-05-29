@@ -13,6 +13,7 @@ export const organizationsTable = pgTable("organizations", {
   onboardingComplete: boolean("onboarding_complete").notNull().default(false),
   onboardingStep: integer("onboarding_step").notNull().default(1),
   plan: text("plan").notNull().default("starter"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
