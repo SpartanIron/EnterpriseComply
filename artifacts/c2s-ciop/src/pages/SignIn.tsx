@@ -164,8 +164,6 @@ export default function SignIn() {
                 {loading ? "Verifying..." : "Verify code"}
               </button>
 
-              <button
-                type="button"
           <button
             type="button"
             onClick={() => { setBackupMode(!backupMode); setCode(""); setError(""); }}
@@ -173,11 +171,13 @@ export default function SignIn() {
           >
             {backupMode ? "← Use authenticator app instead" : "Use backup code instead"}
           </button>
+          <button
+            type="button"
             onClick={() => { reset(); setBackupMode(false); setView("magic"); }}
-                className="w-full py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
-              >
-                Back to magic link
-              </button>
+            className="w-full py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
+          >
+            Back to magic link
+          </button>
             </form>
 
             <div className="px-7 pb-5 text-center">
