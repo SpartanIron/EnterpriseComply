@@ -7,6 +7,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins";
 import { twoFactor } from "better-auth/plugins";
 import { organization } from "better-auth/plugins";
+import { dash } from "@better-auth/infra";
 import { db } from "@workspace/db";
 import { sendWelcomeEmail } from "./email";
 import { logger } from "./logger";
@@ -18,11 +19,11 @@ export const auth = betterAuth({
 
   secret: process.env.BETTER_AUTH_SECRET || "ec-dev-secret-change-in-production",
 
-  baseURL: process.env.APP_URL || "https://app.enterprisecomply.com",
+  baseURL: process.env.BETTER_AUTH_URL || process.env.APP_URL || "https://app.enterprisecomply.com",
   basePath: "/api/auth",
 
   trustedOrigins: [
-    process.env.APP_URL || "https://app.enterprisecomply.com",
+    process.env.BETTER_AUTH_URL || process.env.APP_URL || "https://app.enterprisecomply.com",
     "https://app.enterprisecomply.com",
     "https://grc.colorcodesolutions.com",
     "http://localhost:3000",
@@ -60,7 +61,7 @@ export const auth = betterAuth({
           throw err;
         }
       },
-      expiresIn: 15 * 60, // 15 minutes
+      expiresIn: 15 * 60,
     }),
 
     twoFactor({
@@ -79,6 +80,8 @@ export const auth = betterAuth({
         logger.info({ email: data.email, orgName: data.organization.name }, "Org invitation sent");
       },
     }),
+
+    ...(process.env.BETTER_AUTH_API_KEY ? [dash()] : []),
   ],
 
   user: {
@@ -102,7 +105,7 @@ export const auth = betterAuth({
   },
 
   session: {
-    expiresIn: 7 * 24 * 60 * 60, // 7 days
+    expiresIn: 7 * 24 * 60 * 60,
     updateAge: 24 * 60 * 60,
     cookieCache: {
       enabled: true,
@@ -118,7 +121,6 @@ export const auth = betterAuth({
     },
   },
 
-  // Hook: send welcome email on new user creation
   databaseHooks: {
     user: {
       create: {
