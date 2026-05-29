@@ -20,7 +20,7 @@
     "@nestjs/platform-express": "^11.1.19",
     "@nestjs/schedule": "^5.0.1",
     "@nestjs/serve-static": "^5.0.5",
-    "@fastify/static": "^8.0.0",
+    "@fastify/static": "^9.1.1",
     "@nestjs/throttler": "^6.5.0",
         "@opentelemetry/semantic-conventions": "^1.27.0",
     "@workspace/api-zod": "workspace:*",
