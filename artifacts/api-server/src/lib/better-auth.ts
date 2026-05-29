@@ -69,6 +69,10 @@ export const auth = betterAuth({
         period: 30,
         digits: 6,
       },
+      backupCodes: {
+        enabled: true,
+        amount: 10,
+      },
     }),
 
     organization({

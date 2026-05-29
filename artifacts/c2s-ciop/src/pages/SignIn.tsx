@@ -14,6 +14,7 @@ export default function SignIn() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [backupMode, setBackupMode] = useState(false);
 
   function reset() {
     setError("");
@@ -56,9 +57,19 @@ export default function SignIn() {
     setError("");
     setLoading(true);
     try {
-      const result = await authClient.twoFactor.verifyTotp({ code });
-      if ((result as any)?.error) {
-        setError((result as any).error.message ?? "Invalid code. Check your authenticator app and try again.");
+      let result;
+      if (backupMode) {
+        result = await (authClient.twoFactor as any).verifyBackupCode?.({ code: code.replace(/-/g, "").toUpperCase() });
+        if (!result || (result as any)?.error) {
+          setError((result as any)?.error?.message ?? "Invalid backup code.");
+          return;
+        }
+      } else {
+        result = await authClient.twoFactor.verifyTotp({ code });
+        if ((result as any)?.error) {
+          setError((result as any).error.message ?? "Invalid code. Check your authenticator app and try again.");
+          return;
+        }
       }
     } catch {
       setError("Invalid or expired code. Please try again.");
@@ -114,23 +125,28 @@ export default function SignIn() {
               </div>
               <h2 className="text-xl font-bold text-slate-900 mb-1">Authenticator app</h2>
               <p className="text-sm text-slate-500">Enter the 6-digit code from your authenticator app to complete sign-in.</p>
+            {email && (
+              <p className="text-xs text-slate-400 text-center mt-1">
+                Signing in as <strong className="text-slate-600">{email}</strong>
+              </p>
+            )}
             </div>
 
             <form onSubmit={handleTotp} className="px-7 pb-7 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">6-digit code</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{backupMode ? "Backup code" : "6-digit code"}</label>
                 <input
                   type="text"
                   inputMode="numeric"
-                  pattern="\d{6}"
-                  maxLength={6}
+            pattern={backupMode ? "[A-Za-z0-9-]{9}" : "\d{6}"}
+            maxLength={backupMode ? 9 : 6}
                   required
                   value={code}
-                  onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) => setCode(backupMode ? e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 9) : e.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="w-full px-3.5 py-3 rounded-lg border border-slate-300 text-center text-2xl font-mono tracking-[0.5em] text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
                   placeholder="000000"
                   autoFocus
-                  autoComplete="one-time-code"
+            autoComplete={backupMode ? "off" : "one-time-code"}
                 />
               </div>
 
@@ -142,7 +158,7 @@ export default function SignIn() {
 
               <button
                 type="submit"
-                disabled={loading || code.length !== 6}
+            disabled={loading || (backupMode ? code.replace(/-/g, "").length !== 8 : code.length !== 6)}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors"
               >
                 {loading ? "Verifying..." : "Verify code"}
@@ -150,7 +166,14 @@ export default function SignIn() {
 
               <button
                 type="button"
-                onClick={() => { reset(); setView("magic"); }}
+          <button
+            type="button"
+            onClick={() => { setBackupMode(!backupMode); setCode(""); setError(""); }}
+            className="w-full py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
+          >
+            {backupMode ? "← Use authenticator app instead" : "Use backup code instead"}
+          </button>
+            onClick={() => { reset(); setBackupMode(false); setView("magic"); }}
                 className="w-full py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
               >
                 Back to magic link
