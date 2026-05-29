@@ -37,6 +37,8 @@ import { AuditSharesModule } from "./modules/audit-shares/audit-shares.module";
 import { GoogleWorkspaceModule } from "./modules/google-workspace/google-workspace.module";
 import { AssetsModule } from "./modules/assets/assets.module";
 import { ZeroTrustModule } from "./modules/zero-trust/zero-trust.module";
+import { WebhooksModule } from "./modules/webhooks/webhooks.module";
+import { SchedulerModule } from "./modules/scheduler/scheduler.module";
 
 @Module({
   imports: [
@@ -73,8 +75,10 @@ import { ZeroTrustModule } from "./modules/zero-trust/zero-trust.module";
     ScapModule,
     ClientPortalModule,
     GoogleWorkspaceModule,
-		AssetsModule,
+    AssetsModule,
     ZeroTrustModule,
+    WebhooksModule,
+    SchedulerModule,
   ],
   providers: [
     {
