@@ -14,8 +14,6 @@
     "@aws-sdk/client-guardduty": "^3.1043.0",
     "@aws-sdk/client-iam": "^3.1043.0",
     "@aws-sdk/client-s3": "^3.1043.0",
-    "@clerk/express": "^2.1.13",
-    "@clerk/shared": "^4.10.0",
     "@nestjs/common": "^11.1.19",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.19",
@@ -26,6 +24,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "better-auth": "^1.2.7",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "drizzle-orm": "catalog:",
@@ -37,8 +36,7 @@
     "pino": "^9",
     "pino-http": "^10",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
-    "svix": "^1.45.0"
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@swc-node/register": "^1.11.1",
