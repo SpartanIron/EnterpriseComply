@@ -837,12 +837,100 @@ ALTER TABLE organizations ADD COLUMN IF NOT EXISTS risk_appetite TEXT NOT NULL D
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS notification_prefs JSONB;
 `;
 
+
+const MIGRATION_SQL_V3 = `
+-- BetterAuth required tables
+CREATE TABLE IF NOT EXISTS "user" (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  image TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  role TEXT DEFAULT 'member',
+  org_id INTEGER,
+  clerk_user_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS session (
+  id TEXT PRIMARY KEY,
+  expires_at TIMESTAMPTZ NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ip_address TEXT,
+  user_agent TEXT,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS account (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  access_token TEXT,
+  refresh_token TEXT,
+  id_token TEXT,
+  access_token_expires_at TIMESTAMPTZ,
+  refresh_token_expires_at TIMESTAMPTZ,
+  scope TEXT,
+  password TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS verification (
+  id TEXT PRIMARY KEY,
+  identifier TEXT NOT NULL,
+  value TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS two_factor (
+  id TEXT PRIMARY KEY,
+  secret TEXT NOT NULL,
+  backup_codes TEXT NOT NULL,
+  user_id TEXT NOT NULL UNIQUE REFERENCES "user"(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS organization (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE,
+  logo TEXT,
+  metadata TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS member (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS invitation (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  expires_at TIMESTAMPTZ NOT NULL,
+  inviter_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
+);
+`;
+
 @Injectable()
 export class StartupService implements OnApplicationBootstrap {
   private readonly logger = new Logger(StartupService.name);
 
   async onApplicationBootstrap() {
     await this.runMigrations();
+    await this.runMigrationsV3();
     await this.runMigrationsV2();
     await this.seedIfEmpty();
     await this.seedNewPolicies();
@@ -860,6 +948,15 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.error('Migration failed - continuing startup', err);
     }
   }
+  private async runMigrationsV3() {
+    try {
+      await db.execute(sql.raw(MIGRATION_SQL_V3));
+      this.logger.log('BetterAuth V3 migrations complete');
+    } catch (err) {
+      this.logger.error('V3 migration failed - continuing', err);
+    }
+  }
+
   private async seedIfEmpty() {
     try {
       const rows = await db
