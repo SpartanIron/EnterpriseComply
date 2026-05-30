@@ -43,6 +43,7 @@ async function migrate() {
                   await client.query(`ALTER TABLE session ADD COLUMN IF NOT EXISTS "ipAddress" TEXT`);
                   await client.query(`ALTER TABLE session ADD COLUMN IF NOT EXISTS "userAgent" TEXT`);
                   await client.query(`ALTER TABLE session ADD COLUMN IF NOT EXISTS "userId" TEXT`);
+                        await client.query(`ALTER TABLE session ADD COLUMN IF NOT EXISTS token TEXT`);
                   await client.query(`ALTER TABLE session ALTER COLUMN expires_at DROP NOT NULL`).catch(() => {});
                   await client.query(`ALTER TABLE session ALTER COLUMN created_at DROP NOT NULL`).catch(() => {});
                   await client.query(`ALTER TABLE session ALTER COLUMN updated_at DROP NOT NULL`).catch(() => {});
