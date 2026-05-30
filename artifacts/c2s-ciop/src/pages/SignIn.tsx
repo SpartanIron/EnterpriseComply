@@ -2,7 +2,7 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const CALLBACK_URL = "https://grc.colorcodesolutions.com/dashboard";
+const CALLBACK_URL = "/dashboard";
 
 type View = "magic" | "totp" | "sent";
 type Tab = "signin" | "signup";
