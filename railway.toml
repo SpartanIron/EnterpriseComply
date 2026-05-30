@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "pnpm install && BASE_PATH=/ pnpm --filter @workspace/c2s-ciop run build && pnpm --filter @workspace/api-server run build"
 
 [deploy]
-startCommand = "node scripts/ec-migrate.cjs && node --enable-source-maps artifacts/api-server/dist/main.mjs"
+startCommand = "node artifacts/api-server/scripts/migrate.cjs && node --enable-source-maps artifacts/api-server/dist/main.mjs"
 healthcheckPath = "/api/healthz"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
