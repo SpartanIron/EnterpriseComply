@@ -67,6 +67,20 @@ async function migrate() {
                   console.log('EC Migration: account table ensured');
 
           console.log('EC Migration complete: all BetterAuth tables verified');
+
+                    // twoFactor table
+                    await client.query(`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "twoFactorEnabled" BOOLEAN DEFAULT FALSE`);
+                    await client.query(`ALTER TABLE session ADD COLUMN IF NOT EXISTS "activeOrganizationId" TEXT`);
+                    await client.query(`CREATE TABLE IF NOT EXISTS "twoFactor" (id TEXT PRIMARY KEY, secret TEXT NOT NULL, "backupCodes" TEXT NOT NULL, "userId" TEXT NOT NULL UNIQUE)`);
+                    await client.query(`ALTER TABLE "twoFactor" ADD COLUMN IF NOT EXISTS secret TEXT`);
+                    await client.query(`ALTER TABLE "twoFactor" ADD COLUMN IF NOT EXISTS "backupCodes" TEXT`);
+                    await client.query(`ALTER TABLE "twoFactor" ADD COLUMN IF NOT EXISTS "userId" TEXT`);
+                    console.log('EC Migration: twoFactor table ensured');
+                    // organization tables
+                    await client.query(`CREATE TABLE IF NOT EXISTS organization (id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT UNIQUE, logo TEXT, metadata TEXT, "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+                    await client.query(`CREATE TABLE IF NOT EXISTS member (id TEXT PRIMARY KEY, "organizationId" TEXT NOT NULL, "userId" TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'member', "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+                    await client.query(`CREATE TABLE IF NOT EXISTS invitation (id TEXT PRIMARY KEY, "organizationId" TEXT NOT NULL, email TEXT NOT NULL, role TEXT DEFAULT 'member', status TEXT NOT NULL DEFAULT 'pending', "expiresAt" TIMESTAMPTZ NOT NULL, "inviterId" TEXT NOT NULL)`);
+                    console.log('EC Migration: org/member/invitation tables ensured');
         } catch (err) {
                   console.error('EC Migration error:', err.message);
         } finally {
