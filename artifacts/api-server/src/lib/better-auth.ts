@@ -54,8 +54,7 @@ export const auth = betterAuth({
           logger.info({ email }, "Magic link sent via BetterAuth");
         } catch (err) {
           logger.error({ err, email }, "Failed to send magic link email");
-          throw err;
-        }
+          
       },
       expiresIn: 15 * 60,
     }),
