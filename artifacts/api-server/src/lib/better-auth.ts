@@ -3,19 +3,16 @@
 // Replaces Clerk completely — no Clerk SDK needed
 
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { Pool } from "pg";
 import { magicLink } from "better-auth/plugins";
 import { twoFactor } from "better-auth/plugins";
 import { organization } from "better-auth/plugins";
-import { db } from "@workspace/db";
 import { sendWelcomeEmail } from "./email";
 import { logger } from "./logger";
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: "pg",
-  }),
-
+    database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  
   secret: process.env.BETTER_AUTH_SECRET || "ec-dev-secret-change-in-production",
 
   baseURL: process.env.BETTER_AUTH_URL || process.env.APP_URL || "https://app.enterprisecomply.com",
