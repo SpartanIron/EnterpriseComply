@@ -20,7 +20,7 @@ export class IntegrationsController {
 
   // ── GitHub OAuth connect ────────────────────────────────────────────────────
   @Get("integrations/github/connect")
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(OrgContextGuard)
   githubConnect(
     @ClerkUserId() userId: string,
     @Query("orgId") orgId: string,
