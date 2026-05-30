@@ -333,8 +333,8 @@ export default function Onboarding() {
           )}
 
           {/* Step 4: Aha Moment - Initial compliance score */}
-          {step === 4 && orgId && (
-            <ScoreReveal orgId={orgId} selectedFrameworks={selectedFrameworks} onDone={() => navigate("/dashboard")} />
+          {step === 4 && (
+            <ScoreReveal orgId={orgId ?? 0} selectedFrameworks={selectedFrameworks} onDone={() => navigate("/dashboard")} />
           )}
         </div>
       </div>
@@ -343,7 +343,7 @@ export default function Onboarding() {
 }
 
 function ScoreReveal({ orgId, selectedFrameworks, onDone }: { orgId: number; selectedFrameworks: string[]; onDone: () => void }) {
-  const { data, isLoading } = useQuery<{ frameworks: any[] }>({
+  const { data, isLoading } = useQuery<{ frameworks: any[] }>({ enabled: orgId > 0,
     queryKey: ["onboarding-score", orgId],
     queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/frameworks`), { credentials: "include" })).json(),
     refetchOnWindowFocus: false,
