@@ -64,6 +64,9 @@ async function migrate() {
                   await client.query(`ALTER TABLE account ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ DEFAULT NOW()`);
                   await client.query(`ALTER TABLE account ALTER COLUMN created_at DROP NOT NULL`).catch(() => {});
                   await client.query(`ALTER TABLE account ALTER COLUMN updated_at DROP NOT NULL`).catch(() => {});
+                        await client.query(`ALTER TABLE account ALTER COLUMN account_id DROP NOT NULL`).catch(() => {});
+                        await client.query(`ALTER TABLE account ALTER COLUMN provider_id DROP NOT NULL`).catch(() => {});
+                        await client.query(`ALTER TABLE account ALTER COLUMN user_id DROP NOT NULL`).catch(() => {});
                   console.log('EC Migration: account table ensured');
 
           console.log('EC Migration complete: all BetterAuth tables verified');
