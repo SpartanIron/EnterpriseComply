@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
