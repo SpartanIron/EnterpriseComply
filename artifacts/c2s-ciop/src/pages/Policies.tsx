@@ -164,7 +164,7 @@ export default function Policies() {
   });
 
   const policies = data?.policies ?? [];
-  const templates = templatesData?.templates ?? [];
+  const templates = (templatesData?.templates ?? []).filter((t: any): t is NonNullable<any> => t != null);
   const existingKeys = new Set(policies.map((p: any) => p.templateKey));
   const acks = acksData?.acknowledgments ?? [];
   const people = peopleData?.people ?? [];
