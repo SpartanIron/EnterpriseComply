@@ -679,7 +679,7 @@ This policy will be reviewed annually or following a security incident where log
 @Injectable()
 export class PoliciesService {
   getTemplates() {
-    return { templates: POLICY_TEMPLATES };
+    return { templates: POLICY_TEMPLATES.filter(Boolean) };
   }
 
   async getOrgPolicies(orgId: number) {
