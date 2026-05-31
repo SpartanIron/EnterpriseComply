@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// âââ Types âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 type Plan = "starter" | "professional" | "enterprise" | "federal";
 type OrgStatus = "active" | "suspended" | "trial" | "churned";
 
@@ -21,7 +21,7 @@ interface Tenant {
   notes?: string;
 }
 
-// ─── Mock Data ───────────────────────────────────────────────────────────────
+// âââ Mock Data âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const MOCK_TENANTS: Tenant[] = [
   { id: "org_001", name: "Apex Defense Systems", slug: "apex-defense", plan: "federal", status: "active", adminEmail: "admin@apexdefense.com", industry: "Defense", userCount: 47, frameworks: ["FedRAMP High","CMMC Level 3","NIST 800-171"], createdAt: "2024-01-15", lastActive: "2025-05-16", contractExpiry: "2026-01-15", notes: "ATO in progress. Assigned CSP." },
   { id: "org_002", name: "HealthBridge Analytics", slug: "healthbridge", plan: "enterprise", status: "active", adminEmail: "ciso@healthbridge.io", industry: "Healthcare", userCount: 23, frameworks: ["HIPAA","SOC 2 Type II","NIST CSF"], createdAt: "2024-03-08", lastActive: "2025-05-15", contractExpiry: "2026-03-08" },
@@ -45,7 +45,7 @@ const STATUS_COLORS: Record<OrgStatus, string> = {
   churned: "bg-slate-100 text-slate-400",
 };
 
-// ─── Helper ──────────────────────────────────────────────────────────────────
+// âââ Helper ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function toast(msg: string, color = "#2563eb") {
   const el = document.createElement("div");
   el.style.cssText = "position:fixed;bottom:24px;right:24px;background:" + color + ";color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.15)";
@@ -66,7 +66,7 @@ function StatCard({ label, value, sub, color = "blue" }: { label: string; value:
   );
 }
 
-// ─── Tabs ────────────────────────────────────────────────────────────────────
+// âââ Tabs ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 type Tab = "tenants" | "onboard" | "billing" | "platform" | "impersonate";
 const TABS: { id: Tab; label: string }[] = [
   { id: "tenants", label: "Tenant Management" },
@@ -76,7 +76,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "impersonate", label: "Support Access" },
 ];
 
-// ─── Tenant Management Tab ───────────────────────────────────────────────────
+// âââ Tenant Management Tab âââââââââââââââââââââââââââââââââââââââââââââââââââ
 function TenantsTab() {
   const [tenants, setTenants] = useState<Tenant[]>(MOCK_TENANTS);
   const [search, setSearch] = useState("");
@@ -155,7 +155,7 @@ function TenantsTab() {
             <div className="flex items-start justify-between mb-5">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">{selected.name}</h3>
-                <p className="text-sm text-slate-500 mt-0.5">{selected.id} · {selected.slug}</p>
+                <p className="text-sm text-slate-500 mt-0.5">{selected.id} Â· {selected.slug}</p>
               </div>
               <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&#x2715;</button>
             </div>
@@ -186,7 +186,7 @@ function TenantsTab() {
   );
 }
 
-// ─── Onboard New Client Tab ──────────────────────────────────────────────────
+// âââ Onboard New Client Tab ââââââââââââââââââââââââââââââââââââââââââââââââââ
 function OnboardTab() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -252,7 +252,7 @@ function OnboardTab() {
           <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Plan</label>
             <div className="grid grid-cols-2 gap-2">{(["starter","professional","enterprise","federal"] as Plan[]).map(p => (<label key={p} className={"flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-colors " + (form.plan === p ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:bg-slate-50")}><input type="radio" name="plan" value={p} checked={form.plan === p} onChange={() => setForm(f => ({...f, plan: p}))} className="text-blue-600" /><span className="text-sm font-semibold capitalize text-slate-800">{p}</span></label>))}</div>
           </div>
-          <div className="flex items-center gap-3 justify-between pt-2"><button onClick={() => setStep(1)} className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Back</button><button onClick={() => form.adminEmail ? setStep(3) : toast("Admin email required","#dc2626")} className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Next</button></div>
+          <div className="flex items-center gap-3 justify-between pt-2"><button onClick={() => setStep(1)} className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Back</button><button  className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">Next</button></div>
         </div>
       )}
 
@@ -265,14 +265,14 @@ function OnboardTab() {
             <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Contract Length</label><select value={form.contractMonths} onChange={e => setForm(f => ({...f, contractMonths: e.target.value}))} className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="1">1 month (trial)</option><option value="6">6 months</option><option value="12">12 months</option><option value="24">24 months</option><option value="36">36 months</option></select></div>
           </div>
           <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Internal Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /></div>
-          <div className="flex items-center gap-3 justify-between pt-2"><button onClick={() => setStep(2)} className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Back</button><button onClick={handleSubmit} className="px-6 py-2.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700">Create Workspace &amp; Send Invite</button></div>
+          <div className="flex items-center gap-3 justify-between pt-2"><button onClick={() => setStep(2)} className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">Back</button><button  className="px-6 py-2.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700">Create Workspace &amp; Send Invite</button></div>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Billing & Licenses Tab ─────────────────────────────────────────────────
+// âââ Billing & Licenses Tab âââââââââââââââââââââââââââââââââââââââââââââââââ
 function BillingTab() {
   const tenants = MOCK_TENANTS;
   const planCounts = tenants.reduce((acc, t) => { acc[t.plan] = (acc[t.plan] ?? 0) + 1; return acc; }, {} as Record<string,number>);
@@ -323,7 +323,7 @@ function BillingTab() {
   );
 }
 
-// ─── Platform Health Tab ─────────────────────────────────────────────────────
+// âââ Platform Health Tab âââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function PlatformTab() {
   const services = [
     { name: "API Server", status: "operational", latency: "42ms", uptime: "99.98%" },
@@ -391,7 +391,7 @@ function PlatformTab() {
   );
 }
 
-// ─── Support Access / Impersonation Tab ─────────────────────────────────────
+// âââ Support Access / Impersonation Tab âââââââââââââââââââââââââââââââââââââ
 function ImpersonateTab() {
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("");
@@ -428,7 +428,7 @@ function ImpersonateTab() {
         <p><strong>Mode:</strong> <span className="text-amber-600 font-semibold">Read-only. All actions are logged.</span></p>
       </div>
       <div className="flex gap-3">
-        <button onClick={() => toast("Support session ended", "#16a34a")} className="px-4 py-2 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700" onClick={() => { setConfirmed(false); setSelected(null); setReason(""); setQuery(""); toast("Support session ended", "#16a34a"); }}>End Session</button>
+        <button onClick={() => toast("Support session ended", "#16a34a")} className="px-4 py-2 bg-amber-600 text-white text-sm font-semibold rounded-lg hover:bg-amber-700" >End Session</button>
         <button className="px-4 py-2 border border-amber-300 text-amber-800 text-sm font-semibold rounded-lg hover:bg-amber-100">View Tenant Dashboard</button>
       </div>
     </div>
@@ -459,7 +459,7 @@ function ImpersonateTab() {
       {selected && (
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
-            <div><p className="text-sm font-bold text-blue-900">{selected.name}</p><p className="text-xs text-blue-600">{selected.id} · {selected.userCount} users · {selected.plan} plan</p></div>
+            <div><p className="text-sm font-bold text-blue-900">{selected.name}</p><p className="text-xs text-blue-600">{selected.id} Â· {selected.userCount} users Â· {selected.plan} plan</p></div>
             <button onClick={() => setSelected(null)} className="text-blue-400 hover:text-blue-600 text-lg leading-none">&#x2715;</button>
           </div>
           <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Access Reason *</label><textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Describe why you need support access (e.g., Client reported issue with FISMA report export, ticket #1234)" /></div>
@@ -470,7 +470,7 @@ function ImpersonateTab() {
   );
 }
 
-// ─── Main SuperAdmin Component ────────────────────────────────────────────────
+// âââ Main SuperAdmin Component ââââââââââââââââââââââââââââââââââââââââââââââââ
 export default function SuperAdmin() {
   const session = authClient.useSession();
   const [tab, setTab] = useState<Tab>("tenants");
