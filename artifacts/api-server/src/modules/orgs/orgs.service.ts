@@ -27,7 +27,15 @@ where: eq(organizationsTable.id, member.orgId),
 return { org, member };
 }
 
-async createOrg(userId: string, body: {
+  async getMyRole(userId: string) {
+    const member = await db.query.orgMembersTable.findFirst({
+      where: eq(orgMembersTable.clerkUserId, userId),
+    });
+    if (!member) return { role: null };
+    return { role: member.role, orgId: member.orgId };
+  }
+
+  async createOrg(userId: string, body: {
 name: string; industry?: string; size?: string; website?: string;
 email?: string; firstName?: string; lastName?: string;
 }) {
@@ -64,7 +72,7 @@ orgId: org.id, clerkUserId: userId, email: email ?? "",
 firstName, lastName, role: "owner",
 });
 
-// Send welcome email — fire and forget, never block org creation
+// Send welcome email â fire and forget, never block org creation
 if (email) {
 sendWelcomeEmail({ to: email, firstName: firstName ?? undefined, orgName: name })
 .catch((err) => logger.error({ err, email }, "[orgs] welcome email failed"));
