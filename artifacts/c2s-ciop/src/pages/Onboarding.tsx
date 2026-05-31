@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
@@ -75,19 +75,61 @@ export default function Onboarding() {
 
   const orgId = createdOrgId ?? existingOrg?.org?.id;
 
+  const [orgError, setOrgError] = useState<string | null>(null);
+
+  // Restore progress from server state on first load
+  useEffect(() => {
+    if (existingOrg?.org?.onboardingStep && existingOrg.org.onboardingStep > 1) {
+      setStep(existingOrg.org.onboardingStep);
+    }
+  }, [existingOrg?.org?.onboardingStep]);
+
   const createOrg = useMutation({
     mutationFn: async () => {
+      setOrgError(null);
+
+      // Normalize website URL — add https:// if protocol is missing
+      const normalizedData = {
+        ...orgData,
+        website: orgData.website?.trim()
+          ? /^https?:\/\//.test(orgData.website.trim())
+            ? orgData.website.trim()
+            : `https://${orgData.website.trim()}`
+          : undefined,
+      };
+
+      // If org already exists (e.g. user refreshed mid-flow), update it instead of creating a duplicate
+      if (existingOrg?.org) {
+        const updateRes = await fetch(apiUrl("/orgs/me"), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(normalizedData),
+        });
+        return updateRes.json();
+      }
+
+      // Create a new org
       const res = await fetch(apiUrl("/orgs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(orgData),
+        body: JSON.stringify(normalizedData),
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to create organization");
+      }
+
       return res.json();
     },
     onSuccess: (data: any) => {
       if (data?.org?.id) setCreatedOrgId(data.org.id);
       setStep(2);
+    },
+    onError: (err: any) => {
+      setOrgError(err?.message || "Failed to save company information. Please try again.");
     },
   });
 
@@ -203,6 +245,11 @@ export default function Onboarding() {
                   />
                 </div>
               </div>
+              {orgError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {orgError}
+                </div>
+              )}
               <button
                 onClick={() => createOrg.mutate()}
                 disabled={!orgData.name.trim() || createOrg.isPending}
@@ -253,7 +300,7 @@ export default function Onboarding() {
               {selectedFrameworks.some(fw => ["fedramp", "cmmc", "nist-800-171", "dfars"].includes(fw)) && (
                 <div className="mb-4 p-4 rounded-xl border border-blue-200 bg-blue-50">
                   <div className="flex items-start gap-3">
-                    <span className="text-lg mt-0.5">🏛</span>
+                    <span className="text-lg mt-0.5">ð</span>
                     <div>
                       <p className="font-semibold text-blue-900 text-sm mb-1">Federal framework quick-start</p>
                       <p className="text-xs text-blue-700 mb-3">
