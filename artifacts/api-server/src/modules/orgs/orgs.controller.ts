@@ -18,6 +18,12 @@ export class OrgsController {
     return this.orgsService.getMe(userId);
   }
 
+  @Get("me/role")
+  @UseGuards(ClerkAuthGuard)
+  getMyRole(@ClerkUserId() userId: string) {
+    return this.orgsService.getMyRole(userId);
+  }
+
   @Post()
   @UseGuards(ClerkAuthGuard)
   createOrg(@ClerkUserId() userId: string, @Body() body: Record<string, unknown>) {
