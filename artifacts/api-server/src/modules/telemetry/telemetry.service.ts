@@ -1,4 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
+import { EMassService } from "../emass/emass.service";
 import { db, orgControlResultsTable, orgEvidenceTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { writeAuditLog } from "../../lib/audit-log.js";
@@ -191,6 +192,7 @@ function detectFormat(payload: TelemetryPayload): "json" | "xccdf" | "mof" | "hd
 
 @Injectable()
 export class TelemetryService {
+  constructor(@Inject(EMassService) private readonly emassService: EMassService) {}
   async ingest(orgId: number, clerkUserId: string, payload: TelemetryPayload): Promise<{
     received: number; mapped: number; persisted: number; events: NormalizedEvent[];
   }> {
@@ -246,6 +248,15 @@ export class TelemetryService {
     await writeAuditLog(orgId, clerkUserId, "telemetry.ingest", {
       format, source: payload.source, eventsReceived: events.length, persisted,
     });
+    // Phase 3B: Auto-queue non-compliant UCO results to eMASS bridge
+    const failingUcoIds = events
+      .filter(ev => ev.status === "non_compliant")
+      .map(ev => ev.ucoControlId);
+    if (failingUcoIds.length > 0) {
+      this.emassService.queueFailingControls(orgId, failingUcoIds).catch(err =>
+        console.error("eMASS queue error:", err)
+      );
+    }
     return { received: events.length, mapped: events.length, persisted, events };
   }
 
