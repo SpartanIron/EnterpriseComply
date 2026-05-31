@@ -39,6 +39,7 @@ import { ZeroTrustModule } from "./modules/zero-trust/zero-trust.module";
 import { WebhooksModule } from "./modules/webhooks/webhooks.module";
 import { SchedulerModule } from "./modules/scheduler/scheduler.module";
 import { TelemetryModule } from "./modules/telemetry/telemetry.module";
+import { EMassModule } from "./modules/emass/emass.module";
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { TelemetryModule } from "./modules/telemetry/telemetry.module";
     VendorsModule,
     PoliciesModule,
     TelemetryModule,
+    EMassModule,
     RisksModule,
     AuditsModule,
     QuestionnairesModule,
