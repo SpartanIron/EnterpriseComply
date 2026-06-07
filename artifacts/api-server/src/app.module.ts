@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
@@ -40,6 +40,7 @@ import { WebhooksModule } from "./modules/webhooks/webhooks.module";
 import { SchedulerModule } from "./modules/scheduler/scheduler.module";
 import { TelemetryModule } from "./modules/telemetry/telemetry.module";
 import { EMassModule } from "./modules/emass/emass.module";
+import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
 
 @Module({
   imports: [
@@ -93,7 +94,10 @@ import { EMassModule } from "./modules/emass/emass.module";
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // BetterAuth handles /api/auth/* via AuthModule/AuthController
-    // No Clerk middleware needed
+    // Idle session timeout middleware — enforces 30-min idle limit (NIST AC-12)
+    // Applied to all API routes; /api/auth/* and /api/health are skipped internally
+    consumer
+      .apply(IdleTimeoutMiddleware)
+      .forRoutes({ path: "api/*path", method: RequestMethod.ALL });
   }
 }
