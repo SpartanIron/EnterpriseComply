@@ -8,6 +8,11 @@
 // better-auth to verify the OAuth response to be missing → 500 "Invalid state" error.
 // SameSite=Lax is the correct and standards-compliant setting for apps using OAuth.
 // CSRF is still protected because Lax blocks cross-site POST requests (only GET top-level navs pass).
+//
+// NOTE on database config: better-auth v1.6+ requires passing pg.Pool directly as the `database`
+// field (not wrapped in { db, type }). The { db, type } format was the v0.x API and causes
+// better-auth to fall through to the Kysely adapter detection path, which fails with
+// "db.insertInto is not a function" because pg.Pool has no Kysely interface.
 
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
@@ -37,11 +42,14 @@ function isMagicLinkRateLimited(email: string): boolean {
   return false;
 }
 
+// ── pg Pool — passed directly to betterAuth (v1.6+ API, not wrapped in { db, type }) ──
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
 export const auth = betterAuth({
-  database: {
-    db: new Pool({ connectionString: process.env.DATABASE_URL }),
-    type: "postgres",
-  },
+  // better-auth v1.6+: pass pg.Pool directly, NOT { db: pool, type: "postgres" }
+  // The { db, type } wrapper was the old v0.x API and causes adapter detection to
+  // fall through to Kysely, which throws "db.insertInto is not a function".
+  database: pool,
 
   secret: process.env.BETTER_AUTH_SECRET || "ec-dev-secret-change-in-production",
 
