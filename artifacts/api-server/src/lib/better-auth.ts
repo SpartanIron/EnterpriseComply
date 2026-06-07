@@ -1,6 +1,13 @@
 // better-auth.ts — BetterAuth instance for EnterpriseComply
-// Security-hardened: invite-only magic link, 8h session, SameSite strict, rate limit, idle timeout support
+// Security-hardened: invite-only magic link, 8h session, rate limit, idle timeout support
 // Controls: NIST AC-2 (invite-only), NIST AC-7 (rate limit), NIST SC-23 (session), OWASP ASVS 2.5.6 (ambiguous)
+//
+// NOTE on SameSite: OAuth 2.0 flows (Google, GitHub) require SameSite=Lax (not Strict).
+// The OAuth callback is a top-level cross-site redirect (Google → your app). Browsers WILL NOT
+// send SameSite=Strict cookies on cross-site navigations, causing the state cookie used by
+// better-auth to verify the OAuth response to be missing → 500 "Invalid state" error.
+// SameSite=Lax is the correct and standards-compliant setting for apps using OAuth.
+// CSRF is still protected because Lax blocks cross-site POST requests (only GET top-level navs pass).
 
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
@@ -54,6 +61,7 @@ export const auth = betterAuth({
     enabled: false,
   },
 
+  // ── Social providers: Google + GitHub OAuth ──────────────────────────────────
   socialProviders: {
     github: process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET ? {
       clientId: process.env.GITHUB_CLIENT_ID,
@@ -68,7 +76,8 @@ export const auth = betterAuth({
   plugins: [
     magicLink({
       // NIST AC-2 / SOC 2 CC6.1: disableSignUp prevents unauthenticated users from
-      // creating accounts via magic link. New users must be provisioned via invite flow.
+      // creating accounts via magic link. New users must be provisioned via invite flow
+      // OR via Google/GitHub OAuth (social providers handle their own account creation).
       disableSignUp: true,
 
       sendMagicLink: async ({ email, token, url }, request) => {
@@ -152,19 +161,23 @@ export const auth = betterAuth({
     // Always use Secure cookies (HTTPS-only)
     useSecureCookies: true,
     defaultCookieAttributes: {
-      // SameSite strict prevents CSRF (OWASP A01, NIST SC-23)
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      // SameSite=Lax is required for OAuth flows (Google/GitHub redirect back to app).
+      // SameSite=Strict breaks OAuth: the cross-site top-level redirect from Google back
+      // to /api/auth/callback/google does not include Strict cookies → state mismatch → 500.
+      // Lax still blocks cross-site POST requests so CSRF is protected.
+      // See: https://datatracker.ietf.org/doc/html/draft-west-first-party-cookies-07
+      sameSite: "lax",
       httpOnly: true,
       secure: true,
     },
   },
 
-  // ── Audit hook: welcome email on user creation (after invite accept) ──────────
+  // ── Audit hook: welcome email on user creation (after invite accept / OAuth) ──
   databaseHooks: {
     user: {
       create: {
         after: async (user) => {
-          sendWelcomeEmail({ to: user.email, name: user.name || user.email }).catch((err) => {
+          sendWelcomeEmail({ to: user.email, firstName: user.name || undefined }).catch((err) => {
             logger.warn({ err, userId: user.id }, "[auth] Welcome email failed (non-fatal)");
           });
           logger.info({ userId: user.id, email: user.email }, "[auth] audit: user.created");
