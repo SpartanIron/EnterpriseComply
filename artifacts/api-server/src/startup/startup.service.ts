@@ -945,7 +945,7 @@ export class StartupService implements OnApplicationBootstrap {
       await db.execute(sql.raw(MIGRATION_SQL));
       this.logger.log('Database migrations complete');
     } catch (err) {
-      this.logger.error('Migration failed - continuing startup', err);
+      this.logger.error('Migration failed - continuing startup', (err as any)?.message ?? String(err));
     }
   }
   private async runMigrationsV3() {
@@ -953,7 +953,7 @@ export class StartupService implements OnApplicationBootstrap {
       await db.execute(sql.raw(MIGRATION_SQL_V3));
       this.logger.log('BetterAuth V3 migrations complete');
     } catch (err) {
-      this.logger.error('V3 migration failed - continuing', err);
+      this.logger.error('V3 migration failed - continuing', (err as any)?.message ?? String(err));
     }
   }
 
@@ -971,7 +971,7 @@ export class StartupService implements OnApplicationBootstrap {
         this.logger.log(`UCO controls already present (${count} controls)`);
       }
     } catch (err) {
-      this.logger.error("Seed check failed - continuing startup", err);
+      this.logger.error("Seed check failed - continuing startup", (err as any)?.message ?? String(err));
     }
 
     // Seed policy content for any policies that have no content
@@ -1069,7 +1069,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       `);
       this.logger.log("Policy content migration complete");
     } catch (err) {
-      this.logger.error("Policy content migration failed - continuing startup", err);
+      this.logger.error("Policy content migration failed - continuing startup", (err as any)?.message ?? String(err));
     }
   }
 
@@ -1116,7 +1116,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       }
       this.logger.log('New policy templates seeded for all orgs');
     } catch (err) {
-      this.logger.error('Error seeding new policies', err);
+      this.logger.error('Error seeding new policies', (err as any)?.message ?? String(err));
     }
   }
 
@@ -1127,7 +1127,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       await db.execute(sql.raw(MIGRATION_SQL_V2));
       this.logger.log('V2 migrations complete');
     } catch (err) {
-      this.logger.error('V2 migration failed - continuing', err);
+      this.logger.error('V2 migration failed - continuing', (err as any)?.message ?? String(err));
     }
   }
 
@@ -1187,7 +1187,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
         // startup seeding logged as batch summary below
       }
     } catch (err) {
-      this.logger.error('Risk seeding failed', err);
+      this.logger.error('Risk seeding failed', (err as any)?.message ?? String(err));
     }
   }
 
@@ -1225,7 +1225,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
         // startup seeding logged as batch summary below
       }
     } catch (err) {
-      this.logger.error('Sub-processor seeding failed', err);
+      this.logger.error('Sub-processor seeding failed', (err as any)?.message ?? String(err));
     }
   }
 
@@ -1267,7 +1267,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
         // startup seeding logged as batch summary below
       }
     } catch (err) {
-      this.logger.error('Calendar seeding failed', err);
+      this.logger.error('Calendar seeding failed', (err as any)?.message ?? String(err));
     }
   }
 
@@ -1301,7 +1301,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
         // startup seeding logged as batch summary below
       }
     } catch (err) {
-      this.logger.error('Notification generation failed', err);
+      this.logger.error('Notification generation failed', (err as any)?.message ?? String(err));
     }
   }
 }
