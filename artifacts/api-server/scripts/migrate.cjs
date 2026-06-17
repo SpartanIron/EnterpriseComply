@@ -36,7 +36,6 @@ async function migrate() {
     console.log('EC Migration: user table ensured');
 
     // session table
-    await client.query(`DROP TABLE IF EXISTS session`);
     await client.query(`CREATE TABLE IF NOT EXISTS session (id TEXT PRIMARY KEY, "expiresAt" TIMESTAMPTZ NOT NULL, token TEXT NOT NULL UNIQUE, "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(), "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(), "ipAddress" TEXT, "userAgent" TEXT, "userId" TEXT NOT NULL)`);
     await client.query(`ALTER TABLE session ADD COLUMN IF NOT EXISTS "expiresAt" TIMESTAMPTZ`);
     await client.query(`ALTER TABLE session ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ DEFAULT NOW()`);
