@@ -51,6 +51,18 @@ const CONTROL_NAMES: Record<string, string> = {
   "UCO-AT-001": "Security Awareness Training",
 };
 
+/** Returns true if the error is an unconfigured-credentials error (not a real failure) */
+function isCredentialsMissing(e: unknown): boolean {
+  if (!e) return false;
+  const msg = String((e as any)?.message ?? e);
+  return (
+    msg.includes("not configured") ||
+    msg.includes("credentials not") ||
+    msg.includes("token not configured") ||
+    msg.includes("BadRequestException")
+  );
+}
+
 @Injectable()
 export class IntegrationSchedulerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -140,7 +152,12 @@ export class IntegrationSchedulerService implements OnApplicationBootstrap, OnAp
             }
           }
         } catch (e) {
-          logger.error(`IntegrationScheduler: sync failed org=${integration.orgId} key=${integration.integrationKey}: ${e}`);
+          // Credentials not configured is an expected state — log as warn, not error
+          if (isCredentialsMissing(e)) {
+            logger.warn(`IntegrationScheduler: skipping sync org=${integration.orgId} key=${integration.integrationKey} — credentials not configured`);
+          } else {
+            logger.error(`IntegrationScheduler: sync failed org=${integration.orgId} key=${integration.integrationKey}: ${e}`);
+          }
         }
       }
     } catch (e) {
