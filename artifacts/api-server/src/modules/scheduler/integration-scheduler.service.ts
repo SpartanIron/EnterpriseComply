@@ -95,14 +95,14 @@ export class IntegrationSchedulerService implements OnApplicationBootstrap, OnAp
               eq(orgMonitoringJobsTable.integrationKey, integration.integrationKey),
             ));
 
-          logger.log(`IntegrationScheduler: dispatching sync org=${integration.orgId} key=${integration.integrationKey}`);
+          logger.info(`IntegrationScheduler: dispatching sync org=${integration.orgId} key=${integration.integrationKey}`);
           await dispatch(this.integrationsSvc, integration.orgId);
 
           await db.update(orgIntegrationsTable)
             .set({ lastSyncAt: new Date() } as any)
             .where(eq(orgIntegrationsTable.id, integration.id));
 
-          logger.log(`IntegrationScheduler: sync complete org=${integration.orgId} key=${integration.integrationKey}`);
+          logger.info(`IntegrationScheduler: sync complete org=${integration.orgId} key=${integration.integrationKey}`);
 
           const postStatuses = await this.snapshotControlStatuses(integration.orgId, scope);
           const newlyFailing = scope
