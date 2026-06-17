@@ -18,7 +18,7 @@ const FRAMEWORKS = [
   { key: "fedramp", name: "FedRAMP Moderate", category: "federal" },
   { key: "nist-800-53", name: "NIST SP 800-53", category: "federal" },
   { key: "nist-800-171", name: "NIST SP 800-171", category: "federal" },
-  { key: "cmmc", name: "CMMC Level 2", category: "federal" },
+  { key: "cmmc-l2", name: "CMMC Level 2", category: "federal" },
   { key: "nist-csf", name: "NIST CSF 2.0", category: "best-practice" },
   { key: "cis", name: "CIS Controls v8", category: "best-practice" },
 ];
@@ -33,7 +33,7 @@ const FRAMEWORK_COLORS: Record<string, string> = {
   pci: "from-orange-500 to-orange-600",
   gdpr: "from-rose-500 to-rose-600",
   fedramp: "from-slate-500 to-slate-600",
-  cmmc: "from-green-500 to-green-600",
+  "cmmc-l2": "from-green-500 to-green-600",
   ccpa: "from-amber-500 to-amber-600",
   cis: "from-cyan-500 to-cyan-600",
 };
