@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
-import { db, ucoControlsTable } from "@workspace/db";
+import { db, pool, ucoControlsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { seedColorComply } from "@workspace/db/seed";
 
@@ -1059,14 +1059,8 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
 - Monthly incident metrics reported to leadership
 `;
 
-      await db.execute(sql`
-        UPDATE org_policies SET content = ${irPolicyContent}
-        WHERE name = 'Incident Response Policy' AND (content IS NULL OR content = '')
-      `);
-      await db.execute(sql`
-        UPDATE org_policies SET content = ${irPlanContent}
-        WHERE name = 'Incident Response Plan' AND (content IS NULL OR content = '')
-      `);
+      await pool.query('UPDATE org_policies SET content = $1 WHERE name = \'Incident Response Policy\' AND (content IS NULL OR content = \'\')', [irPolicyContent])
+      await pool.query('UPDATE org_policies SET content = $1 WHERE name = \'Incident Response Plan\' AND (content IS NULL OR content = \'\')', [irPlanContent])
       this.logger.log("Policy content migration complete");
     } catch (err) {
       this.logger.error("Policy content migration failed - continuing startup", (err as any)?.message ?? String(err));
