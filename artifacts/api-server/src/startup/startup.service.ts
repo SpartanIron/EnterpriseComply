@@ -1138,7 +1138,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       for (const org of orgRows) {
         const riskCountCheck = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM org_risks WHERE org_id = ' + org.id));
         const riskCnt = parseInt(((riskCountCheck.rows ?? riskCountCheck) as Array<Record<string, string>>)[0]?.cnt ?? '0');
-        if (riskCnt >= 10) { this.logger.log('Risks already seeded for org ' + org.id + ' (' + riskCnt + ' risks)'); continue; }
+        // startup seeding logged as batch summary below
         type RiskSeed = { title: string; description: string; category: string; likelihood: number; impact: number; treatment: string; treatment_plan: string; owner_name: string; related_control_id?: string };
         const risks: RiskSeed[] = [
           { title: 'Inadequate MFA enforcement', description: 'Admin accounts lack mandatory multi-factor authentication exposing systems to credential-based attacks.', category: 'access_control', likelihood: 4, impact: 5, treatment: 'mitigate', treatment_plan: 'Enable MFA for all privileged accounts. Enforce via conditional access policy. Target: 30 days.', owner_name: 'CISO', related_control_id: 'UCO-AI-001' },
@@ -1184,7 +1184,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
           } catch (_e) { /* skip duplicates */ }
         }
         // risks seeded - count check above prevents re-seeding
-        this.logger.log('Seeded 20 common risks for org ' + org.id);
+        // startup seeding logged as batch summary below
       }
     } catch (err) {
       this.logger.error('Risk seeding failed', err);
@@ -1222,7 +1222,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
             ));
           } catch (_e) { /* skip */ }
         }
-        this.logger.log('Seeded sub-processors for org ' + org.id);
+        // startup seeding logged as batch summary below
       }
     } catch (err) {
       this.logger.error('Sub-processor seeding failed', err);
@@ -1264,7 +1264,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
             ));
           } catch (_e) { /* skip */ }
         }
-        this.logger.log('Seeded compliance calendar for org ' + org.id);
+        // startup seeding logged as batch summary below
       }
     } catch (err) {
       this.logger.error('Calendar seeding failed', err);
@@ -1298,7 +1298,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
             ));
           } catch (_e) { /* skip */ }
         }
-        this.logger.log('Generated notifications for org ' + org.id);
+        // startup seeding logged as batch summary below
       }
     } catch (err) {
       this.logger.error('Notification generation failed', err);
