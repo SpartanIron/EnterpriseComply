@@ -27,12 +27,20 @@ export class IdleTimeoutMiddleware implements NestMiddleware {
     }
 
     try {
-      const session = await auth.api.getSession({
-        headers: new Headers({
-          cookie: req.headers.cookie || "",
-          authorization: req.headers.authorization || "",
-        }),
-      });
+      // Pass all request headers so BetterAuth has host, origin, cookie etc.
+      // Passing only cookie + authorization was causing getSession to return null
+      // because BetterAuth v1.6 validates the host against trustedOrigins.
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers as Record<string, string | string[] | undefined>)) {
+        if (value === undefined) continue;
+        if (Array.isArray(value)) {
+          for (const v of value) headers.append(key, v);
+        } else {
+          headers.set(key, value);
+        }
+      }
+
+      const session = await auth.api.getSession({ headers });
 
       if (session?.session?.id) {
         const sessionId = session.session.id;
