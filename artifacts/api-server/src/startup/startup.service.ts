@@ -942,7 +942,8 @@ export class StartupService implements OnApplicationBootstrap {
 
   private async runMigrations() {
     try {
-      await pool.query(MIGRATION_SQL);
+      const client1 = await pool.connect();
+      try { await client1.query(MIGRATION_SQL); } finally { client1.release(); }
       this.logger.log('Database migrations complete');
     } catch (err) {
       this.logger.error('Migration failed - continuing startup', (err as any)?.message ?? String(err));
@@ -950,7 +951,8 @@ export class StartupService implements OnApplicationBootstrap {
   }
   private async runMigrationsV3() {
     try {
-      await pool.query(MIGRATION_SQL_V3);
+      const client2 = await pool.connect();
+      try { await client2.query(MIGRATION_SQL_V3); } finally { client2.release(); }
       this.logger.log('BetterAuth V3 migrations complete');
     } catch (err) {
       this.logger.error('V3 migration failed - continuing', (err as any)?.message ?? String(err));
