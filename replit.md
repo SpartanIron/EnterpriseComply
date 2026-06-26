@@ -68,6 +68,7 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - offered 
 - No old C2S/CIOP patterns - this is a fresh product
 - Sharp, information-dense tables and cards
 - No em dashes anywhere in the codebase (use hyphens instead)
+- Corporate email: jude.annan@colorcodesolutions.com
 
 ## Railway Deployment
 
