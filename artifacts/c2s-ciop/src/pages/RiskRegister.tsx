@@ -310,6 +310,7 @@ export default function RiskRegister() {
                 <div className="flex gap-2">
                   <button onClick={()=>{selectedIds.forEach(id=>updateRisk.mutate({id,data:{status:'mitigated'}}));clearSelect();}} className="text-xs bg-green-600 text-white px-2 py-1 rounded">Mark Mitigated</button>
                   <button onClick={()=>{selectedIds.forEach(id=>updateRisk.mutate({id,data:{status:'accepted'}}));clearSelect();}} className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Accept Risk</button>
+                  <button onClick={async ()=>{if(!confirm(`Delete ${selectedIds.length} risk${selectedIds.length!==1?'s':''}? This cannot be undone.`))return;await apiFetch(`/orgs/${orgId}/risks/bulk-delete`,{method:'POST',body:JSON.stringify({ids:selectedIds})});qc.invalidateQueries({queryKey:['risks',orgId]});clearSelect();}} className="text-xs bg-red-600 text-white px-2 py-1 rounded">Delete selected</button>
                   <button onClick={clearSelect} className="text-xs bg-slate-200 text-slate-700 px-2 py-1 rounded">Clear</button>
                 </div>
               </div>

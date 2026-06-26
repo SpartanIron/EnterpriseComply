@@ -32,6 +32,12 @@ export class RisksController {
     return this.risksService.deleteRisk(ctx.orgId, Number(id));
   }
 
+  @Post("orgs/:orgId/risks/bulk-delete")
+  @UseGuards(OrgContextGuard)
+  bulkDeleteRisks(@OrgContext() ctx: OrgCtx, @Body() body: { ids: number[] }) {
+    return this.risksService.bulkDeleteRisks(ctx.orgId, body.ids ?? []);
+  }
+
   @Get("orgs/:orgId/risks/suggestions")
   @UseGuards(OrgContextGuard)
   suggestRisks(@OrgContext() ctx: OrgCtx) {

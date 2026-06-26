@@ -14,6 +14,8 @@ export const organizationsTable = pgTable("organizations", {
   onboardingStep: integer("onboarding_step").notNull().default(1),
   plan: text("plan").notNull().default("starter"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  mfaEnforced: boolean("mfa_enforced").notNull().default(false),
+  auditRetentionDays: integer("audit_retention_days").notNull().default(1095),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

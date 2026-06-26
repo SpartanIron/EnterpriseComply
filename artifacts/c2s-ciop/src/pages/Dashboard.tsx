@@ -111,6 +111,57 @@ export default function Dashboard() {
   const policiesCount = dashData?.policiesCount ?? 0;
   const peopleCount = dashData?.peopleCount ?? 0;
 
+  const userEmail = (user as any)?.email ?? "";
+  const twoFactorEnabled = !!(user as any)?.twoFactorEnabled;
+  const isCorporateEmail = userEmail
+    ? !["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","live.com","aol.com"].some(d => userEmail.endsWith("@" + d))
+    : false;
+
+  const phase0Items = [
+    {
+      id: "mfa",
+      label: "Enable MFA on your admin account",
+      desc: "CMMC IA.3.083 | FedRAMP IA-2 | SOC 2 CC6.1",
+      done: twoFactorEnabled,
+      urgency: "emergency",
+      href: "/settings",
+      doneNote: "Authenticator app active",
+      pendingNote: "Anyone with access to your email can sign in - highest risk",
+    },
+    {
+      id: "corp-email",
+      label: "Use a corporate email address for admin login",
+      desc: "CMMC IA.3.058 | FedRAMP AC-2 | SOC 2 CC6.2",
+      done: isCorporateEmail,
+      urgency: "emergency",
+      href: "/settings",
+      doneNote: `${userEmail} - corporate domain detected`,
+      pendingNote: "Personal email accounts are not subject to org security controls",
+    },
+    {
+      id: "second-admin",
+      label: "Create a second admin account (break-glass)",
+      desc: "CMMC AC.2.006 | FedRAMP AC-2 | SOC 2 CC6.2",
+      done: false,
+      urgency: "emergency",
+      href: "/settings",
+      doneNote: "At least 2 admin accounts exist",
+      pendingNote: "Single admin = single point of failure if account is compromised or locked",
+    },
+    {
+      id: "data-notice",
+      label: "Publish a data handling and privacy notice",
+      desc: "FedRAMP AR-1 | CMMC CA.2.157 | SOC 2 P1.0",
+      done: true,
+      urgency: "emergency",
+      href: "/trust",
+      doneNote: "Trust Center published at /trust",
+      pendingNote: "Clients must have a written data handling statement before uploading documents",
+    },
+  ];
+  const phase0Done = phase0Items.filter(i => i.done).length;
+  const phase0AllDone = phase0Done === phase0Items.length;
+
   const gettingStartedSteps = [
     {
       id: "framework",
@@ -298,6 +349,55 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Phase 0 Emergency Action Center */}
+        {!phase0AllDone && (
+          <div className="bg-white border-2 border-red-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-red-100 flex items-center justify-between" style={{ background: "linear-gradient(90deg, #fef2f2 0%, #fff 100%)" }}>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-red-800">Emergency actions required before client use</h2>
+                  <p className="text-xs text-red-600 mt-0.5">{phase0Done}/{phase0Items.length} complete - these must be done before any client uploads documents</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="w-24 h-1.5 bg-red-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${(phase0Done / phase0Items.length) * 100}%` }} />
+                </div>
+                <span className="text-xs font-bold text-red-700">{Math.round((phase0Done / phase0Items.length) * 100)}%</span>
+              </div>
+            </div>
+            <div className="p-4 space-y-2">
+              {phase0Items.map((item, idx) => (
+                <button key={item.id} onClick={() => navigate(item.href)}
+                  className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all ${item.done ? "border-green-200 bg-green-50/60" : "border-red-200 bg-red-50/40 hover:border-red-300 hover:bg-red-50"}`}>
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold ${item.done ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
+                    {item.done
+                      ? <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      : idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-sm font-semibold ${item.done ? "text-green-800" : "text-red-800"}`}>{item.label}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                    <p className={`text-xs mt-0.5 ${item.done ? "text-green-600" : "text-red-600"}`}>
+                      {item.done ? item.doneNote : item.pendingNote}
+                    </p>
+                  </div>
+                  {!item.done && (
+                    <svg className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Getting started checklist */}
         {showChecklist && (

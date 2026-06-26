@@ -1,0 +1,299 @@
+EnterpriseComply — Comprehensive Remediation & Readiness Plan
+From Current State (Score: 11/100) → Production Ready (Target: 85+/100)
+Frameworks Targeted: CMMC Level 2 | SOC 2 Type II | FedRAMP Moderate
+Prepared For: ColorCode Solutions / CornerStone Solutions
+Date: June 26, 2026
+
+How to Read This Plan
+This plan is organized into five sequential phases spanning approximately 18–24 months. Each phase builds on the last. Phases 1–2 make the platform safe enough for client use. Phases 3–4 achieve compliance readiness. Phase 5 achieves formal authorization. Within each phase, tasks are organized by workstream and include the specific location within EnterpriseComply where the work is done, the framework control(s) it satisfies, and the expected output/artifact.
+Effort notation: S = Small (hours), M = Medium (days), L = Large (weeks), XL = Large (months)
+
+PHASE 0: EMERGENCY ACTIONS — Complete Within 72 Hours
+These are non-negotiable security minimums that must be done before any client uploads any document to the platform.
+
+0.1 — Enable MFA on the Administrator Account
+Where in the app: Settings → Security tab → Authenticator App (2FA) → "Set up"
+What to do: Install Google Authenticator, Authy, or 1Password on the administrator's mobile device. Click "Set up," scan the QR code, enter the 6-digit TOTP code to confirm, and save. Verify that "Two-factor auth" in the Account section changes from "Disabled" to "Enabled."
+Why this is an emergency: The admin account currently authenticates via magic link only — meaning anyone who compromises the registered email (annankwekujude@gmail.com) gains full super-admin access to all client data, all evidence, all integrations, and all uploaded documents. This is a single point of total failure. Furthermore, MFA is required by CMMC IA.3.083, FedRAMP IA-2(1), and SOC 2 CC6.1 — failing this check stops all three framework assessments cold.
+Frameworks satisfied: CMMC IA.3.083, FedRAMP IA-2, SOC 2 CC6.1
+Effort: S — 15 minutes
+Artifact: Screenshot of enabled 2FA status in Settings → Security
+
+0.2 — Move Admin Account to a Corporate Email Domain
+Where in the app: Settings → Security → Account section
+What to do: Change the administrator email from the personal Gmail address to a corporate domain address (e.g., kweku@colorcodesolutions.com). Never use personal email accounts for production system administration. Personal email accounts are not subject to organizational security controls (e.g., corporate MFA policies, session management, conditional access).
+Why this is an emergency: The current admin email is a personal Gmail account. If that Gmail account is compromised via phishing or credential stuffing, the attacker has full access to the entire platform with zero organizational ability to revoke access. Corporate email allows the organization to enforce conditional access, revoke credentials centrally, and apply DLP controls.
+Frameworks satisfied: CMMC IA.3.058 (Identify and authenticate organizational users), FedRAMP AC-2, SOC 2 CC6.2
+Effort: S — 30 minutes
+Artifact: Updated account email in Settings
+
+0.3 — Create a Minimum Second Admin Account
+Where in the app: Settings → Users & Roles → Invite user
+What to do: Create at least one additional admin-level account assigned to a different person (or a break-glass account with a separate corporate email), also with MFA enabled. This ensures no single person's absence or account compromise locks the organization out or creates a single point of failure.
+Frameworks satisfied: CMMC AC.2.006 (Limit use of portable storage), CMMC IA.3.083, SOC 2 CC6.2, FedRAMP AC-2
+Effort: S — 30 minutes
+Artifact: User roster showing minimum two accounts with MFA-enabled status
+
+0.4 — Publish a Temporary Data Handling Notice
+Where: Corporate website (colorcodesolutions.com) and within the EnterpriseComply platform documentation
+What to do: Draft and publish a one-page interim data handling statement covering: what cloud infrastructure hosts the platform, what country/region data is stored in, whether encryption at rest is applied, who at ColorCode Solutions can access client tenant data, how breaches would be reported, and how to request data deletion. This does not need to be a full privacy policy yet — that comes in Phase 1 — but clients must have some written statement before uploading data.
+Why this is critical: There is currently no privacy policy, no terms of service, no data processing agreement, and no data residency statement accessible anywhere. A client uploading documents without this information is doing so blindly.
+Frameworks satisfied: FedRAMP AR-1, CMMC CA.2.157, SOC 2 P1.0 (Privacy Notice)
+Effort: M — 1–2 days
+Artifact: Published interim data handling statement with effective date
+
+PHASE 1: FOUNDATION — Weeks 1–6 (Days 1–42)
+Build the governance, policy, and identity foundations that everything else is built on.
+
+WORKSTREAM 1A: Identity & Access Management
+Step 1.1 — Define and Implement Role-Based Access Control (RBAC)
+Where in the app: Settings → Users & Roles
+What to do: Define at minimum four roles: Super Admin (full access, maximum 2 people), Compliance Manager (can edit controls and evidence, cannot change settings), Auditor/Read-Only (can view all data, cannot edit), and Integration Manager (can manage integrations only). Document the role definitions in a table. Assign every user account to exactly one role with the minimum access needed for their job. This directly operationalizes control UCO-AC-001.
+Frameworks satisfied: CMMC AC.1.001, AC.1.002, AC.2.007; FedRAMP AC-2, AC-3, AC-6; SOC 2 CC6.2, CC6.3
+Effort: M — 2–3 days
+Artifact: Documented RBAC matrix uploaded to Evidence Vault linked to UCO-AC-001
+
+Step 1.2 — Enforce MFA for ALL Users (Not Just Admin)
+Where in the app: Settings → Security → enforce platform-wide, then verify per user
+What to do: Make TOTP MFA mandatory for every account on the platform, not just the admin. If the platform allows org-wide MFA enforcement, enable it. For each user account created, verify MFA status before granting access. Document MFA policy in the MFA Policy document (already in draft — see Step 1.6).
+Frameworks satisfied: CMMC IA.3.083; FedRAMP IA-2(1), IA-2(2); SOC 2 CC6.1
+Effort: S — 1 day
+Artifact: Screenshot/evidence of all user accounts showing MFA enabled, uploaded to UCO-AI-001
+
+Step 1.3 — Implement Privileged Account Controls
+Where in the app: Settings → Users & Roles; document externally
+What to do: Formally identify all accounts with elevated privileges. Create a Privileged Accounts Register documenting each privileged account, its justification, its owner, and its review date. Limit Super Admin accounts to two named individuals maximum. Ensure shared accounts are eliminated. Schedule a quarterly access review calendar reminder.
+Frameworks satisfied: CMMC IA.3.083, AC.2.006; FedRAMP AC-2(7), AC-6(5); SOC 2 CC6.2
+Effort: M — 2 days
+Artifact: Privileged Accounts Register uploaded to UCO-AI-002 evidence
+
+Step 1.4 — Configure Single Sign-On / Identity Provider (if applicable)
+What to do: If the organization uses Microsoft Entra ID or Okta for corporate identity, connect EnterpriseComply to that IdP using the SSO integration available in the catalog. This centralizes authentication, enables conditional access policies, and provides a single place to revoke access for terminated employees. If not yet using a corporate IdP, this is the time to procure one (Microsoft Entra ID is recommended for federal-facing organizations given its FedRAMP-authorized status).
+Frameworks satisfied: CMMC IA.3.083; FedRAMP IA-2, IA-8; SOC 2 CC6.1
+Effort: L — 1–2 weeks for IdP setup and integration
+Artifact: Integration active status for Entra ID or Okta, evidence in UCO-AI-004
+
+WORKSTREAM 1B: Policy Publication
+The platform has 9 policy drafts. None are published, none have been reviewed, and none have been formally distributed to staff. All of them must be reviewed, finalized, and published before any compliance assessment can proceed.
+Step 1.5 — Review and Publish All 9 Draft Policies
+Where in the app: Policies section → Open each policy → review content → click Publish
+For each policy, the review process is: Open the policy, read the full text, edit any sections that do not reflect current actual practice (do not publish aspirational policies — publish what you actually do or commit to do), assign a Policy Owner (a named individual), set a review cycle (annual for most, semi-annual for MFA and incident response), obtain management approval (documented via signature or email confirmation), and then publish.
+The nine policies and their priority order are:
+First, Multi-Factor Authentication Policy — highest urgency given MFA is currently disabled. This policy must reflect that MFA is required for all accounts, TOTP is the approved method, and exceptions require written CISO approval. Controls: UCO-AI-001. Framework: CMMC IA.3.083, FedRAMP IA-2.
+Second, Privileged Access Management Policy — governs who can have admin access, how access is provisioned and reviewed, and what happens when someone leaves. Controls: UCO-AC-002, UCO-AI-002. Framework: CMMC AC.2.006, FedRAMP AC-6(5).
+Third, Data Breach Response Policy — must specify: what constitutes a breach, who must be notified and in what timeframe (72 hours for GDPR, as soon as practicable under federal requirements), who leads response, and how post-incident reviews are conducted. Controls: UCO-IR-001, UCO-IR-003. Framework: All three frameworks have incident response requirements.
+Fourth, Secure Communications Policy — governs encryption requirements for data in transit, approved communication tools, and prohibitions on sending sensitive data via unencrypted channels. Controls: UCO-DP-003. Framework: CMMC SC.3.177, FedRAMP SC-8.
+Fifth, Endpoint Security Policy — governs EDR requirements, full disk encryption, MDM enrollment, and removable media controls. Controls: UCO-EP-001 through UCO-EP-004. Framework: CMMC MP.2.120, FedRAMP SC-28.
+Sixth, Risk Assessment Policy — governs how risk assessments are conducted, how frequently, who conducts them, and how the risk register is maintained. Controls: UCO-RM-001. Framework: CMMC CA.2.157, FedRAMP RA-3.
+Seventh, CMMC Compliance Policy — the overarching commitment to maintaining CMMC Level 2 compliance, including scope, CUI handling requirements, subcontractor requirements, and the annual self-assessment or C3PAO assessment schedule.
+Eighth, FedRAMP Compliance Policy — the commitment to FedRAMP authorization pursuit, including the authorization boundary, inherited controls from the cloud service provider, and the continuous monitoring obligations.
+Ninth, delete the "test" draft — it is a test artifact that should not appear in the production policy library.
+Effort per policy: M (2–3 days each for review, edit, approval). Total: L — 3–4 weeks
+Artifact: All 8 policies showing Published status with review dates and policy owner names
+
+Step 1.6 — Add 6 Missing Policies
+The current policy library is missing several policies that are required by the three frameworks. Draft, review, and publish the following additional policies:
+Information Security Policy (master policy) — The top-level policy that establishes the security program, names the CISO or security lead, defines scope, and references all subordinate policies. Required as the foundation document for SOC 2 and FedRAMP. Controls: Organizational. Framework: FedRAMP PL-1, SOC 2 CC1.2.
+Access Control Policy — Governs user provisioning, deprovisioning, password standards, session management, and access review cadence. Controls: UCO-AC-001 through UCO-AC-006. Framework: CMMC AC.1.001, FedRAMP AC-1, SOC 2 CC6.1.
+Data Classification and Handling Policy — Defines data classification levels (e.g., Public, Internal, Confidential, CUI), handling requirements for each level, and labeling requirements. Particularly critical if clients upload CUI. Controls: UCO-DP-001. Framework: CMMC MP.1.118, FedRAMP MP-3, SOC 2 C1.1.
+Vulnerability Management Policy — Governs scanning frequency, severity-based remediation SLAs (e.g., Critical: 15 days, High: 30 days, Medium: 90 days), responsible parties, and exception process. Controls: UCO-VM-001, UCO-VM-002. Framework: CMMC SI.1.210, FedRAMP RA-5, SOC 2 CC7.1.
+Business Continuity and Disaster Recovery Policy — Defines RTO/RPO targets, backup procedures and testing frequency, alternate site requirements, and DR testing cadence. Controls: UCO-RM-003, UCO-DP-005. Framework: CMMC CP.2.001, FedRAMP CP-1 through CP-9, SOC 2 A1.2.
+Acceptable Use Policy — Governs use of organizational systems, acceptable and prohibited activities, monitoring notice, and employee acknowledgment. Controls: UCO-AC-001. Framework: FedRAMP PL-4, SOC 2 CC1.4.
+Effort: L — 4–5 weeks to draft, review, and publish
+Artifact: All policies published in platform with review dates, owner names, and acknowledgment tracking enabled
+
+WORKSTREAM 1C: Legal and Vendor Documentation
+Step 1.7 — Draft and Publish Privacy Policy
+Where: colorcodesolutions.com (fix the 404 currently at /privacy-policy)
+What to do: Engage a technology attorney or use a NIST AI-aligned privacy policy template. The privacy policy must cover: what data is collected (including user-uploaded documents), how it is stored, where it is stored (country/region), who has access, how it is protected, retention periods, data subject rights (especially if serving EU clients), how breaches are reported, and contact information. Make it accessible from the EnterpriseComply login page and footer.
+Frameworks satisfied: FedRAMP AR-1, AR-2; SOC 2 P1.0, P2.0, P3.0; CMMC CA.2.157
+Effort: M — 1–2 weeks including legal review
+Artifact: Published privacy policy at accessible URL, linked from application
+
+Step 1.8 — Draft and Publish Terms of Service
+Where: colorcodesolutions.com (fix the 404 currently at /terms-of-service)
+What to do: Draft terms governing the client relationship, acceptable use, liability limitations, data ownership (confirm clients own their data), SLA commitments, and termination/data deletion procedures. Have this reviewed by legal counsel.
+Effort: M — 1–2 weeks including legal review
+Artifact: Published ToS at accessible URL, linked from application
+
+Step 1.9 — Create a Data Processing Agreement (DPA) Template
+What to do: For any client whose data falls under GDPR, CCPA, or federal data protection requirements, a signed DPA is required before they may upload data. Create a standard DPA template that covers the processor/controller relationship, processing purposes, security obligations, subprocessor list, and breach notification requirements. This should be ready to execute with clients before onboarding. Controls: UCO-PR-004.
+Frameworks satisfied: GDPR Article 28; SOC 2 C1.2; FedRAMP AR-3
+Effort: M — 1 week
+Artifact: Executed DPA template; evidence of DPA process in UCO-PR-004
+
+PHASE 2: INFRASTRUCTURE & TECHNICAL CONTROLS — Weeks 6–16 (Days 42–112)
+This phase addresses the technical debt identified — patching, encryption verification, TLS, configuration drift, network security, and logging.
+
+WORKSTREAM 2A: Infrastructure Decisions
+Step 2.1 — Formalize Cloud Infrastructure Architecture Decision
+What to do: Make an explicit, documented decision about the hosting infrastructure for EnterpriseComply. This is the single most consequential architectural decision for the path to FedRAMP. The options are:
+Option A (Recommended for FedRAMP path): Migrate to a FedRAMP-authorized cloud service provider — AWS GovCloud (East/West), Azure Government, or Google Cloud for Government. This is required for FedRAMP Moderate authorization and significantly simplifies the control inheritance story. Estimated migration effort: 2–4 months.
+Option B (SOC 2 / CMMC only): Remain on commercial cloud (e.g., AWS us-east-1 or similar) with full implementation of all controls without FedRAMP CSP inheritance. This is viable for SOC 2 Type II and CMMC Level 2 but will not satisfy FedRAMP Moderate.
+Document the decision in an Architecture Decision Record (ADR), including the rationale, the selected CSP, the geographic region (US-only required for federal data), and the planned migration timeline.
+Frameworks satisfied: FedRAMP SA-9, SC-7; CMMC SC.3.187; SOC 2 A1.1
+Effort: M for decision documentation; XL for migration if applicable
+Artifact: Architecture Decision Record; cloud contract or account confirmation; data residency statement published
+
+Step 2.2 — Document the Authorization Boundary
+What to do: Create a System Boundary Diagram that clearly shows what is inside the EnterpriseComply authorization boundary, what is outside it, and all data flows crossing the boundary. Include: the web application servers, the database tier, the API layer, the integration connectors, the evidence vault storage, the audit log storage, and all third-party services (authentication provider, email delivery, payment processing if any). This document becomes the foundation for both the System Security Plan and the SOC 2 description.
+Frameworks satisfied: FedRAMP CA-2, CA-3, PL-2; SOC 2 description of the system
+Effort: M — 1–2 weeks
+Artifact: System boundary diagram (Visio, Lucidchart, or draw.io) uploaded to evidence vault
+
+WORKSTREAM 2B: Encryption
+Step 2.3 — Verify and Document Encryption at Rest
+What to do: For every data store in the system — the primary database, the evidence vault file storage (likely an S3 bucket or equivalent), the audit log storage, and any backup stores — confirm that encryption at rest is enabled and document it. For AWS: confirm S3 SSE-S3 or SSE-KMS is enabled on all buckets; confirm RDS encryption at rest is enabled; confirm EBS volumes are encrypted. For Azure: confirm Azure Storage Service Encryption is enabled. Capture the configuration evidence (console screenshots, CLI output, or Terraform/CloudFormation state) and upload to the evidence vault linked to UCO-DP-002.
+Separately, resolve the risk register entries for "Insufficient data encryption at rest" — these 10 Critical entries should be marked Mitigated once encryption is confirmed, with evidence artifacts attached.
+Frameworks satisfied: CMMC MP.3.122, SC.3.177; FedRAMP SC-28, SC-28(1); SOC 2 CC6.7
+Effort: M — 3–5 days
+Artifact: Encryption configuration evidence for all data stores; UCO-DP-002 status updated to Passing; risk register entries resolved
+
+Step 2.4 — Enforce TLS 1.2+ Across All Endpoints
+What to do: Conduct a TLS audit across all endpoints (API endpoints, the web application, any integration callback URLs, and administrative interfaces). The SCAP scan found weak TLS on legacy endpoints — identify which endpoints those are and upgrade or decommission them. Enforce a minimum of TLS 1.2 with a preference for TLS 1.3. Disable SSLv3, TLS 1.0, and TLS 1.1. Test using ssllabs.com or testssl.sh and target an A or A+ rating on SSL Labs. Capture the SSL Labs report as evidence for UCO-DP-003.
+Frameworks satisfied: CMMC SC.3.177, SC.3.187; FedRAMP SC-8, SC-8(1); SOC 2 CC6.7
+Effort: M — 3–5 days
+Artifact: SSL Labs report showing A/A+ rating; UCO-DP-003 evidence; risk register "Weak TLS" entries resolved
+
+Step 2.5 — Implement Cryptographic Key Management
+What to do: Document the key management lifecycle for all encryption keys used in the platform. Keys must have defined rotation schedules (annual minimum for data-at-rest keys; per-session for transport keys). Use a dedicated key management service — AWS KMS, Azure Key Vault, or HashiCorp Vault (available as an integration). Document the key hierarchy, rotation procedure, and escrow/recovery process. Controls: UCO-CR-001, UCO-CM-007.
+Frameworks satisfied: CMMC SC.3.187; FedRAMP SC-12, SC-28(1); SOC 2 CC6.7
+Effort: M — 1 week
+Artifact: Key Management Policy; KMS configuration evidence; UCO-CR-001 and UCO-CM-007 evidence uploaded
+
+WORKSTREAM 2C: Patching & Vulnerability Management
+Step 2.6 — Establish Formal Patch Management Process
+What to do: The SCAP scan confirmed patch management failure and DSC shows PatchBaseline drift. This is a Critical finding. Immediately: run a full vulnerability scan of the production environment using a tool like Tenable.io, Qualys, or AWS Inspector. Enumerate all CVEs. Prioritize and remediate Critical CVEs within 15 days of discovery and High CVEs within 30 days. Establish a monthly patching cadence for operating systems and a weekly cadence for security-critical patches. Document the process in the Vulnerability Management Policy (Step 1.6).
+Within EnterpriseComply, connect the vulnerability scanner as an integration (Tenable.io and Qualys VMDR are available in the catalog) to automate evidence collection for UCO-VM-001 and UCO-VM-002.
+Frameworks satisfied: CMMC SI.1.210, SI.2.214; FedRAMP RA-5, SI-2; SOC 2 CC7.1
+Effort: M for immediate scan and patching; L for ongoing process
+Artifact: Initial vulnerability scan report; remediation evidence for critical/high CVEs; UCO-VM-001 and UCO-VM-002 evidence; risk register "Unpatched critical vulnerabilities" entries resolved
+
+Step 2.7 — Remediate Configuration Drift
+What to do: The evidence vault documents three specific DSC drift events that must be resolved: PatchBaseline drifted from MOF baseline (patch the systems and re-run DSC compliance check), PasswordPolicy drifted from MOF baseline (restore the password policy to baseline settings), and FirewallRule SQL1433 drifted from MOF baseline (review whether port 1433 inbound should be open; if not, close it and update the MOF configuration). After remediation, re-run the DSC compliance check and capture passing evidence.
+Separately, the evidence vault notes "3 unauthorized configuration changes detected" — investigate these, determine root cause, document lessons learned, and establish a change management process that prevents unauthorized changes (see Step 2.8).
+Frameworks satisfied: CMMC CM.2.061, CM.2.062; FedRAMP CM-3, CM-6; SOC 2 CC8.1
+Effort: M — 1 week
+Artifact: Updated DSC compliance evidence showing compliant state; incident report for the 3 unauthorized changes
+
+Step 2.8 — Implement Formal Change Management Process
+Where in the app: The platform has a Change Approval Process control (UCO-CM-006) marked Partial
+What to do: Define a formal Change Advisory Board (CAB) process or equivalent lightweight change approval workflow. At minimum: all changes to production systems must be submitted via a change request (Jira, ServiceNow, or a simple documented form); changes must be approved by a second named person before implementation; emergency changes must be documented within 24 hours after the fact. Connect Jira or ServiceNow integration if available. Document the process in a Change Management Policy.
+Frameworks satisfied: CMMC CM.3.068; FedRAMP CM-3, CM-4; SOC 2 CC8.1
+Effort: M — 1–2 weeks
+Artifact: Change Management Policy; change request templates; UCO-CM-006 evidence showing the approval workflow
+
+WORKSTREAM 2D: Network Security
+Step 2.9 — Implement and Document Network Segmentation
+What to do: The risk register lists "Insufficient network segmentation" as a Critical risk (score 15) with 10 open entries. Design and implement a network architecture that separates at minimum: the web/application tier, the database tier, the management/admin network, and the integration/API network. Each segment should have firewall rules permitting only required traffic. Document the network architecture in the System Boundary Diagram (Step 2.2). If running on AWS, this means configuring VPCs with separate subnets, security groups, and NACLs. On Azure, use VNets with NSGs.
+Frameworks satisfied: CMMC SC.1.175, SC.3.187; FedRAMP SC-7, SC-7(3), SC-7(5); SOC 2 CC6.6
+Effort: L — 2–4 weeks
+Artifact: Network architecture diagram; firewall rule documentation; UCO-NS-001 evidence; risk register entries resolved
+
+Step 2.10 — Deploy Intrusion Detection (IDS/IPS)
+What to do: Enable cloud-native intrusion detection — AWS GuardDuty (FedRAMP authorized), Azure Defender for Cloud, or a third-party solution. Connect GuardDuty or Azure Defender to the EnterpriseComply integration catalog. Configure alerting rules for high-severity findings. Document the deployment in UCO-NS-003.
+Frameworks satisfied: CMMC SI.3.219; FedRAMP SI-4, SI-4(2); SOC 2 CC7.2
+Effort: S — 2–3 days for cloud-native IDS
+Artifact: GuardDuty/Defender activation evidence; alerting configuration; UCO-NS-003 evidence
+
+Step 2.11 — Deploy WAF and DDoS Protection
+What to do: Implement a Web Application Firewall in front of the EnterpriseComply application tier. Options include AWS WAF, Azure Web Application Firewall, or Cloudflare (available as an integration in the catalog). Configure OWASP Top 10 rule sets as a baseline. Enable DDoS protection (AWS Shield Standard is included free; AWS Shield Advanced or Azure DDoS Protection Standard for higher assurance). Document in UCO-AS-002 and UCO-NS-005.
+Frameworks satisfied: CMMC SC.3.177; FedRAMP SC-5, SC-7; SOC 2 CC6.6
+Effort: M — 1 week
+Artifact: WAF configuration and rule set evidence; DDoS protection activation; UCO-AS-002 and UCO-NS-005 evidence
+
+WORKSTREAM 2E: Logging & Monitoring
+Step 2.12 — Deploy a SIEM and Connect It
+What to do: The current audit log shows only system-level events and has zero human actor events in the current period. A production GRC platform needs a SIEM. Connect one of the available integrations: AWS Security Hub (available and labeled "Live checks" in the catalog), Splunk, Elastic SIEM, or Datadog. Configure the SIEM to: ingest all application logs, all infrastructure logs (VPC flow logs, CloudTrail or equivalent), all authentication events, and all database audit logs. Set up alerting for: failed login attempts (5+ in 10 minutes = alert), privilege escalation, configuration changes outside approved windows, and data export events.
+Frameworks satisfied: CMMC AU.2.041, AU.2.042, AU.3.045; FedRAMP AU-6, SI-4; SOC 2 CC7.2, CC7.3
+Effort: L — 2–3 weeks
+Artifact: SIEM integration active and collecting; alert rules documented; UCO-AL-003 and UCO-AL-004 evidence
+
+Step 2.13 — Standardize and Verify Audit Log Retention
+What to do: There is a discrepancy in the application — the UI states 12-month audit log retention, but an evidence artifact notes only 90-day retention. Resolve this discrepancy by documenting the authoritative retention period, verifying it is technically enforced, and ensuring it meets all framework requirements. CMMC requires audit logs retained for at least 3 years for federal contracts; FedRAMP requires audit logs retained per NARA schedules (often 3 years); SOC 2 requires consistent and documented retention. The platform should target a minimum of 3-year retention for federal environments. Capture configuration evidence proving the retention setting.
+Frameworks satisfied: CMMC AU.3.045; FedRAMP AU-11; SOC 2 CC7.2
+Effort: S — 1–2 days
+Artifact: Log retention configuration evidence; updated Log Integrity & Retention policy; UCO-AL-002 evidence
+
+WORKSTREAM 2F: Endpoint Security
+Step 2.14 — Deploy EDR on All Corporate Endpoints
+What to do: Every device used by ColorCode Solutions staff that accesses the EnterpriseComply production environment must have an Endpoint Detection and Response (EDR) solution installed. Recommended options: CrowdStrike Falcon, SentinelOne, or Microsoft Defender for Endpoint (included in M365 E3/E5). Connect the chosen EDR to the EnterpriseComply integration catalog. Document the deployment scope (all endpoints vs. managed endpoints) in the Endpoint Security Policy.
+Frameworks satisfied: CMMC SI.1.210, SI.3.219; FedRAMP SI-3, SI-4; SOC 2 CC6.8
+Effort: M — 1 week for deployment
+Artifact: EDR deployment report; integration active status; UCO-EP-001 evidence
+
+Step 2.15 — Enable Full Disk Encryption on All Corporate Devices
+What to do: Enable BitLocker (Windows) or FileVault (macOS) on all corporate endpoints. For Windows endpoints managed via Microsoft Intune, this can be enforced via compliance policy. Connect Intune or Jamf Pro integration to EnterpriseComply to automatically collect evidence. UCO-EP-002 requires full disk encryption.
+Frameworks satisfied: CMMC MP.3.122; FedRAMP SC-28; SOC 2 CC6.7
+Effort: M — 1–2 days per endpoint cohort
+Artifact: Encryption status report from MDM; UCO-EP-002 evidence
+
+Step 2.16 — Deploy Mobile Device Management (MDM)
+What to do: Enroll all corporate devices (laptops, phones, tablets) in an MDM solution — Microsoft Intune (included in M365 E3) or Jamf Pro. Connect via the available integration. Enforce: screen lock after 15 minutes, PIN/biometric required, remote wipe capability, and prohibited side-loading of apps. Document in the Endpoint Security Policy.
+Frameworks satisfied: CMMC MP.2.120; FedRAMP AC-19; SOC 2 CC6.8
+Effort: M — 1–2 weeks
+Artifact: MDM enrollment report; compliance policy configuration; UCO-EP-003 evidence
+
+PHASE 3: CONTROL IMPLEMENTATION & EVIDENCE COLLECTION — Weeks 12–28 (Days 84–196)
+This is the largest phase. It involves working through all 71 UCO controls systematically, connecting integrations to automate evidence collection, and moving the control pass rate from 1% to 80%+.
+
+WORKSTREAM 3A: Risk Register Cleanup and Management
+Step 3.1 — Remediate and Clean the Risk Register
+Where in the app: Risk Register section
+What to do: The risk register currently has 200 risks — 40 critical, 140 high, and 0 mitigated. Many entries are duplicates (e.g., 10 identical "Inadequate MFA enforcement" entries). This must be cleaned and actively managed before any framework assessment.
+First, deduplicate the risk register — eliminate all duplicate risk entries, keeping one authoritative entry per unique risk. This will likely reduce the 200 entries to approximately 20–25 unique risks. Second, assign an owner to every risk (a named individual, not "Unassigned"). Third, for each risk, define a specific remediation plan, target remediation date, and interim compensating controls. Fourth, as technical remediations are completed in Phase 2, mark the corresponding risks as Mitigated and attach the remediation evidence. The goal is zero Critical open risks and a Risk Posture Score of 70+ before the framework observation period begins.
+Frameworks satisfied: CMMC CA.2.157; FedRAMP RA-3, PM-9; SOC 2 CC9.1
+Effort: M — 1–2 weeks
+Artifact: Cleaned risk register with owners, remediation plans, and mitigation evidence; Risk Posture Score 70+
+
+WORKSTREAM 3B: Integration Activation and Evidence Automation
+The platform's most powerful feature is automated evidence collection. Currently only GitHub is connected (1 of 12 active integrations). The goal of this workstream is to connect the integrations that automate the most evidence collection across the most controls.
+Step 3.2 — Connect AWS / AWS GovCloud Integration
+Where in the app: Integrations → Connect AWS
+What to do: Connect the AWS integration (live checks available). This will automatically collect evidence for: IAM root MFA status, password policy compliance, CloudTrail logging status, S3 public access block configuration, GuardDuty activation status, and user MFA coverage. These automated checks will push evidence to UCO-AI-001, UCO-AI-002, UCO-AC-001, UCO-AL-001, and more. If migrating to GovCloud (Step 2.1), connect the GovCloud account.
+Separately, connect AWS Security Hub, AWS Config, and AWS GuardDuty as individual integrations to maximize automated control coverage.
+Controls automated: UCO-AI-001, UCO-AI-002, UCO-AC-001, UCO-AL-001, UCO-CM-003, UCO-DP-001
+Effort: M — 1 week
+Artifact: AWS integration active; GuardDuty, Config, Security Hub integrations active; automated evidence flowing to relevant controls
+
+Step 3.3 — Connect Microsoft Entra ID / Microsoft 365 Integration
+What to do: Connect Entra ID for: Azure AD conditional access evidence, MFA registration reports, privileged identity management audit, and sign-in risk reporting. Connect Microsoft 365 for: Exchange mailbox audit logs, SharePoint DLP policies, Teams retention evidence, and admin role assignments.
+Controls automated: UCO-AI-001, UCO-AI-003, UCO-AC-001, UCO-AC-005, UCO-DP-003, UCO-AL-001
+Effort: M — 3–5 days
+Artifact: Entra ID and M365 integrations active; automated evidence flowing
+
+Step 3.4 — Connect Identity Provider (Okta or Entra)
+What to do: If using Okta, connect the Okta integration for SSO policy audit, MFA factor enrollment rates, inactive user detection, and password policy controls. If using Entra, this overlaps with Step 3.3. These integrations directly prove UCO-AI-001 (MFA for all users) and UCO-AC-001 (RBAC).
+Controls automated: UCO-AI-001, UCO-AI-003, UCO-AC-001, UCO-AC-003
+Effort: S — 1–2 days
+Artifact: IdP integration active and syncing
+
+Step 3.5 — Connect Vulnerability Scanner (Tenable or Qualys)
+What to do: Connect Tenable.io or Qualys VMDR to automate vulnerability evidence collection. This will provide continuous scanning evidence for UCO-VM-001 and UCO-VM-002, replacing the current manual evidence with ongoing automated proof. Configure scan schedules (weekly for internal, monthly for external) and set up remediation SLA tracking.
+Controls automated: UCO-VM-001, UCO-VM-002, UCO-AC-004
+Effort: M — 1 week
+Artifact: Scanner integration active; scan schedule documented; UCO-VM-001 and UCO-VM-002 evidence flowing
+
+Step 3.6 — Connect EDR Platform (CrowdStrike or SentinelOne)
+What to do: Connect CrowdStrike Falcon or SentinelOne after deployment in Step 2.14. This automates endpoint protection coverage evidence, threat detection events, and patch compliance reporting.
+Controls automated: UCO-VM-001, UCO-VM-002, UCO-AL-001, UCO-IR-001, UCO-EP-001
+Effort: S — 1–2 days after EDR deployment
+Artifact: EDR integration active; automated endpoint evidence flowing
+
+Step 3.7 — Connect SIEM (Splunk, Datadog, or Elastic)
+What to do: Connect the SIEM deployed in Step 2.12 to automate audit logging evidence, log retention evidence, security event correlation evidence, and anomaly alert evidence.
+Controls automated: UCO-AL-001, UCO-AL-002, UCO-AL-003, UCO-AL-004, UCO-IR-001
+Effort: S — 1 day after SIEM deployment
+Artifact: SIEM integration active; log evidence flowing
+
+Step 3.8 — Connect Security Awareness Training Platform (KnowBe4 or equivalent)
+What to do: Connect KnowBe4 or a comparable security awareness training platform. This automates evidence collection for training completion rates, phishing simulation results, and per-user risk scoring — directly addressing the Workforce roster gap (the incomplete step 4 on the Getting Started dashboard) and satisfying UCO-ST-001 and UCO-ST-002.
+Controls automated: UCO-ST-001, UCO-ST-002
+Effort: M — 1 week for platform selection, procurement, and enrollment
+Artifact: Training platform integration active; completion rate evidence; workforce roster populated in EnterpriseComply
+
+WORKSTREAM 3C: Manual Control Evidence — Work Through Each Domain
+For the controls that cannot be fully automated, the following manual evidence must be collected and uploaded. Work through these domain by domain:
+Step 3.9 — Incident Response (UCO-IR-001 through UCO-IR-005)
+Draft, review, and publish an Incident Response Plan covering: incident classification severity matrix, response roles and responsibilities (Incident Commander, Security Analyst, Communications Lead), 24/7 contact list, containment procedures for common incident types (unauthorized access, malware, data breach, ransomware), eradication and recovery procedures, evidence preservation requirements, external reporting obligations (CISA reporting for federal incidents, customer notification SLAs), and post-incident review process. Conduct a tabletop exercise (even a desktop walkthrough of a hypothetical scenario) and document the results. Upload the IRP and tabletop report as evidence for UCO-IR-001.
+Frameworks satisfied: CMMC IR.2.092, IR.2.093, IR.

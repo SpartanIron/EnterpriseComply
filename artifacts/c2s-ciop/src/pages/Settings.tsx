@@ -127,6 +127,25 @@ function SecurityTab() {
   const session = authClient.useSession();
   const user = session.data?.user as any;
   const twoFactorEnabled = !!user?.twoFactorEnabled;
+  const { orgId } = useOrg();
+  const qc = useQueryClient();
+
+  const { data: orgData } = useQuery<{ org: any }>({
+    queryKey: ["orgs", "me"],
+    queryFn: async () => (await fetch(apiUrl("/orgs/me"), { credentials: "include" })).json(),
+  });
+  const org = orgData?.org;
+
+  const [secSaved, setSecSaved] = useState(false);
+  const securityMutation = useMutation({
+    mutationFn: (patch: Record<string, unknown>) =>
+      apiFetch(`/orgs/${orgId}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orgs", "me"] });
+      setSecSaved(true);
+      setTimeout(() => setSecSaved(false), 2500);
+    },
+  });
 
   const [setupStep, setSetupStep] = useState<"idle" | "scanning" | "verifying" | "done" | "disabling">("idle");
   const [totpUri, setTotpUri] = useState<string>("");
@@ -437,6 +456,83 @@ function SecurityTab() {
               {twoFactorEnabled ? "Enabled" : "Disabled"}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* Org-wide MFA Enforcement */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="px-5 py-3.5 border-b border-slate-100">
+          <h2 className="text-sm font-bold text-slate-800">Organization-wide MFA Enforcement</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Require all org members to set up TOTP before accessing the platform. Satisfies CMMC IA.3.083, FedRAMP IA-2(1), SOC 2 CC6.1.</p>
+        </div>
+        <div className="p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-800 mb-1">Require MFA for all members</p>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                When enabled, any member who has not set up an authenticator app will be blocked from accessing the platform until they do. Applies to all roles.
+              </p>
+              {org?.mfaEnforced && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-green-700 font-semibold">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  Enforcement active - all members must have MFA
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => securityMutation.mutate({ mfaEnforced: !org?.mfaEnforced })}
+              disabled={securityMutation.isPending || !orgId}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${org?.mfaEnforced ? "bg-blue-600" : "bg-slate-200"}`}
+              role="switch"
+              aria-checked={!!org?.mfaEnforced}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${org?.mfaEnforced ? "translate-x-5" : "translate-x-0"}`} />
+            </button>
+          </div>
+          {secSaved && (
+            <div className="mt-3 text-xs text-green-700 font-semibold flex items-center gap-1.5">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              Security settings saved
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Audit Log Retention */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="px-5 py-3.5 border-b border-slate-100">
+          <h2 className="text-sm font-bold text-slate-800">Audit Log Retention</h2>
+          <p className="text-xs text-slate-500 mt-0.5">CMMC AU.3.045 requires 3 years. FedRAMP follows NARA schedules (typically 3 years). SOC 2 requires documented, enforced retention.</p>
+        </div>
+        <div className="p-5">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Retention period</label>
+              <select
+                value={org?.auditRetentionDays ?? 1095}
+                onChange={e => securityMutation.mutate({ auditRetentionDays: Number(e.target.value) })}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!orgId}
+              >
+                <option value={90}>90 days</option>
+                <option value={365}>1 year</option>
+                <option value={730}>2 years</option>
+                <option value={1095}>3 years (CMMC / FedRAMP minimum)</option>
+                <option value={1825}>5 years</option>
+                <option value={2555}>7 years</option>
+              </select>
+            </div>
+            <div className="flex-shrink-0 text-center">
+              <p className="text-2xl font-bold text-slate-900">{Math.round((org?.auditRetentionDays ?? 1095) / 365 * 10) / 10}</p>
+              <p className="text-xs text-slate-400">years</p>
+            </div>
+          </div>
+          {(org?.auditRetentionDays ?? 1095) < 1095 && (
+            <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+              <svg className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <span><strong>Below minimum:</strong> CMMC AU.3.045 and FedRAMP AU-11 require a minimum of 3 years (1,095 days) for federal environments. Increase to 3 years before your assessment.</span>
+            </div>
+          )}
         </div>
       </div>
 

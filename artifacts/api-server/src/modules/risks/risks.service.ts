@@ -121,6 +121,15 @@ export class RisksService {
     return { success: true };
   }
 
+  async bulkDeleteRisks(orgId: number, ids: number[]) {
+    if (ids.length === 0) return { deleted: 0 };
+    const { inArray } = await import("drizzle-orm");
+    await db.delete(orgRisksTable).where(
+      and(eq(orgRisksTable.orgId, orgId), inArray(orgRisksTable.id, ids))
+    );
+    return { deleted: ids.length };
+  }
+
   async suggestRisksFromControls(orgId: number) {
     const failingControls = await db.query.orgControlResultsTable.findMany({
       where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.status, "failing")),
