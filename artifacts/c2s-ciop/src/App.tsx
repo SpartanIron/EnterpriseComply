@@ -48,6 +48,7 @@ import ConMonProgram from "./pages/ConMonProgram";
 import FISMAReporting from "./pages/FISMAReporting";
 import SuperAdmin from "./pages/SuperAdmin";
 import RoleManagement from "./pages/RoleManagement";
+import PublicTrustCenter from "./pages/PublicTrustCenter";
 import { RoleProvider } from "./context/RoleContext";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -107,6 +108,7 @@ function AppRoutes() {
         <Route path="/" component={HomeRedirect} />
         <Route path="/sign-in/*?" component={SignIn} />
         <Route path="/sign-up/*?" component={SignUp} />
+        <Route path="/trust" component={PublicTrustCenter} />
         <Route path="/landing" component={Landing} />
         <Route path="/demo" component={() => (
           <div>

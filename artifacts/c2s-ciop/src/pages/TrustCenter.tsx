@@ -23,16 +23,11 @@ function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
 }
 
 const SUBPROCESSORS = [
-  { name: "Amazon Web Services", purpose: "Cloud infrastructure, compute, storage, and database services", region: "US (us-east-1, us-west-2)", category: "Infrastructure", has_dpa: true, data_types: "All system data, PII, CUI", link: "https://aws.amazon.com/compliance/data-privacy-faq/" },
-  { name: "Cloudflare", purpose: "CDN, DDoS protection, DNS management, and WAF", region: "Global", category: "Security", has_dpa: true, data_types: "Network traffic metadata", link: "https://www.cloudflare.com/gdpr/introduction/" },
-  { name: "Clerk", purpose: "User authentication and identity management", region: "US", category: "Identity", has_dpa: true, data_types: "PII, Authentication data", link: "https://clerk.com/legal/privacy" },
-  { name: "Neon (PostgreSQL)", purpose: "Database hosting and storage", region: "US (us-east-2)", category: "Infrastructure", has_dpa: true, data_types: "All database content", link: "https://neon.tech/privacy-policy" },
-  { name: "Railway", purpose: "Application deployment and hosting", region: "US (us-west-2)", category: "Infrastructure", has_dpa: true, data_types: "Application code, logs", link: "https://railway.app/legal/privacy" },
-  { name: "Stripe", purpose: "Payment processing and subscription billing", region: "US", category: "Payments", has_dpa: true, data_types: "Financial data, PII", link: "https://stripe.com/privacy" },
-  { name: "SendGrid (Twilio)", purpose: "Transactional email delivery", region: "US", category: "Communications", has_dpa: true, data_types: "Email addresses, notification content", link: "https://www.twilio.com/legal/privacy" },
-  { name: "GitHub (Microsoft)", purpose: "Source code repository and CI/CD", region: "US", category: "Development", has_dpa: true, data_types: "Source code, configuration", link: "https://github.com/site/privacy" },
-  { name: "Sentry", purpose: "Application error monitoring", region: "US", category: "Monitoring", has_dpa: true, data_types: "Error logs, partial PII in traces", link: "https://sentry.io/privacy/" },
-  { name: "Intercom", purpose: "Customer support and in-app messaging", region: "US", category: "Support", has_dpa: true, data_types: "PII, Support communications", link: "https://www.intercom.com/legal/privacy" },
+  { name: "Cloudflare, Inc.", purpose: "CDN, DDoS protection, WAF, DNS, bot protection", region: "Global (300+ PoPs)", category: "Security / CDN", has_dpa: true, data_types: "Network traffic metadata, IP addresses", link: "https://www.cloudflare.com/gdpr/introduction/" },
+  { name: "Railway Corp.", purpose: "Application hosting, PostgreSQL database, container orchestration", region: "US (Google Cloud, us-west-1)", category: "Infrastructure", has_dpa: true, data_types: "All customer data, database content, application logs", link: "https://railway.app/legal/privacy" },
+  { name: "GitHub, Inc. (Microsoft)", purpose: "Source code repository, CI/CD pipeline, security scanning", region: "US", category: "Development", has_dpa: true, data_types: "Source code, build artifacts (no customer data)", link: "https://github.com/site/privacy" },
+  { name: "SendGrid (Twilio, Inc.)", purpose: "Transactional email delivery - magic links, notifications, welcome emails", region: "US", category: "Communications", has_dpa: true, data_types: "Email addresses, notification content", link: "https://www.twilio.com/legal/privacy" },
+  { name: "Google LLC", purpose: "Underlying cloud infrastructure for Railway services", region: "US (us-west-1)", category: "Infrastructure", has_dpa: true, data_types: "Encrypted infrastructure layer - no direct data access", link: "https://cloud.google.com/security/gdpr" },
 ];
 
 const SECURITY_PRACTICES = [
