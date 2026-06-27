@@ -57,50 +57,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Pre-load Clerk JS from accounts.dev to work around clerk.colorcodesolutions.com CDN 503 on script-tag requests -->
-    <!-- Workaround: clerk.colorcodesolutions.com CDN returns 503 on script-tag requests but 200 on fetch. Rewrite all Clerk CDN script URLs to accounts.dev. -->
-    <script>
-    (function () {
-      var BAD = 'https://clerk.colorcodesolutions.com';
-      var GOOD = 'https://0z4untqapeo2.clerk.accounts.dev';
-      var origCreate = Document.prototype.createElement;
-      Document.prototype.createElement = function (tagName) {
-        var el = origCreate.apply(this, arguments);
-        if (typeof tagName === 'string' && tagName.toLowerCase() === 'script') {
-          try {
-            var srcDesc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src') ||
-                          Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'src');
-            if (srcDesc && srcDesc.set) {
-              Object.defineProperty(el, 'src', {
-                configurable: true,
-                enumerable: true,
-                get: function () { return srcDesc.get.call(el); },
-                set: function (v) {
-                  if (typeof v === 'string' && v.indexOf(BAD) === 0) {
-                    var rewritten = GOOD + v.substring(BAD.length);
-                    console.log('[clerk-cdn-rewrite] ' + v + ' -> ' + rewritten);
-                    return srcDesc.set.call(el, rewritten);
-                  }
-                  return srcDesc.set.call(el, v);
-                }
-              });
-            }
-            var origSetAttr = el.setAttribute;
-            el.setAttribute = function (name, value) {
-              if (name === 'src' && typeof value === 'string' && value.indexOf(BAD) === 0) {
-                value = GOOD + value.substring(BAD.length);
-                console.log('[clerk-cdn-rewrite-attr] -> ' + value);
-              }
-              return origSetAttr.call(el, name, value);
-            };
-          } catch (e) { console.warn('[clerk-cdn-rewrite] failed to patch', e); }
-        }
-        return el;
-      };
-    })();
-    </script>
-    <!-- Pre-load Clerk JS (also rewritten via the interceptor above if needed) -->
-    <script src="https://0z4untqapeo2.clerk.accounts.dev/npm/@clerk/clerk-js@6.11.1/dist/clerk.browser.js" crossorigin="anonymous"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

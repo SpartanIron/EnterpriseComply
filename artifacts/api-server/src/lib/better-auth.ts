@@ -53,7 +53,8 @@ export const auth = betterAuth({
 
   secret: process.env.BETTER_AUTH_SECRET || "ec-dev-secret-change-in-production",
 
-  baseURL: process.env.BETTER_AUTH_URL || process.env.APP_URL || "https://app.enterprisecomply.com",
+  baseURL: process.env.BETTER_AUTH_URL || process.env.APP_URL ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://app.enterprisecomply.com"),
   basePath: "/api/auth",
 
   trustedOrigins: [
@@ -62,6 +63,9 @@ export const auth = betterAuth({
     "https://grc.colorcodesolutions.com",
     "http://localhost:3000",
     "http://localhost:5173",
+    // Replit dev/preview domains (REPLIT_DOMAINS is comma-separated)
+    ...(process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(",").map(d => `https://${d.trim()}`) : []),
+    ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
   ].filter(Boolean) as string[],
 
   // ── Email+password: DISABLED — magic link only (invite-gated) ────────────────
