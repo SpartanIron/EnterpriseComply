@@ -643,11 +643,11 @@ CREATE TABLE IF NOT EXISTS integration_catalog (
 -- ── Answer Confidence Scores ──────────────────────────────────────────────
 -- Tracks confidence and review status for AI-generated questionnaire answers.
 -- Enables the "Needs Review" workflow for auto-filled answers.
-ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS answer_confidence NUMERIC(4,2);
-ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS answer_source TEXT DEFAULT 'manual';
-ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS needs_review BOOLEAN DEFAULT false;
-ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;
-ALTER TABLE questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS answer_confidence NUMERIC(4,2);
+ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS answer_source TEXT DEFAULT 'manual';
+ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS needs_review BOOLEAN DEFAULT false;
+ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;
+ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 
 -- ── Assessment Answer Confidence ──────────────────────────────────────────
 ALTER TABLE assessment_responses ADD COLUMN IF NOT EXISTS answer_confidence NUMERIC(4,2);
@@ -835,6 +835,9 @@ ALTER TABLE organizations ADD COLUMN IF NOT EXISTS sso_provider TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS sso_domain TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS risk_appetite TEXT NOT NULL DEFAULT 'moderate';
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS notification_prefs JSONB;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS mfa_enforced BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS audit_retention_days INTEGER NOT NULL DEFAULT 1095;
 `;
 
 
