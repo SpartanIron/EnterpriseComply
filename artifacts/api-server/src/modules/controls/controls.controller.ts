@@ -1,6 +1,7 @@
 import { Controller, Get, Patch, Body, Param, UseGuards } from "@nestjs/common";
 import { ControlsService } from "./controls.service";
 import { ClerkAuthGuard, OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -27,7 +28,7 @@ export class ControlsController {
   }
 
   @Patch("orgs/:orgId/controls/:controlId/result")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("analyst"))
   patchControlResult(
     @OrgContext() ctx: OrgCtx,
     @ClerkUserId() userId: string,

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, UseGuards } from "@nestjs/common";
 import { AccessReviewsService } from "./access-reviews.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -15,7 +16,7 @@ export class AccessReviewsController {
   }
 
   @Post("orgs/:orgId/access-reviews")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   createReview(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: any) {
     return this.accessReviewsService.createReview(ctx.orgId, userId, body);
   }
@@ -33,7 +34,7 @@ export class AccessReviewsController {
   }
 
   @Patch("orgs/:orgId/access-reviews/:id/complete")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   completeReview(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.accessReviewsService.completeReview(ctx.orgId, Number(id));
   }

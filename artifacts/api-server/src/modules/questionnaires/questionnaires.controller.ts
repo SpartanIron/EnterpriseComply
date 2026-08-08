@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { QuestionnairesService } from "./questionnaires.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -15,7 +16,7 @@ export class QuestionnairesController {
   }
 
   @Post("orgs/:orgId/questionnaires")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   createQuestionnaire(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: any) {
     return this.questionnairesService.createQuestionnaire(ctx.orgId, userId, body);
   }
@@ -33,13 +34,13 @@ export class QuestionnairesController {
   }
 
   @Patch("orgs/:orgId/questionnaires/items/:itemId")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("analyst"))
   updateItem(@OrgContext() ctx: OrgCtx, @Param("itemId") itemId: string, @Body() body: { answer: string }) {
     return this.questionnairesService.updateItem(ctx.orgId, Number(itemId), body);
   }
 
   @Patch("orgs/:orgId/questionnaires/items/:itemId/approve")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   approveItem(@OrgContext() ctx: OrgCtx, @Param("itemId") itemId: string, @Body() body: { answer?: string }) {
     return this.questionnairesService.approveItem(ctx.orgId, Number(itemId), body.answer);
   }
@@ -51,13 +52,13 @@ export class QuestionnairesController {
   }
 
   @Delete("orgs/:orgId/questionnaires/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   deleteQuestionnaire(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.questionnairesService.deleteQuestionnaire(ctx.orgId, Number(id));
   }
 
   @Post("orgs/:orgId/vendor-assessments")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   sendVendorAssessment(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: any) {
     return this.questionnairesService.sendVendorAssessment(ctx.orgId, userId, body);
   }

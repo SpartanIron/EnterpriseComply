@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Query } from "@nestjs/common";
 import { ZeroTrustService } from "./zero-trust.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -19,6 +20,7 @@ export class ZeroTrustController {
   // POST /orgs/:orgId/zero-trust/score
   // Triggers re-scoring from live UCO control results
   @Post("orgs/:orgId/zero-trust/score")
+  @UseGuards(RequireRole("compliance_manager"))
   async score(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string) {
     return this.ztaService.score(ctx.orgId, userId);
   }
@@ -47,6 +49,7 @@ export class ZeroTrustController {
   // POST /orgs/:orgId/zero-trust/weights
   // Update per-pillar weights for agency-specific scoring
   @Post("orgs/:orgId/zero-trust/weights")
+  @UseGuards(RequireRole("admin"))
   async updateWeights(@OrgContext() ctx: OrgCtx, @Body() body: { weights: Record<string, number> }) {
     return this.ztaService.updateWeights(ctx.orgId, body.weights);
   }

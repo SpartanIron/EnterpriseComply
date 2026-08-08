@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, ParseIntPipe } from "@nestjs/common";
 import { EvidenceService } from "./evidence.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -15,6 +16,7 @@ export class EvidenceController {
   }
 
   @Post()
+  @UseGuards(RequireRole("analyst"))
   addEvidence(
     @OrgContext() ctx: OrgCtx,
     @ClerkUserId() userId: string,
@@ -33,6 +35,7 @@ export class EvidenceController {
   }
 
   @Delete(":id")
+  @UseGuards(RequireRole("compliance_manager"))
   deleteEvidence(
     @OrgContext() ctx: OrgCtx,
     @Param("id", ParseIntPipe) evidenceId: number,

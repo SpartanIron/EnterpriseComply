@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from "@nestjs/common";
 import { RemediationService } from "./remediation.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -26,19 +27,19 @@ export class RemediationController {
   }
 
   @Post("orgs/:orgId/remediation")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   create(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: Record<string, unknown>) {
     return this.remediationService.create(ctx.orgId, userId, body as any);
   }
 
   @Post("orgs/:orgId/remediation/bulk-from-gap-analysis")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   bulkCreate(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: { items: any[] }) {
     return this.remediationService.bulkCreateFromGapAnalysis(ctx.orgId, userId, body.items ?? []);
   }
 
   @Patch("orgs/:orgId/remediation/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   update(
     @OrgContext() ctx: OrgCtx,
     @Param("id", ParseIntPipe) id: number,
@@ -48,13 +49,13 @@ export class RemediationController {
   }
 
   @Post("orgs/:orgId/remediation/:id/retest")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   reTest(@OrgContext() ctx: OrgCtx, @Param("id", ParseIntPipe) id: number) {
     return this.remediationService.reTest(ctx.orgId, id);
   }
 
   @Delete("orgs/:orgId/remediation/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   delete(@OrgContext() ctx: OrgCtx, @Param("id", ParseIntPipe) id: number) {
     return this.remediationService.delete(ctx.orgId, id);
   }

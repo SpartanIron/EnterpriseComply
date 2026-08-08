@@ -12,6 +12,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ScapService } from "./scap.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx {
   orgId: number;
@@ -27,7 +28,7 @@ export class ScapController {
   // Accepts raw XCCDF XML in the request body and returns parsed findings
   // without persisting.  Useful for preview before committing an import.
   @Post("parse")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   parseXccdf(@OrgContext() ctx: OrgCtx, @Body() body: { xmlContent: string }) {
     if (!body.xmlContent || body.xmlContent.length < 100) {
       throw new BadRequestException("xmlContent is required and must contain valid XCCDF XML.");
@@ -39,7 +40,7 @@ export class ScapController {
   // Accepts raw XCCDF XML in the request body, parses it, creates a new
   // STIG checklist record, and bulk-inserts all findings.
   @Post("import")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   importXccdf(@OrgContext() ctx: OrgCtx, @Body() body: { xmlContent: string }) {
     if (!body.xmlContent || body.xmlContent.length < 100) {
       throw new BadRequestException("xmlContent is required and must contain valid XCCDF XML.");

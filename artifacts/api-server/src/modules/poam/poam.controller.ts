@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { PoamService } from "./poam.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -15,19 +16,19 @@ export class PoamController {
   }
 
   @Post()
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   createItem(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {
     return this.poamService.createItem(ctx.orgId, body);
   }
 
   @Post("bulk-from-failing")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   createFromFailingControls(@OrgContext() ctx: OrgCtx) {
     return this.poamService.createFromFailingControls(ctx.orgId);
   }
 
   @Patch(":id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   updateItem(
     @OrgContext() ctx: OrgCtx,
     @Param("id") id: string,
@@ -37,7 +38,7 @@ export class PoamController {
   }
 
   @Delete(":id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   deleteItem(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.poamService.deleteItem(ctx.orgId, Number(id));
   }

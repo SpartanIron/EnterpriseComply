@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from "@nestjs/common";
 import { MonitoringService } from "./monitoring.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -28,7 +29,7 @@ export class MonitoringController {
   }
 
   @Post("orgs/:orgId/monitoring/check")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   triggerCheck(@OrgContext() ctx: OrgCtx, @Body() body: { integrationKey: string }) {
     return this.monitoringService.triggerCheck(ctx.orgId, body.integrationKey);
   }
@@ -40,7 +41,7 @@ export class MonitoringController {
   }
 
   @Patch("orgs/:orgId/monitoring/settings")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   updateSettings(@OrgContext() ctx: OrgCtx, @Body() body: any) {
     return this.monitoringService.updateSettings(ctx.orgId, body);
   }

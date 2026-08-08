@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Query, Param, Req, Res, UseGuards, BadRequ
 import type { Request, Response } from "express";
 import { IntegrationsService } from "./integrations.service";
 import { ClerkAuthGuard, OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -20,7 +21,7 @@ export class IntegrationsController {
 
   // ── GitHub OAuth connect ────────────────────────────────────────────────────
   @Get("integrations/github/connect")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   githubConnect(
     @ClerkUserId() userId: string,
     @Query("orgId") orgId: string,
@@ -48,14 +49,14 @@ export class IntegrationsController {
   }
 
   @Post("orgs/:orgId/integrations/github/sync")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   syncGitHub(@OrgContext() ctx: OrgCtx) {
     return this.integrationsService.syncOrgGitHub(ctx.orgId);
   }
 
   // ── GitHub PAT (Personal Access Token) connect — direct, no OAuth ───────────
   @Post("orgs/:orgId/integrations/github/connect-pat")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   connectGitHubPAT(
     @OrgContext() ctx: OrgCtx,
     @Body() body: { personalAccessToken: string; orgOrOwner?: string },
@@ -66,7 +67,7 @@ export class IntegrationsController {
 
   // ── AWS connect / sync ───────────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/aws/connect")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   connectAWS(
     @OrgContext() ctx: OrgCtx,
     @Body() body: { accessKeyId: string; secretAccessKey: string; region: string },
@@ -78,14 +79,14 @@ export class IntegrationsController {
   }
 
   @Post("orgs/:orgId/integrations/aws/sync")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   syncAWS(@OrgContext() ctx: OrgCtx) {
     return this.integrationsService.syncOrgAWS(ctx.orgId);
   }
 
   // ── Okta connect / sync ──────────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/okta/connect")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   connectOkta(
     @OrgContext() ctx: OrgCtx,
     @Body() body: { domain: string; apiToken: string },
@@ -95,14 +96,14 @@ export class IntegrationsController {
   }
 
   @Post("orgs/:orgId/integrations/okta/sync")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   syncOkta(@OrgContext() ctx: OrgCtx) {
     return this.integrationsService.syncOrgOkta(ctx.orgId);
   }
 
   // ── Cloudflare connect / sync ─────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/cloudflare/connect")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   connectCloudflare(
     @OrgContext() ctx: OrgCtx,
     @Body() body: { apiToken: string; zoneId: string },
@@ -112,21 +113,21 @@ export class IntegrationsController {
   }
 
   @Post("orgs/:orgId/integrations/cloudflare/sync")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   syncCloudflare(@OrgContext() ctx: OrgCtx) {
     return this.integrationsService.syncOrgCloudflare(ctx.orgId);
   }
 
   // ── Demo connect for all other integrations ───────────────────────────────────
   @Post("orgs/:orgId/integrations/:key/demo-connect")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   demoConnect(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
     return this.integrationsService.connectDemo(ctx.orgId, key);
   }
 
   // ── Generic sync router ────────────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/:key/sync")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   syncIntegration(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
     if (key === "github") return this.integrationsService.syncOrgGitHub(ctx.orgId);
     if (key === "aws") return this.integrationsService.syncOrgAWS(ctx.orgId);

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { CustomFrameworksService } from "./custom-frameworks.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -15,19 +16,19 @@ export class CustomFrameworksController {
   }
 
   @Post("orgs/:orgId/custom-frameworks")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   createFramework(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: any) {
     return this.customFrameworksService.createFramework(ctx.orgId, userId, body);
   }
 
   @Patch("orgs/:orgId/custom-frameworks/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   updateFramework(@OrgContext() ctx: OrgCtx, @Param("id") id: string, @Body() body: any) {
     return this.customFrameworksService.updateFramework(ctx.orgId, Number(id), body);
   }
 
   @Delete("orgs/:orgId/custom-frameworks/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   deleteFramework(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.customFrameworksService.deleteFramework(ctx.orgId, Number(id));
   }
@@ -39,25 +40,25 @@ export class CustomFrameworksController {
   }
 
   @Post("orgs/:orgId/custom-frameworks/:id/controls")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   createControl(@OrgContext() ctx: OrgCtx, @Param("id") id: string, @Body() body: any) {
     return this.customFrameworksService.createControl(ctx.orgId, Number(id), body);
   }
 
   @Patch("orgs/:orgId/custom-frameworks/controls/:controlId")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   updateControl(@OrgContext() ctx: OrgCtx, @Param("controlId") controlId: string, @Body() body: any) {
     return this.customFrameworksService.updateControl(ctx.orgId, Number(controlId), body);
   }
 
   @Delete("orgs/:orgId/custom-frameworks/controls/:controlId")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   deleteControl(@OrgContext() ctx: OrgCtx, @Param("controlId") controlId: string) {
     return this.customFrameworksService.deleteControl(ctx.orgId, Number(controlId));
   }
 
   @Post("orgs/:orgId/custom-frameworks/:id/controls/import")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   bulkImport(@OrgContext() ctx: OrgCtx, @Param("id") id: string, @Body() body: { controls: any[] }) {
     return this.customFrameworksService.bulkImportControls(ctx.orgId, Number(id), body.controls);
   }

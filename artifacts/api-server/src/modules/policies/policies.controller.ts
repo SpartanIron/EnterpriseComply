@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { PoliciesService } from "./policies.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -20,13 +21,13 @@ export class PoliciesController {
   }
 
   @Post("orgs/:orgId/policies")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   createPolicy(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {
     return this.policiesService.createPolicy(ctx.orgId, body);
   }
 
   @Patch("orgs/:orgId/policies/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   updatePolicy(
     @OrgContext() ctx: OrgCtx,
     @Param("id") id: string,
@@ -36,7 +37,7 @@ export class PoliciesController {
   }
 
   @Delete("orgs/:orgId/policies/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   deletePolicy(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.policiesService.deletePolicy(ctx.orgId, Number(id));
   }
@@ -58,7 +59,7 @@ export class PoliciesController {
   }
 
   @Post("orgs/:orgId/policies/:id/request-acknowledgment")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   requestAcknowledgment(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.policiesService.bulkRequestAcknowledgment(ctx.orgId, Number(id));
   }
@@ -70,7 +71,7 @@ export class PoliciesController {
   }
 
   @Post("orgs/:orgId/policies/:id/review")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   reviewPolicy(
     @OrgContext() ctx: OrgCtx,
     @Param("id") id: string,

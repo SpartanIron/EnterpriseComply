@@ -1,0 +1,1 @@
+- [RBAC implementation](rbac-implementation.md) — RequireRole factory guard applied to all 20 controllers; cookie is __Secure- prefixed + HMAC-signed with base64 (not base64url).

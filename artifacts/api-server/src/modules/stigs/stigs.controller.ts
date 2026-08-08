@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { StigsService } from "./stigs.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -15,13 +16,13 @@ export class StigsController {
   }
 
   @Post()
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   createChecklist(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {
     return this.stigsService.createChecklist(ctx.orgId, body);
   }
 
   @Delete(":id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   deleteChecklist(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.stigsService.deleteChecklist(ctx.orgId, Number(id));
   }
@@ -33,7 +34,7 @@ export class StigsController {
   }
 
   @Post(":id/findings/bulk")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   bulkCreateFindings(
     @OrgContext() ctx: OrgCtx,
     @Param("id") id: string,
@@ -43,7 +44,7 @@ export class StigsController {
   }
 
   @Patch("findings/:findingId")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
   updateFinding(
     @OrgContext() ctx: OrgCtx,
     @Param("findingId") findingId: string,

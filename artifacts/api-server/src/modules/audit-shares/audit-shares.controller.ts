@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, ParseIntPipe, UseGuards, Re
 import type { Request } from "express";
 import { AuditSharesService } from "./audit-shares.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -17,7 +18,7 @@ export class AuditSharesController {
   }
 
   @Post("orgs/:orgId/audit-shares")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   create(
     @OrgContext() ctx: OrgCtx,
     @ClerkUserId() userId: string,
@@ -27,7 +28,7 @@ export class AuditSharesController {
   }
 
   @Delete("orgs/:orgId/audit-shares/:id")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   revoke(
     @OrgContext() ctx: OrgCtx,
     @ClerkUserId() userId: string,

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards } from "@nestjs/common";
 import { FrameworksService } from "./frameworks.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -20,13 +21,13 @@ export class FrameworksController {
   }
 
   @Post("orgs/:orgId/frameworks")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   addFrameworks(@OrgContext() ctx: OrgCtx, @Body() body: { frameworkKeys: string[] }) {
     return this.frameworksService.addFrameworks(ctx.orgId, body.frameworkKeys);
   }
 
   @Delete("orgs/:orgId/frameworks/:key")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   removeFramework(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
     return this.frameworksService.removeFramework(ctx.orgId, key);
   }

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from "@nestjs/common";
 import { OrgsService } from "./orgs.service";
 import { ClerkAuthGuard, OrgContextGuard, ClerkUserId, OrgContext } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx {
   orgId: number;
@@ -31,13 +32,13 @@ export class OrgsController {
   }
 
   @Patch(":orgId")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   updateOrg(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {
     return this.orgsService.updateOrg(ctx.orgId, body);
   }
 
   @Patch(":orgId/onboarding")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
   patchOnboarding(
     @OrgContext() ctx: OrgCtx,
     @Body() body: { step: number; complete?: boolean },

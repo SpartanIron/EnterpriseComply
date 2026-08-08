@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, UseGuards } from "@nestjs/common";
 import { AuditsService } from "./audits.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -15,13 +16,13 @@ export class AuditsController {
   }
 
   @Post("orgs/:orgId/audits")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   createEngagement(@OrgContext() ctx: OrgCtx, @ClerkUserId() userId: string, @Body() body: any) {
     return this.auditsService.createEngagement(ctx.orgId, userId, body);
   }
 
   @Patch("orgs/:orgId/audits/:id/close")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   closeEngagement(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.auditsService.closeEngagement(ctx.orgId, Number(id));
   }
@@ -33,13 +34,13 @@ export class AuditsController {
   }
 
   @Post("orgs/:orgId/audits/:id/requests")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   createEvidenceRequest(@OrgContext() ctx: OrgCtx, @Param("id") id: string, @Body() body: any) {
     return this.auditsService.createEvidenceRequest(ctx.orgId, Number(id), body);
   }
 
   @Patch("orgs/:orgId/audits/requests/:requestId")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   updateEvidenceRequest(@OrgContext() ctx: OrgCtx, @Param("requestId") requestId: string, @Body() body: any) {
     return this.auditsService.updateEvidenceRequest(ctx.orgId, Number(requestId), body);
   }

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { TestRunsService } from "./test-runs.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
+import { RequireRole } from "../../guards/roles.guard";
 
 interface OrgCtx { orgId: number; }
 
@@ -21,7 +22,7 @@ export class TestRunsController {
   }
 
   @Post("orgs/:orgId/test-runs/trigger")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
   triggerTestRuns(@OrgContext() ctx: OrgCtx) {
     return this.testRunsService.triggerTestRuns(ctx.orgId);
   }
