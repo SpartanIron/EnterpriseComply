@@ -1,1 +1,2 @@
 - [RBAC implementation](rbac-implementation.md) — RequireRole factory guard applied to all 20 controllers; cookie is __Secure- prefixed + HMAC-signed with base64 (not base64url).
+- [Frontend data-binding patterns](frontend-data-binding.md) — Controls status is at c.result.status (nested), not c.status; framework keys in FRAMEWORK_INFO must match backend catalog keys exactly; isLoading must combine orgLoading||fwLoading for dependent queries.

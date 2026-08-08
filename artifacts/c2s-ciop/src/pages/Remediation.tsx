@@ -98,19 +98,19 @@ const controls: any[] = data?.controls ?? [];
   const filtered = filterDomain === "all" ? controls : controls.filter(c => c.domain === filterDomain);
 
   const byStatus = (status: string) =>
-    filtered.filter(c => c.status === status || (status === "not_tested" && c.status === "not_tested"))
+    filtered.filter(c => c.result.status === status)
       .sort((a, b) => {
-        const pa = priorityFromDomain(a.domain, a.status === "failing");
-        const pb = priorityFromDomain(b.domain, b.status === "failing");
+        const pa = priorityFromDomain(a.domain, a.result.status === "failing");
+        const pb = priorityFromDomain(b.domain, b.result.status === "failing");
         const order = ["high", "medium", "low", "critical"];
         return order.indexOf(pa) - order.indexOf(pb);
       });
 
   const stats = {
     total: controls.length,
-    failing: controls.filter(c => c.status === "failing").length,
-    passing: controls.filter(c => c.status === "passing").length,
-    notTested: controls.filter(c => c.status === "not_tested").length,
+    failing: controls.filter(c => c.result.status === "failing").length,
+    passing: controls.filter(c => c.result.status === "passing").length,
+    notTested: controls.filter(c => c.result.status === "not_tested").length,
   };
 
   return (
@@ -183,7 +183,7 @@ const controls: any[] = data?.controls ?? [];
                     <div className="text-center py-8 text-xs text-slate-400">No controls here</div>
                   )}
                   {cards.map((c: any) => {
-                    const priority = priorityFromDomain(c.domain, c.status === "failing");
+                    const priority = priorityFromDomain(c.domain, c.result.status === "failing");
                     const domainColor = DOMAIN_COLORS[c.domain] ?? "bg-slate-50 border-slate-200";
                     const priorCls = PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.low;
 
@@ -195,13 +195,13 @@ const controls: any[] = data?.controls ?? [];
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">{c.controlId}</span>
-                            {c.status === "failing" && (
+                            {c.result?.status === "failing" && (
                               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${priorCls}`}>{priority}</span>
                             )}
                           </div>
                           {/* Move buttons */}
                           <div className="flex gap-1 flex-shrink-0">
-                            {c.status !== "passing" && (
+                            {c.result?.status !== "passing" && (
                               <button
                                 onClick={e => { e.stopPropagation(); moveMutation.mutate({ controlId: c.controlId, status: "passing" }); }}
                                 className="h-6 w-6 rounded flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
@@ -210,7 +210,7 @@ const controls: any[] = data?.controls ?? [];
                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                               </button>
                             )}
-                            {c.status === "passing" && (
+                            {c.result?.status === "passing" && (
                               <button
                                 onClick={e => { e.stopPropagation(); moveMutation.mutate({ controlId: c.controlId, status: "failing" }); }}
                                 className="h-6 w-6 rounded flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
@@ -231,7 +231,7 @@ const controls: any[] = data?.controls ?? [];
                             <span className="text-xs text-slate-500 font-medium">{c.result.ownerName}</span>
                           )}
                         </div>
-                        {c.status === "failing" && c.result?.failureReason && (
+                        {c.result?.status === "failing" && c.result?.failureReason && (
                           <p className="text-xs text-red-600 mt-2 line-clamp-2">{c.result.failureReason}</p>
                         )}
                       </div>
@@ -261,7 +261,7 @@ const controls: any[] = data?.controls ?? [];
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Domain", value: selected.domain },
-                  { label: "Status", value: selected.status === "passing" ? "Passing" : selected.status === "failing" ? "Failing" : "Not Tested" },
+                  { label: "Status", value: selected.result?.status === "passing" ? "Passing" : selected.result?.status === "failing" ? "Failing" : "Not Tested" },
                   { label: "Automation", value: selected.automationLevel === "full" ? "Automated" : selected.automationLevel === "partial" ? "Partial" : "Manual" },
                   { label: "Owner", value: selected.result?.ownerName ?? "Unassigned" },
                 ].map(({ label, value }) => (
