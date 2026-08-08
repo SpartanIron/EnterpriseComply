@@ -649,11 +649,6 @@ ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS needs_review BOOLEA
 ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;
 ALTER TABLE org_questionnaire_items ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 
--- ── Assessment Answer Confidence ──────────────────────────────────────────
-ALTER TABLE assessment_responses ADD COLUMN IF NOT EXISTS answer_confidence NUMERIC(4,2);
-ALTER TABLE assessment_responses ADD COLUMN IF NOT EXISTS answer_source TEXT DEFAULT 'manual';
-ALTER TABLE assessment_responses ADD COLUMN IF NOT EXISTS needs_review BOOLEAN DEFAULT false;
-
 -- ── Row Level Security (Tenant Isolation) ────────────────────────────────
 -- Ensures application-level bugs cannot leak cross-tenant data.
 -- Postgres RLS provides a hard security boundary even if WHERE clauses are wrong.
@@ -690,7 +685,7 @@ END $$;
   -- Asset Inventory table for system boundary scoping
   CREATE TABLE IF NOT EXISTS assets (
     id SERIAL PRIMARY KEY,
-    org_id INTEGER NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    org_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT NOT NULL DEFAULT 'Server',
     environment TEXT NOT NULL DEFAULT 'Production',
@@ -1064,8 +1059,8 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
 - Monthly incident metrics reported to leadership
 `;
 
-      await pool.query('UPDATE org_policies SET content = $1 WHERE name = \'Incident Response Policy\' AND (content IS NULL OR content = \'\')', [irPolicyContent])
-      await pool.query('UPDATE org_policies SET content = $1 WHERE name = \'Incident Response Plan\' AND (content IS NULL OR content = \'\')', [irPlanContent])
+      await pool.query('UPDATE org_policies SET content = $1 WHERE title = \'Incident Response Policy\' AND (content IS NULL OR content = \'\')', [irPolicyContent])
+      await pool.query('UPDATE org_policies SET content = $1 WHERE title = \'Incident Response Plan\' AND (content IS NULL OR content = \'\')', [irPlanContent])
       this.logger.log("Policy content migration complete");
     } catch (err) {
       this.logger.error("Policy content migration failed - continuing startup", (err as any)?.message ?? String(err));
