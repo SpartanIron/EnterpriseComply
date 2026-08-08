@@ -920,6 +920,16 @@ CREATE TABLE IF NOT EXISTS invitation (
   "expiresAt" TIMESTAMPTZ NOT NULL,
   "inviterId" TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS email_drip_log (
+  id SERIAL PRIMARY KEY,
+  clerk_user_id TEXT NOT NULL,
+  org_id INTEGER,
+  email_type TEXT NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  meta TEXT,
+  UNIQUE (clerk_user_id, email_type)
+);
 `;
 
 @Injectable()
