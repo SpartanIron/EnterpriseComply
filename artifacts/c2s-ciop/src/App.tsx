@@ -49,6 +49,7 @@ import FISMAReporting from "./pages/FISMAReporting";
 import SuperAdmin from "./pages/SuperAdmin";
 import RoleManagement from "./pages/RoleManagement";
 import PublicTrustCenter from "./pages/PublicTrustCenter";
+import OrgTrustCenter from "./pages/OrgTrustCenter";
 import { RoleProvider } from "./context/RoleContext";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -144,6 +145,7 @@ function AppRoutes() {
         <Route path="/sign-in/*?" component={SignIn} />
         <Route path="/sign-up/*?" component={SignUp} />
         <Route path="/trust" component={PublicTrustCenter} />
+        <Route path="/trust/:slug" component={OrgTrustCenter} />
         <Route path="/landing" component={Landing} />
         <Route path="/demo" component={() => (
           <div>
