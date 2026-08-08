@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql, isNotNull } from "drizzle-orm";
 import { runAwsChecks } from "./providers/aws.provider";
 import { runOktaChecks } from "./providers/okta.provider";
 import { runGitHubChecks } from "./providers/github.provider";
@@ -721,10 +721,39 @@ export class IntegrationsService {
     const connected = await db.query.orgIntegrationsTable.findMany({
       where: eq(orgIntegrationsTable.orgId, orgId),
     });
-    const catalog = INTEGRATION_CATALOG.map((c) => ({
-      ...c,
-      connection: connected.find((i) => i.integrationKey === c.key) ?? null,
-    }));
+
+    // Compute live evidence counts per integration key from org_evidence.
+    // This keeps the Integrations page in sync with Evidence Vault — both
+    // derive their counts from the same source of truth (org_evidence rows)
+    // rather than the stale persisted evidence_collected column, which never
+    // decrements when evidence is deleted or expires.
+    const liveCounts = await db
+      .select({
+        integrationKey: orgEvidenceTable.integrationKey,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(orgEvidenceTable)
+      .where(
+        and(
+          eq(orgEvidenceTable.orgId, orgId),
+          isNotNull(orgEvidenceTable.integrationKey),
+        ),
+      )
+      .groupBy(orgEvidenceTable.integrationKey);
+
+    const liveCountMap: Record<string, number> = Object.fromEntries(
+      liveCounts.map((r) => [r.integrationKey, r.count]),
+    );
+
+    const catalog = INTEGRATION_CATALOG.map((c) => {
+      const conn = connected.find((i) => i.integrationKey === c.key) ?? null;
+      return {
+        ...c,
+        connection: conn
+          ? { ...conn, evidenceCollected: liveCountMap[c.key] ?? 0 }
+          : null,
+      };
+    });
     return { integrations: catalog };
   }
 
