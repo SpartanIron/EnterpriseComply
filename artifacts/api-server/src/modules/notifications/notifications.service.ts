@@ -156,6 +156,47 @@ export class NotificationsService {
     });
   }
 
+  // ── P1-22: Compliance alert helpers called by ComplianceAlertsService ──────
+
+  /** Notify when org has one or more controls in 'failing' status. */
+  async notifyFailingControls(orgId: number, failingCount: number): Promise<void> {
+    if (failingCount === 0) return;
+    await this.createNotification({
+      orgId,
+      type: "error",
+      title: `${failingCount} control${failingCount === 1 ? "" : "s"} currently failing`,
+      body: `${failingCount} assigned control${failingCount === 1 ? " is" : "s are"} in a failing state. Review and remediate in the Controls or Remediation Board.`,
+      link: "/remediation",
+      dedupKey: `failing-controls:${orgId}:${new Date().toDateString()}`,
+    });
+  }
+
+  /** Notify when org has open/mitigated risks past their due date. */
+  async notifyOverdueRisks(orgId: number, overdueCount: number): Promise<void> {
+    if (overdueCount === 0) return;
+    await this.createNotification({
+      orgId,
+      type: "warning",
+      title: `${overdueCount} risk${overdueCount === 1 ? "" : "s"} past due date`,
+      body: `${overdueCount} open risk${overdueCount === 1 ? " has" : "s have"} passed their due date without being closed or mitigated. Review in Risk Management.`,
+      link: "/risks",
+      dedupKey: `overdue-risks:${orgId}:${new Date().toDateString()}`,
+    });
+  }
+
+  /** Notify when org has published policies not reviewed in the past 12 months. */
+  async notifyPoliciesDueForReview(orgId: number, dueCount: number): Promise<void> {
+    if (dueCount === 0) return;
+    await this.createNotification({
+      orgId,
+      type: "warning",
+      title: `${dueCount} polic${dueCount === 1 ? "y" : "ies"} due for annual review`,
+      body: `${dueCount} published polic${dueCount === 1 ? "y has" : "ies have"} not been reviewed in the past 12 months. Re-publish after review to maintain compliance posture.`,
+      link: "/policies",
+      dedupKey: `policies-review:${orgId}:${new Date().toDateString()}`,
+    });
+  }
+
   // ── Evidence expiry scan ──────────────────────────────────────────────────
   async runEvidenceExpiryScan(orgId: number): Promise<Array<{ title: string; controlId?: string; daysUntilExpiry: number }>> {
     const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
