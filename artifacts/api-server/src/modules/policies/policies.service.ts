@@ -7,11 +7,17 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
 function loadTemplate(key: string): string {
-  const filePath = join(process.cwd(), "artifacts/api-server/policy-templates", `${key}.md`);
-  if (!existsSync(filePath)) {
-    return `# ${key}\n\nTemplate content pending.`;
+  // Two candidate paths because process.cwd() differs between environments:
+  //   Production (Railway repo root):   "artifacts/api-server/policy-templates/<key>.md"
+  //   Dev (pnpm --filter, api-server/): "policy-templates/<key>.md"
+  const candidates = [
+    join(process.cwd(), "artifacts/api-server/policy-templates", `${key}.md`),
+    join(process.cwd(), "policy-templates", `${key}.md`),
+  ];
+  for (const filePath of candidates) {
+    if (existsSync(filePath)) return readFileSync(filePath, "utf-8");
   }
-  return readFileSync(filePath, "utf-8");
+  return `# ${key}\n\nTemplate content pending.`;
 }
 
 export const POLICY_TEMPLATES = [

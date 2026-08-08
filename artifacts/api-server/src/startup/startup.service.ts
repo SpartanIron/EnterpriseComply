@@ -2,6 +2,28 @@ import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { db, pool, ucoControlsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { seedColorComply } from "@workspace/db/seed";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
+
+/**
+ * Load a policy template file by key. Returns the full markdown content, or
+ * an empty string if the file doesn't exist.
+ *
+ * Two candidate paths are tried because process.cwd() differs between
+ * environments:
+ *   - Production (Railway): repo root  → "artifacts/api-server/policy-templates/<key>.md"
+ *   - Dev (pnpm --filter):  api-server dir → "policy-templates/<key>.md"
+ */
+function loadPolicyTemplate(key: string): string {
+  const candidates = [
+    join(process.cwd(), "artifacts/api-server/policy-templates", `${key}.md`),
+    join(process.cwd(), "policy-templates", `${key}.md`),
+  ];
+  for (const filePath of candidates) {
+    if (existsSync(filePath)) return readFileSync(filePath, "utf-8");
+  }
+  return "";
+}
 
 const MIGRATION_SQL = `
 CREATE TABLE IF NOT EXISTS uco_controls (
@@ -1072,6 +1094,29 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       await pool.query('UPDATE org_policies SET content = $1 WHERE title = \'Incident Response Policy\' AND (content IS NULL OR content = \'\')', [irPolicyContent])
       await pool.query('UPDATE org_policies SET content = $1 WHERE title = \'Incident Response Plan\' AND (content IS NULL OR content = \'\')', [irPlanContent])
       this.logger.log("Policy content migration complete");
+
+      // Backfill content for the 8 policies that seedNewPolicies() inserted without content.
+      // This is a one-time idempotent UPDATE: once a row has content it is never overwritten.
+      const backfillKeys = [
+        'mfa-policy', 'privileged-access', 'endpoint-security',
+        'data-breach-response', 'secure-communications',
+        'risk-assessment', 'cmmc-compliance', 'fedramp-compliance',
+      ];
+      let totalBackfilled = 0;
+      for (const key of backfillKeys) {
+        const content = loadPolicyTemplate(key);
+        if (!content) {
+          this.logger.warn(`Policy backfill: template file missing for key '${key}' — skipping`);
+          continue;
+        }
+        const result = await pool.query(
+          `UPDATE org_policies SET content = $1, updated_at = NOW()
+           WHERE template_key = $2 AND (content IS NULL OR content = '')`,
+          [content, key]
+        );
+        totalBackfilled += result.rowCount ?? 0;
+      }
+      this.logger.log(`Policy content backfill complete — ${totalBackfilled} row(s) updated`);
     } catch (err) {
       this.logger.error("Policy content migration failed - continuing startup", (err as any)?.message ?? String(err));
     }
@@ -1110,9 +1155,10 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
               'secure-communications': 'security', 'risk-assessment': 'compliance',
               'cmmc-compliance': 'federal', 'fedramp-compliance': 'federal',
             };
+            const content = loadPolicyTemplate(key);
             await db.execute(sql`
-              INSERT INTO org_policies (org_id, template_key, title, category, status, version, created_at, updated_at)
-              VALUES (${org.id}, ${key}, ${titleMap[key]}, ${catMap[key]}, 'draft', '1.0', NOW(), NOW())
+              INSERT INTO org_policies (org_id, template_key, title, category, status, version, content, created_at, updated_at)
+              VALUES (${org.id}, ${key}, ${titleMap[key]}, ${catMap[key]}, 'draft', '1.0', ${content || null}, NOW(), NOW())
               ON CONFLICT DO NOTHING
             `);
           }
