@@ -51,7 +51,29 @@ export const auth = betterAuth({
   // fall through to Kysely, which throws "db.insertInto is not a function".
   database: pool,
 
-  secret: process.env.BETTER_AUTH_SECRET || "ec-dev-secret-change-in-production",
+  // P1-11: BETTER_AUTH_SECRET production guard.
+  // The fallback string is intentionally weak so any accidental use is obvious.
+  // In production this env var MUST be set to a cryptographically random 64-char value.
+  // If missing in production, session HMAC degrades to a known string — cookie forgery risk.
+  secret: (() => {
+    const s = process.env.BETTER_AUTH_SECRET;
+    if (!s) {
+      if (process.env.NODE_ENV === "production") {
+        // Refuse to start in production without a real secret.
+        throw new Error(
+          "[FATAL] BETTER_AUTH_SECRET is not set. " +
+          "Generate one with: openssl rand -hex 32 " +
+          "and add it to Railway environment variables before deploying."
+        );
+      }
+      // Dev/staging: fall back with a loud warning
+      console.warn(
+        "[STARTUP WARNING] BETTER_AUTH_SECRET is not set — using insecure fallback. " +
+        "Set this env var before production deploy."
+      );
+    }
+    return s || "ec-dev-secret-change-in-production";
+  })(),
 
   baseURL: process.env.BETTER_AUTH_URL || process.env.APP_URL ||
     (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://app.enterprisecomply.com"),

@@ -1266,36 +1266,25 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
   }
 
   private async generateNotificationsFromState() {
-    try {
-      const orgs = await db.execute(sql.raw('SELECT id FROM organizations LIMIT 200'));
-      const orgRows = (orgs.rows ?? orgs) as Array<{ id: number }>;
-      for (const org of orgRows) {
-        const existingNotifs = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM org_notifications WHERE org_id = ' + org.id));
-        const cnt = parseInt(((existingNotifs.rows ?? existingNotifs) as Array<Record<string, string>>)[0]?.cnt ?? '0');
-        if (cnt > 3) continue;
-        type NotifSeed = { type: string; title: string; message: string; severity: string; resource_type: string; resource_url: string };
-        const notifications: NotifSeed[] = [
-          { type: 'evidence_expiry', title: '3 evidence items expiring soon', message: 'Evidence items linked to SOC 2 controls expire within 30 days. Collect updated evidence to maintain compliance.', severity: 'warning', resource_type: 'evidence', resource_url: '/evidence' },
-          { type: 'policy_review', title: '6 policies due for annual review', message: '6 policies are past their annual review date. Review and update to maintain audit readiness.', severity: 'warning', resource_type: 'policy', resource_url: '/policies' },
-          { type: 'risk_overdue', title: 'Risk treatment plans overdue', message: '4 open risks have treatment plans past their due dates. Update status or escalate to risk committee.', severity: 'error', resource_type: 'risk', resource_url: '/risks' },
-          { type: 'training_incomplete', title: 'Security training incomplete for 8 members', message: '8 team members have not completed this year security awareness training. Campaign deadline in 14 days.', severity: 'warning', resource_type: 'training', resource_url: '/people' },
-          { type: 'vendor_assessment', title: '2 vendor assessments overdue', message: '2 critical vendors are overdue for their annual security assessment. Review and schedule assessments.', severity: 'info', resource_type: 'vendor', resource_url: '/vendors' },
-          { type: 'control_failing', title: '3 controls require attention', message: '3 security controls are currently failing. Review the Remediation Board for step-by-step guidance.', severity: 'error', resource_type: 'control', resource_url: '/remediation' },
-        ];
-        for (const notif of notifications) {
-          try {
-            await db.execute(sql.raw(
-              "INSERT INTO org_notifications (org_id, type, title, message, severity, resource_type, resource_url, read, created_at) VALUES (" +
-              org.id + ", '" + notif.type + "', '" + notif.title.replace(/'/g, "''") + "', '" +
-              notif.message.replace(/'/g, "''") + "', '" + notif.severity + "', '" +
-              notif.resource_type + "', '" + notif.resource_url + "', false, NOW())"
-            ));
-          } catch (_e) { /* skip */ }
-        }
-        // startup seeding logged as batch summary below
-      }
-    } catch (err) {
-      this.logger.error('Notification generation failed', (err as any)?.message ?? String(err));
-    }
+    // P0-DEMO-DATA: Removed hardcoded fake notification seeding (found during regression pass).
+    // Previously inserted 6 fabricated alerts at startup for any org with < 3 notification rows:
+    //   "3 evidence items expiring soon" (fake count hardcoded to 3)
+    //   "6 policies due for annual review" (fake count hardcoded to 6)
+    //   "4 open risks with treatment plans past due" (fake count hardcoded to 4)
+    //   "Security training incomplete for 8 members" (fake count hardcoded to 8)
+    //   "2 vendor assessments overdue" (fake count hardcoded to 2)
+    //   "3 controls require attention" (fake count hardcoded to 3)
+    // All counts were hardcoded, shown to every org regardless of real data.
+    //
+    // Real notifications must come from scheduled jobs querying real data:
+    //   Evidence expiry  -> org_evidence WHERE expires_at < NOW() + INTERVAL '30 days'
+    //   Policy review    -> org_policies WHERE review_date < NOW() AND status = 'published'
+    //   Overdue risks    -> org_risks WHERE due_date < NOW() AND status != 'closed'
+    //   Training         -> requires HRIS/LMS integration (Task #11)
+    //   Vendor review    -> org_vendors WHERE next_review_date < NOW()
+    //   Control failures -> org_control_results WHERE status = 'failing'
+    //
+    // Until those jobs are built, the notification bell correctly shows 0 items for
+    // orgs with no real events. That is the honest behavior.
   }
 }

@@ -40,7 +40,10 @@ export class OrgsController {
   }
 
   @Get(":orgId/members")
-  @UseGuards(OrgContextGuard, RequireRole("org_admin"))
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  // P0-REGRESSION: "org_admin" is not a valid role in ROLE_HIERARCHY — it resolves to
+  // level 0 (same as viewer), meaning any org member could list all members.
+  // Fixed to "admin" (level 4), matching the intent of the original P0-12/P0-13 work.
   getOrgMembers(@OrgContext() ctx: OrgCtx) {
     return this.orgsService.getOrgMembers(ctx.orgId);
   }
