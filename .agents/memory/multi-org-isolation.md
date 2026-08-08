@@ -1,57 +1,74 @@
 ---
 name: Multi-org isolation
-description: Summary of isolation vulnerabilities found and fixed in the EnterpriseComply API; patterns to maintain going forward.
+description: Patterns, fixes, and verification recipe for cross-tenant data isolation in the EnterpriseComply API
 ---
 
-## What was fixed (2026-08-08)
+## Guard layer (URL orgId check)
 
-### Critical — cross-org mutation via missing orgId in WHERE clause
-`risks.service.ts` `updateRisk` and `deleteRisk` had no `orgId` predicate on the UPDATE/DELETE
-(only `id`). A user in org 1 calling `/api/orgs/1/risks/999` where risk 999 belongs to org 3
-would have mutated org 3's data. Fixed: `AND orgId = :orgId` added to both queries.
+`OrgContextGuard` in `artifacts/api-server/src/guards/clerk-auth.guard.ts`:
+- Validates `req.params.orgId` against the authenticated user's `orgMembersTable.orgId`
+- Returns 403 if URL orgId ≠ session orgId
+- All 30+ controllers use this guard via `@UseGuards(OrgContextGuard)` — controller list is in the audit explorer result
 
-### Critical — eMASS agent endpoints had zero authentication
-`GET /v1/emass/agent/pull/:orgId` and `POST /v1/emass/agent/acknowledge/:orgId` used
-`@Param("orgId")` with no guard. Now protected by `AgentSecretGuard` which requires
-`X-Agent-Secret: $EMASS_AGENT_SECRET` header. If env var is unset the endpoints return 401.
+## DB predicate layer (orgId in WHERE)
 
-### Guard — OrgContextGuard URL param validation added
-`OrgContextGuard` now reads `req.params.orgId` and compares it to `member.orgId`.
-Returns 403 if the URL org differs from the session user's org.
-**Why:** Before this fix, a user in org 1 calling `/api/orgs/3/anything` would have the guard
-silently set `req.orgId = 1` (their real org), so they got their own data regardless of the URL.
-That's not a leak but is incorrect multi-org routing and would be a real bug for multi-org users.
+All UPDATE/DELETE must include `eq(table.orgId, orgId)` in the WHERE clause, not just `eq(table.id, resourceId)`.
 
-### Defense-in-depth — service-level UPDATE/DELETE missing orgId
-All of these received `orgId` in the method signature but didn't pass it to the DB query.
-They were safe because the resource was loaded org-scoped in an earlier read (so the ID
-couldn't be from another org in a normal flow). Added `AND orgId = :orgId` for consistency:
+Fixed in this session (defense-in-depth or actual gap):
+- `risks.service.ts` — updateRisk, deleteRisk
+- `people.service.ts` — updatePerson (syncPeopleFromHR bulk update)
+- `access-reviews.service.ts` — submitDecision review stats update
+- `audit-shares.service.ts` — revoke update
+- `controls.service.ts` — updateFrameworkScores
+- `custom-frameworks.service.ts` — addControl, bulkImportControls
+- `zero-trust.service.ts` — scoreAssessment updateWeights, DELETE pillar/function scores/gap findings (3 deletes)
+- `policies.service.ts` — ackCounts query in getOrgPolicies
+- `audits.service.ts` — nested evidence request query in getEngagements
 
-| File | Methods fixed |
-|---|---|
-| `people/people.service.ts` | `syncPeopleFromHR` update + deactivate |
-| `access-reviews/access-reviews.service.ts` | `submitDecision` review stats update |
-| `audit-shares/audit-shares.service.ts` | `revoke` update |
-| `controls/controls.service.ts` | `updateFrameworkScores` |
-| `custom-frameworks/custom-frameworks.service.ts` | `addControl`, `bulkImportControls` framework total update |
-| `zero-trust/zero-trust.service.ts` | `scoreAssessment`, `updateWeights` assessment update |
+## 404 on stale/foreign resource IDs (bypass via own-org URL)
 
-## Patterns to maintain going forward
+The guard blocks `/orgs/3/risks` for an org-1 user. But `/orgs/1/risks/<org3_id>` passes the guard.
+Without a 404 throw, the UPDATE runs with `WHERE orgId=1 AND id=<org3_id>` — 0 rows, still returns 200.
+Data is safe but it's a silent no-op and a potential ID oracle.
 
-1. **Every UPDATE/DELETE must include `AND orgId = :orgId` in its WHERE clause**, even if
-   the resource was loaded org-scoped in the same method. Defense-in-depth prevents TOCTOU.
-2. **New `@Post` / `@Patch` / `@Delete` controller methods must use `@OrgContext()`**, not
-   `@Param("orgId")`, when the endpoint is under `/api/orgs/:orgId/...`. The `@Param` path
-   bypasses both session validation and org membership checks.
-3. **Agent/webhook endpoints** (no user session) need their own auth guard (shared secret or
-   mTLS verification). Never leave a route unguarded even if the path is "obscure".
+**Fix:** After every `const [row] = db.update().where(orgId+id).returning()`, throw `NotFoundException` if `!row`.
 
-## Verification approach (repeatable)
+Services fixed with NotFoundException on empty returning():
+- `risks.service.ts` — updateRisk
+- `policies.service.ts` — updatePolicy
+- `people.service.ts` — updatePerson
+- `vendors.service.ts` — updateVendor
+- `custom-frameworks.service.ts` — updateFramework, updateControl
+- `stigs.service.ts` — updateFinding
 
-1. Insert test users + sessions + org_members via DB (clerkUserId = user.id for guard lookup).
-2. Trigger magic link via `POST /api/auth/sign-in/magic-link` — token lands in `verification`
-   table (identifier = random token, value = `{email}`).
-3. Complete via `GET /api/auth/magic-link/verify?token=...` → `Set-Cookie: __Secure-better-auth.session_token=<signed>`.
-4. The signed token format is `<raw>.<base64-hmac>` — not the raw UUID from the DB.
-5. Use cookie in curl: `-H "Cookie: __Secure-better-auth.session_token=<signed_token>"`.
-6. Assert own-org endpoints → 200, cross-org endpoints → 403.
+Services already throwing before this fix: `remediation.service.ts`, `questionnaires.service.ts`, `audit-shares.service.ts`
+
+## Agent endpoints
+
+`emass.controller.ts` `/v1/emass/agent/pull/:orgId` and `/v1/emass/agent/acknowledge/:orgId` — protected by `AgentSecretGuard` requiring `X-Agent-Secret: $EMASS_AGENT_SECRET`. Returns 401 if env var unset.
+
+## Webhook endpoint
+
+`/api/webhooks/user-created` — protected by `WEBHOOK_SECRET` env var check (`X-Webhook-Secret` header). Returns 503 if `WEBHOOK_SECRET` unset.
+
+**Why:** This endpoint triggers welcome emails and inserts drip log entries. Previously unauthenticated — any external caller could spam emails and pollute the drip log.
+
+## Verification recipe
+
+See `artifacts/api-server/scripts/test-isolation.mjs` for the full test script.
+
+Steps:
+1. Create user records in Better Auth `user` table matching `org_members.clerk_user_id` values
+2. Create session rows for each; sign cookie as `HMAC-SHA256(rawToken, BETTER_AUTH_SECRET)` → btoa base64
+3. Cookie name: `__Secure-better-auth.session_token`
+4. Run GET on all endpoints across the wrong org — expect 403
+5. Run POST/PATCH/DELETE across the wrong org — expect 403
+6. Test mutation bypass: PATCH `/orgs/1/risks/<org3_id>` via org-1 session — expect 404 (not 200)
+7. Clean up test user + session rows after
+
+## False positives from audit
+
+- `audit-package.service.ts` — all queries already org-scoped (explorer was wrong)
+- `integration-scheduler.service.ts` — privileged internal service, intentionally all-org
+- `questionnaires.service.ts` update at line 127 — just-inserted ID, not user-controlled
+- `orgs.service.ts` getDashboard — already `and(orgId, active)` (explorer was wrong)

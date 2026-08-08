@@ -15,7 +15,7 @@ export class AuditsService {
     const enriched = await Promise.all(
       engagements.map(async (e) => {
         const requests = await db.query.orgAuditEvidenceRequestsTable.findMany({
-          where: eq(orgAuditEvidenceRequestsTable.engagementId, e.id),
+          where: and(eq(orgAuditEvidenceRequestsTable.orgId, orgId), eq(orgAuditEvidenceRequestsTable.engagementId, e.id)),
         });
         return {
           ...e,

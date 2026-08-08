@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { db } from "@workspace/db";
 import { orgStigChecklistsTable, orgStigFindingsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -66,6 +66,7 @@ export class StigsService {
       .set({ ...body, updatedAt: new Date() })
       .where(and(eq(orgStigFindingsTable.id, id), eq(orgStigFindingsTable.orgId, orgId)))
       .returning();
+    if (!finding) throw new NotFoundException("STIG finding not found");
     return { finding };
   }
 }

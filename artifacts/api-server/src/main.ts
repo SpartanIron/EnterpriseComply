@@ -68,6 +68,20 @@ async function bootstrap() {
   validateEnv();
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
+  // ── HTTP → HTTPS redirect (origin-level defense-in-depth) ─────────────────────────────
+  // Cloudflare handles the 301 in production, but if the Railway origin is ever reached
+  // directly over HTTP (bypass, misconfiguration, monitoring) this catches it before any
+  // application logic runs. Only active when NODE_ENV=production to avoid breaking local dev.
+  if (process.env.NODE_ENV === 'production') {
+    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const proto = req.headers['x-forwarded-proto'];
+      if (proto && proto !== 'https') {
+        return res.redirect(301, `https://${req.headers.host}${req.url}`);
+      }
+      next();
+    });
+  }
+
   // ── Security headers ───────────────────────────────────────────────────────────────────
   app.use(
     helmet({
@@ -93,7 +107,7 @@ async function bootstrap() {
       hsts: {
         maxAge: 31536000,
         includeSubDomains: true,
-        preload: false,
+        preload: true,
       },
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       xContentTypeOptions: true,

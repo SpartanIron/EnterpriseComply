@@ -204,11 +204,11 @@ export class ZeroTrustService {
     const ragStatus = overallScore >= 75 ? "green" : overallScore >= 50 ? "amber" : "red";
     const pillarScoresObj = {};
     for (const pk of pks) pillarScoresObj[pk] = cappedScores[pk]?.capped ?? 0;
-    await db.delete(orgZtaPillarScoresTable).where(eq(orgZtaPillarScoresTable.ztaAssessmentId, assessment.id));
+    await db.delete(orgZtaPillarScoresTable).where(and(eq(orgZtaPillarScoresTable.orgId, orgId), eq(orgZtaPillarScoresTable.ztaAssessmentId, assessment.id)));
     for (const [pk, data] of Object.entries(cappedScores)) {
       await db.insert(orgZtaPillarScoresTable).values({ orgId, ztaAssessmentId: assessment.id, pillar: pk, rawScore: pillarScoreMap[pk]?.raw ?? 0, cappedScore: data.capped, maturityStage: data.stage, weight: 1.0, functionScores: pillarScoreMap[pk]?.functionScores ?? {} });
     }
-    await db.delete(orgZtaFunctionScoresTable).where(eq(orgZtaFunctionScoresTable.ztaAssessmentId, assessment.id));
+    await db.delete(orgZtaFunctionScoresTable).where(and(eq(orgZtaFunctionScoresTable.orgId, orgId), eq(orgZtaFunctionScoresTable.ztaAssessmentId, assessment.id)));
     for (const [pk, pd] of Object.entries(pillarScoreMap)) {
       const pDef = ZTMM_PILLARS[pk];
       for (const [fk, fs] of Object.entries(pd.functionScores)) {
@@ -217,7 +217,7 @@ export class ZeroTrustService {
         await db.insert(orgZtaFunctionScoresTable).values({ orgId, ztaAssessmentId: assessment.id, pillar: pk, functionKey: fk, functionLabel: fd?.label ?? fk, maturityStage: scoreToStage(fs), score: fs, nistControls: fd?.nistControls ?? [], ucoControls: ucoIds });
       }
     }
-    await db.delete(orgZtaGapFindingsTable).where(and(eq(orgZtaGapFindingsTable.ztaAssessmentId, assessment.id), eq(orgZtaGapFindingsTable.status, "open")));
+    await db.delete(orgZtaGapFindingsTable).where(and(eq(orgZtaGapFindingsTable.orgId, orgId), eq(orgZtaGapFindingsTable.ztaAssessmentId, assessment.id), eq(orgZtaGapFindingsTable.status, "open")));
     for (const [pk, data] of Object.entries(cappedScores)) {
       if (data.stage !== "optimal") {
         const pDef = ZTMM_PILLARS[pk];

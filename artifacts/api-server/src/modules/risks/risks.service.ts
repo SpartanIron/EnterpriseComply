@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { db, orgRisksTable, orgControlResultsTable, ucoControlsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
@@ -113,6 +113,7 @@ export class RisksService {
       .set(updates as any)
       .where(and(eq(orgRisksTable.orgId, orgId), eq(orgRisksTable.id, riskId)))
       .returning();
+    if (!risk) throw new NotFoundException("Risk not found");
     return { risk };
   }
 

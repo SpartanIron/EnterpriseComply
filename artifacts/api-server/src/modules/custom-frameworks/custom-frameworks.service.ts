@@ -39,6 +39,7 @@ export class CustomFrameworksService {
         eq(orgCustomFrameworksTable.id, frameworkId),
       ))
       .returning();
+    if (!framework) throw new NotFoundException("Custom framework not found");
     return { framework };
   }
 
@@ -108,6 +109,7 @@ export class CustomFrameworksService {
         eq(orgCustomControlsTable.id, controlId),
       ))
       .returning();
+    if (!control) throw new NotFoundException("Custom control not found");
     return { control };
   }
 

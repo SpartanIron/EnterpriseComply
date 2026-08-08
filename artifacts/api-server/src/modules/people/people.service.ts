@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { db, orgPeopleTable, orgPoliciesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { writeAuditLog } from "../../lib/audit-log.js";
@@ -45,8 +45,9 @@ export class PeopleService {
       .set({ ...body, updatedAt: new Date() })
       .where(and(eq(orgPeopleTable.id, id), eq(orgPeopleTable.orgId, orgId)))
       .returning();
+    if (!person) throw new NotFoundException("Person not found");
     await writeAuditLog(orgId, "person.updated", "person", String(id), {
-      name: [person?.firstName, person?.lastName].filter(Boolean).join(" "),
+      name: [person.firstName, person.lastName].filter(Boolean).join(" "),
     });
     return { person };
   }

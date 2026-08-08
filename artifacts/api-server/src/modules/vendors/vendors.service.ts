@@ -74,7 +74,8 @@ export class VendorsService {
       .set(updates)
       .where(and(eq(orgVendorsTable.id, id), eq(orgVendorsTable.orgId, orgId)))
       .returning();
-    await writeAuditLog(orgId, "vendor.updated", "vendor", String(id), { name: vendor?.name });
+    if (!vendor) throw new NotFoundException("Vendor not found");
+    await writeAuditLog(orgId, "vendor.updated", "vendor", String(id), { name: vendor.name });
     return { vendor };
   }
 

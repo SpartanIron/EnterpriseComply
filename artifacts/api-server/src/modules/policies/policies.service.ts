@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { db, orgPoliciesTable, orgPolicyAcknowledgmentsTable, orgPeopleTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { writeAuditLog } from "../../lib/audit-log.js";
@@ -404,7 +404,7 @@ export class PoliciesService {
     const ackCounts = await Promise.all(
       policies.map(async (p) => {
         const acks = await db.query.orgPolicyAcknowledgmentsTable.findMany({
-          where: eq(orgPolicyAcknowledgmentsTable.policyId, p.id),
+          where: and(eq(orgPolicyAcknowledgmentsTable.orgId, orgId), eq(orgPolicyAcknowledgmentsTable.policyId, p.id)),
         });
         return { policyId: p.id, count: acks.length };
       }),
@@ -436,8 +436,9 @@ export class PoliciesService {
       .set(updates)
       .where(and(eq(orgPoliciesTable.id, id), eq(orgPoliciesTable.orgId, orgId)))
       .returning();
+    if (!policy) throw new NotFoundException("Policy not found");
     const action = body.status === "published" ? "policy.published" : "policy.updated";
-    await writeAuditLog(orgId, action, "policy", String(id), { title: policy?.title, status: policy?.status });
+    await writeAuditLog(orgId, action, "policy", String(id), { title: policy.title, status: policy.status });
     return { policy };
   }
 
