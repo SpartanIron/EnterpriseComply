@@ -318,128 +318,72 @@ export default function People() {
       )}
 
       {/* Segregation of Duties (SoD) Alert Section */}
+      {/* P0-11: Hardcoded SoD conflicts removed — they showed fake access violations
+          (Finance Approver + Submitter, etc.) to every org regardless of actual roles.
+          Real SoD detection requires HRIS integration; no SoD API endpoint exists yet. */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Segregation of Duties (SoD)</h2>
             <p className="text-xs text-slate-500 mt-0.5">Detect access conflicts that violate separation of duties controls</p>
           </div>
-          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">Auto-detected</span>
+          <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Requires HRIS</span>
         </div>
-        <div className="space-y-2">
-          {[
-            {conflict:'Finance Approver + Finance Submitter', users:'2 users', risk:'critical', desc:'Users can both create and approve financial transactions - violates COSO and SOX controls'},
-            {conflict:'System Admin + Audit Log Access', users:'1 user', risk:'high', desc:'Admin users can modify systems and also control audit logs, creating potential for evidence manipulation'},
-            {conflict:'Developer + Production Deploy', users:'3 users', risk:'medium', desc:'Developers with direct production access bypass change management controls'},
-          ].map((s,i)=>(
-            <div key={i} className={`flex items-start justify-between p-3 rounded-lg border ${s.risk==='critical'?'border-red-200 bg-red-50':s.risk==='high'?'border-orange-200 bg-orange-50':'border-yellow-200 bg-yellow-50'}`}>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs font-semibold ${s.risk==='critical'?'text-red-700':s.risk==='high'?'text-orange-700':'text-yellow-700'}`}>{s.conflict}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${s.risk==='critical'?'bg-red-100 text-red-600':s.risk==='high'?'bg-orange-100 text-orange-600':'bg-yellow-100 text-yellow-600'}`}>{s.risk}</span>
-                </div>
-                <p className="text-xs text-slate-600">{s.desc}</p>
-              </div>
-              <div className="flex-shrink-0 ml-4 text-right">
-                <p className="text-xs font-medium text-slate-700">{s.users}</p>
-                <button className="text-xs text-blue-600 hover:underline mt-1">Review →</button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-500">
-          SoD conflicts are automatically detected based on role assignments. Connect HRIS integrations (Gusto, ADP, BambooHR) for real-time access mapping.
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+            <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 mb-1">No SoD analysis available</p>
+          <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+            Automated SoD conflict detection requires an HRIS integration to map role assignments. Connect Gusto, ADP, or BambooHR from the Integrations page to enable real-time access conflict analysis.
+          </p>
         </div>
       </div>
 
       {/* Training Campaigns */}
+      {/* P0-11: Hardcoded training campaigns removed — they showed fake campaign names,
+          completion rates (82%, 36/48, etc.) to every org with no real data behind them.
+          No training campaigns API endpoint exists yet (org_training_campaigns table exists
+          in the DB but has no controller/service). */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Security Training Campaigns</h2>
             <p className="text-xs text-slate-500 mt-0.5">Track completion rates and manage mandatory training assignments</p>
           </div>
-          <button className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">+ New Campaign</button>
+          <button className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 opacity-50 cursor-not-allowed" disabled>+ New Campaign</button>
         </div>
-        <div className="space-y-3">
-          {[
-            {name:'Annual Security Awareness Training 2026', type:'security_awareness', assigned:48, completed:36, due:'2026-06-30', status:'active'},
-            {name:'CMMC Level 2 Compliance Training', type:'compliance', assigned:48, completed:12, due:'2026-05-31', status:'active'},
-            {name:'Phishing Simulation Q2 2026', type:'phishing_sim', assigned:48, completed:48, due:'2026-04-30', status:'completed'},
-            {name:'Data Handling & CUI Protection', type:'security_awareness', assigned:25, completed:25, due:'2026-03-15', status:'completed'},
-          ].map((c,i)=>{
-            const pct = c.assigned > 0 ? Math.round(c.completed/c.assigned*100) : 0;
-            const overdue = new Date(c.due) < new Date() && c.status === 'active';
-            return (
-              <div key={i} className={`border rounded-xl p-4 ${overdue?'border-red-200 bg-red-50':c.status==='completed'?'border-green-200 bg-green-50':'border-slate-200'}`}>
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-medium text-slate-800">{c.name}</p>
-                    <p className="text-xs text-slate-400 capitalize">{c.type.replace(/_/g,' ')} · Due {new Date(c.due).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {overdue&&<span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Overdue</span>}
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${c.status==='completed'?'bg-green-100 text-green-700':'bg-blue-100 text-blue-700'}`}>{c.status==='completed'?'Completed':'Active'}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 bg-slate-200 rounded-full h-2">
-                    <div className={`h-2 rounded-full ${pct===100?'bg-green-500':pct>=50?'bg-blue-500':'bg-orange-500'}`} style={{width:pct+'%'}}/>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-700 flex-shrink-0">{c.completed}/{c.assigned} ({pct}%)</span>
-                  {c.status==='active'&&<button className="text-xs text-blue-600 hover:underline flex-shrink-0">Send Reminder</button>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
-          {[
-            {label:'Overall Completion', val:'82%', color:'text-blue-700'},
-            {label:'Overdue Completions', val:'12', color:'text-red-700'},
-            {label:'Certificates Issued', val:'73', color:'text-green-700'},
-          ].map(m=>(
-            <div key={m.label} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-              <p className="text-xs text-slate-500">{m.label}</p>
-              <p className={`text-xl font-bold mt-1 ${m.color}`}>{m.val}</p>
-            </div>
-          ))}
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+            <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.606 50.606 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" /></svg>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 mb-1">No training campaigns yet</p>
+          <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+            Training campaign management is coming soon. You will be able to assign mandatory security awareness, compliance, and phishing simulation campaigns to your team and track completion rates here.
+          </p>
         </div>
       </div>
 
       {/* Bulk Policy Acknowledgment Campaign */}
+      {/* P0-11: Hardcoded policy campaigns removed — they showed fake campaign names
+          (Annual Policy Acknowledgment 2026, 35/48 completed, etc.) to every org.
+          No policy campaign API endpoint exists yet. */}
       <div className="bg-white border border-slate-200 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Bulk Policy Acknowledgment Campaigns</h2>
             <p className="text-xs text-slate-500 mt-0.5">Assign multiple policies to groups of people and track completion</p>
           </div>
-          <button className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700">+ New Campaign</button>
+          <button className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 opacity-50 cursor-not-allowed" disabled>+ New Campaign</button>
         </div>
-        <div className="space-y-3">
-          {[
-            {name:'Annual Policy Acknowledgment 2026', policies:['Acceptable Use', 'Security Awareness', 'Data Classification', '+7 more'], assigned:48, completed:35, due:'2026-06-15'},
-            {name:'New Employee Onboarding Acks', policies:['Code of Conduct', 'IT Acceptable Use', 'Privacy Policy'], assigned:8, completed:6, due:'2026-05-20'},
-          ].map((c,i)=>{
-            const pct = c.assigned > 0 ? Math.round(c.completed/c.assigned*100) : 0;
-            return (
-              <div key={i} className="border border-slate-200 rounded-xl p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-medium text-slate-800">{c.name}</p>
-                    <p className="text-xs text-slate-400">Policies: {c.policies.join(' · ')} · Due {new Date(c.due).toLocaleDateString()}</p>
-                  </div>
-                  <button className="text-xs text-blue-600 hover:underline flex-shrink-0 ml-4">Send Reminder</button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 bg-slate-200 rounded-full h-2">
-                    <div className={`h-2 rounded-full ${pct===100?'bg-green-500':pct>=50?'bg-purple-500':'bg-orange-500'}`} style={{width:pct+'%'}}/>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-700">{c.completed}/{c.assigned} ({pct}%)</span>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center mb-3">
+            <svg className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" /></svg>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 mb-1">No policy campaigns yet</p>
+          <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+            Bulk policy acknowledgment campaigns let you assign multiple policies to your team at once and track sign-offs. This feature is coming soon.
+          </p>
         </div>
       </div>
     </div>

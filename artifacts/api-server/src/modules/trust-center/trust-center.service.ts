@@ -80,10 +80,30 @@ export class TrustCenterService {
   }
 
   async getOrgTrustSettings(orgId: number) {
+    // P0-17 fix: the original returned only { trustCenterUrl, slug }.
+    // TrustCenter.tsx reads preview?.frameworks to show an active-framework count;
+    // without the frameworks array the count was always 0 regardless of the org's
+    // actual active frameworks.  We now include the live framework list here.
     const org = await db.query.organizationsTable.findFirst({
       where: eq(organizationsTable.id, orgId),
     });
     if (!org) throw new NotFoundException("Organization not found");
-    return { trustCenterUrl: `/trust/${org.slug}`, slug: org.slug };
+
+    const frameworks = await db.query.orgFrameworksTable.findMany({
+      where: and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.active, true)),
+    });
+
+    return {
+      trustCenterUrl: `/trust/${org.slug}`,
+      slug: org.slug,
+      frameworks: frameworks.map((f) => ({
+        key: f.frameworkKey,
+        name: f.name,
+        shortName: f.shortName,
+        complianceScore: f.complianceScore,
+        passingControls: f.passingControls,
+        totalControls: f.totalControls,
+      })),
+    };
   }
 }

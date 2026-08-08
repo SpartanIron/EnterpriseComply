@@ -57,34 +57,33 @@ export default function RoleManagement() {
   const [editRole, setEditRole] = useState<AppRole>("analyst");
   const [activeTab, setActiveTab] = useState<"members"|"roles">("members");
 
-  // Fetch team members
-  const { data: membersData, isLoading } = useQuery<{ members: OrgMember[] }>({
+  // Fetch team members — real endpoint: GET /orgs/:orgId/members
+  // P0-12 fix: error branch used to return MOCK_MEMBERS (showing annankwekujude@gmail.com
+  // and other fake addresses to every org). Now throws so isError fires and we show an
+  // honest error state rather than silently serving demo data.
+  const { data: membersData, isLoading, isError } = useQuery<{ members: OrgMember[] }>({
     queryKey: ["org-members", orgId],
     queryFn: async () => {
       if (!orgId) return { members: [] };
       const res = await fetch(`/api/orgs/${orgId}/members`, { credentials: "include" });
-      if (!res.ok) return { members: MOCK_MEMBERS };
+      if (!res.ok) throw new Error(`Failed to fetch members (${res.status})`);
       return res.json();
     },
     enabled: !!orgId,
     staleTime: 30000,
   });
 
-  const members: OrgMember[] = membersData?.members ?? MOCK_MEMBERS;
+  const members: OrgMember[] = membersData?.members ?? [];
 
-  // Update role mutation
+  // Update role mutation — P0-12: try/catch removed; it previously swallowed errors
+  // and returned { ok: true } even on failure, causing onSuccess to fire with
+  // a "Role updated successfully" toast regardless of whether the API call worked.
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ memberId, role }: { memberId: string; role: AppRole }) => {
-      try {
-        return await apiFetch(`/orgs/${orgId}/members/${memberId}/role`, {
-          method: "PATCH",
-          body: JSON.stringify({ role }),
-        });
-      } catch {
-        // If API not yet implemented, update local mock
-        return { ok: true };
-      }
-    },
+    mutationFn: ({ memberId, role }: { memberId: string; role: AppRole }) =>
+      apiFetch(`/orgs/${orgId}/members/${memberId}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-members"] });
       toast("Role updated successfully", "#16a34a");
@@ -93,18 +92,13 @@ export default function RoleManagement() {
     onError: () => toast("Failed to update role", "#dc2626"),
   });
 
-  // Invite mutation
+  // Invite mutation — P0-12: same fix; errors now propagate to onError.
   const inviteMutation = useMutation({
-    mutationFn: async () => {
-      try {
-        return await apiFetch(`/orgs/${orgId}/invites`, {
-          method: "POST",
-          body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
-        });
-      } catch {
-        return { ok: true };
-      }
-    },
+    mutationFn: () =>
+      apiFetch(`/orgs/${orgId}/invites`, {
+        method: "POST",
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      }),
     onSuccess: () => {
       toast("Invitation sent to " + inviteEmail);
       setInviteEmail("");
@@ -161,7 +155,11 @@ export default function RoleManagement() {
               <span className="text-xs text-slate-400">Your role: <strong className="text-slate-700">{ROLE_LABELS[currentUserRole]}</strong></span>
             </div>
             {isLoading ? (
-              <div className="py-10 text-center text-sm text-slate-400">Loading members...</div>
+              <div className="py-10 text-center text-sm text-slate-400">Loading members…</div>
+            ) : isError ? (
+              <div className="py-10 text-center text-sm text-red-500">Failed to load team members. Check that the server is running.</div>
+            ) : members.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-400">No members found for this organization.</div>
             ) : (
               <table className="w-full text-sm">
                 <thead><tr className="bg-slate-50 border-b border-slate-100">
@@ -251,11 +249,6 @@ export default function RoleManagement() {
   );
 }
 
-// ─── Mock members (shown when API not yet implemented) ───────────────────────
-const MOCK_MEMBERS: OrgMember[] = [
-  { id: "m1", clerkUserId: "u1", email: "annankwekujude@gmail.com", firstName: "Kweku", lastName: "Annan", role: "super_admin", joinedAt: "2024-01-15" },
-  { id: "m2", clerkUserId: "u2", email: "sarah.chen@company.com", firstName: "Sarah", lastName: "Chen", role: "compliance_manager", joinedAt: "2024-02-20" },
-  { id: "m3", clerkUserId: "u3", email: "j.williams@company.com", firstName: "James", lastName: "Williams", role: "analyst", joinedAt: "2024-04-10" },
-  { id: "m4", clerkUserId: "u4", email: "auditor@external.com", firstName: "Alex", lastName: "Rivera", role: "auditor", joinedAt: "2024-06-01" },
-  { id: "m5", clerkUserId: "u5", email: "ceo@company.com", firstName: "Dana", lastName: "Park", role: "viewer", joinedAt: "2024-03-05" },
-];
+// P0-12: MOCK_MEMBERS removed. It contained annankwekujude@gmail.com and other
+// real-looking emails shown to every org as if they were that org's actual team.
+// Real members are now fetched from GET /orgs/:orgId/members.

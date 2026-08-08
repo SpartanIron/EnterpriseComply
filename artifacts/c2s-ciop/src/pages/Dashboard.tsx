@@ -236,8 +236,10 @@ export default function Dashboard() {
                     : "No frameworks yet"}
                 </span>
                 {cs.total > 0 && (
+                  // P0-18: cs.total = controls assigned to this org (org_control_results rows),
+                  // NOT the full 71-control UCO catalog shown on the Frameworks page.
                   <span className="text-blue-300 text-xs">
-                    {cs.passing}/{cs.total} controls passing
+                    {cs.passing}/{cs.total} assigned controls passing
                   </span>
                 )}
               </div>
@@ -297,8 +299,11 @@ export default function Dashboard() {
 
         {/* KPI row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* P0-18: KpiCard totals use cs.total = org_control_results count (assigned/tested
+               controls for this org), not the full UCO catalog (71 controls). Labels say
+               "Assigned" to distinguish from the catalog count shown on the Frameworks page. */}
           <KpiCard
-            label="Passing Controls"
+            label="Passing (Assigned)"
             value={cs.passing}
             total={cs.total}
             color={cs.passing > 0 ? "green" : "neutral"}
@@ -309,7 +314,7 @@ export default function Dashboard() {
             }
           />
           <KpiCard
-            label="Failing Controls"
+            label="Failing (Assigned)"
             value={cs.failing}
             total={cs.total}
             color={cs.failing > 0 ? "red" : "neutral"}

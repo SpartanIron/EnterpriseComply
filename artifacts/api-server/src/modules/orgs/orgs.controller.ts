@@ -31,6 +31,20 @@ export class OrgsController {
     return this.orgsService.createOrg(userId, body as any);
   }
 
+  // GET /orgs/admin — returns all orgs for super_admin users.
+  // Must be declared before :orgId routes so "admin" is not parsed as an orgId.
+  @Get("admin")
+  @UseGuards(ClerkAuthGuard)
+  getAllOrgs(@ClerkUserId() userId: string) {
+    return this.orgsService.getAllOrgsForAdmin(userId);
+  }
+
+  @Get(":orgId/members")
+  @UseGuards(OrgContextGuard, RequireRole("org_admin"))
+  getOrgMembers(@OrgContext() ctx: OrgCtx) {
+    return this.orgsService.getOrgMembers(ctx.orgId);
+  }
+
   @Patch(":orgId")
   @UseGuards(OrgContextGuard, RequireRole("owner"))
   updateOrg(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {

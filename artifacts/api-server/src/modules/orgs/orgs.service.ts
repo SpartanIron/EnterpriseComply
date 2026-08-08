@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from "@nestjs/common";
+import { Injectable, ConflictException, ForbiddenException } from "@nestjs/common";
 import {
 db,
 organizationsTable,
@@ -101,6 +101,55 @@ const [org] = await db.update(organizationsTable)
 .returning();
 return { org };
 }
+
+  async getOrgMembers(orgId: number) {
+    const members = await db.query.orgMembersTable.findMany({
+      where: eq(orgMembersTable.orgId, orgId),
+    });
+    return {
+      members: members.map((m) => ({
+        id: String(m.id),
+        clerkUserId: m.clerkUserId,
+        email: m.email,
+        firstName: m.firstName ?? undefined,
+        lastName: m.lastName ?? undefined,
+        role: m.role,
+        joinedAt: m.createdAt,
+      })),
+    };
+  }
+
+  async getAllOrgsForAdmin(userId: string) {
+    // Verify the caller has super_admin role in at least one org
+    const membership = await db.query.orgMembersTable.findFirst({
+      where: and(eq(orgMembersTable.clerkUserId, userId), eq(orgMembersTable.role, "super_admin")),
+    });
+    if (!membership) throw new ForbiddenException("Requires super_admin role");
+
+    const [orgs, allMembers] = await Promise.all([
+      db.query.organizationsTable.findMany(),
+      db.query.orgMembersTable.findMany(),
+    ]);
+
+    const countsByOrg = allMembers.reduce((acc: Record<number, number>, m) => {
+      acc[m.orgId] = (acc[m.orgId] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      orgs: orgs.map((o) => ({
+        id: o.id,
+        name: o.name,
+        slug: o.slug,
+        industry: o.industry ?? null,
+        size: o.size ?? null,
+        website: o.website ?? null,
+        onboardingComplete: o.onboardingComplete ?? false,
+        memberCount: countsByOrg[o.id] ?? 0,
+        createdAt: o.createdAt,
+      })),
+    };
+  }
 
 async getDashboard(orgId: number, org: typeof organizationsTable.$inferSelect) {
 const [frameworks, controls, integrations, policies, people] = await Promise.all([
