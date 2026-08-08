@@ -68,7 +68,7 @@ export class AuditSharesService {
     if (!share) throw new NotFoundException("Audit share not found");
     await db.update(orgAuditSharesTable)
       .set({ isActive: false, revokedAt: new Date(), revokedBy: clerkUserId } as any)
-      .where(eq(orgAuditSharesTable.id, id));
+      .where(and(eq(orgAuditSharesTable.orgId, orgId), eq(orgAuditSharesTable.id, id)));
     return { success: true };
   }
 

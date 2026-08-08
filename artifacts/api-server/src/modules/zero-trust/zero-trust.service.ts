@@ -228,7 +228,7 @@ export class ZeroTrustService {
         await db.insert(orgZtaGapFindingsTable).values({ orgId, ztaAssessmentId: assessment.id, pillar: pk, functionKey: "pillar_overall", currentStage: data.stage, targetStage, gapTitle: pDef.label + " pillar at " + data.stage + " — target: " + targetStage, gapDescription: data.violations.length ? "Score capped by dependency rules: " + data.violations.join(", ") : pDef.label + " scored " + data.capped + "% — insufficient evidence for " + targetStage + " maturity.", severity: sev, failingNistControls: failingNist, failingUcoControls: failingUco, causesDependencyViolation: data.violations.length > 0, status: "open" });
       }
     }
-    await db.update(orgZtaAssessmentsTable).set({ overallScore, overallMaturityLevel: overallStage, pillarScores: pillarScoresObj, ragStatus, dependencyViolations: violations, scoredAt: new Date() }).where(eq(orgZtaAssessmentsTable.id, assessment.id));
+    await db.update(orgZtaAssessmentsTable).set({ overallScore, overallMaturityLevel: overallStage, pillarScores: pillarScoresObj, ragStatus, dependencyViolations: violations, scoredAt: new Date() }).where(and(eq(orgZtaAssessmentsTable.orgId, orgId), eq(orgZtaAssessmentsTable.id, assessment.id)));
     await db.insert(orgZtaScoreHistoryTable).values({ orgId, ztaAssessmentId: assessment.id, overallScore, pillarScores: pillarScoresObj, maturityLevel: overallStage, triggerType: "manual" });
     return { assessment: { ...assessment, overallScore, overallMaturityLevel: overallStage, pillarScores: pillarScoresObj, ragStatus }, pillarScores: Object.entries(cappedScores).map(([pillar, d]) => ({ pillar, label: ZTMM_PILLARS[pillar]?.label ?? pillar, rawScore: pillarScoreMap[pillar]?.raw ?? 0, cappedScore: d.capped, maturityStage: d.stage, violations: d.violations, functionScores: pillarScoreMap[pillar]?.functionScores ?? {} })), overallScore, overallStage, ragStatus, dependencyViolations: violations };
   }
@@ -260,7 +260,7 @@ export class ZeroTrustService {
   async updateWeights(orgId, weights) {
     const a = await db.query.orgZtaAssessmentsTable.findFirst({ where: eq(orgZtaAssessmentsTable.orgId, orgId), orderBy: [desc(orgZtaAssessmentsTable.createdAt)] });
     if (!a) throw new NotFoundException("No ZTA assessment found");
-    await db.update(orgZtaAssessmentsTable).set({ pillarWeights: weights }).where(eq(orgZtaAssessmentsTable.id, a.id));
+    await db.update(orgZtaAssessmentsTable).set({ pillarWeights: weights }).where(and(eq(orgZtaAssessmentsTable.orgId, orgId), eq(orgZtaAssessmentsTable.id, a.id)));
     return { weights };
   }
 }

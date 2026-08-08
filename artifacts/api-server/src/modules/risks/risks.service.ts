@@ -111,13 +111,13 @@ export class RisksService {
 
     const [risk] = await db.update(orgRisksTable)
       .set(updates as any)
-      .where(eq(orgRisksTable.id, riskId))
+      .where(and(eq(orgRisksTable.orgId, orgId), eq(orgRisksTable.id, riskId)))
       .returning();
     return { risk };
   }
 
   async deleteRisk(orgId: number, riskId: number) {
-    await db.delete(orgRisksTable).where(eq(orgRisksTable.id, riskId));
+    await db.delete(orgRisksTable).where(and(eq(orgRisksTable.orgId, orgId), eq(orgRisksTable.id, riskId)));
     return { success: true };
   }
 

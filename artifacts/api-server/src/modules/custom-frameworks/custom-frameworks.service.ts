@@ -89,7 +89,7 @@ export class CustomFrameworksService {
     });
     await db.update(orgCustomFrameworksTable)
       .set({ totalControls: allControls.length })
-      .where(eq(orgCustomFrameworksTable.id, frameworkId));
+      .where(and(eq(orgCustomFrameworksTable.orgId, orgId), eq(orgCustomFrameworksTable.id, frameworkId)));
 
     return { control };
   }
@@ -133,7 +133,7 @@ export class CustomFrameworksService {
     await db.insert(orgCustomControlsTable).values(values);
     await db.update(orgCustomFrameworksTable)
       .set({ totalControls: values.length })
-      .where(eq(orgCustomFrameworksTable.id, frameworkId));
+      .where(and(eq(orgCustomFrameworksTable.orgId, orgId), eq(orgCustomFrameworksTable.id, frameworkId)));
     return { imported: values.length };
   }
 }

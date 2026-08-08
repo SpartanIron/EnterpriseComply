@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
+  ForbiddenException,
   NotFoundException,
   createParamDecorator,
 } from "@nestjs/common";
@@ -61,6 +62,17 @@ export class OrgContextGuard implements CanActivate {
     req.orgId = member.orgId;
     req.org = org;
     req.member = member;
+
+    // Validate that the URL :orgId param matches the authenticated user's org.
+    // Prevents a user from calling /api/orgs/99/... to target another org's data.
+    const urlOrgId = req.params?.orgId;
+    if (urlOrgId !== undefined) {
+      const parsed = parseInt(urlOrgId, 10);
+      if (!isNaN(parsed) && parsed !== member.orgId) {
+        throw new ForbiddenException("Access to this organization is not allowed");
+      }
+    }
+
     return true;
   }
 }

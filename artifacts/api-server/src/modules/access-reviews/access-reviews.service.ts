@@ -96,7 +96,7 @@ export class AccessReviewsService {
         status: isComplete ? "completed" : "in_progress",
         completedAt: isComplete ? new Date() : undefined,
       })
-      .where(eq(orgAccessReviewsTable.id, reviewId));
+      .where(and(eq(orgAccessReviewsTable.orgId, orgId), eq(orgAccessReviewsTable.id, reviewId)));
 
     return { item };
   }

@@ -1,6 +1,20 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Headers, ParseIntPipe } from "@nestjs/common";
+import { Controller, Post, Get, Body, Param, UseGuards, Headers, ParseIntPipe, Injectable, CanActivate, ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { EMassService } from "./emass.service";
 import { OrgContextGuard, OrgContext, ClerkAuthGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
+
+/** Protects enclave-agent pull/ack endpoints with a shared secret (X-Agent-Secret header).
+ *  In production these routes are additionally protected by mTLS at the load-balancer layer.
+ *  If EMASS_AGENT_SECRET is not configured the endpoints are disabled entirely. */
+@Injectable()
+class AgentSecretGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest();
+    const secret = process.env["EMASS_AGENT_SECRET"];
+    if (!secret) throw new UnauthorizedException("eMASS agent endpoints are not configured — set EMASS_AGENT_SECRET");
+    if (req.headers["x-agent-secret"] !== secret) throw new UnauthorizedException("Invalid agent credentials");
+    return true;
+  }
+}
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -62,6 +76,7 @@ export class EMassController {
    * The agent reaches out over outbound TLS from inside the secure enclave.
    */
   @Get("v1/emass/agent/pull/:orgId")
+  @UseGuards(AgentSecretGuard)
   pullForAgent(
     @Param("orgId", ParseIntPipe) orgId: number,
     @Headers("x-agent-edipi") edipi?: string,
@@ -74,6 +89,7 @@ export class EMassController {
    * updates to the local eMASS API via DoD PKI mTLS inside the enclave.
    */
   @Post("v1/emass/agent/acknowledge/:orgId")
+  @UseGuards(AgentSecretGuard)
   acknowledge(
     @Param("orgId", ParseIntPipe) orgId: number,
     @Body() body: { updateIds: string[] },

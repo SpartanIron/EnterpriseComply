@@ -147,7 +147,7 @@ export class ControlsService {
             failingControls: failing,
             notTestedControls: ucoIds.length - passing - failing,
           })
-          .where(eq(orgFrameworksTable.id, fw.id));
+          .where(and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.id, fw.id)));
       }
     } catch (_) {}
   }

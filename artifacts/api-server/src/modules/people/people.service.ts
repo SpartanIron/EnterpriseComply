@@ -93,7 +93,7 @@ export class PeopleService {
             department: emp.department ?? existing.department,
             active: emp.active ?? existing.active,
             integrationKey, externalId: emp.externalId, updatedAt: new Date(),
-          } as any).where(eq(orgPeopleTable.id, existing.id));
+          } as any).where(and(eq(orgPeopleTable.orgId, orgId), eq(orgPeopleTable.id, existing.id)));
           updated++;
         } else {
           const [person] = await db.insert(orgPeopleTable).values({
@@ -128,7 +128,7 @@ export class PeopleService {
       if (!existing.active || existing.integrationKey !== integrationKey) continue;
       const inFeed = (existing.externalId && incomingExtIds.has(existing.externalId)) || incomingEmails.has(existing.email.toLowerCase());
       if (!inFeed) {
-        await db.update(orgPeopleTable).set({ active: false, updatedAt: new Date() } as any).where(eq(orgPeopleTable.id, existing.id));
+        await db.update(orgPeopleTable).set({ active: false, updatedAt: new Date() } as any).where(and(eq(orgPeopleTable.orgId, orgId), eq(orgPeopleTable.id, existing.id)));
         deactivated++;
       }
     }
