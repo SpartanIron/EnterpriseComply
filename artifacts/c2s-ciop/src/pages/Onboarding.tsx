@@ -106,6 +106,8 @@ export default function Onboarding() {
           credentials: "include",
           body: JSON.stringify(normalizedData),
         });
+        // P1-UB: surface session expiry explicitly rather than showing raw "Unauthorized"
+        if (updateRes.status === 401) throw new Error("__SESSION_EXPIRED__");
         return updateRes.json();
       }
 
@@ -116,6 +118,9 @@ export default function Onboarding() {
         credentials: "include",
         body: JSON.stringify(normalizedData),
       });
+
+      // P1-UB: 401 means no active session — show a clear expiry message, not raw "Unauthorized"
+      if (res.status === 401) throw new Error("__SESSION_EXPIRED__");
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -129,7 +134,11 @@ export default function Onboarding() {
       setStep(2);
     },
     onError: (err: any) => {
-      setOrgError(err?.message || "Failed to save company information. Please try again.");
+      if (err?.message === "__SESSION_EXPIRED__") {
+        setOrgError("__SESSION_EXPIRED__");
+      } else {
+        setOrgError(err?.message || "Failed to save company information. Please try again.");
+      }
     },
   });
 
@@ -245,14 +254,28 @@ export default function Onboarding() {
                   />
                 </div>
               </div>
-              {orgError && (
+              {/* P1-UB: session-expired gets a distinct banner with a sign-in link */}
+              {orgError === "__SESSION_EXPIRED__" ? (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm font-semibold text-amber-800 mb-1">Your session has expired</p>
+                  <p className="text-sm text-amber-700 mb-3">
+                    Please sign in again to continue setting up your account. Your progress will be waiting when you return.
+                  </p>
+                  <a
+                    href="/sign-in"
+                    className="inline-block px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    Sign in again →
+                  </a>
+                </div>
+              ) : orgError ? (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                   {orgError}
                 </div>
-              )}
+              ) : null}
               <button
                 onClick={() => createOrg.mutate()}
-                disabled={!orgData.name.trim() || createOrg.isPending}
+                disabled={!orgData.name.trim() || createOrg.isPending || orgError === "__SESSION_EXPIRED__"}
                 className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm"
               >
                 {createOrg.isPending ? "Creating..." : "Continue"}

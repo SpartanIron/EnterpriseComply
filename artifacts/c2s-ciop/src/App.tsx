@@ -1,7 +1,7 @@
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { authClient } from "./lib/auth-client";
 import AppShell from "./components/layout/AppShell";
 import Landing from "./pages/Landing";
@@ -101,6 +101,41 @@ function RedirectTo({ to }: { to: string }) {
   return null;
 }
 
+/**
+ * P1-UB: Route guard — redirects to /sign-in if there is no active session.
+ * Shows a loading spinner while the session check is in flight so the page
+ * never partially renders for an unauthenticated visitor.
+ * Applied to every authenticated route; public routes (sign-in, trust, landing,
+ * pricing, demo) are NOT wrapped.
+ */
+function RequireAuth({ children }: { children: ReactNode }) {
+  const session = authClient.useSession();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!session.isPending && !session.data?.user) {
+      navigate("/sign-in");
+    }
+  }, [session.isPending, session.data?.user, navigate]);
+
+  if (session.isPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-3">
+          <img src={`${BASE_PATH}/logo.svg`} className="h-10 w-10 animate-pulse" alt="" />
+          <p className="text-slate-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user, the useEffect redirect is in flight — render nothing rather
+  // than the protected page content.
+  if (!session.data?.user) return null;
+
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <RoleProvider>
@@ -127,47 +162,48 @@ function AppRoutes() {
           </div>
         )} />
         <Route path="/pricing" component={Pricing} />
-        <Route path="/onboarding" component={Onboarding} />
-        <Route path="/dashboard" component={() => <AppShell><Dashboard /></AppShell>} />
-        <Route path="/frameworks" component={() => <AppShell><Frameworks /></AppShell>} />
-        <Route path="/controls" component={() => <AppShell><Controls /></AppShell>} />
-        <Route path="/integrations" component={() => <AppShell><Integrations /></AppShell>} />
-        <Route path="/evidence" component={() => <AppShell><Evidence /></AppShell>} />
-        <Route path="/monitoring" component={() => <AppShell><Monitoring /></AppShell>} />
-        <Route path="/policies" component={() => <AppShell><Policies /></AppShell>} />
-        <Route path="/people" component={() => <AppShell><People /></AppShell>} />
-        <Route path="/access-reviews" component={() => <AppShell><AccessReviews /></AppShell>} />
-        <Route path="/vendors" component={() => <AppShell><Vendors /></AppShell>} />
-        <Route path="/risks" component={() => <AppShell><RiskRegister /></AppShell>} />
+        {/* ── Authenticated routes — RequireAuth redirects to /sign-in if no session ── */}
+        <Route path="/onboarding" component={() => <RequireAuth><Onboarding /></RequireAuth>} />
+        <Route path="/dashboard" component={() => <RequireAuth><AppShell><Dashboard /></AppShell></RequireAuth>} />
+        <Route path="/frameworks" component={() => <RequireAuth><AppShell><Frameworks /></AppShell></RequireAuth>} />
+        <Route path="/controls" component={() => <RequireAuth><AppShell><Controls /></AppShell></RequireAuth>} />
+        <Route path="/integrations" component={() => <RequireAuth><AppShell><Integrations /></AppShell></RequireAuth>} />
+        <Route path="/evidence" component={() => <RequireAuth><AppShell><Evidence /></AppShell></RequireAuth>} />
+        <Route path="/monitoring" component={() => <RequireAuth><AppShell><Monitoring /></AppShell></RequireAuth>} />
+        <Route path="/policies" component={() => <RequireAuth><AppShell><Policies /></AppShell></RequireAuth>} />
+        <Route path="/people" component={() => <RequireAuth><AppShell><People /></AppShell></RequireAuth>} />
+        <Route path="/access-reviews" component={() => <RequireAuth><AppShell><AccessReviews /></AppShell></RequireAuth>} />
+        <Route path="/vendors" component={() => <RequireAuth><AppShell><Vendors /></AppShell></RequireAuth>} />
+        <Route path="/risks" component={() => <RequireAuth><AppShell><RiskRegister /></AppShell></RequireAuth>} />
         <Route path="/risk-register" component={() => <RedirectTo to="/risks" />} />
         <Route path="/compliance" component={() => <RedirectTo to="/frameworks" />} />
-        <Route path="/questionnaires" component={() => <AppShell><Questionnaires /></AppShell>} />
-        <Route path="/audits" component={() => <AppShell><Audits /></AppShell>} />
-        <Route path="/trust-center" component={() => <AppShell><TrustCenter /></AppShell>} />
-        <Route path="/custom-frameworks" component={() => <AppShell><CustomFrameworks /></AppShell>} />
-        <Route path="/assessments" component={() => <AppShell><Assessments /></AppShell>} />
-        <Route path="/assessments/:id/report" component={() => <ZeroTrustAssessmentReport />} />
-        <Route path="/poam" component={() => <AppShell><POAM /></AppShell>} />
-        <Route path="/sprs" component={() => <AppShell><SPRS /></AppShell>} />
-        <Route path="/ssp" component={() => <AppShell><SSP /></AppShell>} />
-        <Route path="/stigs" component={() => <AppShell><Stigs /></AppShell>} />
-        <Route path="/settings" component={() => <AppShell><Settings /></AppShell>} />
-        <Route path="/audit-log" component={() => <AppShell><AuditLog /></AppShell>} />
-        <Route path="/report" component={ComplianceReport} />
-        <Route path="/gap-analysis" component={() => <AppShell><GapAnalysis /></AppShell>} />
-        <Route path="/remediation" component={() => <AppShell><Remediation /></AppShell>} />
-        <Route path="/test-runs" component={() => <AppShell><TestRunHistory /></AppShell>} />
-        <Route path="/assets" component={() => <AppShell><AssetInventory /></AppShell>} />
-        <Route path="/docs" component={() => <AppShell><Documentation /></AppShell>} />
-        <Route path="/zero-trust" component={() => <AppShell><ZeroTrustAssessment /></AppShell>} />
-        <Route path="/system-boundary" component={() => <AppShell><SystemBoundary /></AppShell>} />
-        <Route path="/control-crosswalk" component={() => <AppShell><ControlCrosswalk /></AppShell>} />
-        <Route path="/vuln-management" component={() => <AppShell><VulnManagement /></AppShell>} />
-        <Route path="/nist-800-171" component={() => <AppShell><NIST800171 /></AppShell>} />
-        <Route path="/conmon" component={() => <AppShell><ConMonProgram /></AppShell>} />
-        <Route path="/fisma-reporting" component={() => <AppShell><FISMAReporting /></AppShell>} />
-        <Route path="/super-admin" component={() => <AppShell><SuperAdmin /></AppShell>} />
-        <Route path="/role-management" component={() => <AppShell><RoleManagement /></AppShell>} />
+        <Route path="/questionnaires" component={() => <RequireAuth><AppShell><Questionnaires /></AppShell></RequireAuth>} />
+        <Route path="/audits" component={() => <RequireAuth><AppShell><Audits /></AppShell></RequireAuth>} />
+        <Route path="/trust-center" component={() => <RequireAuth><AppShell><TrustCenter /></AppShell></RequireAuth>} />
+        <Route path="/custom-frameworks" component={() => <RequireAuth><AppShell><CustomFrameworks /></AppShell></RequireAuth>} />
+        <Route path="/assessments" component={() => <RequireAuth><AppShell><Assessments /></AppShell></RequireAuth>} />
+        <Route path="/assessments/:id/report" component={() => <RequireAuth><ZeroTrustAssessmentReport /></RequireAuth>} />
+        <Route path="/poam" component={() => <RequireAuth><AppShell><POAM /></AppShell></RequireAuth>} />
+        <Route path="/sprs" component={() => <RequireAuth><AppShell><SPRS /></AppShell></RequireAuth>} />
+        <Route path="/ssp" component={() => <RequireAuth><AppShell><SSP /></AppShell></RequireAuth>} />
+        <Route path="/stigs" component={() => <RequireAuth><AppShell><Stigs /></AppShell></RequireAuth>} />
+        <Route path="/settings" component={() => <RequireAuth><AppShell><Settings /></AppShell></RequireAuth>} />
+        <Route path="/audit-log" component={() => <RequireAuth><AppShell><AuditLog /></AppShell></RequireAuth>} />
+        <Route path="/report" component={() => <RequireAuth><ComplianceReport /></RequireAuth>} />
+        <Route path="/gap-analysis" component={() => <RequireAuth><AppShell><GapAnalysis /></AppShell></RequireAuth>} />
+        <Route path="/remediation" component={() => <RequireAuth><AppShell><Remediation /></AppShell></RequireAuth>} />
+        <Route path="/test-runs" component={() => <RequireAuth><AppShell><TestRunHistory /></AppShell></RequireAuth>} />
+        <Route path="/assets" component={() => <RequireAuth><AppShell><AssetInventory /></AppShell></RequireAuth>} />
+        <Route path="/docs" component={() => <RequireAuth><AppShell><Documentation /></AppShell></RequireAuth>} />
+        <Route path="/zero-trust" component={() => <RequireAuth><AppShell><ZeroTrustAssessment /></AppShell></RequireAuth>} />
+        <Route path="/system-boundary" component={() => <RequireAuth><AppShell><SystemBoundary /></AppShell></RequireAuth>} />
+        <Route path="/control-crosswalk" component={() => <RequireAuth><AppShell><ControlCrosswalk /></AppShell></RequireAuth>} />
+        <Route path="/vuln-management" component={() => <RequireAuth><AppShell><VulnManagement /></AppShell></RequireAuth>} />
+        <Route path="/nist-800-171" component={() => <RequireAuth><AppShell><NIST800171 /></AppShell></RequireAuth>} />
+        <Route path="/conmon" component={() => <RequireAuth><AppShell><ConMonProgram /></AppShell></RequireAuth>} />
+        <Route path="/fisma-reporting" component={() => <RequireAuth><AppShell><FISMAReporting /></AppShell></RequireAuth>} />
+        <Route path="/super-admin" component={() => <RequireAuth><AppShell><SuperAdmin /></AppShell></RequireAuth>} />
+        <Route path="/role-management" component={() => <RequireAuth><AppShell><RoleManagement /></AppShell></RequireAuth>} />
         <Route component={NotFound} />
       </Switch>
     </RoleProvider>
