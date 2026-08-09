@@ -1,0 +1,150 @@
+# EnterpriseComply — CI: Migration Safety Gate (P1-19)
+# Two-layer protection against unsafe database migrations reaching production.
+#
+# Layer 1 — Static analysis (no database required, runs in <10s):
+#   Scans startup.service.ts and any .sql migration files for destructive SQL
+#   (DROP TABLE, DROP COLUMN, TRUNCATE, etc.). Blocks CI unless the line has an
+#   explicit approval comment: -- MIGRATION-APPROVED: <reason>
+#
+# Layer 2 — Fresh-database integration test:
+#   Starts the API server against a completely blank PostgreSQL instance.
+#   StartupService runs every migration on boot. After the server is healthy,
+#   verify-schema.mjs checks that every expected table was created.
+#   Fails if StartupService crashes, swallows errors, or leaves tables missing.
+#
+# Results surface as required PR status checks — blocks merge on failure.
+
+name: Migration Safety
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: migration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Layer 1: Destructive-change static scan ──────────────────────────────────
+  static-scan:
+    name: Destructive SQL scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No deps needed — check-migrations.mjs uses only Node built-ins + pg
+      # pg is already in api-server deps; install just what the script needs
+      - name: Install pg client for script
+        run: npm install --no-save pg@8
+
+      - name: Scan for destructive SQL patterns
+        # Fails if any DROP TABLE / DROP COLUMN / TRUNCATE / ALTER TABLE DROP
+        # is found without an explicit -- MIGRATION-APPROVED: comment.
+        # Exit 0 = clean, Exit 1 = unapproved destructive change found.
+        run: node artifacts/api-server/scripts/check-migrations.mjs
+
+  # ── Layer 2: Fresh-DB migration integration test ─────────────────────────────
+  fresh-db-test:
+    name: Fresh-database migration test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ciuser
+          POSTGRES_PASSWORD: cipassword
+          POSTGRES_DB: migration_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://ciuser:cipassword@localhost:5432/migration_test
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'ci-test-secret-not-for-production' }}
+      BETTER_AUTH_URL: http://localhost:8080
+      NODE_ENV: development
+      PORT: 8080
+      RESEND_API_KEY: ci-no-op
+      WEBHOOK_SECRET: ci-webhook-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Start the API server against the completely blank postgres instance.
+      # StartupService.onApplicationBootstrap() is the system under test here —
+      # it must run every migration without throwing, swallowing errors, or
+      # leaving tables missing.
+      - name: Start API server against blank database
+        run: |
+          pnpm --filter @workspace/api-server run dev > /tmp/migration-test.log 2>&1 &
+          echo "API_PID=$!" >> $GITHUB_ENV
+
+      - name: Wait for server to be healthy
+        # The server must reach /api/healthz — which only happens AFTER
+        # StartupService finishes running migrations. A crash or unhandled
+        # migration error will keep the server from ever responding.
+        run: |
+          echo "Waiting for http://localhost:8080/api/healthz ..."
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:8080/api/healthz > /dev/null 2>&1; then
+              echo "Server healthy after ${i}s — migrations completed."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "=== SERVER NEVER BECAME HEALTHY — migration likely failed ===" >&2
+          cat /tmp/migration-test.log >&2
+          exit 1
+
+      - name: Verify all expected tables were created
+        # Connects directly to the blank PostgreSQL instance and checks that every
+        # table listed in verify-schema.mjs exists. A missing table means
+        # StartupService silently skipped or failed part of the migration.
+        run: node artifacts/api-server/scripts/verify-schema.mjs
+
+      - name: Print migration log excerpt (always — useful for debugging)
+        if: always()
+        run: |
+          echo "=== API server log (last 60 lines) ==="
+          tail -60 /tmp/migration-test.log 2>/dev/null || echo "(no log)"
+
+      - name: Upload full migration log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-test-log
+          path: /tmp/migration-test.log
+          retention-days: 7
+
+      - name: Stop server
+        if: always()
+        run: kill $API_PID 2>/dev/null || true

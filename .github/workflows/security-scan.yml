@@ -1,0 +1,170 @@
+# EnterpriseComply — CI: Security Scanning (P1-18)
+# Three independent scan types on every push to main and every PR.
+#
+# Jobs:
+#   1. secrets-scan    — gitleaks: catches committed API keys, tokens, credentials
+#   2. dependency-audit — pnpm audit: catches known CVEs in npm dependencies
+#   3. sast            — Semgrep: catches code-level security vulnerabilities
+#
+# Results surface as:
+#   - Required PR status checks (blocks merge on failure)
+#   - Job logs in Actions → the run → each job's log
+#
+# No external accounts or paid licenses required — all tools are free and self-contained.
+
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress scans for the same PR/branch to save runner minutes
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Secrets scanning ──────────────────────────────────────────────────────
+  # gitleaks scans every file in the working tree for patterns matching known
+  # secret formats (API keys, tokens, credentials, connection strings, etc.).
+  # It checks 200+ patterns including AWS, GCP, GitHub, Stripe, Twilio, and generic
+  # high-entropy strings. Suppressions for known-safe CI values are in .gitleaks.toml.
+  secrets-scan:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history so gitleaks can scan all commits in the PR, not just HEAD
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          GITLEAKS_VERSION="8.21.2"
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Scan working tree for secrets
+        # --no-git: scan the checked-out files (not git history) — catches secrets in
+        # current state of every file, not just newly-added ones.
+        # --exit-code 1: non-zero exit if any secret is found (blocks CI).
+        run: |
+          gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --no-git \
+            --exit-code 1 \
+            --redact \
+            --verbose
+
+      - name: Scan git history for secrets (PRs only)
+        # On pull requests, also scan the commits being merged for any secrets
+        # that were introduced then later removed (they still live in git history).
+        if: github.event_name == 'pull_request'
+        run: |
+          gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --log-opts "origin/${{ github.base_ref }}..HEAD" \
+            --exit-code 1 \
+            --redact \
+            --verbose
+
+  # ── 2. Dependency vulnerability audit ───────────────────────────────────────
+  # pnpm audit checks all npm dependencies against the npm advisory database.
+  # Gate level: critical (blocks on CVSS 9.0+ vulnerabilities only).
+  # High-severity vulnerabilities are printed but do not block CI so the team
+  # can triage them without stopping all merges. See the CI log for the full list.
+  #
+  # Current known high-severity findings (as of project setup — to be addressed):
+  #   • picomatch ReDoS (high) via http-proxy-middleware and vite
+  #   • nanoid loop vulnerability (high) via vite>postcss
+  # Fix: pnpm update picomatch nanoid --filter @workspace/api-server
+  #      pnpm update vite --filter @workspace/c2s-ciop
+  dependency-audit:
+    name: Dependency audit (pnpm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit for critical CVEs (blocks CI)
+        # Exits non-zero only when CRITICAL severity vulnerabilities are found.
+        # Critical = CVSS score ≥ 9.0 — severe, exploitable remotely, high impact.
+        run: pnpm audit --audit-level critical
+
+      - name: Audit summary for high/moderate CVEs (informational)
+        # Always runs; does not block CI but makes the full advisory list visible
+        # in the job log so the team can track and triage them.
+        if: always()
+        run: pnpm audit --audit-level high || echo "⚠ High-severity advisories found — review the output above and schedule remediation"
+        continue-on-error: true
+
+  # ── 3. Static Application Security Testing (SAST) ───────────────────────────
+  # Semgrep scans source code for security anti-patterns using curated rule sets:
+  #   p/nodejs      — Node.js-specific vulnerabilities (injection, prototype pollution, etc.)
+  #   p/typescript  — TypeScript-specific patterns
+  #   p/secrets     — additional secret detection patterns (defense-in-depth)
+  # Only ERROR-severity findings block CI. WARNING-level findings are printed
+  # as informational. The first run may require tuning — see job log for details.
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: pip install semgrep --quiet
+
+      - name: Run SAST scan (blocking on ERROR severity)
+        # --config: rule sets to run
+        # --severity ERROR: only exit non-zero for high-confidence, high-severity findings
+        # --exclude: skip vendored/generated code and test fixtures
+        # --quiet: suppress progress output, show only findings
+        run: |
+          semgrep scan \
+            --config p/nodejs \
+            --config p/typescript \
+            --config p/secrets \
+            --severity ERROR \
+            --exclude "node_modules" \
+            --exclude "dist" \
+            --exclude ".local" \
+            --exclude "artifacts/api-server/scripts/test-*.mjs" \
+            --exclude "artifacts/api-server/scripts/run-*.mjs" \
+            --error \
+            .
+        continue-on-error: false
+
+      - name: Run informational scan (WARNING level — non-blocking)
+        if: always()
+        run: |
+          semgrep scan \
+            --config p/nodejs \
+            --config p/typescript \
+            --severity WARNING \
+            --exclude "node_modules" \
+            --exclude "dist" \
+            --exclude ".local" \
+            --quiet \
+            . || echo "⚠ Warning-level findings — review above for potential improvements"
+        continue-on-error: true

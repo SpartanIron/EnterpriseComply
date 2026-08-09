@@ -1,0 +1,112 @@
+# EnterpriseComply — CI: Cross-org isolation + RBAC regression tests
+# Runs on every push to main and every pull request targeting main.
+# Fails the build if any isolation or RBAC check regresses.
+#
+# Required GitHub Actions secrets (set in repo Settings → Secrets → Actions):
+#   BETTER_AUTH_SECRET — any non-empty string (used only for HMAC signing in tests)
+#
+# Optional secrets (only needed if you run production-targeting tests):
+#   DATABASE_URL_PROD  — production DB (not used here; tests always use the CI DB)
+
+name: Isolation & RBAC Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Cross-org isolation + RBAC
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ciuser
+          POSTGRES_PASSWORD: cipassword
+          POSTGRES_DB: enterprisecomply_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://ciuser:cipassword@localhost:5432/enterprisecomply_test
+      # Use a stable CI test secret — not a real production secret.
+      # If BETTER_AUTH_SECRET is set as a repo secret, that takes precedence.
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'ci-test-secret-not-for-production' }}
+      BETTER_AUTH_URL: http://localhost:8080
+      NODE_ENV: development
+      PORT: 8080
+      # Suppress email sending in CI (no real Resend key needed)
+      RESEND_API_KEY: ci-no-op
+      # Suppress webhook guard noise in CI
+      WEBHOOK_SECRET: ci-webhook-secret
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── pnpm + Node ───────────────────────────────────────────────────────
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # ── Install workspace dependencies ────────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Start API server in the background ────────────────────────────────
+      # Uses swc-node so TypeScript is transpiled on the fly; no build step needed.
+      # StartupService runs migrations and seeds tables on first boot.
+      - name: Start API server
+        run: |
+          pnpm --filter @workspace/api-server run dev > /tmp/api-server.log 2>&1 &
+          echo "API_SERVER_PID=$!" >> $GITHUB_ENV
+
+      # ── Wait for the health endpoint ──────────────────────────────────────
+      - name: Wait for API health
+        run: |
+          echo "Waiting for http://localhost:8080/api/healthz ..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/api/healthz > /dev/null 2>&1; then
+              echo "API is healthy after ${i}s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "=== API server failed to start. Logs: ===" >&2
+          cat /tmp/api-server.log >&2
+          exit 1
+
+      # ── Run the regression test suite ─────────────────────────────────────
+      - name: Run isolation & RBAC tests
+        run: node artifacts/api-server/scripts/test-suite.mjs
+        env:
+          API_BASE_URL: http://localhost:8080/api
+
+      # ── Upload server log on failure (for debugging) ───────────────────────
+      - name: Upload API server log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-server-log
+          path: /tmp/api-server.log
+          retention-days: 7
+
+      # ── Kill background server ─────────────────────────────────────────────
+      - name: Stop API server
+        if: always()
+        run: kill $API_SERVER_PID 2>/dev/null || true
