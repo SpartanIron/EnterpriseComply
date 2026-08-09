@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from "@nest
 import { OrgsService } from "./orgs.service";
 import { ClerkAuthGuard, OrgContextGuard, ClerkUserId, OrgContext } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
+import { RequirePlan } from "../../guards/plan.guard";
 
 interface OrgCtx {
   orgId: number;
@@ -67,5 +68,21 @@ export class OrgsController {
   @UseGuards(OrgContextGuard)
   getDashboard(@OrgContext() ctx: OrgCtx) {
     return this.orgsService.getDashboard(ctx.orgId, ctx.org as Parameters<OrgsService["getDashboard"]>[1]);
+  }
+
+  // PATCH /orgs/:orgId/audit-retention — enterprise plan required (P1-07)
+  // Allows enterprise+ orgs to configure custom audit log retention periods.
+  // Starter/Professional orgs use the 90-day default.
+  @Patch(":orgId/audit-retention")
+  @UseGuards(OrgContextGuard, RequirePlan("enterprise"), RequireRole("owner"))
+  updateAuditRetention(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { auditRetentionDays: number },
+  ) {
+    const days = Number(body.auditRetentionDays);
+    if (!Number.isInteger(days) || days < 90 || days > 3650) {
+      throw new Error("auditRetentionDays must be an integer between 90 and 3650");
+    }
+    return this.orgsService.updateAuditRetention(ctx.orgId, days);
   }
 }

@@ -6,6 +6,7 @@ import { useRole } from "@/context/RoleContext";
 import { authClient } from "@/lib/auth-client";
 import { QRCodeSVG } from "qrcode.react";
 import RoleManagement from "./RoleManagement";
+import PlanGate from "@/components/PlanGate";
 
 function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -137,6 +138,9 @@ function SecurityTab() {
   const org = orgData?.org;
 
   const [secSaved, setSecSaved] = useState(false);
+  const [retentionSaved, setRetentionSaved] = useState(false);
+
+  // MFA enforcement — uses the general org PATCH (name/industry/size/website + mfaEnforced)
   const securityMutation = useMutation({
     mutationFn: (patch: Record<string, unknown>) =>
       apiFetch(`/orgs/${orgId}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -144,6 +148,21 @@ function SecurityTab() {
       qc.invalidateQueries({ queryKey: ["orgs", "me"] });
       setSecSaved(true);
       setTimeout(() => setSecSaved(false), 2500);
+    },
+  });
+
+  // Audit log retention — dedicated enterprise-gated endpoint (P1-07).
+  // PATCH /orgs/:orgId/audit-retention requires enterprise+ plan.
+  const retentionMutation = useMutation({
+    mutationFn: (auditRetentionDays: number) =>
+      apiFetch(`/orgs/${orgId}/audit-retention`, {
+        method: "PATCH",
+        body: JSON.stringify({ auditRetentionDays }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orgs", "me"] });
+      setRetentionSaved(true);
+      setTimeout(() => setRetentionSaved(false), 2500);
     },
   });
 
@@ -498,63 +517,73 @@ function SecurityTab() {
         </div>
       </div>
 
-      {/* Audit Log Retention */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="px-5 py-3.5 border-b border-slate-100">
-          <h2 className="text-sm font-bold text-slate-800">Audit Log Retention</h2>
-          <p className="text-xs text-slate-500 mt-0.5">CMMC AU.3.045 requires 3 years. FedRAMP follows NARA schedules (typically 3 years). SOC 2 requires documented, enforced retention.</p>
-        </div>
-        <div className="p-5">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Retention period</label>
-              <select
-                value={org?.auditRetentionDays ?? 1095}
-                onChange={e => securityMutation.mutate({ auditRetentionDays: Number(e.target.value) })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!orgId}
-              >
-                <option value={90}>90 days</option>
-                <option value={365}>1 year</option>
-                <option value={730}>2 years</option>
-                <option value={1095}>3 years (CMMC / FedRAMP minimum)</option>
-                <option value={1825}>5 years</option>
-                <option value={2555}>7 years</option>
-              </select>
-            </div>
-            <div className="flex-shrink-0 text-center">
-              <p className="text-2xl font-bold text-slate-900">{Math.round((org?.auditRetentionDays ?? 1095) / 365 * 10) / 10}</p>
-              <p className="text-xs text-slate-400">years</p>
-            </div>
+      {/* Audit Log Retention — enterprise+ plan required (P1-07) */}
+      <PlanGate requiredPlan="enterprise" featureName="Custom Audit Log Retention">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="px-5 py-3.5 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-800">Audit Log Retention</h2>
+            <p className="text-xs text-slate-500 mt-0.5">CMMC AU.3.045 requires 3 years. FedRAMP follows NARA schedules (typically 3 years). SOC 2 requires documented, enforced retention.</p>
           </div>
-          {(org?.auditRetentionDays ?? 1095) < 1095 && (
-            <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-              <svg className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              <span><strong>Below minimum:</strong> CMMC AU.3.045 and FedRAMP AU-11 require a minimum of 3 years (1,095 days) for federal environments. Increase to 3 years before your assessment.</span>
+          <div className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Retention period</label>
+                <select
+                  value={org?.auditRetentionDays ?? 1095}
+                  onChange={e => retentionMutation.mutate(Number(e.target.value))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!orgId || retentionMutation.isPending}
+                >
+                  <option value={90}>90 days</option>
+                  <option value={365}>1 year</option>
+                  <option value={730}>2 years</option>
+                  <option value={1095}>3 years (CMMC / FedRAMP minimum)</option>
+                  <option value={1825}>5 years</option>
+                  <option value={2555}>7 years</option>
+                </select>
+              </div>
+              <div className="flex-shrink-0 text-center">
+                <p className="text-2xl font-bold text-slate-900">{Math.round((org?.auditRetentionDays ?? 1095) / 365 * 10) / 10}</p>
+                <p className="text-xs text-slate-400">years</p>
+              </div>
             </div>
-          )}
+            {retentionSaved && (
+              <div className="mt-3 text-xs text-green-700 font-semibold flex items-center gap-1.5">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                Retention period saved
+              </div>
+            )}
+            {(org?.auditRetentionDays ?? 1095) < 1095 && (
+              <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                <svg className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <span><strong>Below minimum:</strong> CMMC AU.3.045 and FedRAMP AU-11 require a minimum of 3 years (1,095 days) for federal environments. Increase to 3 years before your assessment.</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </PlanGate>
 
-      {/* SSO */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100">
-            <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 10c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg>
+      {/* SSO / SAML — enterprise+ plan required (P1-07) */}
+      <PlanGate requiredPlan="enterprise" featureName="SSO / SAML Configuration">
+        <div className="bg-white border border-slate-200 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100">
+              <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 10c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg>
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-800">SSO / SAML Configuration</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Single Sign-On for enterprise authentication (full implementation in Task #28)</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-slate-800">SSO / SAML Configuration</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Single Sign-On for enterprise authentication</p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Provider</label><select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Disabled</option><option value="okta">Okta</option><option value="azure_ad">Microsoft Entra ID</option><option value="google">Google Workspace</option><option value="saml">Generic SAML 2.0</option></select></div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Domain</label><input type="text" placeholder="company.com" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
+            </div>
+            <button onClick={() => { const el = document.createElement("div"); el.style.cssText = "position:fixed;bottom:24px;right:24px;background:#7c3aed;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999"; el.textContent = "SSO configuration saved"; document.body.appendChild(el); setTimeout(() => el.remove(), 2500); }} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Save SSO Configuration</button>
           </div>
         </div>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Provider</label><select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Disabled</option><option value="okta">Okta</option><option value="azure_ad">Microsoft Entra ID</option><option value="google">Google Workspace</option><option value="saml">Generic SAML 2.0</option></select></div>
-            <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Domain</label><input type="text" placeholder="company.com" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
-          </div>
-          <button onClick={() => { const el = document.createElement("div"); el.style.cssText = "position:fixed;bottom:24px;right:24px;background:#7c3aed;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999"; el.textContent = "SSO configuration saved"; document.body.appendChild(el); setTimeout(() => el.remove(), 2500); }} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Save SSO Configuration</button>
-        </div>
-      </div>
+      </PlanGate>
     </div>
   );
 }

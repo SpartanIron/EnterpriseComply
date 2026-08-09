@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Body, Param, UseGuards, Headers, ParseIntPipe, Injectable, CanActivate, ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { EMassService } from "./emass.service";
 import { OrgContextGuard, OrgContext, ClerkAuthGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
+import { RequirePlan } from "../../guards/plan.guard";
 
 /** Protects enclave-agent pull/ack endpoints with a shared secret (X-Agent-Secret header).
  *  In production these routes are additionally protected by mTLS at the load-balancer layer.
@@ -26,9 +27,9 @@ export class EMassController {
   // Org-scoped management endpoints (requires auth)
   // ──────────────────────────────────────────────
 
-  /** Manually queue failing controls for eMASS delivery */
+  /** Manually queue failing controls for eMASS delivery — federal plan required (P1-07) */
   @Post("orgs/:orgId/emass/queue-failing")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequirePlan("federal"))
   queueFailing(
     @OrgContext() ctx: OrgCtx,
     @Body() body: { ucoControlIds: string[] },
@@ -36,30 +37,30 @@ export class EMassController {
     return this.emassService.queueFailingControls(ctx.orgId, body.ucoControlIds ?? []);
   }
 
-  /** Queue a single manual eMASS update */
+  /** Queue a single manual eMASS update — federal plan required (P1-07) */
   @Post("orgs/:orgId/emass/queue")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequirePlan("federal"))
   queueUpdate(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {
     return this.emassService.queueUpdate(ctx.orgId, body as any);
   }
 
-  /** Get all pending eMASS updates for this org */
+  /** Get all pending eMASS updates for this org — federal plan required (P1-07) */
   @Get("orgs/:orgId/emass/pending")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequirePlan("federal"))
   getPending(@OrgContext() ctx: OrgCtx) {
     return this.emassService.getPendingUpdates(ctx.orgId);
   }
 
-  /** Get eMASS bridge status — queue type, agent protocol info */
+  /** Get eMASS bridge status — federal plan required (P1-07) */
   @Get("orgs/:orgId/emass/status")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequirePlan("federal"))
   getStatus(@OrgContext() ctx: OrgCtx) {
     return this.emassService.getStatus(ctx.orgId);
   }
 
-  /** Export POA&M in eMASS-compatible format */
+  /** Export POA&M in eMASS-compatible format — federal plan required (P1-07) */
   @Get("orgs/:orgId/emass/poam-export")
-  @UseGuards(OrgContextGuard)
+  @UseGuards(OrgContextGuard, RequirePlan("federal"))
   exportPoam(@OrgContext() ctx: OrgCtx) {
     return this.emassService.exportPoamForeMass(ctx.orgId);
   }

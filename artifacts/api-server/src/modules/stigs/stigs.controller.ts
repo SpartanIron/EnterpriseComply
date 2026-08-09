@@ -2,39 +2,41 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@n
 import { StigsService } from "./stigs.service";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
+import { RequirePlan } from "../../guards/plan.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
+// STIG checklists require the 'federal' plan (P1-07).
+// STIGs (Security Technical Implementation Guides) are DoD-mandated hardening baselines.
 @Controller("orgs/:orgId/stigs")
+@UseGuards(OrgContextGuard, RequirePlan("federal"))
 export class StigsController {
   constructor(private readonly stigsService: StigsService) {}
 
   @Get()
-  @UseGuards(OrgContextGuard)
   getChecklists(@OrgContext() ctx: OrgCtx) {
     return this.stigsService.getChecklists(ctx.orgId);
   }
 
   @Post()
-  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
+  @UseGuards(RequireRole("compliance_manager"))
   createChecklist(@OrgContext() ctx: OrgCtx, @Body() body: Record<string, unknown>) {
     return this.stigsService.createChecklist(ctx.orgId, body);
   }
 
   @Delete(":id")
-  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
+  @UseGuards(RequireRole("compliance_manager"))
   deleteChecklist(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.stigsService.deleteChecklist(ctx.orgId, Number(id));
   }
 
   @Get(":id/findings")
-  @UseGuards(OrgContextGuard)
   getFindings(@OrgContext() ctx: OrgCtx, @Param("id") id: string) {
     return this.stigsService.getFindings(ctx.orgId, Number(id));
   }
 
   @Post(":id/findings/bulk")
-  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
+  @UseGuards(RequireRole("compliance_manager"))
   bulkCreateFindings(
     @OrgContext() ctx: OrgCtx,
     @Param("id") id: string,
@@ -44,7 +46,7 @@ export class StigsController {
   }
 
   @Patch("findings/:findingId")
-  @UseGuards(OrgContextGuard, RequireRole("compliance_manager"))
+  @UseGuards(RequireRole("compliance_manager"))
   updateFinding(
     @OrgContext() ctx: OrgCtx,
     @Param("findingId") findingId: string,

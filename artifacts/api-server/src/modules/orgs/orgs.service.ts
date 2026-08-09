@@ -94,6 +94,18 @@ const [org] = await db.update(organizationsTable)
 return { org };
 }
 
+/** Update audit log retention period for enterprise+ orgs (P1-07).
+ *  Called by the dedicated PATCH /orgs/:orgId/audit-retention endpoint which
+ *  enforces RequirePlan('enterprise') + RequireRole('owner') before reaching here.
+ *  Accepts values between 90 and 3650 days; validation is done in the controller. */
+async updateAuditRetention(orgId: number, auditRetentionDays: number) {
+  const [org] = await db.update(organizationsTable)
+    .set({ auditRetentionDays })
+    .where(eq(organizationsTable.id, orgId))
+    .returning();
+  return { org };
+}
+
 async patchOnboarding(orgId: number, step: number, complete?: boolean) {
 const [org] = await db.update(organizationsTable)
 .set({ onboardingStep: step, onboardingComplete: complete ?? false })

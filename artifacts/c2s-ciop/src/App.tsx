@@ -51,6 +51,7 @@ import RoleManagement from "./pages/RoleManagement";
 import PublicTrustCenter from "./pages/PublicTrustCenter";
 import OrgTrustCenter from "./pages/OrgTrustCenter";
 import { RoleProvider } from "./context/RoleContext";
+import PlanGate from "./components/PlanGate";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -185,10 +186,11 @@ function AppRoutes() {
         <Route path="/custom-frameworks" component={() => <RequireAuth><AppShell><CustomFrameworks /></AppShell></RequireAuth>} />
         <Route path="/assessments" component={() => <RequireAuth><AppShell><Assessments /></AppShell></RequireAuth>} />
         <Route path="/assessments/:id/report" component={() => <RequireAuth><ZeroTrustAssessmentReport /></RequireAuth>} />
-        <Route path="/poam" component={() => <RequireAuth><AppShell><POAM /></AppShell></RequireAuth>} />
-        <Route path="/sprs" component={() => <RequireAuth><AppShell><SPRS /></AppShell></RequireAuth>} />
-        <Route path="/ssp" component={() => <RequireAuth><AppShell><SSP /></AppShell></RequireAuth>} />
-        <Route path="/stigs" component={() => <RequireAuth><AppShell><Stigs /></AppShell></RequireAuth>} />
+        {/* ── Federal-tier gated routes (P1-07) ── */}
+        <Route path="/poam" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="POA&M Management"><POAM /></PlanGate></AppShell></RequireAuth>} />
+        <Route path="/sprs" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="SPRS Score Tracker"><SPRS /></PlanGate></AppShell></RequireAuth>} />
+        <Route path="/ssp" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="SSP Generator"><SSP /></PlanGate></AppShell></RequireAuth>} />
+        <Route path="/stigs" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="STIG Checklists"><Stigs /></PlanGate></AppShell></RequireAuth>} />
         <Route path="/settings" component={() => <RequireAuth><AppShell><Settings /></AppShell></RequireAuth>} />
         <Route path="/audit-log" component={() => <RequireAuth><AppShell><AuditLog /></AppShell></RequireAuth>} />
         <Route path="/report" component={() => <RequireAuth><ComplianceReport /></RequireAuth>} />
@@ -199,11 +201,12 @@ function AppRoutes() {
         <Route path="/docs" component={() => <RequireAuth><AppShell><Documentation /></AppShell></RequireAuth>} />
         <Route path="/zero-trust" component={() => <RequireAuth><AppShell><ZeroTrustAssessment /></AppShell></RequireAuth>} />
         <Route path="/system-boundary" component={() => <RequireAuth><AppShell><SystemBoundary /></AppShell></RequireAuth>} />
-        <Route path="/control-crosswalk" component={() => <RequireAuth><AppShell><ControlCrosswalk /></AppShell></RequireAuth>} />
+        {/* ── Enterprise-tier gated routes (P1-07) ── */}
+        <Route path="/control-crosswalk" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="enterprise" featureName="Control Crosswalk (FedRAMP / NIST 800-53)"><ControlCrosswalk /></PlanGate></AppShell></RequireAuth>} />
         <Route path="/vuln-management" component={() => <RequireAuth><AppShell><VulnManagement /></AppShell></RequireAuth>} />
-        <Route path="/nist-800-171" component={() => <RequireAuth><AppShell><NIST800171 /></AppShell></RequireAuth>} />
-        <Route path="/conmon" component={() => <RequireAuth><AppShell><ConMonProgram /></AppShell></RequireAuth>} />
-        <Route path="/fisma-reporting" component={() => <RequireAuth><AppShell><FISMAReporting /></AppShell></RequireAuth>} />
+        <Route path="/nist-800-171" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="NIST SP 800-171 Compliance"><NIST800171 /></PlanGate></AppShell></RequireAuth>} />
+        <Route path="/conmon" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="Continuous Monitoring (ConMon)"><ConMonProgram /></PlanGate></AppShell></RequireAuth>} />
+        <Route path="/fisma-reporting" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="FISMA Reporting"><FISMAReporting /></PlanGate></AppShell></RequireAuth>} />
         <Route path="/super-admin" component={() => <RequireAuth><AppShell><SuperAdmin /></AppShell></RequireAuth>} />
         <Route path="/role-management" component={() => <RequireAuth><AppShell><RoleManagement /></AppShell></RequireAuth>} />
         <Route component={NotFound} />

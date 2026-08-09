@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, UseGuards, Query } from "@nestjs/co
 import { ZeroTrustService } from "./zero-trust.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
+import { RequirePlan } from "../../guards/plan.guard";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -39,9 +40,11 @@ export class ZeroTrustController {
     return this.ztaService.getGapFindings(ctx.orgId);
   }
 
-  // GET /orgs/:orgId/zero-trust/crosswalk
-  // Returns ZTMM v2.0 -> NIST 800-53 Rev 5 -> UCO three-way crosswalk table
+  // GET /orgs/:orgId/zero-trust/crosswalk — enterprise plan required (P1-07)
+  // Returns ZTMM v2.0 -> NIST 800-53 Rev 5 -> UCO three-way crosswalk table.
+  // FedRAMP crosswalk analysis is an enterprise+ feature.
   @Get("orgs/:orgId/zero-trust/crosswalk")
+  @UseGuards(RequirePlan("enterprise"))
   async getCrosswalk(@OrgContext() ctx: OrgCtx) {
     return this.ztaService.getCrosswalk();
   }

@@ -1,5 +1,5 @@
 import { authClient } from "@/lib/auth-client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -266,10 +266,29 @@ function CompareCell({ value }: { value: boolean | string }) {
   return <span className="text-sm font-medium text-slate-700">{value}</span>;
 }
 
+/** Maps DB plan value → Pricing tier display name */
+const PLAN_TO_TIER_NAME: Record<string, string> = {
+  starter: "Essentials",
+  professional: "Professional",
+  federal: "Federal",
+  enterprise: "Enterprise",
+};
+
 export default function Pricing() {
   const session = authClient.useSession();
   const isSignedIn = !!session.data?.user;
   const [annual, setAnnual] = useState(true);
+
+  // Read ?required=<plan> query param from URL (set by apiFetch 402 handler / PlanGate).
+  // When present, highlight the required tier so the user immediately sees what to upgrade to.
+  const [requiredTierName, setRequiredTierName] = useState<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const required = params.get("required");
+    if (required && PLAN_TO_TIER_NAME[required]) {
+      setRequiredTierName(PLAN_TO_TIER_NAME[required]);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-white font-inter">
@@ -324,6 +343,21 @@ export default function Pricing() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 pb-20">
+        {/* ?required=<plan> banner — shown when redirected from a gated feature */}
+        {requiredTierName && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 flex items-start gap-3">
+            <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <div>
+              <p className="text-sm font-bold text-amber-900">Plan upgrade required</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                The feature you tried to access requires the <strong>{requiredTierName}</strong> plan. Upgrade below to unlock it.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 mb-6">
           {TIERS.map((tier) => {
             const price = tier.annualPrice === null
@@ -337,14 +371,25 @@ export default function Pricing() {
                 ? `$${tier.annualPrice!.toLocaleString()}/year billed annually`
                 : "per month, billed monthly";
 
+            // When redirected from a gated feature, pulse the required tier card
+            const isRequired = requiredTierName && tier.name === requiredTierName;
+
             return (
               <div
                 key={tier.name}
-                className={`relative rounded-2xl flex flex-col ${tier.highlight
+                className={`relative rounded-2xl flex flex-col transition-all ${tier.highlight
                   ? "bg-blue-600 text-white shadow-2xl shadow-blue-200 ring-2 ring-blue-600"
-                  : "bg-white border border-slate-200"
+                  : isRequired
+                    ? "bg-white border-2 border-amber-400 shadow-lg shadow-amber-100"
+                    : "bg-white border border-slate-200"
                 }`}
               >
+                {/* "Required for your feature" badge */}
+                {isRequired && !tier.badge && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                    <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full shadow whitespace-nowrap">Required for your feature</span>
+                  </div>
+                )}
                 {tier.badge && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                     <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full shadow whitespace-nowrap">{tier.badge}</span>

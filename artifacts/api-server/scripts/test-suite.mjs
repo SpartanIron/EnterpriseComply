@@ -566,6 +566,197 @@ section("SECTION 8 — AUDIT LOG WORM TRIGGER: UPDATE and DELETE must be rejecte
   await dbClient.end();
 }
 
+// ── Section 9: Plan-tier feature gating (P1-07) ──────────────────────────────
+//
+// Creates two additional test orgs with plan='starter' and plan='federal' to
+// verify that plan guards return HTTP 402 for under-privileged orgs and 200
+// for orgs with the required plan or higher.
+//
+// Hierarchy under test: starter(0) < professional(1) < enterprise(2) < federal(3)
+
+section("SECTION 9 — PLAN GATING: federal and enterprise endpoints (P1-07)");
+
+{
+  const now     = new Date().toISOString();
+  const expires = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+
+  // ── Create test orgs with different plan tiers ──────────────────────────────
+  const slugStarter    = slug();
+  const slugPro        = slug();
+  const slugEnterprise = slug();
+  const slugFederal    = slug();
+
+  const [resStarter, resPro, resEnt, resFed] = await Promise.all([
+    db.query(
+      `INSERT INTO organizations (name, slug, industry, size, plan)
+       VALUES ($1, $2, 'technology', '11-50', 'starter') RETURNING id`,
+      [`PlanTest Starter ${slugStarter}`, slugStarter],
+    ),
+    db.query(
+      `INSERT INTO organizations (name, slug, industry, size, plan)
+       VALUES ($1, $2, 'technology', '11-50', 'professional') RETURNING id`,
+      [`PlanTest Pro ${slugPro}`, slugPro],
+    ),
+    db.query(
+      `INSERT INTO organizations (name, slug, industry, size, plan)
+       VALUES ($1, $2, 'technology', '11-50', 'enterprise') RETURNING id`,
+      [`PlanTest Ent ${slugEnterprise}`, slugEnterprise],
+    ),
+    db.query(
+      `INSERT INTO organizations (name, slug, industry, size, plan)
+       VALUES ($1, $2, 'technology', '11-50', 'federal') RETURNING id`,
+      [`PlanTest Federal ${slugFederal}`, slugFederal],
+    ),
+  ]);
+
+  const orgStarterId    = resStarter.rows[0].id;
+  const orgProId        = resPro.rows[0].id;
+  const orgEntId        = resEnt.rows[0].id;
+  const orgFedId        = resFed.rows[0].id;
+
+  // ── Create owners for each plan tier ──────────────────────────────────────
+  const userStarter    = uid();
+  const userPro        = uid();
+  const userEnt        = uid();
+  const userFed        = uid();
+  const tokenStarter   = `tok-${uid()}`;
+  const tokenPro       = `tok-${uid()}`;
+  const tokenEnt       = `tok-${uid()}`;
+  const tokenFed       = `tok-${uid()}`;
+  const sessStarter    = `sess-${uid()}`;
+  const sessPro        = `sess-${uid()}`;
+  const sessEnt        = `sess-${uid()}`;
+  const sessFed        = `sess-${uid()}`;
+
+  const planUsers = [
+    [userStarter, "Plan Starter", "plan-starter@test.invalid"],
+    [userPro,     "Plan Pro",     "plan-pro@test.invalid"],
+    [userEnt,     "Plan Ent",     "plan-ent@test.invalid"],
+    [userFed,     "Plan Federal", "plan-fed@test.invalid"],
+  ];
+  for (const [id, name, email] of planUsers) {
+    await db.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, true, $4::timestamptz, $4::timestamptz) ON CONFLICT DO NOTHING`,
+      [id, name, email, now],
+    );
+  }
+
+  const planSessions = [
+    [sessStarter, tokenStarter, userStarter],
+    [sessPro,     tokenPro,     userPro],
+    [sessEnt,     tokenEnt,     userEnt],
+    [sessFed,     tokenFed,     userFed],
+  ];
+  for (const [id, token, userId] of planSessions) {
+    await db.query(
+      `INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId")
+       VALUES ($1, $2::timestamptz, $3, $4::timestamptz, $4::timestamptz, $5) ON CONFLICT DO NOTHING`,
+      [id, expires, token, now, userId],
+    );
+  }
+
+  const planMembers = [
+    [orgStarterId, userStarter, "owner", "plan-starter@test.invalid"],
+    [orgProId,     userPro,     "owner", "plan-pro@test.invalid"],
+    [orgEntId,     userEnt,     "owner", "plan-ent@test.invalid"],
+    [orgFedId,     userFed,     "owner", "plan-fed@test.invalid"],
+  ];
+  for (const [orgId, userId, role, email] of planMembers) {
+    await db.query(
+      `INSERT INTO org_members (org_id, clerk_user_id, role, email)
+       VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+      [orgId, userId, role, email],
+    );
+  }
+
+  const cookieStarter    = cookieHdr(tokenStarter);
+  const cookiePro        = cookieHdr(tokenPro);
+  const cookieEnt        = cookieHdr(tokenEnt);
+  const cookieFed        = cookieHdr(tokenFed);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // FEDERAL ENDPOINTS — require plan='federal'
+  // Expected: starter→402, professional→402, enterprise→402, federal→200
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // POA&M
+  check("POAM GET: starter plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgStarterId}/poam`, cookieStarter), 402);
+
+  check("POAM GET: professional plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgProId}/poam`, cookiePro), 402);
+
+  check("POAM GET: enterprise plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgEntId}/poam`, cookieEnt), 402);
+
+  check("POAM GET: federal plan → 200 (access granted)",
+    await req("GET", `/orgs/${orgFedId}/poam`, cookieFed), 200);
+
+  // SPRS
+  check("SPRS GET: starter plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgStarterId}/sprs`, cookieStarter), 402);
+
+  check("SPRS GET: federal plan → 200 (access granted)",
+    await req("GET", `/orgs/${orgFedId}/sprs`, cookieFed), 200);
+
+  // SSP generate
+  check("SSP generate: starter plan → 402 (federal required)",
+    await req("POST", `/orgs/${orgStarterId}/ssp/generate`, cookieStarter, {}), 402);
+
+  check("SSP generate: federal plan → success (access granted, may lack body)",
+    await req("POST", `/orgs/${orgFedId}/ssp/generate`, cookieFed, {}), 200, 201, 400, 500);
+
+  // STIGs
+  check("STIGs GET: starter plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgStarterId}/stigs`, cookieStarter), 402);
+
+  check("STIGs GET: professional plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgProId}/stigs`, cookiePro), 402);
+
+  check("STIGs GET: federal plan → 200 (access granted)",
+    await req("GET", `/orgs/${orgFedId}/stigs`, cookieFed), 200);
+
+  // eMASS status
+  check("eMASS status: starter plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgStarterId}/emass/status`, cookieStarter), 402);
+
+  check("eMASS status: federal plan → 200 (access granted)",
+    await req("GET", `/orgs/${orgFedId}/emass/status`, cookieFed), 200);
+
+  // eMASS pending
+  check("eMASS pending: starter plan → 402 (federal required)",
+    await req("GET", `/orgs/${orgStarterId}/emass/pending`, cookieStarter), 402);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // ENTERPRISE ENDPOINTS — require plan='enterprise'
+  // Expected: starter→402, professional→402, enterprise→200, federal→200
+  // ────────────────────────────────────────────────────────────────────────────
+
+  check("Audit retention PATCH: starter plan → 402 (enterprise required)",
+    await req("PATCH", `/orgs/${orgStarterId}/audit-retention`, cookieStarter, { auditRetentionDays: 365 }), 402);
+
+  check("Audit retention PATCH: professional plan → 402 (enterprise required)",
+    await req("PATCH", `/orgs/${orgProId}/audit-retention`, cookiePro, { auditRetentionDays: 365 }), 402);
+
+  check("Audit retention PATCH: enterprise plan → 200 (access granted)",
+    await req("PATCH", `/orgs/${orgEntId}/audit-retention`, cookieEnt, { auditRetentionDays: 365 }), 200);
+
+  check("Audit retention PATCH: federal plan → 200 (federal ≥ enterprise)",
+    await req("PATCH", `/orgs/${orgFedId}/audit-retention`, cookieFed, { auditRetentionDays: 180 }), 200);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Cleanup plan-gate test orgs
+  // ────────────────────────────────────────────────────────────────────────────
+  const planUserIds  = [userStarter, userPro, userEnt, userFed];
+  const planSessIds  = [sessStarter, sessPro, sessEnt, sessFed];
+  const planOrgIds   = [orgStarterId, orgProId, orgEntId, orgFedId];
+  await db.query(`DELETE FROM org_members WHERE clerk_user_id = ANY($1::text[])`, [planUserIds]).catch(() => {});
+  await db.query(`DELETE FROM session WHERE id = ANY($1::text[])`, [planSessIds]).catch(() => {});
+  await db.query(`DELETE FROM "user" WHERE id = ANY($1::text[])`, [planUserIds]).catch(() => {});
+  await db.query(`DELETE FROM organizations WHERE id = ANY($1::int[])`, [planOrgIds]).catch(() => {});
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();
