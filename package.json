@@ -12,7 +12,10 @@
   "private": true,
   "pnpm": {
     "overrides": {
-      "path-to-regexp": ">=8.4.0"
+      "path-to-regexp": ">=8.4.0",
+      "multer": ">=2.2.0",
+      "qs": ">=6.15.2",
+      "body-parser": ">=2.3.0"
     }
   },
   "devDependencies": {
