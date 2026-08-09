@@ -8,7 +8,9 @@ export const orgIntegrationsTable = pgTable("org_integrations", {
   integrationKey: text("integration_key").notNull(),
   name: text("name").notNull(),
   status: text("status").notNull().default("disconnected"),
+  /** AES-256-GCM encrypted credential (plain token, or JSON-encoded creds for multi-field providers). */
   accessToken: text("access_token"),
+  /** AES-256-GCM encrypted refresh token. */
   refreshToken: text("refresh_token"),
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
   installationId: text("installation_id"),
@@ -21,6 +23,9 @@ export const orgIntegrationsTable = pgTable("org_integrations", {
   lastSyncError: text("last_sync_error"),
   evidenceCollected: integer("evidence_collected").notNull().default(0),
   metadata: jsonb("metadata"),
+  /** Provider-specific credential config (e.g. { personalAccessToken, orgOrOwner } for GitHub PAT,
+   *  { apiToken, zoneId } for Cloudflare). Sensitive keys are AES-256-GCM encrypted. */
+  config: jsonb("config"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

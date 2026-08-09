@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from "@nestjs/common";
 import { db, orgIntegrationsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { encryptCredential, decryptCredential } from "../../lib/credential-crypto";
 
 export interface OrgCtx { orgId: number; org: any; member: any; }
 
@@ -58,7 +59,7 @@ export class GoogleWorkspaceService {
       await db.update(orgIntegrationsTable)
         .set({
           status: "active",
-          accessToken: serviceAccountKeyJson,
+          accessToken: encryptCredential(serviceAccountKeyJson),
           accountLogin: adminEmail,
           accountName: domain,
           metadata: { domain, adminEmail, clientEmail: keyObj.client_email },
@@ -76,7 +77,7 @@ export class GoogleWorkspaceService {
         integrationKey: "google_workspace",
         name: "Google Workspace",
         status: "active",
-        accessToken: serviceAccountKeyJson,
+        accessToken: encryptCredential(serviceAccountKeyJson),
         accountLogin: adminEmail,
         accountName: domain,
         scopes: [
@@ -110,12 +111,13 @@ export class GoogleWorkspaceService {
     const meta = integration.metadata as any;
     const domain: string = meta?.domain || "";
     const adminEmail: string = meta?.adminEmail || "";
-    const keyJson: string = integration.accessToken || "";
+    // Decrypt the service account key before use (stored AES-256-GCM encrypted)
+    const keyJson: string = decryptCredential(integration.accessToken) || "";
     if (!domain || !adminEmail || !keyJson) {
       throw new BadRequestException("Integration credentials incomplete.");
     }
     let keyObj: any;
-    try { keyObj = JSON.parse(keyJson); } catch { throw new BadRequestException("Stored service account key is invalid JSON."); }
+    try { keyObj = JSON.parse(keyJson); } catch { throw new BadRequestException("Stored service account key is invalid or decryption failed."); }
     const errors: string[] = [];
     let usersAdded = 0;
     let groupsAdded = 0;

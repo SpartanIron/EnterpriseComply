@@ -6,6 +6,12 @@ import { runAwsChecks } from "./providers/aws.provider";
 import { runOktaChecks } from "./providers/okta.provider";
 import { runGitHubChecks } from "./providers/github.provider";
 import { runCloudflareChecks } from "./providers/cloudflare.provider";
+import {
+  encryptCredential,
+  decryptCredential,
+  encryptConfigCredentials,
+  decryptConfigCredentials,
+} from "../../lib/credential-crypto";
 
 export const INTEGRATION_CATALOG = [
   {
@@ -794,14 +800,14 @@ export class IntegrationsService {
     });
     if (existing) {
       await db.update(orgIntegrationsTable).set({
-        accessToken: token, status: "connected",
+        accessToken: encryptCredential(token), status: "connected",
         accountLogin: ghUser.login, accountName: ghUser.name,
         accountAvatarUrl: ghUser.avatar_url, lastSyncStatus: "pending",
       }).where(eq(orgIntegrationsTable.id, existing.id));
     } else {
       await db.insert(orgIntegrationsTable).values({
         orgId: Number(orgId), integrationKey: "github", name: "GitHub",
-        status: "connected", accessToken: token,
+        status: "connected", accessToken: encryptCredential(token),
         accountLogin: ghUser.login, accountName: ghUser.name,
         accountAvatarUrl: ghUser.avatar_url, scopes: ["read:org", "repo", "read:user"],
       });
@@ -837,7 +843,7 @@ export class IntegrationsService {
       });
     }
 
-    const credentials = JSON.stringify({ accessKeyId, secretAccessKey, region });
+    const credentials = encryptCredential(JSON.stringify({ accessKeyId, secretAccessKey, region }));
     const existing = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "aws")),
     });
@@ -865,9 +871,11 @@ export class IntegrationsService {
 
     let creds: { accessKeyId: string; secretAccessKey: string; region: string };
     try {
-      creds = JSON.parse(integration.accessToken);
+      const plain = decryptCredential(integration.accessToken);
+      if (!plain) throw new Error("decryption returned null");
+      creds = JSON.parse(plain);
     } catch {
-      throw new BadRequestException("AWS credentials corrupted");
+      throw new BadRequestException("AWS credentials corrupted or decryption failed");
     }
 
     const { controlResults, evidenceItems, checksRun, checksPassed } = await runAwsChecks(creds.accessKeyId, creds.secretAccessKey, creds.region);
@@ -928,7 +936,7 @@ export class IntegrationsService {
       });
     }
 
-    const credentials = JSON.stringify({ domain, apiToken });
+    const credentials = encryptCredential(JSON.stringify({ domain, apiToken }));
     const existing = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "okta")),
     });
@@ -956,9 +964,11 @@ export class IntegrationsService {
 
     let creds: { domain: string; apiToken: string };
     try {
-      creds = JSON.parse(integration.accessToken);
+      const plain = decryptCredential(integration.accessToken);
+      if (!plain) throw new Error("decryption returned null");
+      creds = JSON.parse(plain);
     } catch {
-      throw new BadRequestException("Okta credentials corrupted");
+      throw new BadRequestException("Okta credentials corrupted or decryption failed");
     }
 
     const { controlResults, evidenceItems, checksRun, checksPassed } = await runOktaChecks(creds.domain, creds.apiToken);
@@ -996,17 +1006,22 @@ export class IntegrationsService {
   async connectGitHub(orgId: number, personalAccessToken: string, orgOrOwner?: string) {
     const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === "github");
     if (!catalogItem) throw new BadRequestException("Unknown integration");
+    // Encrypt the PAT before persisting
+    const encryptedConfig = encryptConfigCredentials(
+      { personalAccessToken, orgOrOwner: orgOrOwner ?? "" },
+      ["personalAccessToken"],
+    );
     let integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
     });
     if (!integration) {
       [integration] = await db.insert(orgIntegrationsTable).values({
         orgId, integrationKey: "github", name: "GitHub", status: "connected",
-        config: { personalAccessToken, orgOrOwner: orgOrOwner ?? "" },
+        config: encryptedConfig,
       }).returning();
     } else {
       [integration] = await db.update(orgIntegrationsTable)
-        .set({ status: "connected", config: { personalAccessToken, orgOrOwner: orgOrOwner ?? "" } })
+        .set({ status: "connected", config: encryptedConfig })
         .where(eq(orgIntegrationsTable.id, integration.id)).returning();
     }
     const syncResult = await runGitHubChecks(personalAccessToken, orgOrOwner);
@@ -1019,7 +1034,11 @@ export class IntegrationsService {
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
     });
     if (!integration || integration.status !== "connected") throw new BadRequestException("GitHub integration not connected");
-    const cfg = integration.config as { personalAccessToken?: string; orgOrOwner?: string };
+    // Decrypt the PAT from config
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["personalAccessToken"],
+    ) as { personalAccessToken?: string; orgOrOwner?: string } | null;
     if (!cfg?.personalAccessToken) throw new BadRequestException("GitHub token not configured");
     const syncResult = await runGitHubChecks(cfg.personalAccessToken, cfg.orgOrOwner);
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "github", integration.id);
@@ -1029,17 +1048,19 @@ export class IntegrationsService {
   async connectCloudflare(orgId: number, apiToken: string, zoneId: string) {
     const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === "cloudflare");
     if (!catalogItem) throw new BadRequestException("Unknown integration");
+    // Encrypt the API token before persisting
+    const encryptedConfig = encryptConfigCredentials({ apiToken, zoneId }, ["apiToken"]);
     let integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "cloudflare")),
     });
     if (!integration) {
       [integration] = await db.insert(orgIntegrationsTable).values({
         orgId, integrationKey: "cloudflare", name: "Cloudflare", status: "connected",
-        config: { apiToken, zoneId },
+        config: encryptedConfig,
       }).returning();
     } else {
       [integration] = await db.update(orgIntegrationsTable)
-        .set({ status: "connected", config: { apiToken, zoneId } })
+        .set({ status: "connected", config: encryptedConfig })
         .where(eq(orgIntegrationsTable.id, integration.id)).returning();
     }
     const syncResult = await runCloudflareChecks(apiToken, zoneId);
@@ -1052,7 +1073,11 @@ export class IntegrationsService {
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "cloudflare")),
     });
     if (!integration || integration.status !== "connected") throw new BadRequestException("Cloudflare integration not connected");
-    const cfg = integration.config as { apiToken?: string; zoneId?: string };
+    // Decrypt the API token from config
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["apiToken"],
+    ) as { apiToken?: string; zoneId?: string } | null;
     if (!cfg?.apiToken || !cfg?.zoneId) throw new BadRequestException("Cloudflare credentials not configured");
     const syncResult = await runCloudflareChecks(cfg.apiToken, cfg.zoneId);
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "cloudflare", integration.id);
@@ -1164,23 +1189,25 @@ export class IntegrationsService {
   }
 
   async syncOrgGitHub(orgId: number) {
-    // Route to live provider if token is stored
-    try {
-      const integration = await db.query.orgIntegrationsTable.findFirst({
-        where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
-      });
-      const cfg = integration?.config as { personalAccessToken?: string; accessToken?: string; orgOrOwner?: string } | undefined;
-      const token = cfg?.personalAccessToken ?? cfg?.accessToken;
-      if (token) {
-        return this.syncOrgGitHubLive(orgId);
-      }
-    } catch { /* fall through to demo */ }
-    // Legacy OAuth-based demo sync
     const integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")),
     });
+
+    // Route to PAT-based live provider if a PAT config exists.
+    // NOTE: cfg.personalAccessToken is stored encrypted (enc:v1: prefix); its truthiness confirms
+    // a PAT was configured. Actual decryption + use happens inside syncOrgGitHubLive.
+    // Errors from syncOrgGitHubLive (including decryption or auth failures) are NOT swallowed —
+    // they propagate to the caller so the operator sees a clear error instead of a silent fallback.
+    const cfg = integration?.config as { personalAccessToken?: string; orgOrOwner?: string } | null | undefined;
+    if (cfg?.personalAccessToken) {
+      return this.syncOrgGitHubLive(orgId);
+    }
+
+    // Legacy OAuth path: token stored in accessToken column
     if (!integration?.accessToken) throw new BadRequestException("GitHub not connected");
-    await this.syncGitHub(orgId, integration.accessToken);
+    const token = decryptCredential(integration.accessToken);
+    if (!token) throw new BadRequestException("GitHub token decryption failed");
+    await this.syncGitHub(orgId, token);
     return { success: true };
   }
 

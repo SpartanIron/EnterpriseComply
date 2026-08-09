@@ -17,7 +17,10 @@ const SYNC_INTERVALS: Record<string, number> = {
 };
 
 const SYNC_DISPATCH: Record<string, (svc: IntegrationsService, orgId: number) => Promise<unknown>> = {
-  github: (svc, orgId) => svc.syncOrgGitHubLive(orgId),
+  // Use syncOrgGitHub (not syncOrgGitHubLive) so that OAuth-connected orgs (which store their
+  // token in access_token rather than config.personalAccessToken) still sync correctly.
+  // syncOrgGitHub routes to the PAT path only when a PAT config is present.
+  github: (svc, orgId) => svc.syncOrgGitHub(orgId),
   aws: (svc, orgId) => svc.syncOrgAWS(orgId),
   okta: (svc, orgId) => svc.syncOrgOkta(orgId),
   cloudflare: (svc, orgId) => svc.syncOrgCloudflare(orgId),

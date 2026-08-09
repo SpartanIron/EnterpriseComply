@@ -19,6 +19,14 @@
  */
 
 import { createHmac, randomBytes } from "crypto";
+// Import directly from the production TypeScript module (SWC transpiles it on-the-fly).
+// This ensures the tests exercise the same encrypt/decrypt paths used at runtime.
+import {
+  encryptCredential,
+  decryptCredential,
+  isEncryptedCredential,
+  ENC_PREFIX,
+} from "../src/lib/credential-crypto.ts";
 import pg from "pg";
 
 const { Client } = pg;
@@ -447,6 +455,116 @@ check("No-cookie POST evidence → 401",
 check("Webhook POST with no HMAC signature → 401 or 503",
   await req("POST", "/webhooks/user-created", "", { userId: "fake", email: "x@evil.com", firstName: "h" }),
   401, 503);
+
+// ── Section 7: Credential encryption round-trip + tamper rejection ────────────
+
+section("SECTION 7 — CREDENTIAL ENCRYPTION: AES-256-GCM round-trip + tamper rejection");
+
+// All tests below exercise the production encryptCredential / decryptCredential
+// functions imported directly from credential-crypto.ts — the same code paths
+// used by integrations.service.ts and google-workspace.service.ts at runtime.
+
+// Test 1: round-trip (encrypt then decrypt returns original)
+const plaintext = "aws:AKIAIOSFODNN7EXAMPLE:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+const ciphertext = encryptCredential(plaintext);
+const decrypted = decryptCredential(ciphertext);
+check("Credential encrypt→decrypt round-trip returns original value",
+  decrypted === plaintext ? 200 : 422, 200);
+
+// Test 2: ciphertext starts with expected prefix and contains 3 segments
+const encParts = ciphertext.slice(ENC_PREFIX.length).split("$");
+check("Encrypted credential has enc:v1: prefix and 3 segments",
+  (ciphertext.startsWith(ENC_PREFIX) && encParts.length === 3) ? 200 : 422, 200);
+
+// Test 3: idempotent — encrypting an already-encrypted value returns it unchanged
+check("Re-encrypting an already-encrypted value is idempotent",
+  encryptCredential(ciphertext) === ciphertext ? 200 : 422, 200);
+
+// Test 4: isEncryptedCredential correctly identifies encrypted vs plaintext
+check("isEncryptedCredential returns true for enc:v1: value, false for plaintext",
+  (isEncryptedCredential(ciphertext) && !isEncryptedCredential(plaintext)) ? 200 : 422, 200);
+
+// Test 5: tamper rejection — flipping the last two hex chars of the auth tag
+const tamperedTag = encParts[2].slice(0, -2) + (encParts[2].endsWith("00") ? "ff" : "00");
+const tampered = `${ENC_PREFIX}${encParts[0]}$${encParts[1]}$${tamperedTag}`;
+check("Tampered auth tag causes decryptCredential to return null (AEAD rejection)",
+  decryptCredential(tampered) === null ? 200 : 422, 200);
+
+// Test 6: tamper rejection — flipping the last two hex chars of the ciphertext body
+const tamperedCt = encParts[1].slice(0, -2) + (encParts[1].endsWith("00") ? "ff" : "00");
+const tamperedCiphertext = `${ENC_PREFIX}${encParts[0]}$${tamperedCt}$${encParts[2]}`;
+check("Tampered ciphertext causes decryptCredential to return null (AEAD rejection)",
+  decryptCredential(tamperedCiphertext) === null ? 200 : 422, 200);
+
+// Test 7: legacy plaintext is returned as-is (transparent backward compat)
+const legacyPlain = "legacy-token-no-prefix";
+check("Legacy plaintext (no enc:v1: prefix) is returned as-is for backward compat",
+  decryptCredential(legacyPlain) === legacyPlain ? 200 : 422, 200);
+
+// Test 8: two encryptions of the same plaintext produce different ciphertexts (random IV)
+const ct1 = encryptCredential(plaintext);
+const ct2 = encryptCredential(plaintext);
+check("Two encryptions of the same value produce different ciphertexts (random IV)",
+  ct1 !== ct2 ? 200 : 422, 200);
+
+// ── Section 8: Audit log WORM trigger ────────────────────────────────────────
+
+section("SECTION 8 — AUDIT LOG WORM TRIGGER: UPDATE and DELETE must be rejected at DB layer");
+
+{
+  const dbClient = new Client({ connectionString: DB_URL });
+  await dbClient.connect();
+
+  // Insert a test audit log row (we'll clean it up after)
+  let auditRowId = null;
+  try {
+    const insertRes = await dbClient.query(`
+      INSERT INTO org_audit_log (org_id, actor_id, actor_email, action, resource, resource_id, details)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id
+    `, [A, "test-actor", "worm-test@example.com", "worm_trigger_test", "test", "worm-test-resource", '{"test": true}']);
+    auditRowId = insertRes.rows[0]?.id;
+    check("Audit log INSERT succeeds (WORM allows writes)",
+      auditRowId != null ? 200 : 422, 200);
+  } catch (e) {
+    check("Audit log INSERT succeeds (WORM allows writes)", `ERR:${e.message}`, 200);
+  }
+
+  // Attempt UPDATE — must be blocked by WORM trigger
+  if (auditRowId != null) {
+    let updateBlocked = false;
+    try {
+      await dbClient.query(
+        `UPDATE org_audit_log SET action = 'tampered' WHERE id = $1`,
+        [auditRowId]
+      );
+    } catch (e) {
+      // Expected: SQLSTATE 23001 (restrict_violation) or similar
+      updateBlocked = e.message?.includes("WORM VIOLATION") || e.code === "23001";
+    }
+    check("Audit log UPDATE is rejected by WORM trigger",
+      updateBlocked ? 200 : 422, 200);
+
+    // Attempt DELETE — must also be blocked
+    let deleteBlocked = false;
+    try {
+      await dbClient.query(
+        `DELETE FROM org_audit_log WHERE id = $1`,
+        [auditRowId]
+      );
+    } catch (e) {
+      deleteBlocked = e.message?.includes("WORM VIOLATION") || e.code === "23001";
+    }
+    check("Audit log DELETE is rejected by WORM trigger",
+      deleteBlocked ? 200 : 422, 200);
+
+    // Clean up: superuser-level direct delete using pg admin bypass is not available,
+    // so just leave the test row — it will be cleaned up with the test org on teardown
+    // (org_audit_log rows are org-scoped, and the test org is deleted in cleanup()).
+  }
+
+  await dbClient.end();
+}
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 

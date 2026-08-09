@@ -8,8 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/main.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node scripts/test-suite.mjs",
-    "test:isolation": "node scripts/test-suite.mjs"
+    "test": "node --import @swc-node/register/esm-register scripts/test-suite.mjs",
+    "test:isolation": "node --import @swc-node/register/esm-register scripts/test-suite.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-cloudtrail": "^3.1043.0",

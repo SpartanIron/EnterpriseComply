@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { seedColorComply } from "@workspace/db/seed";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { encryptCredential, isEncryptedCredential, encryptConfigCredentials, validateCredentialKeyMaterial } from "../lib/credential-crypto";
 
 /**
  * Load a policy template file by key. Returns the full markdown content, or
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS org_integrations (
   last_sync_error TEXT,
   evidence_collected INTEGER NOT NULL DEFAULT 0,
   metadata JSONB,
+  config JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -626,6 +628,9 @@ ALTER TABLE organizations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 ALTER TABLE org_members ADD COLUMN IF NOT EXISTS first_name TEXT;
 ALTER TABLE org_members ADD COLUMN IF NOT EXISTS last_name TEXT;
 ALTER TABLE org_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'owner';
+-- Provider-specific credential config (GitHub PAT, Cloudflare API token, etc.)
+-- Sensitive keys within this JSONB are AES-256-GCM encrypted by the service layer.
+ALTER TABLE org_integrations ADD COLUMN IF NOT EXISTS config JSONB;
 
 
 -- ── Feature Flags Table ──────────────────────────────────────────────────
@@ -962,6 +967,16 @@ export class StartupService implements OnApplicationBootstrap {
     await this.runMigrations();
     await this.runMigrationsV3();
     await this.runMigrationsV2();
+
+    // Security hardening — these migrations throw on failure and are NOT caught here.
+    // A failure propagates up to NestFactory.create() which logs it and exits the process.
+    // This ensures the service never serves traffic without its core security guarantees:
+    //   - audit log immutability (WORM trigger)
+    //   - credentials encrypted at rest
+    // Operators MUST see a clear startup failure, not a silently degraded service.
+    await this.runAuditLogWormMigration();
+    await this.runCredentialEncryptionMigration();
+
     await this.seedIfEmpty();
     await this.seedNewPolicies();
     await this.seedCommonRisks();
@@ -1178,6 +1193,209 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       this.logger.log('V2 migrations complete');
     } catch (err) {
       this.logger.error('V2 migration failed - continuing', (err as any)?.message ?? String(err));
+    }
+  }
+
+  /**
+   * P1-20: Installs a BEFORE UPDATE OR DELETE trigger on org_audit_log that raises
+   * an exception, making the table Write-Once-Read-Many (WORM) at the DB layer.
+   * Tracked via _migration_flags so the trigger is only installed once.
+   *
+   * Failure is treated as a deployment error: this method throws so that
+   * onApplicationBootstrap bubbles the error and the process exits unhealthy,
+   * rather than silently running without the immutability guarantee.
+   */
+  private async runAuditLogWormMigration() {
+    // Ensure migration-flags tracking table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS _migration_flags (
+        flag TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    const { rows } = await pool.query(
+      "SELECT flag FROM _migration_flags WHERE flag = 'audit_log_worm_v1'"
+    );
+    if (rows.length > 0) {
+      this.logger.log('Audit log WORM trigger already installed — skipping');
+      return;
+    }
+
+    // Verify org_audit_log exists before trying to install the trigger.
+    // (In a fresh DB it is created by MIGRATION_SQL which runs before this method.)
+    const { rows: tableCheck } = await pool.query(
+      `SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'org_audit_log' LIMIT 1`
+    );
+    if (tableCheck.length === 0) {
+      throw new Error(
+        'runAuditLogWormMigration: org_audit_log table does not exist. ' +
+        'Ensure MIGRATION_SQL ran successfully before this migration.'
+      );
+    }
+
+    // Trigger function: deny all UPDATE and DELETE on org_audit_log
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION deny_audit_log_mutation()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        IF TG_OP = 'DELETE' THEN
+          RAISE EXCEPTION
+            'WORM VIOLATION: org_audit_log rows are immutable and cannot be deleted (id=%). '
+            'Insert a superseding entry instead.',
+            OLD.id
+            USING ERRCODE = 'restrict_violation';
+        END IF;
+        IF TG_OP = 'UPDATE' THEN
+          RAISE EXCEPTION
+            'WORM VIOLATION: org_audit_log rows are immutable and cannot be updated (id=%). '
+            'Insert a superseding entry instead.',
+            OLD.id
+            USING ERRCODE = 'restrict_violation';
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+
+    await pool.query(`DROP TRIGGER IF EXISTS audit_log_worm ON org_audit_log`);
+
+    await pool.query(`
+      CREATE TRIGGER audit_log_worm
+      BEFORE UPDATE OR DELETE ON org_audit_log
+      FOR EACH ROW
+      EXECUTE FUNCTION deny_audit_log_mutation()
+    `);
+
+    await pool.query(
+      "INSERT INTO _migration_flags (flag) VALUES ('audit_log_worm_v1') ON CONFLICT DO NOTHING"
+    );
+    this.logger.log(
+      'Audit log WORM trigger installed — org_audit_log is now immutable at the DB layer (P1-20)'
+    );
+  }
+
+  /**
+   * P1-16: Encrypts all existing plaintext credentials in org_integrations
+   * (access_token, refresh_token, and sensitive config JSONB sub-keys) using
+   * AES-256-GCM via credential-crypto.ts. Idempotent — already-encrypted values
+   * are detected by the enc:v1: prefix and skipped. Tracked via _migration_flags.
+   *
+   * RLS-safe design — the migration must scan ALL rows across tenants, but the
+   * tenant_isolation RLS policy normally restricts reads to a single org. We use
+   * the following strategy to do so without exposing tenant data to concurrent sessions:
+   *
+   *   1. A DEDICATED connection (not the shared pool) is acquired for the migration.
+   *   2. Inside a single transaction, an ACCESS EXCLUSIVE lock is taken on the table.
+   *      ACCESS EXCLUSIVE conflicts with ALL lock modes including ACCESS SHARE (plain
+   *      SELECT), so no other DB session can read or write the table until we COMMIT.
+   *   3. DISABLE ROW LEVEL SECURITY is executed within the transaction. In PostgreSQL,
+   *      DDL is transactional — if the transaction rolls back, the DISABLE is undone.
+   *   4. All rows are read and encrypted in-place within the same transaction.
+   *   5. RLS is re-enabled and the completion flag is written.
+   *   6. COMMIT atomically releases the lock and finalises all DDL changes.
+   *
+   * This runs in onApplicationBootstrap(), which executes before app.listen() is called.
+   * The NestJS server does not accept HTTP connections until after bootstrap completes,
+   * so no application-level concurrent requests are possible during this window.
+   *
+   * Throws on failure — the caller (onApplicationBootstrap) lets errors propagate,
+   * preventing startup from completing with credentials unencrypted.
+   */
+  private async runCredentialEncryptionMigration() {
+    // Ensure the migration-tracking table exists (safe with the shared pool)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS _migration_flags (
+        flag TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    const { rows: flagRows } = await pool.query(
+      "SELECT flag FROM _migration_flags WHERE flag = 'credential_encryption_v1'"
+    );
+    if (flagRows.length > 0) {
+      this.logger.log('Credential encryption migration already applied — skipping');
+      return;
+    }
+
+    // Acquire a DEDICATED connection so all session state is isolated from the pool
+    const client = await pool.connect();
+    let encryptedCount = 0;
+
+    try {
+      await client.query('BEGIN');
+
+      // ACCESS EXCLUSIVE: conflicts with all lock modes including ACCESS SHARE (SELECT).
+      // No other DB session can read or write org_integrations until we COMMIT.
+      await client.query('LOCK TABLE org_integrations IN ACCESS EXCLUSIVE MODE');
+
+      // Disable RLS within the transaction. DDL is transactional in PostgreSQL —
+      // a ROLLBACK also undoes the ALTER TABLE, restoring RLS automatically.
+      // Because the ACCESS EXCLUSIVE lock is held, no concurrent session can observe
+      // the table in its RLS-disabled state.
+      await client.query('ALTER TABLE org_integrations DISABLE ROW LEVEL SECURITY');
+
+      const { rows } = await client.query(
+        `SELECT id, access_token, refresh_token, config
+           FROM org_integrations
+          WHERE access_token IS NOT NULL
+             OR refresh_token IS NOT NULL
+             OR config IS NOT NULL`
+      );
+
+      for (const row of rows) {
+        const newAccessToken =
+          row.access_token && !isEncryptedCredential(row.access_token)
+            ? encryptCredential(row.access_token)
+            : row.access_token;
+
+        const newRefreshToken =
+          row.refresh_token && !isEncryptedCredential(row.refresh_token)
+            ? encryptCredential(row.refresh_token)
+            : row.refresh_token;
+
+        let newConfig = row.config;
+        if (newConfig && typeof newConfig === 'object') {
+          newConfig = encryptConfigCredentials(
+            newConfig as Record<string, unknown>,
+            ['personalAccessToken', 'apiToken', 'secretAccessKey', 'clientSecret'],
+          );
+        }
+
+        await client.query(
+          `UPDATE org_integrations
+              SET access_token = $1,
+                  refresh_token = $2,
+                  config = $3
+            WHERE id = $4`,
+          [newAccessToken, newRefreshToken, newConfig ? JSON.stringify(newConfig) : null, row.id]
+        );
+        encryptedCount++;
+      }
+
+      // Re-enable RLS before committing
+      await client.query('ALTER TABLE org_integrations ENABLE ROW LEVEL SECURITY');
+
+      // Write the completion flag (_migration_flags has no RLS)
+      await client.query(
+        "INSERT INTO _migration_flags (flag) VALUES ('credential_encryption_v1') ON CONFLICT DO NOTHING"
+      );
+
+      await client.query('COMMIT');
+      // COMMIT atomically releases the ACCESS EXCLUSIVE lock and finalises all DDL
+      this.logger.log(
+        `Credential encryption migration complete — ${encryptedCount} integration row(s) encrypted in-place (P1-16)`
+      );
+    } catch (err) {
+      // ROLLBACK undoes the ALTER TABLE DISABLE — DDL is transactional in PostgreSQL
+      await client.query('ROLLBACK').catch(() => {});
+      // Defense-in-depth: explicit re-enable in case the connection remains open
+      await client.query('ALTER TABLE org_integrations ENABLE ROW LEVEL SECURITY').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
     }
   }
 

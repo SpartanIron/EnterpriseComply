@@ -7,6 +7,7 @@ import helmet from "helmet";
 import { join } from "path";
 import { existsSync } from "fs";
 import express from "express";
+import { validateCredentialKeyMaterial } from "./lib/credential-crypto";
 
 // ── Startup env validation ───────────────────────────────────────────────────────────────────
 // Validates required env vars on startup and refuses to boot if critical ones
@@ -15,6 +16,16 @@ function validateEnv() {
   // Hard requirement: DATABASE_URL (app cannot function without DB)
   if (!process.env.DATABASE_URL) {
     console.error('[STARTUP FAILURE] DATABASE_URL is required but was not provided.');
+    process.exit(1);
+  }
+
+  // Hard requirement (production): credential key material must be available.
+  // validateCredentialKeyMaterial() throws in non-development environments when
+  // neither INTEGRATION_CREDENTIAL_KEY nor SESSION_SECRET is set.
+  try {
+    validateCredentialKeyMaterial();
+  } catch (err) {
+    console.error('[STARTUP FAILURE]', (err as Error).message);
     process.exit(1);
   }
 
