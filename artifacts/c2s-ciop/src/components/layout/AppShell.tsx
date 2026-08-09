@@ -9,6 +9,13 @@ import type { ReactNode } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
+// Sections that require a minimum plan tier in addition to the role check.
+// super_admin always bypasses plan gates; other roles see these sections only
+// when the org's plan is in the allowed list.
+const SECTION_PLAN_REQUIRED: Record<string, string[]> = {
+  Federal: ["enterprise", "federal"],
+};
+
 const NAV = [
   {
     section: "Overview",
@@ -209,6 +216,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
           {NAV.map(({ section, items }) => {
             if (!canSeeSection(section)) return null;
+            // Plan gate: certain sections (e.g. Federal) are only available on
+            // higher-tier plans.  super_admin bypasses this check.
+            // While org is loading (undefined), show everything to avoid flash.
+            const requiredPlans = SECTION_PLAN_REQUIRED[section];
+            if (requiredPlans && org !== undefined && !can("super_admin")) {
+              const plan = (org?.plan ?? "").toLowerCase();
+              if (!requiredPlans.includes(plan)) return null;
+            }
           const isOpen = openSections.has(section);
             const hasActive = items.some(
               (item) => location === item.path || location.startsWith(item.path + "/"),
