@@ -201,8 +201,8 @@ function AppRoutes() {
         <Route path="/test-runs" component={() => <RequireAuth><AppShell><TestRunHistory /></AppShell></RequireAuth>} />
         <Route path="/assets" component={() => <RequireAuth><AppShell><AssetInventory /></AppShell></RequireAuth>} />
         <Route path="/docs" component={() => <RequireAuth><AppShell><Documentation /></AppShell></RequireAuth>} />
-        <Route path="/zero-trust" component={() => <RequireAuth><AppShell><ZeroTrustAssessment /></AppShell></RequireAuth>} />
-        <Route path="/system-boundary" component={() => <RequireAuth><AppShell><SystemBoundary /></AppShell></RequireAuth>} />
+        <Route path="/zero-trust" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="Zero Trust Assessment"><ZeroTrustAssessment /></PlanGate></AppShell></RequireAuth>} />
+        <Route path="/system-boundary" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="federal" featureName="System Boundary"><SystemBoundary /></PlanGate></AppShell></RequireAuth>} />
         {/* ── Enterprise-tier gated routes (P1-07) ── */}
         <Route path="/control-crosswalk" component={() => <RequireAuth><AppShell><PlanGate requiredPlan="enterprise" featureName="Control Crosswalk (FedRAMP / NIST 800-53)"><ControlCrosswalk /></PlanGate></AppShell></RequireAuth>} />
         <Route path="/vuln-management" component={() => <RequireAuth><AppShell><VulnManagement /></AppShell></RequireAuth>} />
