@@ -19,11 +19,11 @@ const STAGE_COLORS = {
   optimal: { bg: "#f0fdf4", border: "#86efac", text: "#15803d", label: "Optimal" },
 };
 
-function stageColor(stage) {
-  return STAGE_COLORS[stage] ?? STAGE_COLORS.traditional;
+function stageColor(stage: string) {
+  return (STAGE_COLORS as Record<string, typeof STAGE_COLORS.traditional>)[stage] ?? STAGE_COLORS.traditional;
 }
 
-function scoreColor(score) {
+function scoreColor(score: number) {
   if (score >= 75) return "#16a34a";
   if (score >= 50) return "#2563eb";
   if (score >= 25) return "#d97706";
@@ -56,8 +56,15 @@ function StageBadge({ stage }: { stage: string }) {
   );
 }
 
-function PillarCard({ pillar, data, functionScores, violations, onClick, isSelected }) {
-  const meta = PILLAR_META[pillar] ?? { label: pillar, color: "#64748b", bg: "#f8fafc" };
+function PillarCard({ pillar, data, functionScores, violations, onClick, isSelected }: {
+  pillar: string;
+  data: any;
+  functionScores: Record<string, number> | undefined;
+  violations: any[];
+  onClick: () => void;
+  isSelected: boolean;
+}) {
+  const meta = (PILLAR_META as Record<string, any>)[pillar] ?? { label: pillar, color: "#64748b", bg: "#f8fafc" };
   const score = data?.cappedScore ?? data?.rawScore ?? 0;
   const stage = data?.maturityStage ?? "traditional";
   const hasViolation = violations?.length > 0;
@@ -141,10 +148,10 @@ export default function ZeroTrustAssessment() {
     amber: { label: "Moderate ZT Posture", color: "#d97706", bg: "#fffbeb" },
     red: { label: "ZT Posture At Risk", color: "#dc2626", bg: "#fef2f2" },
   };
-  const rag = ragConfig[ragStatus] ?? ragConfig.red;
+  const rag = (ragConfig as Record<string, typeof ragConfig.green>)[ragStatus] ?? ragConfig.red;
 
   const selectedPillarData = selectedPillar
-    ? pillarScores.find((p) => p.pillar === selectedPillar)
+    ? pillarScores.find((p: any) => p.pillar === selectedPillar)
     : null;
 
   if (isLoading) {
@@ -237,8 +244,8 @@ export default function ZeroTrustAssessment() {
           {/* Pillar Cards */}
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Object.keys(PILLAR_META).map((pillar) => {
-              const pd = pillarScores.find(p => p.pillar === pillar);
-              const viol = violations.filter(v => v.targetPillar === pillar);
+              const pd = pillarScores.find((p: any) => p.pillar === pillar);
+              const viol = violations.filter((v: any) => v.targetPillar === pillar);
               return (
                 <PillarCard
                   key={pillar}
@@ -262,7 +269,7 @@ export default function ZeroTrustAssessment() {
                   <span>⚠️</span> Dependency Cap Violations ({violations.length})
                 </h3>
                 <div className="space-y-2">
-                  {violations.map((v) => (
+                  {violations.map((v: any) => (
                     <div key={v.ruleId} className="bg-red-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-mono text-red-600">{v.ruleId}</span>
@@ -282,11 +289,11 @@ export default function ZeroTrustAssessment() {
                   {PILLAR_META[selectedPillar as keyof typeof PILLAR_META]?.label} — Function Breakdown
                 </h3>
                 <div className="space-y-3">
-                  {Object.entries(selectedPillarData.functionScores ?? {}).map(([fk, fs]) => (
+                  {Object.entries(selectedPillarData.functionScores ?? {}).map(([fk, fs]: [string, unknown]) => (
                     <div key={fk}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-slate-600 capitalize">{fk.replace(/_/g, " ")}</span>
-                        <StageBadge stage={fs >= 75 ? "optimal" : fs >= 50 ? "advanced" : fs >= 25 ? "initial" : "traditional"} />
+                        <StageBadge stage={(fs as number) >= 75 ? "optimal" : (fs as number) >= 50 ? "advanced" : (fs as number) >= 25 ? "initial" : "traditional"} />
                       </div>
                       <MaturityBar score={fs as number} stage="" />
                     </div>
@@ -325,10 +332,10 @@ export default function ZeroTrustAssessment() {
               <p className="font-semibold text-slate-700">No open gap findings</p>
               <p className="text-sm text-slate-400 mt-1">Run a ZTA Score first to generate gap findings.</p>
             </div>
-          ) : gapFindings.map((gap) => {
+          ) : gapFindings.map((gap: any) => {
             const sevColors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#16a34a" };
-            const sevColor = sevColors[gap.severity] ?? "#64748b";
-            const pillarMeta = PILLAR_META[gap.pillar] ?? { label: gap.pillar, color: "#64748b" };
+            const sevColor = (sevColors as Record<string, string>)[gap.severity] ?? "#64748b";
+            const pillarMeta = (PILLAR_META as Record<string, any>)[gap.pillar] ?? { label: gap.pillar, color: "#64748b" };
             return (
               <div key={gap.id} className="bg-white rounded-xl border border-slate-200 p-5">
                 <div className="flex items-start justify-between gap-4">
@@ -347,10 +354,10 @@ export default function ZeroTrustAssessment() {
                 </div>
                 {(gap.failingNistControls?.length > 0 || gap.failingUcoControls?.length > 0) && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {gap.failingNistControls?.slice(0, 6).map((ctrl) => (
+                    {gap.failingNistControls?.slice(0, 6).map((ctrl: any) => (
                       <span key={ctrl} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{ctrl}</span>
                     ))}
-                    {gap.failingUcoControls?.map((ctrl) => (
+                    {gap.failingUcoControls?.map((ctrl: any) => (
                       <span key={ctrl} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-mono">{ctrl}</span>
                     ))}
                   </div>
@@ -379,8 +386,8 @@ export default function ZeroTrustAssessment() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {crosswalkData.crosswalk?.map((row, i) => {
-                    const meta = PILLAR_META[row.pillar] ?? { color: "#64748b", bg: "#f8fafc" };
+                  {crosswalkData.crosswalk?.map((row: any, i: number) => {
+                    const meta = (PILLAR_META as Record<string, any>)[row.pillar] ?? { color: "#64748b", bg: "#f8fafc" };
                     return (
                       <tr key={i} className="hover:bg-slate-50">
                         <td className="px-4 py-3">
@@ -389,12 +396,12 @@ export default function ZeroTrustAssessment() {
                         <td className="px-4 py-3 text-xs font-medium text-slate-700">{row.functionLabel}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
-                            {row.nistControls?.slice(0, 4).map((c) => <span key={c} className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">{c}</span>)}
+                            {row.nistControls?.slice(0, 4).map((c: any) => <span key={c} className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">{c}</span>)}
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
-                            {row.ucoControls?.map((c) => <span key={c} className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono">{c}</span>)}
+                            {row.ucoControls?.map((c: any) => <span key={c} className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono">{c}</span>)}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">{row.evidenceArtifact}</td>
@@ -419,7 +426,7 @@ export default function ZeroTrustAssessment() {
             </div>
           ) : (
             <div className="space-y-3">
-              {trendData.history.map((snap, i) => {
+              {trendData.history.map((snap: any, i: number) => {
                 const prev = trendData.history[i + 1];
                 const delta = prev ? snap.overallScore - prev.overallScore : 0;
                 return (

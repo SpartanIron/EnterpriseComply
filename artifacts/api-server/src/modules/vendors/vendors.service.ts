@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { db, orgVendorsTable, orgVendorAssessmentsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { writeAuditLog } from "../../lib/audit-log.js";

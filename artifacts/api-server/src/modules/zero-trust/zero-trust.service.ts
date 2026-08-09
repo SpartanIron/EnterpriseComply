@@ -111,19 +111,19 @@ export const DEPENDENCY_RULES = [
 ];
 
 const STAGE_THRESHOLDS = { traditional: 0, initial: 25, advanced: 50, optimal: 75 };
-function scoreToStage(score) {
+function scoreToStage(score: number): string {
   if (score >= 75) return "optimal";
   if (score >= 50) return "advanced";
   if (score >= 25) return "initial";
   return "traditional";
 }
-function stageToMinScore(stage) {
-  return STAGE_THRESHOLDS[stage] || 0;
+function stageToMinScore(stage: string): number {
+  return (STAGE_THRESHOLDS as Record<string, number>)[stage] || 0;
 }
 
 @Injectable()
 export class ZeroTrustService {
-  async getOrCreate(orgId, clerkUserId) {
+  async getOrCreate(orgId: number, clerkUserId: string) {
     const existing = await db.query.orgZtaAssessmentsTable.findFirst({
       where: eq(orgZtaAssessmentsTable.orgId, orgId),
       orderBy: [desc(orgZtaAssessmentsTable.createdAt)],
@@ -135,7 +135,7 @@ export class ZeroTrustService {
     return { assessment: created };
   }
 
-  async getAssessment(orgId) {
+  async getAssessment(orgId: number) {
     const assessment = await db.query.orgZtaAssessmentsTable.findFirst({
       where: eq(orgZtaAssessmentsTable.orgId, orgId),
       orderBy: [desc(orgZtaAssessmentsTable.createdAt)],
@@ -150,15 +150,15 @@ export class ZeroTrustService {
     return { assessment, pillarScores, functionScores, gapFindings, remediationItems };
   }
 
-  async score(orgId, clerkUserId) {
+  async score(orgId: number, clerkUserId: string) {
     const { assessment } = await this.getOrCreate(orgId, clerkUserId);
     const controlResults = await db.query.orgControlResultsTable.findMany({ where: eq(orgControlResultsTable.orgId, orgId) });
     const resultMap = new Map(controlResults.map((r) => [r.ucoControlId, r]));
     const integrations = await db.query.orgIntegrationsTable.findMany({ where: eq(orgIntegrationsTable.orgId, orgId) });
-    const connectedIntegrations = new Set(integrations.filter(i => i.status === "active").map(i => i.name));
-    const pillarScoreMap = {};
+    const connectedIntegrations = new Set(integrations.filter(i => i.status === "connected").map(i => i.integrationKey));
+    const pillarScoreMap: Record<string, any> = {};
     for (const [pillarKey, pillarDef] of Object.entries(ZTMM_PILLARS)) {
-      const functionScoreMap = {};
+      const functionScoreMap: Record<string, number> = {};
       for (const [funcKey, funcDef] of Object.entries(pillarDef.functions)) {
         const relevantUCO = Object.entries(UCO_ZTMM_BRIDGE).filter(([, b]) => b.pillar === pillarKey && b.functionKey === funcKey);
         let funcScore = 0; let totalWeight = 0;
@@ -178,11 +178,11 @@ export class ZeroTrustService {
         }
         functionScoreMap[funcKey] = totalWeight > 0 ? Math.round(funcScore / totalWeight) : 0;
       }
-      const vals = Object.values(functionScoreMap);
+      const vals = Object.values(functionScoreMap) as number[];
       const rawScore = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
       pillarScoreMap[pillarKey] = { raw: rawScore, stage: scoreToStage(rawScore), functionScores: functionScoreMap };
     }
-    const cappedScores = {};
+    const cappedScores: Record<string, any> = {};
     for (const pk of Object.keys(ZTMM_PILLARS)) cappedScores[pk] = { capped: pillarScoreMap[pk]?.raw ?? 0, stage: pillarScoreMap[pk]?.stage ?? "traditional", violations: [] };
     const violations = [];
     for (const rule of DEPENDENCY_RULES) {
@@ -202,7 +202,7 @@ export class ZeroTrustService {
     const overallScore = Math.round(pks.reduce((s, pk) => s + (cappedScores[pk]?.capped ?? 0), 0) / pks.length);
     const overallStage = scoreToStage(overallScore);
     const ragStatus = overallScore >= 75 ? "green" : overallScore >= 50 ? "amber" : "red";
-    const pillarScoresObj = {};
+    const pillarScoresObj: Record<string, number> = {};
     for (const pk of pks) pillarScoresObj[pk] = cappedScores[pk]?.capped ?? 0;
     await db.delete(orgZtaPillarScoresTable).where(and(eq(orgZtaPillarScoresTable.orgId, orgId), eq(orgZtaPillarScoresTable.ztaAssessmentId, assessment.id)));
     for (const [pk, data] of Object.entries(cappedScores)) {
@@ -210,36 +210,36 @@ export class ZeroTrustService {
     }
     await db.delete(orgZtaFunctionScoresTable).where(and(eq(orgZtaFunctionScoresTable.orgId, orgId), eq(orgZtaFunctionScoresTable.ztaAssessmentId, assessment.id)));
     for (const [pk, pd] of Object.entries(pillarScoreMap)) {
-      const pDef = ZTMM_PILLARS[pk];
-      for (const [fk, fs] of Object.entries(pd.functionScores)) {
-        const fd = pDef.functions[fk];
+      const pDef = (ZTMM_PILLARS as Record<string, any>)[pk];
+      for (const [fk, fs] of Object.entries(pd.functionScores as Record<string, number>)) {
+        const fd = pDef?.functions?.[fk];
         const ucoIds = Object.entries(UCO_ZTMM_BRIDGE).filter(([, b]) => b.pillar === pk && b.functionKey === fk).map(([id]) => id);
-        await db.insert(orgZtaFunctionScoresTable).values({ orgId, ztaAssessmentId: assessment.id, pillar: pk, functionKey: fk, functionLabel: fd?.label ?? fk, maturityStage: scoreToStage(fs), score: fs, nistControls: fd?.nistControls ?? [], ucoControls: ucoIds });
+        await db.insert(orgZtaFunctionScoresTable).values({ orgId, ztaAssessmentId: assessment.id, pillar: pk, functionKey: fk, functionLabel: fd?.label ?? fk, maturityStage: scoreToStage(fs as number), score: fs as number, nistControls: fd?.nistControls ?? [], ucoControls: ucoIds });
       }
     }
     await db.delete(orgZtaGapFindingsTable).where(and(eq(orgZtaGapFindingsTable.orgId, orgId), eq(orgZtaGapFindingsTable.ztaAssessmentId, assessment.id), eq(orgZtaGapFindingsTable.status, "open")));
     for (const [pk, data] of Object.entries(cappedScores)) {
       if (data.stage !== "optimal") {
-        const pDef = ZTMM_PILLARS[pk];
+        const pDef = (ZTMM_PILLARS as Record<string, any>)[pk];
         const targetStage = data.stage === "traditional" ? "initial" : data.stage === "initial" ? "advanced" : "optimal";
         const sev = data.capped < 25 ? "critical" : data.capped < 50 ? "high" : "medium";
         const failingUco = Object.entries(UCO_ZTMM_BRIDGE).filter(([id, b]) => b.pillar === pk && resultMap.get(id)?.status !== "passing").map(([id]) => id);
-        const failingNist = failingUco.flatMap(id => UCO_ZTMM_BRIDGE[id]?.nistControls ?? []);
+        const failingNist = failingUco.flatMap(id => (UCO_ZTMM_BRIDGE as Record<string, any>)[id]?.nistControls ?? []);
         await db.insert(orgZtaGapFindingsTable).values({ orgId, ztaAssessmentId: assessment.id, pillar: pk, functionKey: "pillar_overall", currentStage: data.stage, targetStage, gapTitle: pDef.label + " pillar at " + data.stage + " — target: " + targetStage, gapDescription: data.violations.length ? "Score capped by dependency rules: " + data.violations.join(", ") : pDef.label + " scored " + data.capped + "% — insufficient evidence for " + targetStage + " maturity.", severity: sev, failingNistControls: failingNist, failingUcoControls: failingUco, causesDependencyViolation: data.violations.length > 0, status: "open" });
       }
     }
     await db.update(orgZtaAssessmentsTable).set({ overallScore, overallMaturityLevel: overallStage, pillarScores: pillarScoresObj, ragStatus, dependencyViolations: violations, scoredAt: new Date() }).where(and(eq(orgZtaAssessmentsTable.orgId, orgId), eq(orgZtaAssessmentsTable.id, assessment.id)));
     await db.insert(orgZtaScoreHistoryTable).values({ orgId, ztaAssessmentId: assessment.id, overallScore, pillarScores: pillarScoresObj, maturityLevel: overallStage, triggerType: "manual" });
-    return { assessment: { ...assessment, overallScore, overallMaturityLevel: overallStage, pillarScores: pillarScoresObj, ragStatus }, pillarScores: Object.entries(cappedScores).map(([pillar, d]) => ({ pillar, label: ZTMM_PILLARS[pillar]?.label ?? pillar, rawScore: pillarScoreMap[pillar]?.raw ?? 0, cappedScore: d.capped, maturityStage: d.stage, violations: d.violations, functionScores: pillarScoreMap[pillar]?.functionScores ?? {} })), overallScore, overallStage, ragStatus, dependencyViolations: violations };
+    return { assessment: { ...assessment, overallScore, overallMaturityLevel: overallStage, pillarScores: pillarScoresObj, ragStatus }, pillarScores: Object.entries(cappedScores).map(([pillar, d]) => ({ pillar, label: (ZTMM_PILLARS as Record<string, any>)[pillar]?.label ?? pillar, rawScore: pillarScoreMap[pillar]?.raw ?? 0, cappedScore: d.capped, maturityStage: d.stage, violations: d.violations, functionScores: pillarScoreMap[pillar]?.functionScores ?? {} })), overallScore, overallStage, ragStatus, dependencyViolations: violations };
   }
 
-  async getTrend(orgId, days = 90) {
+  async getTrend(orgId: number, days = 90) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const history = await db.query.orgZtaScoreHistoryTable.findMany({ where: and(eq(orgZtaScoreHistoryTable.orgId, orgId), gte(orgZtaScoreHistoryTable.snapshotDate, since)), orderBy: [desc(orgZtaScoreHistoryTable.snapshotDate)] });
     return { history, days };
   }
 
-  async getGapFindings(orgId) {
+  async getGapFindings(orgId: number) {
     const a = await db.query.orgZtaAssessmentsTable.findFirst({ where: eq(orgZtaAssessmentsTable.orgId, orgId), orderBy: [desc(orgZtaAssessmentsTable.createdAt)] });
     if (!a) return { findings: [] };
     const findings = await db.query.orgZtaGapFindingsTable.findMany({ where: eq(orgZtaGapFindingsTable.ztaAssessmentId, a.id), orderBy: [desc(orgZtaGapFindingsTable.severity)] });
@@ -257,7 +257,7 @@ export class ZeroTrustService {
     return { crosswalk: rows, dependencyRules: DEPENDENCY_RULES };
   }
 
-  async updateWeights(orgId, weights) {
+  async updateWeights(orgId: number, weights: Record<string, number>) {
     const a = await db.query.orgZtaAssessmentsTable.findFirst({ where: eq(orgZtaAssessmentsTable.orgId, orgId), orderBy: [desc(orgZtaAssessmentsTable.createdAt)] });
     if (!a) throw new NotFoundException("No ZTA assessment found");
     await db.update(orgZtaAssessmentsTable).set({ pillarWeights: weights }).where(and(eq(orgZtaAssessmentsTable.orgId, orgId), eq(orgZtaAssessmentsTable.id, a.id)));

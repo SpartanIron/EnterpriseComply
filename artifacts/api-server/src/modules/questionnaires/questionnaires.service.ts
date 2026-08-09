@@ -115,11 +115,10 @@ export class QuestionnairesService {
           orgId,
           question,
           answer,
-          controlId,
-          order: idx,
-          answerConfidence: itemConf,
-          answerSource: 'auto',
-          needsReview: itemConf < 0.7,
+          matchedControlId: controlId ?? null,
+          sortOrder: idx,
+          confidence: itemConf,
+          status: (itemConf ?? 0) < 0.7 ? 'unanswered' : 'answered',
         }).returning();
       })
     );
@@ -214,7 +213,7 @@ export class QuestionnairesService {
     const items = await db.query.orgQuestionnaireItemsTable.findMany({
       where: and(
         eq(orgQuestionnaireItemsTable.orgId, orgId),
-        eq(orgQuestionnaireItemsTable.needsReview, true),
+        eq(orgQuestionnaireItemsTable.status, 'unanswered'),
       ),
       orderBy: (t, { asc }) => [asc(t.createdAt)],
     });
@@ -240,7 +239,6 @@ export class QuestionnairesService {
     const [item] = await db
       .update(orgQuestionnaireItemsTable)
       .set({
-        needsReview: false,
         status: "answered",
         ...(answer !== undefined ? { answer } : {}),
       })

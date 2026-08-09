@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { db } from '../../db';
-import { orgEvidenceTable } from '../../db/schema/orgEvidence';
-import { orgIntegrationsTable } from '../../db/schema/orgIntegrations';
+import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 
 interface GoogleWorkspaceConfig { serviceAccountKey: string; adminEmail: string; customerId?: string; }
@@ -12,10 +10,10 @@ export class GoogleWorkspaceProvider {
 
   async syncOrgGoogleWorkspace(orgId: number): Promise<{ collected: number; errors: string[] }> {
     const integration = await db.query.orgIntegrationsTable.findFirst({
-      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.provider, 'google-workspace'), eq(t.status, 'active'))
+      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.integrationKey, 'google-workspace'), eq(t.status, 'connected'))
     });
-    if (!integration?.credentials) return { collected: 0, errors: ['Google Workspace not connected'] };
-    const config = integration.credentials as GoogleWorkspaceConfig;
+    if (!integration?.config) return { collected: 0, errors: ['Google Workspace not connected'] };
+    const config = (integration.config ?? {}) as unknown as GoogleWorkspaceConfig;
     const errors: string[] = [];
     let collected = 0;
     try {
@@ -30,7 +28,7 @@ export class GoogleWorkspaceProvider {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${header}.${claim}.signature` }),
       });
-      const tokenData = await tokenResp.json();
+      const tokenData = await tokenResp.json() as any; // typed below
       if (!tokenData.access_token) throw new Error('Google Workspace OAuth failed');
       
       const authHeaders = { 'Authorization': `Bearer ${tokenData.access_token}` };
@@ -38,18 +36,18 @@ export class GoogleWorkspaceProvider {
       // User list and MFA status
       const usersResp = await fetch(`https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&maxResults=100&projection=full`, { headers: authHeaders });
       if (usersResp.ok) {
-        const usersData = await usersResp.json();
+        const usersData = await usersResp.json() as any; // typed below
         const users = usersData.users || [];
         const mfaEnabled = users.filter((u: any) => u.isEnrolledIn2Sv).length;
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-AI-001', source: 'google-workspace', collectedAt: new Date(), description: `Google Workspace: ${users.length} users. ${mfaEnabled} enrolled in 2-Step Verification (MFA). MFA rate: ${users.length > 0 ? Math.round(mfaEnabled/users.length*100) : 0}%`, metadata: { contentHash: '', totalUsers: users.length, mfaEnabled } });
+        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-AI-001', source: 'google-workspace', title: 'Google Workspace MFA Status', collectedAt: new Date(), description: `Google Workspace: ${users.length} users. ${mfaEnabled} enrolled in 2-Step Verification (MFA). MFA rate: ${users.length > 0 ? Math.round(mfaEnabled/users.length*100) : 0}%`, metadata: { contentHash: '', totalUsers: users.length, mfaEnabled } });
         collected++;
       }
       // Admin role audit
       const rolesResp = await fetch('https://admin.googleapis.com/admin/directory/v1/customer/my_customer/roles', { headers: authHeaders });
       if (rolesResp.ok) {
-        const rolesData = await rolesResp.json();
+        const rolesData = await rolesResp.json() as any; // typed below
         const adminRoles = rolesData.items?.length || 0;
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-AC-001', source: 'google-workspace', collectedAt: new Date(), description: `Google Workspace: ${adminRoles} admin roles defined. Role-based access control configured.`, metadata: { contentHash: '', adminRoles } });
+        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-AC-001', source: 'google-workspace', title: 'Google Workspace Admin Roles', collectedAt: new Date(), description: `Google Workspace: ${adminRoles} admin roles defined. Role-based access control configured.`, metadata: { contentHash: '', adminRoles } });
         collected++;
       }
     } catch (e: any) { errors.push(`Google Workspace: ${e.message}`); }

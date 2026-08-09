@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { db } from '../../db';
-import { orgEvidenceTable } from '../../db/schema/orgEvidence';
-import { orgIntegrationsTable } from '../../db/schema/orgIntegrations';
+import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 
 interface QualysConfig { username: string; password: string; baseUrl: string; }
@@ -12,10 +10,10 @@ export class QualysProvider {
 
   async syncOrgQualys(orgId: number): Promise<{ collected: number; errors: string[] }> {
     const integration = await db.query.orgIntegrationsTable.findFirst({
-      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.provider, 'qualys'), eq(t.status, 'active'))
+      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.integrationKey, 'qualys'), eq(t.status, 'connected'))
     });
-    if (!integration?.credentials) return { collected: 0, errors: ['Qualys not connected'] };
-    const config = integration.credentials as QualysConfig;
+    if (!integration?.config) return { collected: 0, errors: ['Qualys not connected'] };
+    const config = (integration.config ?? {}) as unknown as QualysConfig;
     const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
     const headers = { 'Authorization': `Basic ${auth}`, 'X-Requested-With': 'EnterpriseComply', 'Content-Type': 'text/xml' };
     const errors: string[] = [];
@@ -26,6 +24,7 @@ export class QualysProvider {
       if (hostResp.ok) {
         await db.insert(orgEvidenceTable).values({
           orgId, ucoControlId: 'UCO-VM-001', source: 'qualys', collectedAt: new Date(),
+          title: 'Qualys VMDR Scan Reports',
           description: 'Qualys VMDR: Vulnerability Management scan reports available. Continuous vulnerability discovery active.',
           metadata: { contentHash: '', scanReportsAvailable: true },
         });
@@ -36,6 +35,7 @@ export class QualysProvider {
       if (pcResp.ok) {
         await db.insert(orgEvidenceTable).values({
           orgId, ucoControlId: 'UCO-CM-002', source: 'qualys', collectedAt: new Date(),
+          title: 'Qualys Policy Compliance',
           description: 'Qualys Policy Compliance: Configuration compliance posture data collected',
           metadata: { contentHash: '', policyComplianceActive: true },
         });

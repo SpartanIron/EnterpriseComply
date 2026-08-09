@@ -51,7 +51,7 @@ export class IdleTimeoutMiddleware implements NestMiddleware {
           // Session has been idle too long — revoke it and return 401
           lastActivityMap.delete(sessionId);
           try {
-            await auth.api.revokeSession({ body: { token: session.session.token } });
+            await auth.api.revokeSession({ headers, body: { token: session.session.token } });
           } catch {
             // Best-effort revocation — session may already be expired
           }

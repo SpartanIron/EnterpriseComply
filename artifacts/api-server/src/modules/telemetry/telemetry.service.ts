@@ -245,9 +245,9 @@ export class TelemetryService {
       }
       persisted++;
     }
-    await writeAuditLog(orgId, clerkUserId, "telemetry.ingest", {
+    await writeAuditLog(orgId, "telemetry.ingest", "telemetry", undefined, {
       format, source: payload.source, eventsReceived: events.length, persisted,
-    });
+    }, clerkUserId);
     // Phase 3B: Auto-queue non-compliant UCO results to eMASS bridge
     const failingUcoIds = events
       .filter(ev => ev.status === "non_compliant")

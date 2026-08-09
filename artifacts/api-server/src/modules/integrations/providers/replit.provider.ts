@@ -106,11 +106,11 @@ async function fetchAllRepls(token: string): Promise<ReplPage["items"]> {
   const pageSize = 50;
 
   while (hasMore && allRepls.length < MAX_REPLS) {
-    const data = await replitQuery<{
+    const data: { currentUser: { repls: ReplPage } | null } | undefined = await replitQuery<{
       currentUser: { repls: ReplPage } | null;
     }>(token, REPLS_QUERY, { count: pageSize, after: cursor });
 
-    const page = data?.currentUser?.repls;
+    const page: ReplPage | null | undefined = data?.currentUser?.repls;
     if (!page?.items?.length) break;
 
     allRepls.push(...page.items);

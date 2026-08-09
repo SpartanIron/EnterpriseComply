@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { db } from '../../db';
-import { orgEvidenceTable } from '../../db/schema/orgEvidence';
-import { orgIntegrationsTable } from '../../db/schema/orgIntegrations';
+import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 
 interface CrowdStrikeConfig { clientId: string; clientSecret: string; baseUrl?: string; }
@@ -17,18 +15,18 @@ export class CrowdStrikeProvider {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret }),
     });
-    const data = await resp.json();
+    const data = await resp.json() as any; // typed below
     if (!data.access_token) throw new Error(`CrowdStrike OAuth failed: ${data.message}`);
     return data.access_token;
   }
 
   async syncOrgCrowdStrike(orgId: number): Promise<{ collected: number; errors: string[] }> {
     const integration = await db.query.orgIntegrationsTable.findFirst({
-      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.provider, 'crowdstrike'), eq(t.status, 'active'))
+      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.integrationKey, 'crowdstrike'), eq(t.status, 'connected'))
     });
-    if (!integration?.credentials) return { collected: 0, errors: ['CrowdStrike not connected'] };
+    if (!integration?.config) return { collected: 0, errors: ['CrowdStrike not connected'] };
 
-    const config = integration.credentials as CrowdStrikeConfig;
+    const config = (integration.config ?? {}) as unknown as CrowdStrikeConfig;
     const base = config.baseUrl || 'https://api.crowdstrike.com';
     const errors: string[] = [];
     let collected = 0;
@@ -39,11 +37,11 @@ export class CrowdStrikeProvider {
 
       // 1. Get device compliance status
       const devicesResp = await fetch(`${base}/devices/queries/devices/v1?limit=100&filter=status%3A%27normal%27`, { headers });
-      const devicesData = await devicesResp.json();
+      const devicesData = await devicesResp.json() as any; // typed below
       const compliantCount = devicesData.resources?.length || 0;
 
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: 'UCO-VM-001', source: 'crowdstrike', collectedAt: new Date(),
+        orgId, ucoControlId: 'UCO-VM-001', source: 'crowdstrike', title: 'CrowdStrike Device Compliance', collectedAt: new Date(),
         description: `CrowdStrike Falcon: ${compliantCount} endpoints with sensor deployed and normal status`,
         metadata: { contentHash: '', compliantDevices: compliantCount, deviceIds: devicesData.resources?.slice(0, 5) },
       });
@@ -51,11 +49,11 @@ export class CrowdStrikeProvider {
 
       // 2. Get prevention policy compliance
       const policiesResp = await fetch(`${base}/policy/combined/prevention/v1?limit=10`, { headers });
-      const policiesData = await policiesResp.json();
+      const policiesData = await policiesResp.json() as any; // typed below
       const policies = policiesData.resources || [];
 
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: 'UCO-VM-002', source: 'crowdstrike', collectedAt: new Date(),
+        orgId, ucoControlId: 'UCO-VM-002', source: 'crowdstrike', title: 'CrowdStrike Prevention Policies', collectedAt: new Date(),
         description: `CrowdStrike: ${policies.length} prevention policies active. Enforcement: ${policies.filter((p: any) => p.enabled).length} enabled`,
         metadata: { contentHash: '', totalPolicies: policies.length, enabledPolicies: policies.filter((p: any) => p.enabled).length },
       });
@@ -63,11 +61,11 @@ export class CrowdStrikeProvider {
 
       // 3. Get recent detections (critical/high)
       const detectResp = await fetch(`${base}/detects/queries/detects/v1?limit=50&filter=max_severity_displayname%3A%5B%27Critical%27%2C%27High%27%5D`, { headers });
-      const detectData = await detectResp.json();
+      const detectData = await detectResp.json() as any; // typed below
       const highSeverity = detectData.resources?.length || 0;
 
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: 'UCO-IR-001', source: 'crowdstrike', collectedAt: new Date(),
+        orgId, ucoControlId: 'UCO-IR-001', source: 'crowdstrike', title: 'CrowdStrike High Severity Detections', collectedAt: new Date(),
         description: `CrowdStrike: ${highSeverity} Critical/High detections in current period. ${highSeverity === 0 ? 'Clean posture.' : 'Requires review.'}`,
         metadata: { contentHash: '', highSeverityDetections: highSeverity },
       });

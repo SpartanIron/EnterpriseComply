@@ -55,7 +55,7 @@ export class SsoService {
             // the full cert is stored and used server-side only.
             idpCertificate:    configRow.idpCertificate,
             enabled:           configRow.enabled,
-            samlGroupMappings: configRow.samlGroupMappings ?? {},
+            samlGroupMappings: (configRow as any).samlGroupMappings ?? {},
           }
         : null,
       sp: { entityId, acsUrl },
@@ -83,7 +83,7 @@ export class SsoService {
         idpCertificate:    dto.idpCertificate,
         enabled:           true,
         samlGroupMappings: dto.samlGroupMappings ?? null,
-      })
+      } as any)
       .onConflictDoUpdate({
         target: orgSsoConfigTable.orgId,
         set: {
@@ -95,7 +95,7 @@ export class SsoService {
           enabled:           true,
           samlGroupMappings: dto.samlGroupMappings ?? null,
           updatedAt:         new Date(),
-        },
+        } as any,
       });
 
     // Also update sso_enabled / sso_provider / sso_domain on the organizations row.
@@ -167,7 +167,7 @@ export class SsoService {
       : String(rawGroups).split(/[,;]+/).map(s => s.trim()).filter(Boolean);
 
     // Determine role from group mappings (config already loaded above)
-    const groupMappings = (config.samlGroupMappings ?? {}) as Record<string, string>;
+    const groupMappings = ((config as any).samlGroupMappings ?? {}) as Record<string, string>;
     let assignedRole = 'member';
     for (const group of groups) {
       const mapped = groupMappings[group];

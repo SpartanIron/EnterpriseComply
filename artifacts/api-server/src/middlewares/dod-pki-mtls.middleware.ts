@@ -96,7 +96,8 @@ export class DodPkiMtlsMiddleware implements NestMiddleware {
 
     // 6. Extract EDIPI from Subject CN
     // DoD CAC/PIV format: "DOE.JANE.MARIE.1234567890"
-    const cn = cert.subject?.CN || '';
+    const cnField = cert.subject?.CN;
+    const cn = (Array.isArray(cnField) ? cnField[0] : cnField) || '';
     const edipi = DodPkiMtlsMiddleware.extractEdipiFromCN(cn);
 
     if (!edipi) {

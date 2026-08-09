@@ -149,11 +149,11 @@ export class EMassService {
     }));
 
     // Audit log — record EDIPI if supplied (required by DoD PKI mTLS protocol)
-    await writeAuditLog(orgId, edipi ?? "AGENT_NO_EDIPI", "emass.agent.pull", {
+    await writeAuditLog(orgId, "emass.agent.pull", "emass.agent", null, {
       edipi: edipi ?? null,
       updateCount: updates.length,
       timestamp: new Date().toISOString(),
-    });
+    }, edipi ?? undefined);
 
     const nextPollAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     return { updates, count: updates.length, nextPollAt };
@@ -176,10 +176,10 @@ export class EMassService {
         ));
     }
 
-    await writeAuditLog(orgId, edipi ?? "AGENT_NO_EDIPI", "emass.agent.acknowledge", {
+    await writeAuditLog(orgId, "emass.agent.acknowledge", "emass.agent", null, {
       edipi: edipi ?? null,
       acknowledged: numIds.length,
-    });
+    }, edipi ?? undefined);
 
     return { acknowledged: numIds.length };
   }

@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { db } from '../../db';
+import { db } from '@workspace/db';
 import { sql } from 'drizzle-orm';
 import { runWormLedgerMigration } from '../../migrations/worm-evidence-ledger.migration';
 

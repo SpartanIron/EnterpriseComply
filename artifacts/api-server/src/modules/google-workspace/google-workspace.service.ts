@@ -131,7 +131,7 @@ export class GoogleWorkspaceService {
         { headers: { Authorization: "Bearer " + token } }
       );
       if (usersResp.ok) {
-        const usersData = await usersResp.json();
+        const usersData = await usersResp.json() as Record<string, any>;
         usersAdded = (usersData.users || []).length;
       } else {
         const errBody = await usersResp.text();
@@ -142,7 +142,7 @@ export class GoogleWorkspaceService {
         { headers: { Authorization: "Bearer " + token } }
       );
       if (groupsResp.ok) {
-        const groupsData = await groupsResp.json();
+        const groupsData = await groupsResp.json() as Record<string, any>;
         groupsAdded = (groupsData.groups || []).length;
       } else {
         const errBody = await groupsResp.text();
@@ -195,7 +195,7 @@ export class GoogleWorkspaceService {
       const err = await tokenResp.text();
       throw new Error("Failed to get service account token: " + err);
     }
-    const tokenData = await tokenResp.json();
+    const tokenData = await tokenResp.json() as Record<string, string>;
     return tokenData.access_token;
   }
 }
