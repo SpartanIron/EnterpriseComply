@@ -217,17 +217,22 @@ export default function ControlCrosswalk() {
   const filtered = useMemo(() => CROSSWALK_DATA.filter(c => {
     if (search && !c.ucoId.toLowerCase().includes(search.toLowerCase()) && !c.ucoName.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterFamily !== "All" && c.family !== filterFamily) return false;
-    if (filterStatus !== "all" && c.status !== filterStatus) return false;
+    const effectiveStatus = controlMap.get(c.ucoId)?.result?.status ?? c.status;
+    if (filterStatus !== "all" && effectiveStatus !== filterStatus) return false;
     return true;
-  }), [search, filterFamily, filterStatus]);
+  }), [search, filterFamily, filterStatus, controlMap]);
 
-  const stats = {
-    total: CROSSWALK_DATA.length,
-    passing: CROSSWALK_DATA.filter(c => c.status === "passing").length,
-    partial: CROSSWALK_DATA.filter(c => c.status === "partial").length,
-    failing: CROSSWALK_DATA.filter(c => c.status === "failing").length,
-    avgCoverage: Math.round(CROSSWALK_DATA.reduce((s, c) => s + c.coverage, 0) / CROSSWALK_DATA.length),
-  };
+  const stats = useMemo(() => {
+    const getStatus = (c: (typeof CROSSWALK_DATA)[0]) =>
+      (controlMap.get(c.ucoId)?.result?.status as string | undefined) ?? c.status;
+    return {
+      total: CROSSWALK_DATA.length,
+      passing: CROSSWALK_DATA.filter(c => getStatus(c) === "passing").length,
+      partial: CROSSWALK_DATA.filter(c => getStatus(c) === "partial").length,
+      failing: CROSSWALK_DATA.filter(c => getStatus(c) === "failing").length,
+      avgCoverage: Math.round(CROSSWALK_DATA.reduce((s, c) => s + c.coverage, 0) / CROSSWALK_DATA.length),
+    };
+  }, [controlMap]);
 
   function handleCsvExport() {
     setExporting("csv");
@@ -388,7 +393,7 @@ export default function ControlCrosswalk() {
                         <div className="text-xs text-slate-400">{ctrl.family}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={ctrl.status} />
+                        <StatusBadge status={liveStatus} />
                       </td>
                       {activeFrameworks.map(fk => {
                         const fw = FRAMEWORKS.find(f => f.key === fk);
