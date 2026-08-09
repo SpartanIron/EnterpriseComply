@@ -101,6 +101,57 @@ export class IntegrationsController {
     return this.integrationsService.syncOrgOkta(ctx.orgId);
   }
 
+  // ── Railway connect / sync ───────────────────────────────────────────────────
+  @Post("orgs/:orgId/integrations/railway/connect")
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
+  connectRailway(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { apiToken: string },
+  ) {
+    if (!body.apiToken) throw new BadRequestException("apiToken is required");
+    return this.integrationsService.connectRailway(ctx.orgId, body.apiToken);
+  }
+
+  @Post("orgs/:orgId/integrations/railway/sync")
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  syncRailway(@OrgContext() ctx: OrgCtx) {
+    return this.integrationsService.syncOrgRailway(ctx.orgId);
+  }
+
+  // ── Replit connect / sync ────────────────────────────────────────────────────
+  @Post("orgs/:orgId/integrations/replit/connect")
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
+  connectReplit(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { apiToken: string },
+  ) {
+    if (!body.apiToken) throw new BadRequestException("apiToken is required");
+    return this.integrationsService.connectReplit(ctx.orgId, body.apiToken);
+  }
+
+  @Post("orgs/:orgId/integrations/replit/sync")
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  syncReplit(@OrgContext() ctx: OrgCtx) {
+    return this.integrationsService.syncOrgReplit(ctx.orgId);
+  }
+
+  // ── BetterAuth connect / sync ────────────────────────────────────────────────
+  @Post("orgs/:orgId/integrations/betterauth/connect")
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
+  connectBetterAuth(
+    @OrgContext() ctx: OrgCtx,
+    @Body() body: { apiKey: string; baseUrl: string },
+  ) {
+    if (!body.apiKey || !body.baseUrl) throw new BadRequestException("apiKey and baseUrl are required");
+    return this.integrationsService.connectBetterAuth(ctx.orgId, body.apiKey, body.baseUrl);
+  }
+
+  @Post("orgs/:orgId/integrations/betterauth/sync")
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  syncBetterAuth(@OrgContext() ctx: OrgCtx) {
+    return this.integrationsService.syncOrgBetterAuth(ctx.orgId);
+  }
+
   // ── Cloudflare connect / sync ─────────────────────────────────────────────────
   @Post("orgs/:orgId/integrations/cloudflare/connect")
   @UseGuards(OrgContextGuard, RequireRole("owner"))
@@ -133,6 +184,9 @@ export class IntegrationsController {
     if (key === "aws") return this.integrationsService.syncOrgAWS(ctx.orgId);
     if (key === "okta") return this.integrationsService.syncOrgOkta(ctx.orgId);
     if (key === "cloudflare") return this.integrationsService.syncOrgCloudflare(ctx.orgId);
+    if (key === "railway") return this.integrationsService.syncOrgRailway(ctx.orgId);
+    if (key === "replit") return this.integrationsService.syncOrgReplit(ctx.orgId);
+    if (key === "betterauth") return this.integrationsService.syncOrgBetterAuth(ctx.orgId);
     return { success: true, message: "No live sync available for this integration — use demo-connect to simulate." };
   }
 }

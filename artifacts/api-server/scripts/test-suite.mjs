@@ -114,6 +114,25 @@ async function seed() {
   const slugA   = slug();
   const slugB   = slug();
 
+  // ── Pre-seed hygiene: remove any users left by prior crashed runs ─────────
+  // seed() uses hardcoded emails; if a prior crash left them in the DB,
+  // ON CONFLICT DO NOTHING silently skips re-inserting with new IDs, causing
+  // the subsequent session FK to fail. Remove by email first.
+  const reservedEmails = [
+    "iso-owner-a@test.invalid", "iso-owner-b@test.invalid",
+    "iso-viewer-a@test.invalid", "iso-analyst-a@test.invalid",
+    "plan-starter@test.invalid", "plan-pro@test.invalid",
+    "plan-ent@test.invalid", "plan-fed@test.invalid",
+  ];
+  const stale = await db.query(
+    `SELECT id FROM "user" WHERE email = ANY($1::text[])`, [reservedEmails]
+  ).catch(() => ({ rows: [] }));
+  if (stale.rows.length > 0) {
+    const staleIds = stale.rows.map((r) => r.id);
+    await db.query(`DELETE FROM org_members WHERE clerk_user_id = ANY($1::text[])`, [staleIds]).catch(() => {});
+    await db.query(`DELETE FROM "user" WHERE id = ANY($1::text[])`, [staleIds]).catch(() => {});
+  }
+
   // ── Create two isolated test orgs ─────────────────────────────────────────
   const orgA = await db.query(
     `INSERT INTO organizations (name, slug, industry, size, plan)
@@ -755,6 +774,191 @@ section("SECTION 9 — PLAN GATING: federal and enterprise endpoints (P1-07)");
   await db.query(`DELETE FROM session WHERE id = ANY($1::text[])`, [planSessIds]).catch(() => {});
   await db.query(`DELETE FROM "user" WHERE id = ANY($1::text[])`, [planUserIds]).catch(() => {});
   await db.query(`DELETE FROM organizations WHERE id = ANY($1::int[])`, [planOrgIds]).catch(() => {});
+}
+
+// ── Section 10: SSRF protection on BetterAuth baseUrl ────────────────────────
+
+section("SECTION 10 — SSRF GUARD: BetterAuth baseUrl must reject private/non-HTTPS targets");
+{
+  // Seed a minimal org+owner for the SSRF tests
+  const userSsrf   = uid();
+  const sessSsrf   = uid();
+  const orgSsrfSlg = slug();
+
+  const now = new Date().toISOString();
+  const expires = new Date(Date.now() + 3600_000).toISOString();
+  await db.query(
+    `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt") VALUES ($1,$2,$3,true,$4::timestamptz,$4::timestamptz) ON CONFLICT DO NOTHING`,
+    [userSsrf, "SSRF Test User", `${userSsrf}@ssrftest.example`, now]);
+  const orgSsrfRes = await db.query(
+    `INSERT INTO organizations (name, slug, plan, created_at, updated_at) VALUES ($1,$2,'starter',NOW(),NOW()) RETURNING id`,
+    [orgSsrfSlg, orgSsrfSlg]);
+  const orgSsrfId  = orgSsrfRes.rows[0].id;
+  await db.query(
+    `INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId") VALUES ($1,$2::timestamptz,$3,$4::timestamptz,$4::timestamptz,$5) ON CONFLICT DO NOTHING`,
+    [sessSsrf, expires, sessSsrf, now, userSsrf]);
+  await db.query(
+    `INSERT INTO org_members (org_id, clerk_user_id, role, email) VALUES ($1,$2,'owner',$3) ON CONFLICT DO NOTHING`,
+    [orgSsrfId, userSsrf, `${userSsrf}@ssrftest.example`]);
+  const cookieSsrf = cookieHdr(sessSsrf);
+
+  const ssrfInputs = [
+    { label: "http:// scheme rejected (non-HTTPS)", baseUrl: "http://attacker.example.com" },
+    { label: "file:// scheme rejected", baseUrl: "file:///etc/passwd" },
+    { label: "loopback 127.0.0.1 rejected", baseUrl: "https://127.0.0.1" },
+    { label: "loopback localhost rejected", baseUrl: "https://localhost" },
+    { label: "private 10.x.x.x rejected", baseUrl: "https://10.0.0.1" },
+    { label: "private 192.168.x.x rejected", baseUrl: "https://192.168.1.1" },
+    { label: "private 172.16.x.x rejected", baseUrl: "https://172.16.0.1" },
+    { label: "link-local 169.254.x.x (AWS metadata) rejected", baseUrl: "https://169.254.169.254" },
+    { label: "IPv6 loopback [::1] rejected", baseUrl: "https://[::1]" },
+    // IPv4-mapped/compatible bypass vectors (reviewer-identified)
+    { label: "IPv4-mapped loopback [::ffff:127.0.0.1] rejected", baseUrl: "https://[::ffff:127.0.0.1]" },
+    { label: "IPv4-mapped loopback hex [::ffff:7f00:1] rejected", baseUrl: "https://[::ffff:7f00:1]" },
+    { label: "IPv4-compatible loopback [::127.0.0.1] rejected", baseUrl: "https://[::127.0.0.1]" },
+    { label: "IPv4-mapped private [::ffff:10.0.0.1] rejected", baseUrl: "https://[::ffff:10.0.0.1]" },
+    { label: "IPv4-mapped link-local [::ffff:169.254.169.254] rejected", baseUrl: "https://[::ffff:169.254.169.254]" },
+  ];
+
+  for (const { label, baseUrl } of ssrfInputs) {
+    check(
+      `SSRF guard: ${label}`,
+      await req("POST", `/orgs/${orgSsrfId}/integrations/betterauth/connect`, cookieSsrf,
+        { apiKey: "dummy_key", baseUrl }),
+      // Must be 400 (validation error) — NOT 200/201/500
+      400,
+    );
+  }
+
+  // Cleanup
+  await db.query(`DELETE FROM org_members WHERE clerk_user_id = $1`, [userSsrf]).catch(() => {});
+  await db.query(`DELETE FROM session WHERE id = $1`, [sessSsrf]).catch(() => {});
+  await db.query(`DELETE FROM "user" WHERE id = $1`, [userSsrf]).catch(() => {});
+  await db.query(`DELETE FROM organizations WHERE id = $1`, [orgSsrfId]).catch(() => {});
+}
+
+// ── Section 11: Provider-level tests (bad credentials, graceful error handling) ──
+
+section("SECTION 11 — PROVIDER BEHAVIOR: bad credentials return failing results (not 500)");
+{
+  // Seed a minimal org+owner for provider tests
+  const now11    = new Date().toISOString();
+  const exp11    = new Date(Date.now() + 3600_000).toISOString();
+  const user11   = uid();
+  const sess11   = uid();
+  const orgSlg11 = slug();
+
+  await db.query(
+    `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt") VALUES ($1,$2,$3,true,$4::timestamptz,$4::timestamptz) ON CONFLICT DO NOTHING`,
+    [user11, "Provider Test User", `${user11}@provtest.example`, now11]);
+  const orgRes11 = await db.query(
+    `INSERT INTO organizations (name, slug, plan, created_at, updated_at) VALUES ($1,$2,'starter',NOW(),NOW()) RETURNING id`,
+    [`Provider Test Org ${orgSlg11}`, orgSlg11]);
+  const org11Id = orgRes11.rows[0].id;
+  await db.query(
+    `INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId") VALUES ($1,$2::timestamptz,$3,$4::timestamptz,$4::timestamptz,$5) ON CONFLICT DO NOTHING`,
+    [sess11, exp11, sess11, now11, user11]);
+  await db.query(
+    `INSERT INTO org_members (org_id, clerk_user_id, role, email) VALUES ($1,$2,'owner',$3) ON CONFLICT DO NOTHING`,
+    [org11Id, user11, `${user11}@provtest.example`]);
+  const cookie11 = cookieHdr(sess11);
+
+  // ── Railway: invalid token → 200 (provider returns failing control, not 500) ──
+  // Railway GraphQL API returns a GraphQL error for invalid tokens. The Railway
+  // provider catches this and returns a failing UCO-AC-001 result. The connect
+  // endpoint persists the failing result and returns 200 with checksPassed:0.
+  // Connect endpoints return 201 for newly created integrations, 200 for updates.
+  // Both are success — not 4xx/5xx — confirming providers handle bad credentials
+  // gracefully (returning failing control results, not throwing).
+  const railwayRes = await req(
+    "POST",
+    `/orgs/${org11Id}/integrations/railway/connect`,
+    cookie11,
+    { apiToken: "invalid_dummy_railway_token_for_test" },
+  );
+  check(
+    "Railway connect: invalid token → 200/201 (failing results persisted, not 500)",
+    railwayRes,
+    200, 201,
+  );
+
+  // Verify the failing control result was persisted for this org
+  const railwayCtrl = await db.query(
+    `SELECT uco_control_id, status FROM org_control_results WHERE org_id = $1 AND integration_key = 'railway' ORDER BY updated_at DESC LIMIT 5`,
+    [org11Id],
+  ).catch(() => ({ rows: [] }));
+  check(
+    "Railway connect: failing control result persisted in DB",
+    railwayCtrl.rows.length > 0 ? 200 : 404,
+    200,
+  );
+
+  // ── Replit: invalid token → 200/201 (provider returns failing control, not 500) ──
+  const replitRes = await req(
+    "POST",
+    `/orgs/${org11Id}/integrations/replit/connect`,
+    cookie11,
+    { apiToken: "invalid_dummy_replit_token_for_test" },
+  );
+  check(
+    "Replit connect: invalid token → 200/201 (failing results persisted, not 500)",
+    replitRes,
+    200, 201,
+  );
+
+  const replitCtrl = await db.query(
+    `SELECT uco_control_id, status FROM org_control_results WHERE org_id = $1 AND integration_key = 'replit' ORDER BY updated_at DESC LIMIT 5`,
+    [org11Id],
+  ).catch(() => ({ rows: [] }));
+  check(
+    "Replit connect: failing control result persisted in DB",
+    replitCtrl.rows.length > 0 ? 200 : 404,
+    200,
+  );
+
+  // ── BetterAuth: valid public URL + wrong key → 200/201 (failing result, not 500) ──
+  // Uses https://example.com (IANA-operated, stable). pinnedHttpsRequest connects
+  // to the resolved IP, TLS verifies against example.com, gets a 404 for the
+  // admin path, and the provider returns a failing UCO-AI-001 result.
+  const baRes = await req(
+    "POST",
+    `/orgs/${org11Id}/integrations/betterauth/connect`,
+    cookie11,
+    { apiKey: "dummy_invalid_key", baseUrl: "https://example.com" },
+  );
+  check(
+    "BetterAuth connect: valid public URL + bad key → 200/201 (failing results persisted, not 500)",
+    baRes,
+    200, 201,
+  );
+
+  const baCtrl = await db.query(
+    `SELECT uco_control_id, status FROM org_control_results WHERE org_id = $1 AND integration_key = 'betterauth' ORDER BY updated_at DESC LIMIT 5`,
+    [org11Id],
+  ).catch(() => ({ rows: [] }));
+  check(
+    "BetterAuth connect: failing control result persisted in DB",
+    baCtrl.rows.length > 0 ? 200 : 404,
+    200,
+  );
+
+  // ── Integration row exists in DB after all three connects ───────────────────
+  const integRows = await db.query(
+    `SELECT integration_key, status FROM org_integrations WHERE org_id = $1 ORDER BY integration_key`,
+    [org11Id],
+  ).catch(() => ({ rows: [] }));
+  const keys = integRows.rows.map((r) => r.integration_key).sort().join(",");
+  check(
+    "Provider connects: all three integration rows stored in DB",
+    keys === "betterauth,railway,replit" ? 200 : 404,
+    200,
+  );
+
+  // Cleanup provider test fixtures
+  await db.query(`DELETE FROM org_members WHERE clerk_user_id = $1`, [user11]).catch(() => {});
+  await db.query(`DELETE FROM session WHERE id = $1`, [sess11]).catch(() => {});
+  await db.query(`DELETE FROM "user" WHERE id = $1`, [user11]).catch(() => {});
+  await db.query(`DELETE FROM organizations WHERE id = $1`, [org11Id]).catch(() => {});
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────

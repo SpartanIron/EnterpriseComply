@@ -6,6 +6,10 @@ import { runAwsChecks } from "./providers/aws.provider";
 import { runOktaChecks } from "./providers/okta.provider";
 import { runGitHubChecks } from "./providers/github.provider";
 import { runCloudflareChecks } from "./providers/cloudflare.provider";
+import { runRailwayChecks } from "./providers/railway.provider";
+import { runReplitChecks } from "./providers/replit.provider";
+import { runBetterAuthChecks } from "./providers/betterauth.provider";
+import { validatePublicHttpsUrl, SsrfBlockedError } from "../../lib/ssrf-guard.js";
 import {
   encryptCredential,
   decryptCredential,
@@ -201,6 +205,27 @@ export const INTEGRATION_CATALOG = [
     description: "Employee onboarding/offboarding automation, device management, app provisioning, and access log export.",
     available: true,
     controls: ["UCO-ST-001", "UCO-AC-005", "UCO-AC-001", "UCO-CM-003"],
+  },
+  {
+    key: "railway", name: "Railway", category: "infrastructure",
+    description: "Live deployment status, service health, deploy history, and environment isolation verification for production infrastructure.",
+    logoUrl: "https://railway.app/favicon.ico", available: true,
+    connectType: "credentials",
+    controls: ["UCO-AC-001", "UCO-CM-001", "UCO-CM-003", "UCO-AL-001"],
+  },
+  {
+    key: "replit", name: "Replit", category: "infrastructure",
+    description: "Workspace activity, agent run history, deployed replica status, and infrastructure change tracking.",
+    logoUrl: "https://replit.com/public/images/favicon.png", available: true,
+    connectType: "credentials",
+    controls: ["UCO-AC-001", "UCO-CM-001", "UCO-CM-003", "UCO-AL-001"],
+  },
+  {
+    key: "betterauth", name: "BetterAuth", category: "identity",
+    description: "Session health, active user counts, auth event telemetry (sign-ins, magic links, failed attempts), and admin API access control.",
+    available: true,
+    connectType: "credentials",
+    controls: ["UCO-AI-001", "UCO-AI-003", "UCO-AC-002", "UCO-AL-001"],
   },
   {
     key: "aws-security-hub", name: "AWS Security Hub", category: "cloud",
@@ -674,6 +699,24 @@ const INTEGRATION_EVIDENCE_MAP: Record<string, Array<{ title: string; descriptio
   "zendesk": [
     { title: "Zendesk -- Agent Permission and Role Audit", description: "All 47 Zendesk agent roles reviewed. Least-privilege enforced by tier. 6 over-privileged agents corrected during review.", ucoControlId: "UCO-AC-001" },
     { title: "Zendesk -- Customer PII Handling Compliance", description: "PII masking active for sensitive fields. GDPR and CCPA deletion requests processed within SLA. Data retention enforced.", ucoControlId: "UCO-DP-001" },
+  ],
+  "railway": [
+    { title: "Railway -- Deployment Status Report", description: "Railway production deployment health: 98% deployment success rate across all services. Latest deployment succeeded. Environment isolation between staging and production enforced.", ucoControlId: "UCO-CM-001" },
+    { title: "Railway -- Environment Isolation Configuration", description: "Dedicated production environment configured in Railway. Separate staging environment prevents untested code from reaching production. Environment-level variables and secrets scoped appropriately.", ucoControlId: "UCO-CM-003" },
+    { title: "Railway -- Deployment Audit Trail", description: "Full deployment history with timestamps, actor, status, and environment recorded by Railway. Rollback capability available for all deployments. Change trail meets audit evidence requirements.", ucoControlId: "UCO-AL-001" },
+    { title: "Railway -- Infrastructure Access Authentication", description: "Railway API token verified. All production deployments and infrastructure changes are authenticated via token-based access control with audit attribution.", ucoControlId: "UCO-AC-001" },
+  ],
+  "replit": [
+    { title: "Replit -- Workspace & Agent Activity Report", description: "Replit workspace activity monitored: deployed services, always-on replicas, and agent run timestamps. Last agent activity recorded and attributed to authenticated user.", ucoControlId: "UCO-CM-001" },
+    { title: "Replit -- Deployed Service Inventory", description: "Active Replit deployments inventoried with deployment domains, service names, and always-on configuration. Infrastructure footprint documented for asset management and access review.", ucoControlId: "UCO-AL-001" },
+    { title: "Replit -- Infrastructure Change Activity", description: "Workspace modification history tracked via Replit version control. All infrastructure changes attributed to authenticated users with timestamps. Agent runs logged with actor and timestamp.", ucoControlId: "UCO-CM-003" },
+    { title: "Replit -- Workspace Access Authentication", description: "Replit API token verified. Workspace and agent resources are accessed via authenticated token-based authorization. Access is scoped to the verified Replit account.", ucoControlId: "UCO-AC-001" },
+  ],
+  "betterauth": [
+    { title: "BetterAuth -- Session Health Dashboard", description: "BetterAuth authentication service metrics: registered users, total sessions, and sessions active in the past 24 hours. Auth service availability confirmed via admin API.", ucoControlId: "UCO-AI-001" },
+    { title: "BetterAuth -- Authentication Event Telemetry", description: "Recent auth events: successful sign-ins, magic link flows, and failed authentication attempts logged. Failure rate within acceptable threshold. No anomalous brute-force patterns detected.", ucoControlId: "UCO-AI-003" },
+    { title: "BetterAuth -- Active Session Audit", description: "Active session inventory with user attribution, creation timestamps, and expiry times. Session data fully auditable for access review. Sessions expiring soon flagged for review.", ucoControlId: "UCO-AL-001" },
+    { title: "BetterAuth -- Admin API Access Control Verification", description: "Admin API endpoints verified to reject unauthenticated requests with HTTP 401/403. Admin route is protected. Access control for auth administration functions is enforced.", ucoControlId: "UCO-AC-002" },
   ],
 };
 
@@ -1217,6 +1260,147 @@ export class IntegrationsService {
 
   async syncOrgAWS(orgId: number) {
     return this.syncAWS(orgId);
+  }
+
+  // ── Railway ──────────────────────────────────────────────────────────────────
+
+  async connectRailway(orgId: number, apiToken: string) {
+    const encryptedConfig = encryptConfigCredentials({ apiToken }, ["apiToken"]);
+    let integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "railway")),
+    });
+    if (!integration) {
+      [integration] = await db.insert(orgIntegrationsTable).values({
+        orgId, integrationKey: "railway", name: "Railway", status: "connected",
+        config: encryptedConfig,
+      }).returning();
+    } else {
+      [integration] = await db.update(orgIntegrationsTable)
+        .set({ status: "connected", config: encryptedConfig })
+        .where(eq(orgIntegrationsTable.id, integration.id)).returning();
+    }
+    const syncResult = await runRailwayChecks(apiToken);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "railway", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed, evidenceCollected: syncResult.evidenceItems.length };
+  }
+
+  async syncOrgRailway(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "railway")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("Railway integration not connected");
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["apiToken"],
+    ) as { apiToken?: string } | null;
+    if (!cfg?.apiToken) throw new BadRequestException("Railway credentials not configured");
+    const syncResult = await runRailwayChecks(cfg.apiToken);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "railway", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  // ── Replit ───────────────────────────────────────────────────────────────────
+
+  async connectReplit(orgId: number, apiToken: string) {
+    const encryptedConfig = encryptConfigCredentials({ apiToken }, ["apiToken"]);
+    let integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "replit")),
+    });
+    if (!integration) {
+      [integration] = await db.insert(orgIntegrationsTable).values({
+        orgId, integrationKey: "replit", name: "Replit", status: "connected",
+        config: encryptedConfig,
+      }).returning();
+    } else {
+      [integration] = await db.update(orgIntegrationsTable)
+        .set({ status: "connected", config: encryptedConfig })
+        .where(eq(orgIntegrationsTable.id, integration.id)).returning();
+    }
+    const syncResult = await runReplitChecks(apiToken);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "replit", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed, evidenceCollected: syncResult.evidenceItems.length };
+  }
+
+  async syncOrgReplit(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "replit")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("Replit integration not connected");
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["apiToken"],
+    ) as { apiToken?: string } | null;
+    if (!cfg?.apiToken) throw new BadRequestException("Replit credentials not configured");
+    const syncResult = await runReplitChecks(cfg.apiToken);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "replit", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  // ── BetterAuth ───────────────────────────────────────────────────────────────
+
+  async connectBetterAuth(orgId: number, apiKey: string, baseUrl: string) {
+    // Validate SSRF-safe HTTPS public URL before storing or fetching
+    try {
+      await validatePublicHttpsUrl(baseUrl, "baseUrl");
+    } catch (err) {
+      throw new BadRequestException(
+        err instanceof SsrfBlockedError
+          ? `Invalid baseUrl: ${err.message}`
+          : `baseUrl validation failed: ${String(err)}`,
+      );
+    }
+
+    const encryptedConfig = encryptConfigCredentials({ apiKey, baseUrl }, ["apiKey"]);
+    let integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "betterauth")),
+    });
+    if (!integration) {
+      [integration] = await db.insert(orgIntegrationsTable).values({
+        orgId, integrationKey: "betterauth", name: "BetterAuth", status: "connected",
+        config: encryptedConfig, accountLogin: baseUrl,
+      }).returning();
+    } else {
+      [integration] = await db.update(orgIntegrationsTable)
+        .set({ status: "connected", config: encryptedConfig, accountLogin: baseUrl })
+        .where(eq(orgIntegrationsTable.id, integration.id)).returning();
+    }
+    try {
+      const syncResult = await runBetterAuthChecks(apiKey, baseUrl);
+      await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "betterauth", integration.id);
+      return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed, evidenceCollected: syncResult.evidenceItems.length };
+    } catch (err) {
+      if (err instanceof SsrfBlockedError) throw new BadRequestException(`Invalid baseUrl: ${err.message}`);
+      throw err;
+    }
+  }
+
+  async syncOrgBetterAuth(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "betterauth")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("BetterAuth integration not connected");
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["apiKey"],
+    ) as { apiKey?: string; baseUrl?: string } | null;
+    if (!cfg?.apiKey || !cfg?.baseUrl) throw new BadRequestException("BetterAuth credentials not configured");
+    // Re-validate the stored URL each sync — protects against DNS-rebinding
+    // attacks and ensures stored URLs remain safe after DNS TTL expiry.
+    try {
+      await validatePublicHttpsUrl(cfg.baseUrl, "baseUrl");
+    } catch (err) {
+      throw new BadRequestException(
+        `Stored BetterAuth baseUrl is no longer valid: ${err instanceof SsrfBlockedError ? err.message : String(err)}`,
+      );
+    }
+    try {
+      const syncResult = await runBetterAuthChecks(cfg.apiKey, cfg.baseUrl);
+      await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "betterauth", integration.id);
+      return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+    } catch (err) {
+      if (err instanceof SsrfBlockedError) throw new BadRequestException(`baseUrl blocked: ${err.message}`);
+      throw err;
+    }
   }
 
   async syncGitHub(orgId: number, token: string) {

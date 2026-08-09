@@ -13,6 +13,9 @@ const SYNC_INTERVALS: Record<string, number> = {
   aws: 4 * 60 * 60 * 1000,
   okta: 4 * 60 * 60 * 1000,
   cloudflare: 12 * 60 * 60 * 1000,
+  railway: 30 * 60 * 1000,
+  replit: 30 * 60 * 1000,
+  betterauth: 30 * 60 * 1000,
   default: 24 * 60 * 60 * 1000,
 };
 
@@ -24,6 +27,9 @@ const SYNC_DISPATCH: Record<string, (svc: IntegrationsService, orgId: number) =>
   aws: (svc, orgId) => svc.syncOrgAWS(orgId),
   okta: (svc, orgId) => svc.syncOrgOkta(orgId),
   cloudflare: (svc, orgId) => svc.syncOrgCloudflare(orgId),
+  railway: (svc, orgId) => svc.syncOrgRailway(orgId),
+  replit: (svc, orgId) => svc.syncOrgReplit(orgId),
+  betterauth: (svc, orgId) => svc.syncOrgBetterAuth(orgId),
 };
 
 const INTEGRATION_CONTROL_SCOPE: Record<string, string[]> = {
@@ -31,6 +37,9 @@ const INTEGRATION_CONTROL_SCOPE: Record<string, string[]> = {
   aws: ["UCO-NS-002", "UCO-DP-001", "UCO-AL-001", "UCO-VM-001"],
   okta: ["UCO-AC-001", "UCO-AC-002", "UCO-AI-001", "UCO-AI-002"],
   cloudflare: ["UCO-NS-001", "UCO-NS-002", "UCO-DP-003"],
+  railway: ["UCO-AC-001", "UCO-CM-001", "UCO-CM-003", "UCO-AL-001"],
+  replit: ["UCO-AC-001", "UCO-CM-001", "UCO-CM-003", "UCO-AL-001"],
+  betterauth: ["UCO-AI-001", "UCO-AI-003", "UCO-AC-002", "UCO-AL-001"],
 };
 
 const CONTROL_NAMES: Record<string, string> = {

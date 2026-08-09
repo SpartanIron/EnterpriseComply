@@ -152,6 +152,262 @@ function AWSConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose
   );
 }
 
+function RailwayConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({ apiToken: "" });
+  const [error, setError] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/railway/connect`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Connection failed");
+      return data;
+    },
+    onSuccess: () => { onSuccess(); onClose(); },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-r from-violet-600 to-violet-700 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">Ry</span>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Connect Railway</p>
+                <p className="text-violet-100 text-sm">Deployment status, service health, and deploy history</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-violet-50 border border-violet-200 rounded-xl p-3.5 text-sm text-violet-800">
+            <p className="font-semibold mb-1">Create a Railway API token</p>
+            <p className="text-xs text-violet-700">In Railway: Account Settings &rarr; Tokens &rarr; New Token. The token needs read access to projects and deployments.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Railway API Token</label>
+            <input
+              type="password"
+              value={form.apiToken}
+              onChange={e => setForm(f => ({ ...f, apiToken: e.target.value }))}
+              placeholder="railway_token_..."
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+          </div>
+          {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>}
+          {mutation.isSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+              Connected! {(mutation.data as any)?.checksPassed ?? 0} of {(mutation.data as any)?.checksRun ?? 0} checks passed.
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50">Cancel</button>
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={!form.apiToken || mutation.isPending}
+              className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {mutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Running checks...
+                </span>
+              ) : "Connect and run checks"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReplitConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({ apiToken: "" });
+  const [error, setError] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/replit/connect`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Connection failed");
+      return data;
+    },
+    onSuccess: () => { onSuccess(); onClose(); },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">Rp</span>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Connect Replit</p>
+                <p className="text-orange-100 text-sm">Workspace activity, agent runs, and deployed services</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3.5 text-sm text-orange-800">
+            <p className="font-semibold mb-1">Get a Replit API token</p>
+            <p className="text-xs text-orange-700">In Replit: Account &rarr; Privacy &rarr; Personal access tokens &rarr; Generate token. The token is used to read workspace and deployment data.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Replit API Token</label>
+            <input
+              type="password"
+              value={form.apiToken}
+              onChange={e => setForm(f => ({ ...f, apiToken: e.target.value }))}
+              placeholder="r_..."
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+          {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>}
+          {mutation.isSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+              Connected! {(mutation.data as any)?.checksPassed ?? 0} of {(mutation.data as any)?.checksRun ?? 0} checks passed.
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50">Cancel</button>
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={!form.apiToken || mutation.isPending}
+              className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {mutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Running checks...
+                </span>
+              ) : "Connect and run checks"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BetterAuthConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({ apiKey: "", baseUrl: "" });
+  const [error, setError] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/betterauth/connect`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Connection failed");
+      return data;
+    },
+    onSuccess: () => { onSuccess(); onClose(); },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">BA</span>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Connect BetterAuth</p>
+                <p className="text-emerald-100 text-sm">Session health, auth events, and user activity telemetry</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-sm text-emerald-800">
+            <p className="font-semibold mb-1">BetterAuth admin API credentials</p>
+            <p className="text-xs text-emerald-700">Provide your BetterAuth admin API key and the base URL of your BetterAuth instance. The API key must have admin scope to read session and event data.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Admin API Key</label>
+            <input
+              type="password"
+              value={form.apiKey}
+              onChange={e => setForm(f => ({ ...f, apiKey: e.target.value }))}
+              placeholder="ba_admin_..."
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">BetterAuth Base URL</label>
+            <input
+              type="text"
+              value={form.baseUrl}
+              onChange={e => setForm(f => ({ ...f, baseUrl: e.target.value }))}
+              placeholder="https://your-app.com"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>}
+          {mutation.isSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+              Connected! {(mutation.data as any)?.checksPassed ?? 0} of {(mutation.data as any)?.checksRun ?? 0} checks passed.
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50">Cancel</button>
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={!form.apiKey || !form.baseUrl || mutation.isPending}
+              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {mutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Running checks...
+                </span>
+              ) : "Connect and run checks"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose: () => void; onSuccess: () => void }) {
   const [form, setForm] = useState({ domain: "", apiToken: "" });
   const [error, setError] = useState("");
@@ -262,6 +518,9 @@ export default function Integrations() {
   const connected = new URLSearchParams(location.split("?")[1] ?? "").get("connected");
   const [showAWSModal, setShowAWSModal] = useState(false);
   const [showOktaModal, setShowOktaModal] = useState(false);
+  const [showRailwayModal, setShowRailwayModal] = useState(false);
+  const [showReplitModal, setShowReplitModal] = useState(false);
+  const [showBetterAuthModal, setShowBetterAuthModal] = useState(false);
 
   const { data, isLoading } = useQuery<{ integrations: any[] }>({
     queryKey: ["org-integrations", orgId],
@@ -305,6 +564,9 @@ export default function Integrations() {
     }
     if (key === "aws") { setShowAWSModal(true); return; }
     if (key === "okta") { setShowOktaModal(true); return; }
+    if (key === "railway") { setShowRailwayModal(true); return; }
+    if (key === "replit") { setShowReplitModal(true); return; }
+    if (key === "betterauth") { setShowBetterAuthModal(true); return; }
     setDemoConnecting(key);
     try {
       await demoConnectMutation.mutateAsync(key);
@@ -346,6 +608,15 @@ export default function Integrations() {
       )}
       {showOktaModal && orgId && (
         <OktaConnectModal orgId={orgId} onClose={() => setShowOktaModal(false)} onSuccess={handleCredentialConnectSuccess} />
+      )}
+      {showRailwayModal && orgId && (
+        <RailwayConnectModal orgId={orgId} onClose={() => setShowRailwayModal(false)} onSuccess={handleCredentialConnectSuccess} />
+      )}
+      {showReplitModal && orgId && (
+        <ReplitConnectModal orgId={orgId} onClose={() => setShowReplitModal(false)} onSuccess={handleCredentialConnectSuccess} />
+      )}
+      {showBetterAuthModal && orgId && (
+        <BetterAuthConnectModal orgId={orgId} onClose={() => setShowBetterAuthModal(false)} onSuccess={handleCredentialConnectSuccess} />
       )}
 
       <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">
@@ -546,7 +817,7 @@ export default function Integrations() {
 function ConnectedCard({ integration, onSync, syncing }: { integration: any; onSync: () => void; syncing: boolean }) {
   const conn = integration.connection;
   const lastSync = conn?.lastSyncAt ? new Date(conn.lastSyncAt).toLocaleString() : "Never";
-  const isRealIntegration = ["github", "aws", "okta"].includes(integration.key);
+  const isRealIntegration = ["github", "aws", "okta", "cloudflare", "railway", "replit", "betterauth"].includes(integration.key);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -594,8 +865,13 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
   const isGitHub = integration.key === "github";
   const isCredentials = integration.connectType === "credentials";
 
+  const credentialLabels: Record<string, string> = {
+    aws: "Connect AWS", okta: "Connect Okta",
+    cloudflare: "Connect Cloudflare", railway: "Connect Railway",
+    replit: "Connect Replit", betterauth: "Connect BetterAuth",
+  };
   const btnLabel = isCredentials
-    ? `Connect ${integration.key === "aws" ? "AWS" : "Okta"}`
+    ? (credentialLabels[integration.key] ?? `Connect ${integration.name}`)
     : connecting ? "Connecting..." : "Connect (Demo)";
 
   return (
@@ -661,6 +937,7 @@ function IntegrationLogo({ name, size = "md" }: { name: string; size?: "sm" | "m
     duo: "Duo", ping: "PI", sailpoint: "SP", cyberark: "CA", "hashicorp-vault": "HV",
     snyk: "Sk", veracode: "Ve", knowbe4: "KB", proofpoint: "PP", "microsoft-365": "M365",
     zendesk: "Zd", bamboohr: "BH", greenhouse: "GH", netsuite: "NS",
+    railway: "Ry", replit: "Rp", betterauth: "BA", cloudflare: "CF",
   };
   const colors: Record<string, string> = {
     aws: "bg-orange-100 text-orange-700", okta: "bg-blue-100 text-blue-700",
@@ -674,6 +951,8 @@ function IntegrationLogo({ name, size = "md" }: { name: string; size?: "sm" | "m
     duo: "bg-green-100 text-green-700", sailpoint: "bg-blue-100 text-blue-700",
     cyberark: "bg-red-100 text-red-700", snyk: "bg-violet-100 text-violet-700",
     knowbe4: "bg-orange-100 text-orange-700", "microsoft-365": "bg-blue-100 text-blue-700",
+    railway: "bg-violet-100 text-violet-700", replit: "bg-orange-100 text-orange-700",
+    betterauth: "bg-emerald-100 text-emerald-700", cloudflare: "bg-orange-100 text-orange-700",
   };
   const textSz = size === "sm" ? "text-xs" : "text-xs";
   return (
