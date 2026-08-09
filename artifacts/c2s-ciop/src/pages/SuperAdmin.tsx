@@ -112,6 +112,18 @@ export default function SuperAdmin() {
     },
   });
 
+  const clearThrottleMutation = useMutation({
+    mutationFn: (ip: string) =>
+      apiFetch(`/admin/magic-link-rate/${encodeURIComponent(ip)}`, { method: "DELETE" }),
+    onSuccess: (_data, ip) => {
+      toast(`Cleared throttle window for ${ip}`, "#16a34a");
+      qc.invalidateQueries({ queryKey: ["admin-rate-limits"] });
+    },
+    onError: (_err, ip) => {
+      toast(`Failed to clear throttle for ${ip}`, "#dc2626");
+    },
+  });
+
   const orgs = data?.orgs ?? [];
   const blocked = blockedData?.blocked ?? [];
   const magicLinkThrottles = blockedData?.magicLinkThrottles ?? [];
@@ -370,6 +382,7 @@ export default function SuperAdmin() {
                       <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Window Start</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
                       <th className="text-right px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Block Remaining</th>
+                      <th className="px-5 py-3" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -392,6 +405,15 @@ export default function SuperAdmin() {
                           {entry.secondsRemaining > 0
                             ? (entry.secondsRemaining >= 60 ? `${Math.ceil(entry.secondsRemaining / 60)}m` : `${entry.secondsRemaining}s`)
                             : "—"}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <button
+                            disabled={clearThrottleMutation.isPending}
+                            onClick={() => clearThrottleMutation.mutate(entry.ip)}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                          >
+                            Clear Window
+                          </button>
                         </td>
                       </tr>
                     ))}
