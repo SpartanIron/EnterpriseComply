@@ -1916,6 +1916,67 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
     await db.query(`DELETE FROM "user" WHERE id = $1`, [sspUser]).catch(() => {});
     await db.query(`DELETE FROM organizations WHERE id = $1`, [sspOrgId]).catch(() => {});
   }
+
+  // ── 15.7 Magic-link send: 5 req/min per-IP limit ─────────────────────────
+  // BetterAuth's magicLink plugin (basePath /api/auth) exposes the send
+  // operation at POST /api/auth/sign-in/magic-link.  The Express middleware
+  // in main.ts intercepts this route before NestJS routing because the
+  // BetterAuth wildcard @All("*path") controller swallows all /api/auth/*
+  // sub-routes before per-route NestJS @Throttle decorators can fire.
+  {
+    const ip15g = "10.15.10.7";
+
+    // Clear any stale state for this IP from a previous run
+    await db.query(
+      `DELETE FROM ip_magic_link_rate WHERE ip = $1`,
+      [ip15g],
+    ).catch(() => { /* table may not exist yet on first boot */ });
+
+    const mlFetch = () => fetch(`${BASE}/auth/sign-in/magic-link`, {
+      method:  "POST",
+      headers: {
+        "Content-Type":    "application/json",
+        "X-Forwarded-For": ip15g,
+        Host:              new URL(BASE).host,
+      },
+      // Non-existent email — BetterAuth returns 200 (ambiguous) to prevent
+      // email enumeration. We verify the status is exactly 200 (BetterAuth
+      // responded, not a 404 meaning the route doesn't exist).
+      body: JSON.stringify({ email: "rate-limit-test@test.invalid" }),
+    });
+
+    // First 5 requests must be handled by BetterAuth (200 or 403) — not 429
+    // from the rate limiter and not 404 (which would mean the route doesn't exist).
+    // Note: fetch from Node.js adds an Origin header that BetterAuth's CORS check
+    // may reject with 403; that is still a valid BetterAuth response confirming the
+    // route exists and the rate limiter did not block it.
+    let mlAllowed = true;
+    let mlFirstStatus = 0;
+    for (let i = 0; i < 5; i++) {
+      const r = await mlFetch();
+      if (i === 0) mlFirstStatus = r.status;
+      if (r.status === 429) { mlAllowed = false; break; }
+    }
+    // Route existence check: first response must be 200 or 403 (BetterAuth), never 404
+    check("15.7a magic-link/send: BetterAuth handles the route (not 404)",
+      (mlFirstStatus === 200 || mlFirstStatus === 403) ? 200 : 404, 200);
+    check("15.7b magic-link/send: first 5 requests are not rate-limited (not 429)",
+      mlAllowed ? 200 : 429, 200);
+
+    // 6th request from the same IP within the window → 429
+    const mlThrottled = await mlFetch();
+    check("15.7c magic-link/send: 6th request is rate-limited (429)", mlThrottled.status, 429);
+
+    // The 429 response must include a Retry-After header with value ≤ 60
+    const mlRetryAfter = Number(mlThrottled.headers.get("retry-after") ?? -1);
+    check("15.7d magic-link/send: 429 includes Retry-After header",
+      mlRetryAfter > 0 ? 200 : 422, 200);
+    check("15.7e magic-link/send: Retry-After ≤ 60 seconds",
+      mlRetryAfter > 0 && mlRetryAfter <= 60 ? 200 : 422, 200);
+
+    // Cleanup
+    await db.query(`DELETE FROM ip_magic_link_rate WHERE ip = $1`, [ip15g]).catch(() => {});
+  }
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────

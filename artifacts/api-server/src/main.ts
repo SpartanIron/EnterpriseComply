@@ -8,6 +8,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import express from "express";
 import { validateCredentialKeyMaterial } from "./lib/credential-crypto";
+import { magicLinkRateLimiterMiddleware } from "./lib/magic-link-rate-limiter";
 
 // ── Startup env validation ───────────────────────────────────────────────────────────────────
 // Validates required env vars on startup and refuses to boot if critical ones
@@ -164,6 +165,12 @@ async function bootstrap() {
       'Retry-After',
     ],
   });
+
+  // ── Magic-link IP rate limiter ────────────────────────────────────────────────
+  // Must be registered before NestJS routing so it intercepts
+  // POST /api/auth/magic-link/send before BetterAuth's wildcard controller runs.
+  // Enforces 5 req/min per source IP; blocked IPs receive 429 + Retry-After: 60.
+  app.use(magicLinkRateLimiterMiddleware);
 
   app.setGlobalPrefix("api");
 
