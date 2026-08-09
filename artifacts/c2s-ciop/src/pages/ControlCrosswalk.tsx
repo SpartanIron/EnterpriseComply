@@ -33,7 +33,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ── CSV export ─────────────────────────────────────────────────────────────────
-function exportCrosswalkCsv(data: typeof CROSSWALK_DATA, activeFrameworks: string[], frameworks: typeof FRAMEWORKS) {
+function exportCrosswalkCsv(data: typeof CROSSWALK_DATA, activeFrameworks: string[], frameworks: typeof FRAMEWORKS, controlMap: Map<string, any>) {
   const dateStr = new Date().toISOString().slice(0, 10);
   const activeList = frameworks.filter(f => activeFrameworks.includes(f.key));
   const headers = ["UCO ID", "Control Name", "Family", "Status", "Coverage %"];
@@ -41,7 +41,8 @@ function exportCrosswalkCsv(data: typeof CROSSWALK_DATA, activeFrameworks: strin
   headers.push("Integrations");
   const rows: string[][] = [headers];
   data.forEach(ctrl => {
-    const row = [ctrl.ucoId, ctrl.ucoName, ctrl.family, ctrl.status, String(ctrl.coverage)];
+    const effectiveStatus = controlMap.get(ctrl.ucoId)?.result?.status ?? ctrl.status;
+    const row = [ctrl.ucoId, ctrl.ucoName, ctrl.family, effectiveStatus, String(ctrl.coverage)];
     activeList.forEach(fw => row.push((ctrl as any)[fw.key]?.join("; ") || ""));
     row.push(ctrl.integrations.join("; "));
     rows.push(row);
@@ -60,6 +61,7 @@ function exportCrosswalkPdf(
   activeFrameworks: string[],
   frameworks: typeof FRAMEWORKS,
   stats: { total: number; passing: number; partial: number; failing: number; avgCoverage: number },
+  controlMap: Map<string, any>,
   orgName?: string,
 ) {
   const dateStr = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -88,6 +90,7 @@ function exportCrosswalkPdf(
 
   const rows = data.map((ctrl, i) => {
     const bg = i % 2 === 0 ? "#fff" : "#f8fafc";
+    const effectiveStatus = controlMap.get(ctrl.ucoId)?.result?.status ?? ctrl.status;
     const fwCells = activeList.map(fw => {
       const vals = (ctrl as any)[fw.key] as string[];
       return `<td style="padding:7px 8px;font-size:9px;font-family:monospace;color:${fw.color}">${vals.slice(0, 3).join(", ")}${vals.length > 3 ? ` +${vals.length - 3}` : ""}</td>`;
@@ -96,7 +99,7 @@ function exportCrosswalkPdf(
       <tr style="background:${bg}">
         <td style="padding:7px 8px;font-family:monospace;font-size:9px;font-weight:700;color:#1d4ed8;white-space:nowrap">${ctrl.ucoId}</td>
         <td style="padding:7px 8px;font-size:10px;font-weight:500;color:#1e293b">${ctrl.ucoName}<div style="font-size:9px;color:#94a3b8">${ctrl.family}</div></td>
-        <td style="padding:7px 8px">${statusBadge(ctrl.status)}</td>
+        <td style="padding:7px 8px">${statusBadge(effectiveStatus)}</td>
         ${fwCells}
         <td style="padding:7px 8px;min-width:90px">${coverageBar(ctrl.coverage)}</td>
       </tr>`;
@@ -236,13 +239,13 @@ export default function ControlCrosswalk() {
 
   function handleCsvExport() {
     setExporting("csv");
-    setTimeout(() => { exportCrosswalkCsv(filtered, activeFrameworks, FRAMEWORKS); setExporting(null); }, 400);
+    setTimeout(() => { exportCrosswalkCsv(filtered, activeFrameworks, FRAMEWORKS, controlMap); setExporting(null); }, 400);
   }
 
   function handlePdfExport() {
     setExporting("pdf");
     setTimeout(() => {
-      exportCrosswalkPdf(filtered, activeFrameworks, FRAMEWORKS, stats, org?.name);
+      exportCrosswalkPdf(filtered, activeFrameworks, FRAMEWORKS, stats, controlMap, org?.name);
       setExporting(null);
     }, 400);
   }
