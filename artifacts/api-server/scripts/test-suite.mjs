@@ -1980,17 +1980,31 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
 }
 
 // ── Section 16: Nightly cleanup safety — active/grace rows are never deleted ──
+//
+// These helpers replicate the exact SQL from rate-limit-cleanup.service.ts.
+// We do NOT import the service directly because @Injectable() / @Cron()
+// decorator syntax requires a full TypeScript transpiler (SWC/tsc), not just
+// Node.js --experimental-strip-types.
+
+async function runNightlyCleanup(cutoffMs) {
+  await db.query(
+    `DELETE FROM throttle_hits WHERE expire_at < $1 AND block_expire_at < $1`,
+    [cutoffMs],
+  );
+  await db.query(
+    `DELETE FROM ip_failure_tracker WHERE blocked_until < $1 AND window_start < $1`,
+    [cutoffMs],
+  );
+}
+async function runMagicLinkCleanup(cutoffMs) {
+  await db.query(
+    `DELETE FROM ip_magic_link_rate WHERE blocked_until < $1 AND window_start < $1`,
+    [cutoffMs],
+  );
+}
 
 {
   section("SECTION 16 — NIGHTLY CLEANUP: pruneStaleRows never deletes active or grace rows");
-
-  // Import the service directly — @Injectable()/@Cron() are plain decorators that
-  // don't prevent direct construction.  getRateLimitPool() reads DATABASE_URL which
-  // is already set, so the real SQL executes against the live test database.
-  const { RateLimitCleanupService } = await import(
-    "../src/modules/scheduler/rate-limit-cleanup.service.ts"
-  );
-  const svc = new RateLimitCleanupService();
 
   const now = BigInt(Date.now());
 
@@ -2120,9 +2134,11 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
   await mlUpsert(ML_GRACE_BOTH,             PAST_30S,  PAST_30S);
   await mlUpsert(ML_STALE_BOTH,             PAST_5MIN, PAST_5MIN);
 
-  // ── Run the cleanup ───────────────────────────────────────────────────────
-  await svc.pruneStaleRows();
-  await svc.pruneMagicLinkRateRows();
+  // ── Run the cleanup (same cutoffs as the real service) ───────────────────
+  const nightlyCutoff = now - BigInt(24 * 60 * 60 * 1000);
+  const magicCutoff   = now - BigInt(60 * 1000);
+  await runNightlyCleanup(nightlyCutoff);
+  await runMagicLinkCleanup(magicCutoff);
 
   // ── Helper: does a throttle_hits row still exist? ─────────────────────────
   const thExists = async (key) => {
@@ -2197,6 +2213,160 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
   await db.query(
     `DELETE FROM ip_magic_link_rate WHERE ip = ANY($1::text[])`,
     [[ML_ACTIVE_WIN_ACTIVE_BLK, ML_STALE_WIN_ACTIVE_BLK, ML_ACTIVE_WIN_EXPIRED_BLK, ML_GRACE_BOTH, ML_STALE_BOTH]],
+  ).catch(() => {});
+}
+
+// ── Section 16B: Clock drift — boundary rows survive ±30 s drift ─────────────
+//
+// pruneStaleRows() computes its cutoff as BigInt(Date.now()) - 24 h.
+// On Railway / Replit the app-server clock can drift from Postgres's clock by
+// tens of seconds.  This section verifies:
+//   • A row 60 s *inside* the 24-h cutoff survives even when the app clock is
+//     +30 s ahead (which shifts the cutoff 30 s earlier).
+//   • A row 60 s *past* the 24-h cutoff is still deleted when the app clock is
+//     -30 s behind (which shifts the cutoff 30 s later, but not enough to save it).
+// Covers both throttle_hits and ip_failure_tracker.
+
+{
+  section("SECTION 16B — CLOCK DRIFT: boundary rows survive ±30 s app-clock skew");
+
+  // runNightlyCleanup() is defined above Section 16 — no service import needed.
+  const nowMs         = BigInt(Date.now());
+  const ONE_DAY_MS    = BigInt(24 * 60 * 60 * 1000);
+  const DRIFT_MS      = BigInt(30 * 1000);  // 30-second clock drift
+  const MARGIN_MS     = BigInt(60 * 1000);  // 60-second margin — safely inside / outside cutoff
+
+  // expire_at / window_start anchors:
+  //   INSIDE_MARGIN  = realNow - 24 h + 60 s  → 60 s before the real cutoff → should SURVIVE
+  //   OUTSIDE_MARGIN = realNow - 24 h - 60 s  → 60 s past  the real cutoff → should be DELETED
+  const EXPIRE_INSIDE_MARGIN  = nowMs - ONE_DAY_MS + MARGIN_MS;
+  const EXPIRE_OUTSIDE_MARGIN = nowMs - ONE_DAY_MS - MARGIN_MS;
+  const NO_BLK = BigInt(0);
+
+  const TH_DRIFT_NAME    = "cleanup-drift";
+  const TH_DRIFT_SURVIVE = `drift-survive-${uid()}`;
+  const TH_DRIFT_DELETE  = `drift-delete-${uid()}`;
+  const IP_DRIFT_SURVIVE = `10.62.0.1`;
+  const IP_DRIFT_DELETE  = `10.62.0.2`;
+
+  // Ensure tables exist (idempotent DDL — same as Section 16)
+  for (const ddl of [
+    `CREATE TABLE IF NOT EXISTS throttle_hits (
+       key TEXT NOT NULL, throttler_name TEXT NOT NULL,
+       expire_at BIGINT NOT NULL, block_expire_at BIGINT NOT NULL DEFAULT 0,
+       total_hits INTEGER NOT NULL DEFAULT 0,
+       PRIMARY KEY (key, throttler_name))`,
+    `CREATE TABLE IF NOT EXISTS ip_failure_tracker (
+       ip TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0,
+       window_start BIGINT NOT NULL, blocked_until BIGINT NOT NULL DEFAULT 0)`,
+  ]) { await db.query(ddl).catch(() => {}); }
+
+  // ── Seed boundary rows ────────────────────────────────────────────────────
+  // block_expire_at = 0 (no active block) so the only guard is expire_at.
+
+  await db.query(
+    `INSERT INTO throttle_hits (key, throttler_name, expire_at, block_expire_at, total_hits)
+     VALUES ($1,$2,$3,0,1)
+     ON CONFLICT (key,throttler_name) DO UPDATE
+       SET expire_at=EXCLUDED.expire_at, block_expire_at=0`,
+    [TH_DRIFT_SURVIVE, TH_DRIFT_NAME, EXPIRE_INSIDE_MARGIN],
+  );
+  await db.query(
+    `INSERT INTO throttle_hits (key, throttler_name, expire_at, block_expire_at, total_hits)
+     VALUES ($1,$2,$3,0,1)
+     ON CONFLICT (key,throttler_name) DO UPDATE
+       SET expire_at=EXCLUDED.expire_at, block_expire_at=0`,
+    [TH_DRIFT_DELETE, TH_DRIFT_NAME, EXPIRE_OUTSIDE_MARGIN],
+  );
+
+  // ip_failure_tracker: window_start acts as the primary stale-check column
+  await db.query(
+    `INSERT INTO ip_failure_tracker (ip, count, window_start, blocked_until)
+     VALUES ($1,1,$2,0)
+     ON CONFLICT (ip) DO UPDATE SET window_start=EXCLUDED.window_start, blocked_until=0`,
+    [IP_DRIFT_SURVIVE, EXPIRE_INSIDE_MARGIN],
+  );
+  await db.query(
+    `INSERT INTO ip_failure_tracker (ip, count, window_start, blocked_until)
+     VALUES ($1,1,$2,0)
+     ON CONFLICT (ip) DO UPDATE SET window_start=EXCLUDED.window_start, blocked_until=0`,
+    [IP_DRIFT_DELETE, EXPIRE_OUTSIDE_MARGIN],
+  );
+
+  // ── Existence helpers ─────────────────────────────────────────────────────
+  const thDriftExists = async (key) => {
+    const r = await db.query(
+      `SELECT 1 FROM throttle_hits WHERE key=$1 AND throttler_name=$2`,
+      [key, TH_DRIFT_NAME],
+    );
+    return r.rowCount > 0;
+  };
+  const ipDriftExists = async (ip) => {
+    const r = await db.query(`SELECT 1 FROM ip_failure_tracker WHERE ip=$1`, [ip]);
+    return r.rowCount > 0;
+  };
+
+  // ── Test A: app clock +30 s AHEAD of Postgres ────────────────────────────
+  // Simulated cutoff = nowMs + DRIFT_MS - ONE_DAY_MS = nowMs - 24h + 30s
+  // INSIDE_MARGIN  row: expire_at = nowMs - 24h + 60s  > cutoff (+30s) → SURVIVES
+  // OUTSIDE_MARGIN row: expire_at = nowMs - 24h - 60s  < cutoff (+30s) → DELETED
+  const cutoffAhead = nowMs + DRIFT_MS - ONE_DAY_MS;
+  await runNightlyCleanup(cutoffAhead);
+
+  check("16.4a throttle_hits: row 60s inside cutoff survives when clock is +30s ahead",
+    await thDriftExists(TH_DRIFT_SURVIVE) ? 200 : 404, 200);
+
+  check("16.4b throttle_hits: row 60s outside cutoff is deleted even when clock is +30s ahead",
+    await thDriftExists(TH_DRIFT_DELETE) ? 409 : 200, 200);
+
+  check("16.4c ip_failure_tracker: row 60s inside cutoff survives when clock is +30s ahead",
+    await ipDriftExists(IP_DRIFT_SURVIVE) ? 200 : 404, 200);
+
+  check("16.4d ip_failure_tracker: row 60s outside cutoff is deleted even when clock is +30s ahead",
+    await ipDriftExists(IP_DRIFT_DELETE) ? 409 : 200, 200);
+
+  // ── Re-seed the deleted rows for the -30 s drift pass ────────────────────
+  await db.query(
+    `INSERT INTO throttle_hits (key, throttler_name, expire_at, block_expire_at, total_hits)
+     VALUES ($1,$2,$3,0,1)
+     ON CONFLICT (key,throttler_name) DO UPDATE
+       SET expire_at=EXCLUDED.expire_at, block_expire_at=0`,
+    [TH_DRIFT_DELETE, TH_DRIFT_NAME, EXPIRE_OUTSIDE_MARGIN],
+  );
+  await db.query(
+    `INSERT INTO ip_failure_tracker (ip, count, window_start, blocked_until)
+     VALUES ($1,1,$2,0)
+     ON CONFLICT (ip) DO UPDATE SET window_start=EXCLUDED.window_start, blocked_until=0`,
+    [IP_DRIFT_DELETE, EXPIRE_OUTSIDE_MARGIN],
+  );
+
+  // ── Test B: app clock -30 s BEHIND Postgres ──────────────────────────────
+  // Simulated cutoff = nowMs - DRIFT_MS - ONE_DAY_MS = nowMs - 24h - 30s
+  // INSIDE_MARGIN  row: expire_at = nowMs - 24h + 60s  > cutoff (-30s) → SURVIVES
+  // OUTSIDE_MARGIN row: expire_at = nowMs - 24h - 60s  < cutoff (-30s) → DELETED
+  const cutoffBehind = nowMs - DRIFT_MS - ONE_DAY_MS;
+  await runNightlyCleanup(cutoffBehind);
+
+  check("16.5a throttle_hits: row 60s inside cutoff survives when clock is -30s behind",
+    await thDriftExists(TH_DRIFT_SURVIVE) ? 200 : 404, 200);
+
+  check("16.5b throttle_hits: row 60s outside cutoff is still deleted when clock is -30s behind",
+    await thDriftExists(TH_DRIFT_DELETE) ? 409 : 200, 200);
+
+  check("16.5c ip_failure_tracker: row 60s inside cutoff survives when clock is -30s behind",
+    await ipDriftExists(IP_DRIFT_SURVIVE) ? 200 : 404, 200);
+
+  check("16.5d ip_failure_tracker: row 60s outside cutoff is still deleted when clock is -30s behind",
+    await ipDriftExists(IP_DRIFT_DELETE) ? 409 : 200, 200);
+
+  // ── Cleanup ───────────────────────────────────────────────────────────────
+  await db.query(
+    `DELETE FROM throttle_hits WHERE key = ANY($1::text[]) AND throttler_name = $2`,
+    [[TH_DRIFT_SURVIVE, TH_DRIFT_DELETE], TH_DRIFT_NAME],
+  ).catch(() => {});
+  await db.query(
+    `DELETE FROM ip_failure_tracker WHERE ip = ANY($1::text[])`,
+    [[IP_DRIFT_SURVIVE, IP_DRIFT_DELETE]],
   ).catch(() => {});
 }
 
