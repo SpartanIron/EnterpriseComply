@@ -38,12 +38,19 @@ export class RateLimitCleanupService {
 
     try {
       // ── throttle_hits ────────────────────────────────────────────────────────
-      // Delete rows whose window expired more than 1 day ago.
-      // expire_at is stored as epoch-ms in a BIGINT column.
+      // Delete rows where BOTH the rate-limit window AND the block have expired
+      // more than 1 day ago.  Checking only expire_at is insufficient: a row
+      // can have a stale window (expire_at old) but a still-active block
+      // (block_expire_at in the future).  Deleting such a row would silently
+      // lift an active throttle block mid-session.
+      // expire_at and block_expire_at are epoch-ms stored as BIGINT.
+      // Note: block_expire_at defaults to 0 (no block), so 0 < oneDayAgoMs
+      // is always true for unblocked rows — the AND predicate is safe.
       const throttleResult = await pool.query<{ count: string }>(
         `WITH deleted AS (
            DELETE FROM throttle_hits
-           WHERE expire_at < $1
+           WHERE expire_at       < $1
+             AND block_expire_at < $1
            RETURNING 1
          )
          SELECT count(*)::text AS count FROM deleted`,

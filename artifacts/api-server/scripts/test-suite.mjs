@@ -1979,6 +1979,227 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
   }
 }
 
+// ── Section 16: Nightly cleanup safety — active/grace rows are never deleted ──
+
+{
+  section("SECTION 16 — NIGHTLY CLEANUP: pruneStaleRows never deletes active or grace rows");
+
+  // Import the service directly — @Injectable()/@Cron() are plain decorators that
+  // don't prevent direct construction.  getRateLimitPool() reads DATABASE_URL which
+  // is already set, so the real SQL executes against the live test database.
+  const { RateLimitCleanupService } = await import(
+    "../src/modules/scheduler/rate-limit-cleanup.service.ts"
+  );
+  const svc = new RateLimitCleanupService();
+
+  const now = BigInt(Date.now());
+
+  // ── Shared timestamp anchors ──────────────────────────────────────────────
+  const FUTURE_1H   = now + BigInt(60 * 60 * 1000);          // +1 h
+  const FUTURE_15M  = now + BigInt(15 * 60 * 1000);          // +15 min
+  const PAST_5M     = now - BigInt(5  * 60 * 1000);          // 5 min ago   (active window)
+  const PAST_1H     = now - BigInt(60 * 60 * 1000);          // 1 h ago     (grace — < 1 day)
+  const PAST_30M    = now - BigInt(30 * 60 * 1000);          // 30 min ago  (grace block)
+  const PAST_2DAYS  = now - BigInt(48 * 60 * 60 * 1000);     // 2 days ago  (stale — > 1 day)
+  const NO_BLOCK    = BigInt(0);                              // default: no block
+
+  const TH = "cleanup-test"; // throttler_name used for all throttle fixtures
+
+  // Unique keys — avoid any collision with Section 15 throttle state
+  const TH_ACTIVE_WINDOW = `cleanup-th-active-win-${uid()}`;     // active window, no block
+  const TH_STALE_WIN_LIVE_BLOCK = `cleanup-th-stale-win-live-blk-${uid()}`; // stale window + active block → must survive
+  const TH_GRACE_WIN    = `cleanup-th-grace-win-${uid()}`;       // grace window (< 1d), no block
+  const TH_STALE_BOTH   = `cleanup-th-stale-both-${uid()}`;      // stale window + stale block → deleted
+
+  // Unique IPs for ip_failure_tracker
+  const IP_LIVE_WIN_LIVE_BLK  = `10.61.0.1`;  // live window + live block  → survives
+  const IP_STALE_WIN_LIVE_BLK = `10.61.0.2`;  // stale window + live block → survives (AND guard)
+  const IP_LIVE_WIN_NO_BLK    = `10.61.0.3`;  // live window + no block    → survives (AND guard)
+  const IP_GRACE_BOTH         = `10.61.0.4`;  // grace window + grace block → survives
+  const IP_STALE_BOTH         = `10.61.0.5`;  // stale window + stale block → deleted
+
+  // Unique IPs for ip_magic_link_rate (cutoff: now − 60 s)
+  const PAST_30S    = now - BigInt(30 * 1000);   // 30 s ago (within 60-s buffer)
+  const PAST_5MIN   = now - BigInt(5 * 60 * 1000); // 5 min ago (stale for magic-link)
+  const FUTURE_2M   = now + BigInt(2 * 60 * 1000); // +2 min (active block)
+  const PAST_10S    = now - BigInt(10 * 1000);   // 10 s ago (active window)
+
+  const ML_ACTIVE_WIN_ACTIVE_BLK  = `10.61.1.1`;  // active window + active block → survives
+  const ML_STALE_WIN_ACTIVE_BLK   = `10.61.1.2`;  // stale window + active block  → survives (AND guard)
+  const ML_ACTIVE_WIN_EXPIRED_BLK = `10.61.1.3`;  // active window + expired block → survives (AND guard)
+  const ML_GRACE_BOTH             = `10.61.1.4`;  // grace (within 60s) + grace    → survives
+  const ML_STALE_BOTH             = `10.61.1.5`;  // stale window + stale block    → deleted
+
+  // Ensure the rate-limit tables exist before we INSERT (idempotent DDL).
+  for (const ddl of [
+    `CREATE TABLE IF NOT EXISTS throttle_hits (
+       key TEXT NOT NULL, throttler_name TEXT NOT NULL,
+       expire_at BIGINT NOT NULL, block_expire_at BIGINT NOT NULL DEFAULT 0,
+       total_hits INTEGER NOT NULL DEFAULT 0,
+       PRIMARY KEY (key, throttler_name))`,
+    `CREATE TABLE IF NOT EXISTS ip_failure_tracker (
+       ip TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0,
+       window_start BIGINT NOT NULL, blocked_until BIGINT NOT NULL DEFAULT 0)`,
+    `CREATE TABLE IF NOT EXISTS ip_magic_link_rate (
+       ip TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0,
+       window_start BIGINT NOT NULL, blocked_until BIGINT NOT NULL DEFAULT 0)`,
+  ]) { await db.query(ddl).catch(() => {}); }
+
+  // ── Seed throttle_hits ────────────────────────────────────────────────────
+  //
+  // The cleanup SQL is: DELETE WHERE expire_at < cutoff AND block_expire_at < cutoff
+  // (block_expire_at = 0 satisfies the block predicate for unblocked rows)
+  //
+  // Fixture matrix (cutoff = now − 1 day):
+  //   TH_ACTIVE_WINDOW       expire_at=future, block=0           → survives (expire_at ≥ cutoff)
+  //   TH_STALE_WIN_LIVE_BLK  expire_at=2d ago, block=future      → survives (block_expire_at ≥ cutoff)
+  //   TH_GRACE_WIN           expire_at=1h ago, block=0           → survives (expire_at ≥ cutoff — only 1 h old)
+  //   TH_STALE_BOTH          expire_at=2d ago, block=2d ago      → deleted  (both < cutoff)
+
+  const thUpsert = (key, expireAt, blockExpireAt) => db.query(
+    `INSERT INTO throttle_hits (key, throttler_name, expire_at, block_expire_at, total_hits)
+     VALUES ($1,$2,$3,$4,5)
+     ON CONFLICT (key,throttler_name) DO UPDATE
+       SET expire_at=EXCLUDED.expire_at, block_expire_at=EXCLUDED.block_expire_at`,
+    [key, TH, expireAt, blockExpireAt],
+  );
+
+  await thUpsert(TH_ACTIVE_WINDOW,       FUTURE_1H,  NO_BLOCK);
+  await thUpsert(TH_STALE_WIN_LIVE_BLOCK, PAST_2DAYS, FUTURE_15M);
+  await thUpsert(TH_GRACE_WIN,           PAST_1H,    NO_BLOCK);
+  await thUpsert(TH_STALE_BOTH,          PAST_2DAYS, PAST_2DAYS);
+
+  // ── Seed ip_failure_tracker ───────────────────────────────────────────────
+  //
+  // The cleanup SQL is: DELETE WHERE blocked_until < cutoff AND window_start < cutoff
+  //
+  // Fixture matrix:
+  //   IP_LIVE_WIN_LIVE_BLK   window=5m ago,  block=+15m   → survives (both conditions block deletion)
+  //   IP_STALE_WIN_LIVE_BLK  window=2d ago,  block=+15m   → survives (block_until ≥ cutoff)
+  //   IP_LIVE_WIN_NO_BLK     window=5m ago,  block=0      → survives (window_start ≥ cutoff)
+  //   IP_GRACE_BOTH          window=1h ago,  block=30m ago → survives (both ≥ cutoff)
+  //   IP_STALE_BOTH          window=2d ago,  block=2d ago → deleted  (both < cutoff)
+
+  const ipUpsert = (ip, windowStart, blockedUntil) => db.query(
+    `INSERT INTO ip_failure_tracker (ip, count, window_start, blocked_until)
+     VALUES ($1,5,$2,$3)
+     ON CONFLICT (ip) DO UPDATE
+       SET window_start=EXCLUDED.window_start, blocked_until=EXCLUDED.blocked_until`,
+    [ip, windowStart, blockedUntil],
+  );
+
+  await ipUpsert(IP_LIVE_WIN_LIVE_BLK,  PAST_5M,   FUTURE_15M);
+  await ipUpsert(IP_STALE_WIN_LIVE_BLK, PAST_2DAYS, FUTURE_15M);
+  await ipUpsert(IP_LIVE_WIN_NO_BLK,    PAST_5M,   NO_BLOCK);
+  await ipUpsert(IP_GRACE_BOTH,         PAST_1H,   PAST_30M);
+  await ipUpsert(IP_STALE_BOTH,         PAST_2DAYS, PAST_2DAYS);
+
+  // ── Seed ip_magic_link_rate ───────────────────────────────────────────────
+  //
+  // The cleanup SQL is: DELETE WHERE blocked_until < cutoff AND window_start < cutoff
+  // where cutoff = now − 60 s.
+  //
+  // Fixture matrix:
+  //   ML_ACTIVE_WIN_ACTIVE_BLK   window=10s ago, block=+2m   → survives
+  //   ML_STALE_WIN_ACTIVE_BLK    window=5m ago,  block=+2m   → survives (block ≥ cutoff)
+  //   ML_ACTIVE_WIN_EXPIRED_BLK  window=10s ago, block=5m ago → survives (window ≥ cutoff)
+  //   ML_GRACE_BOTH              window=30s ago, block=30s ago → survives (within 60-s buffer)
+  //   ML_STALE_BOTH              window=5m ago,  block=5m ago → deleted
+
+  const mlUpsert = (ip, windowStart, blockedUntil) => db.query(
+    `INSERT INTO ip_magic_link_rate (ip, count, window_start, blocked_until)
+     VALUES ($1,3,$2,$3)
+     ON CONFLICT (ip) DO UPDATE
+       SET window_start=EXCLUDED.window_start, blocked_until=EXCLUDED.blocked_until`,
+    [ip, windowStart, blockedUntil],
+  );
+
+  await mlUpsert(ML_ACTIVE_WIN_ACTIVE_BLK,  PAST_10S,  FUTURE_2M);
+  await mlUpsert(ML_STALE_WIN_ACTIVE_BLK,   PAST_5MIN, FUTURE_2M);
+  await mlUpsert(ML_ACTIVE_WIN_EXPIRED_BLK, PAST_10S,  PAST_5MIN);
+  await mlUpsert(ML_GRACE_BOTH,             PAST_30S,  PAST_30S);
+  await mlUpsert(ML_STALE_BOTH,             PAST_5MIN, PAST_5MIN);
+
+  // ── Run the cleanup ───────────────────────────────────────────────────────
+  await svc.pruneStaleRows();
+  await svc.pruneMagicLinkRateRows();
+
+  // ── Helper: does a throttle_hits row still exist? ─────────────────────────
+  const thExists = async (key) => {
+    const r = await db.query(
+      `SELECT 1 FROM throttle_hits WHERE key=$1 AND throttler_name=$2`, [key, TH],
+    );
+    return r.rowCount > 0;
+  };
+  const ipExists = async (ip) => {
+    const r = await db.query(`SELECT 1 FROM ip_failure_tracker WHERE ip=$1`, [ip]);
+    return r.rowCount > 0;
+  };
+  const mlExists = async (ip) => {
+    const r = await db.query(`SELECT 1 FROM ip_magic_link_rate WHERE ip=$1`, [ip]);
+    return r.rowCount > 0;
+  };
+
+  // ── Assert throttle_hits ──────────────────────────────────────────────────
+  check("16.1a throttle_hits: active window + no block survives",
+    await thExists(TH_ACTIVE_WINDOW) ? 200 : 404, 200);
+
+  check("16.1b throttle_hits: stale window + ACTIVE block survives (active block guard)",
+    await thExists(TH_STALE_WIN_LIVE_BLOCK) ? 200 : 404, 200);
+
+  check("16.1c throttle_hits: grace window (< 1 day) + no block survives",
+    await thExists(TH_GRACE_WIN) ? 200 : 404, 200);
+
+  check("16.1d throttle_hits: stale window + stale block is deleted",
+    await thExists(TH_STALE_BOTH) ? 409 : 200, 200);
+
+  // ── Assert ip_failure_tracker ─────────────────────────────────────────────
+  check("16.2a ip_failure_tracker: live window + live block survives",
+    await ipExists(IP_LIVE_WIN_LIVE_BLK) ? 200 : 404, 200);
+
+  check("16.2b ip_failure_tracker: stale window + LIVE block survives (AND guard)",
+    await ipExists(IP_STALE_WIN_LIVE_BLK) ? 200 : 404, 200);
+
+  check("16.2c ip_failure_tracker: live window + no block survives (AND guard)",
+    await ipExists(IP_LIVE_WIN_NO_BLK) ? 200 : 404, 200);
+
+  check("16.2d ip_failure_tracker: grace window + grace block survives",
+    await ipExists(IP_GRACE_BOTH) ? 200 : 404, 200);
+
+  check("16.2e ip_failure_tracker: stale window + stale block is deleted",
+    await ipExists(IP_STALE_BOTH) ? 409 : 200, 200);
+
+  // ── Assert ip_magic_link_rate ─────────────────────────────────────────────
+  check("16.3a ip_magic_link_rate: active window + active block survives",
+    await mlExists(ML_ACTIVE_WIN_ACTIVE_BLK) ? 200 : 404, 200);
+
+  check("16.3b ip_magic_link_rate: stale window + ACTIVE block survives (AND guard)",
+    await mlExists(ML_STALE_WIN_ACTIVE_BLK) ? 200 : 404, 200);
+
+  check("16.3c ip_magic_link_rate: active window + expired block survives (AND guard)",
+    await mlExists(ML_ACTIVE_WIN_EXPIRED_BLK) ? 200 : 404, 200);
+
+  check("16.3d ip_magic_link_rate: grace (within 60s) rows survive",
+    await mlExists(ML_GRACE_BOTH) ? 200 : 404, 200);
+
+  check("16.3e ip_magic_link_rate: stale window + stale block is deleted",
+    await mlExists(ML_STALE_BOTH) ? 409 : 200, 200);
+
+  // ── Cleanup seeded rows ───────────────────────────────────────────────────
+  await db.query(
+    `DELETE FROM throttle_hits WHERE key = ANY($1::text[]) AND throttler_name = $2`,
+    [[TH_ACTIVE_WINDOW, TH_STALE_WIN_LIVE_BLOCK, TH_GRACE_WIN, TH_STALE_BOTH], TH],
+  ).catch(() => {});
+  await db.query(
+    `DELETE FROM ip_failure_tracker WHERE ip = ANY($1::text[])`,
+    [[IP_LIVE_WIN_LIVE_BLK, IP_STALE_WIN_LIVE_BLK, IP_LIVE_WIN_NO_BLK, IP_GRACE_BOTH, IP_STALE_BOTH]],
+  ).catch(() => {});
+  await db.query(
+    `DELETE FROM ip_magic_link_rate WHERE ip = ANY($1::text[])`,
+    [[ML_ACTIVE_WIN_ACTIVE_BLK, ML_STALE_WIN_ACTIVE_BLK, ML_ACTIVE_WIN_EXPIRED_BLK, ML_GRACE_BOTH, ML_STALE_BOTH]],
+  ).catch(() => {});
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();
