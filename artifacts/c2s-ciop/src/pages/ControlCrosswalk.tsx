@@ -1,127 +1,14 @@
-import { useState } from "react";
-
-// Cross-framework control mapping: UCO -> NIST 800-53 Rev 5 -> CMMC 2.0 -> NIST 800-171 Rev 3 -> SOC 2 TSC -> ISO 27001:2022
-const CROSSWALK_DATA = [
-  { ucoId: "UCO-AC-001", ucoName: "Multi-Factor Authentication", family: "Access Control",
-    nist53: ["IA-2", "IA-2(1)", "IA-2(2)", "IA-2(6)", "IA-2(8)"],
-    cmmc: ["AC.L2-3.5.3", "AC.L2-3.5.4"],
-    nist171: ["3.5.3", "3.5.4"],
-    soc2: ["CC6.1", "CC6.3"],
-    iso27001: ["A.9.4.2", "A.9.4.3"],
-    integrations: ["Okta", "Entra ID", "Cisco Duo"],
-    status: "passing", coverage: 100 },
-  { ucoId: "UCO-AC-002", ucoName: "Privileged Access Management", family: "Access Control",
-    nist53: ["AC-2", "AC-3", "AC-6", "AC-6(5)", "AC-6(9)"],
-    cmmc: ["AC.L2-3.1.5", "AC.L2-3.1.6"],
-    nist171: ["3.1.5", "3.1.6"],
-    soc2: ["CC6.1", "CC6.2"],
-    iso27001: ["A.9.2.3", "A.9.4.4"],
-    integrations: ["Okta", "HashiCorp Vault", "Entra ID"],
-    status: "passing", coverage: 87 },
-  { ucoId: "UCO-AC-003", ucoName: "Session Management & Timeout", family: "Access Control",
-    nist53: ["AC-11", "AC-11(1)", "AC-12"],
-    cmmc: ["AC.L2-3.1.10"],
-    nist171: ["3.1.10"],
-    soc2: ["CC6.1"],
-    iso27001: ["A.9.4.2"],
-    integrations: ["Okta", "Entra ID"],
-    status: "passing", coverage: 100 },
-  { ucoId: "UCO-CM-001", ucoName: "Endpoint Configuration Baseline", family: "Configuration Management",
-    nist53: ["CM-2", "CM-6", "CM-6(1)", "CM-7"],
-    cmmc: ["CM.L2-3.4.1", "CM.L2-3.4.2"],
-    nist171: ["3.4.1", "3.4.2"],
-    soc2: ["CC7.1"],
-    iso27001: ["A.12.1.2", "A.12.6.1"],
-    integrations: ["CrowdStrike Falcon", "Intune", "Jamf Pro"],
-    status: "passing", coverage: 92 },
-  { ucoId: "UCO-CM-002", ucoName: "Software Inventory & Allowlisting", family: "Configuration Management",
-    nist53: ["CM-7(2)", "CM-7(4)", "CM-8", "CM-8(1)"],
-    cmmc: ["CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.9"],
-    nist171: ["3.4.6", "3.4.7"],
-    soc2: ["CC6.8"],
-    iso27001: ["A.12.5.1", "A.12.6.2"],
-    integrations: ["Intune", "Jamf Pro", "SentinelOne"],
-    status: "failing", coverage: 64 },
-  { ucoId: "UCO-VM-001", ucoName: "Vulnerability Scanning", family: "Vulnerability Management",
-    nist53: ["RA-5", "RA-5(1)", "RA-5(2)", "RA-5(5)"],
-    cmmc: ["RM.L2-3.11.2", "RM.L2-3.11.3"],
-    nist171: ["3.11.2", "3.11.3"],
-    soc2: ["CC7.1", "CC7.2"],
-    iso27001: ["A.12.6.1"],
-    integrations: ["Tenable.io", "Qualys", "Wiz", "Orca Security"],
-    status: "passing", coverage: 98 },
-  { ucoId: "UCO-VM-002", ucoName: "Patch Management & Remediation", family: "Vulnerability Management",
-    nist53: ["SI-2", "SI-2(2)", "SI-2(3)", "CM-8(7)"],
-    cmmc: ["SI.L2-3.14.1", "SI.L2-3.14.4"],
-    nist171: ["3.14.1", "3.14.4"],
-    soc2: ["CC7.2"],
-    iso27001: ["A.12.6.1"],
-    integrations: ["Intune", "CrowdStrike Falcon", "Qualys"],
-    status: "partial", coverage: 71 },
-  { ucoId: "UCO-IR-001", ucoName: "Security Incident Detection & Alerting", family: "Incident Response",
-    nist53: ["IR-4", "IR-5", "IR-6", "SI-4", "SI-4(1)"],
-    cmmc: ["IR.L2-3.6.1", "IR.L2-3.6.2"],
-    nist171: ["3.6.1", "3.6.2"],
-    soc2: ["CC7.3", "CC7.4"],
-    iso27001: ["A.16.1.2", "A.16.1.4"],
-    integrations: ["CrowdStrike Falcon", "Splunk SIEM", "PagerDuty"],
-    status: "passing", coverage: 95 },
-  { ucoId: "UCO-AU-001", ucoName: "Audit Log Collection & Retention", family: "Audit & Accountability",
-    nist53: ["AU-2", "AU-3", "AU-9", "AU-11", "AU-12"],
-    cmmc: ["AU.L2-3.3.1", "AU.L2-3.3.2"],
-    nist171: ["3.3.1", "3.3.2"],
-    soc2: ["CC7.2", "CC9.1"],
-    iso27001: ["A.12.4.1", "A.12.4.3"],
-    integrations: ["Splunk SIEM", "AWS CloudTrail", "Datadog"],
-    status: "passing", coverage: 100 },
-  { ucoId: "UCO-AU-002", ucoName: "Privileged User Activity Monitoring", family: "Audit & Accountability",
-    nist53: ["AU-9(4)", "AU-12(3)", "AC-6(9)"],
-    cmmc: ["AU.L2-3.3.5"],
-    nist171: ["3.3.5"],
-    soc2: ["CC6.2", "CC7.2"],
-    iso27001: ["A.12.4.3"],
-    integrations: ["Okta", "Splunk SIEM", "HashiCorp Vault"],
-    status: "partial", coverage: 78 },
-  { ucoId: "UCO-SC-001", ucoName: "Data-in-Transit Encryption", family: "System & Comm Protection",
-    nist53: ["SC-8", "SC-8(1)", "SC-28"],
-    cmmc: ["SC.L2-3.13.8"],
-    nist171: ["3.13.8"],
-    soc2: ["CC6.7"],
-    iso27001: ["A.10.1.1"],
-    integrations: ["AWS GovCloud", "Cloudflare", "Zscaler"],
-    status: "passing", coverage: 100 },
-  { ucoId: "UCO-SC-002", ucoName: "Data-at-Rest Encryption", family: "System & Comm Protection",
-    nist53: ["SC-28", "SC-28(1)"],
-    cmmc: ["SC.L2-3.13.16"],
-    nist171: ["3.13.16"],
-    soc2: ["CC6.7"],
-    iso27001: ["A.10.1.1"],
-    integrations: ["AWS GovCloud", "HashiCorp Vault"],
-    status: "passing", coverage: 100 },
-  { ucoId: "UCO-SA-001", ucoName: "SAST/DAST Application Security Testing", family: "System & Software Integrity",
-    nist53: ["SA-11", "SA-11(1)", "SA-15"],
-    cmmc: ["SA.L3-3.12.1"],
-    nist171: ["N/A (L3)"],
-    soc2: ["CC8.1"],
-    iso27001: ["A.14.2.3", "A.14.2.8"],
-    integrations: ["Snyk", "Veracode", "Checkmarx", "SonarQube"],
-    status: "passing", coverage: 96 },
-  { ucoId: "UCO-PE-001", ucoName: "Identity Governance & Lifecycle", family: "Personnel & Access Lifecycle",
-    nist53: ["PS-4", "PS-5", "PS-7", "IA-4"],
-    cmmc: ["PS.L2-3.9.1", "PS.L2-3.9.2"],
-    nist171: ["3.9.1", "3.9.2"],
-    soc2: ["CC6.2", "CC6.3"],
-    iso27001: ["A.7.1.1", "A.7.1.2", "A.7.3.1"],
-    integrations: ["Workday", "Okta", "Entra ID"],
-    status: "partial", coverage: 83 },
-];
+import { useMemo, useState } from "react";
+import { CROSSWALK_DATA } from "./crosswalk-data";
 
 const FRAMEWORKS = [
-  { key: "nist53", label: "NIST 800-53 Rev 5", color: "#1d4ed8" },
-  { key: "cmmc", label: "CMMC 2.0 (L2)", color: "#7c3aed" },
-  { key: "nist171", label: "NIST 800-171 Rev 3", color: "#0891b2" },
-  { key: "soc2", label: "SOC 2 TSC", color: "#059669" },
-  { key: "iso27001", label: "ISO 27001:2022", color: "#d97706" },
+  { key: "nist53",   label: "NIST 800-53 Rev 5",   color: "#1d4ed8" },
+  { key: "cmmc",     label: "CMMC 2.0 (L2)",        color: "#7c3aed" },
+  { key: "nist171",  label: "NIST 800-171 Rev 2",   color: "#0891b2" },
+  { key: "soc2",     label: "SOC 2 TSC",            color: "#059669" },
+  { key: "iso27001", label: "ISO 27001:2022",       color: "#d97706" },
+  { key: "fedramp",  label: "FedRAMP High",         color: "#dc2626" },
+  { key: "hipaa",    label: "HIPAA §164",           color: "#7e22ce" },
 ];
 
 const FAMILIES = ["All", ...Array.from(new Set(CROSSWALK_DATA.map(c => c.family)))];
@@ -171,18 +58,18 @@ export default function ControlCrosswalk() {
   const [filterFamily, setFilterFamily] = useState("All");
   const [filterStatus, setFilterStatus] = useState("all");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [activeFrameworks, setActiveFrameworks] = useState<string[]>(["nist53", "cmmc", "nist171", "soc2", "iso27001"]);
+  const [activeFrameworks, setActiveFrameworks] = useState<string[]>(["nist53", "cmmc", "nist171", "soc2", "iso27001", "fedramp", "hipaa"]);
 
   const toggleFramework = (key: string) => {
     setActiveFrameworks(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
   };
 
-  const filtered = CROSSWALK_DATA.filter(c => {
+  const filtered = useMemo(() => CROSSWALK_DATA.filter(c => {
     if (search && !c.ucoId.toLowerCase().includes(search.toLowerCase()) && !c.ucoName.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterFamily !== "All" && c.family !== filterFamily) return false;
     if (filterStatus !== "all" && c.status !== filterStatus) return false;
     return true;
-  });
+  }), [search, filterFamily, filterStatus]);
 
   const stats = {
     total: CROSSWALK_DATA.length,
@@ -197,7 +84,7 @@ export default function ControlCrosswalk() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Control Crosswalk Engine</h1>
-          <p className="text-sm text-slate-500 mt-1">Single-pane multi-framework mapping: UCO controls to NIST 800-53, CMMC, NIST 800-171, SOC 2, and ISO 27001</p>
+          <p className="text-sm text-slate-500 mt-1">Single-pane multi-framework mapping: 71 UCO controls across NIST 800-53, CMMC 2.0, NIST 800-171, SOC 2, ISO 27001, FedRAMP High, and HIPAA §164</p>
         </div>
         <button onClick={handleExport} disabled={exporting} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: "#2563eb" }}>
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -248,6 +135,7 @@ export default function ControlCrosswalk() {
           <option value="passing">Passing</option>
           <option value="partial">Partial</option>
           <option value="failing">Failing</option>
+          <option value="not_tested">Not Tested</option>
         </select>
       </div>
 
