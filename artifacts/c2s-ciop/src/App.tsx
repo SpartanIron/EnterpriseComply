@@ -50,6 +50,7 @@ import SuperAdmin from "./pages/SuperAdmin";
 import RoleManagement from "./pages/RoleManagement";
 import PublicTrustCenter from "./pages/PublicTrustCenter";
 import OrgTrustCenter from "./pages/OrgTrustCenter";
+import StatusPage from "./pages/StatusPage";
 import { RoleProvider } from "./context/RoleContext";
 import PlanGate from "./components/PlanGate";
 
@@ -145,6 +146,7 @@ function AppRoutes() {
         <Route path="/" component={HomeRedirect} />
         <Route path="/sign-in/*?" component={SignIn} />
         <Route path="/sign-up/*?" component={SignUp} />
+        <Route path="/status" component={StatusPage} />
         <Route path="/trust" component={PublicTrustCenter} />
         <Route path="/trust/:slug" component={OrgTrustCenter} />
         <Route path="/landing" component={Landing} />

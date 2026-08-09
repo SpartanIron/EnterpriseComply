@@ -959,6 +959,30 @@ CREATE TABLE IF NOT EXISTS email_drip_log (
 );
 `;
 
+const MIGRATION_SQL_V4 = `
+CREATE TABLE IF NOT EXISTS system_health_log (
+  id          SERIAL PRIMARY KEY,
+  component   TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'healthy',
+  latency_ms  INTEGER,
+  error       TEXT,
+  checked_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_system_health_log_component_time
+  ON system_health_log (component, checked_at DESC);
+
+CREATE TABLE IF NOT EXISTS incidents (
+  id          SERIAL PRIMARY KEY,
+  component   TEXT NOT NULL,
+  severity    TEXT NOT NULL DEFAULT 'minor',
+  description TEXT NOT NULL,
+  started_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_incidents_component ON incidents (component, started_at DESC);
+`;
+
 @Injectable()
 export class StartupService implements OnApplicationBootstrap {
   private readonly logger = new Logger(StartupService.name);
@@ -967,6 +991,7 @@ export class StartupService implements OnApplicationBootstrap {
     await this.runMigrations();
     await this.runMigrationsV3();
     await this.runMigrationsV2();
+    await this.runMigrationsV4();
 
     // Security hardening — these migrations throw on failure and are NOT caught here.
     // A failure propagates up to NestFactory.create() which logs it and exits the process.
@@ -1001,6 +1026,15 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.log('BetterAuth V3 migrations complete');
     } catch (err) {
       this.logger.error('V3 migration failed - continuing', (err as any)?.message ?? String(err));
+    }
+  }
+  private async runMigrationsV4() {
+    try {
+      const client4 = await pool.connect();
+      try { await client4.query(MIGRATION_SQL_V4); } finally { client4.release(); }
+      this.logger.log('System health V4 migrations complete');
+    } catch (err) {
+      this.logger.error('V4 migration failed - continuing', (err as any)?.message ?? String(err));
     }
   }
 

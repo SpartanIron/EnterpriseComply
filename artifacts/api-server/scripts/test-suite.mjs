@@ -1315,6 +1315,88 @@ section("SECTION 12 — SYNC LOG: all provider paths write history + thrown fail
   await db.query(`DELETE FROM organizations WHERE id = $1`, [org12Id]).catch(() => {});
 }
 
+// ── Section 13: Public status API ────────────────────────────────────────────
+
+section("SECTION 13 — PUBLIC STATUS API: /api/public/status returns correct shape");
+
+{
+  // BASE = http://localhost:8080/api — do NOT add /api prefix again
+  const PUBLIC_STATUS = `${BASE}/public/status`;
+
+  // 1. Endpoint is accessible without authentication (no cookie)
+  const r13 = await fetch(PUBLIC_STATUS, {
+    headers: { "Content-Type": "application/json", "Host": new URL(BASE).host },
+  });
+  check("GET /api/public/status returns 200 without auth", r13.status, 200);
+
+  const statusRes = r13.ok ? await r13.json() : {};
+
+  // 2. Required top-level keys
+  check("response has 'overall' string field",    typeof statusRes?.overall    === "string" ? 200 : 422, 200);
+  check("response has 'components' array",        Array.isArray(statusRes?.components)       ? 200 : 422, 200);
+  check("response has 'incidents' array",         Array.isArray(statusRes?.incidents)        ? 200 : 422, 200);
+  check("response has 'checkedAt' string field",  typeof statusRes?.checkedAt  === "string" ? 200 : 422, 200);
+  check("response has 'dailyBuckets' object",
+    typeof statusRes?.dailyBuckets === "object" && statusRes?.dailyBuckets !== null ? 200 : 422, 200);
+
+  // 3. 'overall' is a valid enum value
+  const validOverall = ["operational", "degraded", "outage"];
+  check("overall is 'operational' | 'degraded' | 'outage'",
+    validOverall.includes(statusRes?.overall) ? 200 : 422, 200);
+
+  // 4. All 5 components present
+  const expectedKeys = ["api", "database", "auth", "scheduler", "evidence_vault"];
+  const componentKeys = (statusRes?.components ?? []).map((c) => c.key);
+  check("components array contains all 5 expected components",
+    expectedKeys.every((k) => componentKeys.includes(k)) ? 200 : 422, 200);
+
+  // 5. Each component has required fields
+  const allComponentsValid = (statusRes?.components ?? []).every(
+    (c) => typeof c.key === "string" && typeof c.name === "string" && typeof c.status === "string",
+  );
+  check("each component has key, name, and status fields", allComponentsValid ? 200 : 422, 200);
+
+  // 6. Insert a probe row directly and confirm aggregation reflects it
+  await db.query(
+    `INSERT INTO system_health_log (component, status, latency_ms, checked_at)
+     VALUES ('database', 'healthy', 37, NOW())`,
+  ).catch(() => {});
+
+  const r13b = await fetch(PUBLIC_STATUS, {
+    headers: { "Content-Type": "application/json", "Host": new URL(BASE).host },
+  });
+  const afterProbe = r13b.ok ? await r13b.json() : {};
+  const dbComponent = (afterProbe?.components ?? []).find((c) => c.key === "database");
+  check("component status is 'healthy' after healthy probe row inserted",
+    dbComponent?.status === "healthy" ? 200 : 422, 200);
+  check("uptime90d is non-null after probe row inserted",
+    dbComponent?.uptime90d !== null ? 200 : 422, 200);
+
+  // 7. Insert an incident and confirm it shows in the response
+  const incRes = await db.query(
+    `INSERT INTO incidents (component, severity, description, started_at)
+     VALUES ('database', 'minor', 'Test incident from test suite', NOW() - INTERVAL '1 hour')
+     RETURNING id`,
+  ).catch(() => ({ rows: [] }));
+  const incId = incRes.rows[0]?.id;
+
+  const r13c = await fetch(PUBLIC_STATUS, {
+    headers: { "Content-Type": "application/json", "Host": new URL(BASE).host },
+  });
+  const withIncident = r13c.ok ? await r13c.json() : {};
+  check("active incident shows in incidents array",
+    incId && (withIncident?.incidents ?? []).some((i) => i.id === incId) ? 200 : 422, 200);
+
+  // Cleanup: resolve the test incident and delete probe rows
+  if (incId) {
+    await db.query(`UPDATE incidents SET resolved_at = NOW() WHERE id = $1`, [incId]).catch(() => {});
+    await db.query(`DELETE FROM incidents WHERE id = $1`, [incId]).catch(() => {});
+  }
+  await db.query(
+    `DELETE FROM system_health_log WHERE component = 'database' AND latency_ms = 37`,
+  ).catch(() => {});
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();

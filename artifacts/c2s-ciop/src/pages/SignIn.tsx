@@ -255,6 +255,9 @@ export default function SignIn() {
           </div>
         </div>
         <p className="text-center text-xs text-slate-400 mt-5">By continuing you agree to our Terms of Service and Privacy Policy.</p>
+        <p className="text-center text-xs text-slate-400 mt-2">
+          <a href="/status" className="text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline">System Status</a>
+        </p>
       </div>
     </div>
   );

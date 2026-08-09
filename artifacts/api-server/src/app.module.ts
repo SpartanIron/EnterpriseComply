@@ -40,6 +40,7 @@ import { WebhooksModule } from "./modules/webhooks/webhooks.module";
 import { SchedulerModule } from "./modules/scheduler/scheduler.module";
 import { TelemetryModule } from "./modules/telemetry/telemetry.module";
 import { EMassModule } from "./modules/emass/emass.module";
+import { PublicStatusModule } from "./modules/public-status/public-status.module";
 import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
 
 @Module({
@@ -84,6 +85,7 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
     ZeroTrustModule,
     WebhooksModule,
     SchedulerModule,
+    PublicStatusModule,
   ],
   providers: [
     {
