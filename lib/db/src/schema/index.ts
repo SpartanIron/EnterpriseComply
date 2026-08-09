@@ -19,3 +19,4 @@ export * from "./orgRemediation";
 export * from "./orgZeroTrust";
 export * from "./email-drip-log";
 export * from "./systemHealth";
+export * from "./orgSso";

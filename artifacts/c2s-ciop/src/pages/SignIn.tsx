@@ -237,10 +237,11 @@ export default function SignIn() {
             <button
               type="button"
               onClick={() => { setError(""); setView("totp"); }}
-              className="w-full py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2"
+              className="w-full py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2 mb-2"
             >
               Use authenticator app instead
             </button>
+            <SsoLoginButton />
           </div>
 
           <div className="mx-7 mb-5 rounded-xl border border-slate-100 bg-slate-50 p-4">
@@ -260,6 +261,67 @@ export default function SignIn() {
         </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Enterprise SSO login — prompts for org slug/domain and redirects to the
+ * SP-initiated SAML login endpoint.
+ */
+function SsoLoginButton() {
+  const [open, setOpen] = useState(false);
+  const [slug, setSlug] = useState("");
+  const [err, setErr] = useState("");
+
+  function handleSsoLogin(e: React.FormEvent) {
+    e.preventDefault();
+    const raw = slug.trim().toLowerCase();
+    if (!raw) { setErr("Enter your organization slug or SSO domain"); return; }
+    // Normalise: strip protocol/trailing-slash if user entered a domain
+    const orgSlug = raw.replace(/^https?:\/\//, "").split("/")[0].split(".")[0] || raw;
+    window.location.href = `${BASE_PATH}/api/saml/${encodeURIComponent(orgSlug)}/login`;
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2"
+      >
+        <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
+        Sign in with Enterprise SSO
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSsoLogin} className="rounded-xl border border-purple-100 bg-purple-50 p-4 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
+        <span className="text-sm font-semibold text-purple-800">Enterprise SSO</span>
+        <button type="button" onClick={() => setOpen(false)} className="ml-auto text-purple-400 hover:text-purple-600 text-lg leading-none">&times;</button>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-purple-700 mb-1">Organization slug</label>
+        <input
+          type="text"
+          value={slug}
+          onChange={e => { setSlug(e.target.value); setErr(""); }}
+          placeholder="acme  (or acme.com)"
+          autoFocus
+          className="w-full px-3 py-2 rounded-lg border border-purple-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+        />
+        <p className="text-xs text-purple-500 mt-1">Enter your organization slug or your company domain</p>
+      </div>
+      {err && <p className="text-xs text-red-600">{err}</p>}
+      <button
+        type="submit"
+        className="w-full py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700"
+      >
+        Continue with SSO →
+      </button>
+    </form>
   );
 }
 

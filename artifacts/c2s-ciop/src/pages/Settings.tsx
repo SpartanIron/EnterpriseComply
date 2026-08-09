@@ -174,6 +174,55 @@ function SecurityTab() {
   const [loading, setLoading] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
+  // ── SSO / SAML form state ────────────────────────────────────────────────────
+  const [ssoProvider,       setSsoProvider]       = useState("");
+  const [ssoDomain,         setSsoDomain]         = useState("");
+  const [idpEntityId,       setIdpEntityId]       = useState("");
+  const [idpSsoUrl,         setIdpSsoUrl]         = useState("");
+  const [idpCertificate,    setIdpCertificate]    = useState("");
+  const [ssoSaved,          setSsoSaved]          = useState(false);
+  const [ssoError,          setSsoError]          = useState("");
+  const [ssoInitialized,    setSsoInitialized]    = useState(false);
+
+  const { data: ssoConfigData } = useQuery<{ configured: boolean; config: any; sp: { entityId: string; acsUrl: string } } | null>({
+    queryKey: ["orgs", orgId, "sso-config"],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const res = await fetch(apiUrl(`/orgs/${orgId}/sso/config`), { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!orgId,
+  });
+
+  useEffect(() => {
+    if (ssoConfigData?.config && !ssoInitialized) {
+      setSsoProvider(ssoConfigData.config.provider ?? "");
+      setSsoDomain(ssoConfigData.config.domain ?? "");
+      setIdpEntityId(ssoConfigData.config.idpEntityId ?? "");
+      setIdpSsoUrl(ssoConfigData.config.idpSsoUrl ?? "");
+      setIdpCertificate(ssoConfigData.config.idpCertificate ?? "");
+      setSsoInitialized(true);
+    }
+  }, [ssoConfigData, ssoInitialized]);
+
+  const ssoMutation = useMutation({
+    mutationFn: () =>
+      apiFetch(`/orgs/${orgId}/sso/config`, {
+        method: "POST",
+        body: JSON.stringify({ provider: ssoProvider, domain: ssoDomain, idpEntityId, idpSsoUrl, idpCertificate }),
+      }),
+    onSuccess: () => {
+      setSsoSaved(true);
+      setSsoError("");
+      qc.invalidateQueries({ queryKey: ["orgs", orgId, "sso-config"] });
+      setTimeout(() => setSsoSaved(false), 3000);
+    },
+    onError: (err: any) => {
+      setSsoError(err?.message ?? "Failed to save SSO configuration");
+    },
+  });
+
   useEffect(() => {
     if (twoFactorEnabled) setSetupStep("idle");
   }, [twoFactorEnabled]);
@@ -571,16 +620,93 @@ function SecurityTab() {
               <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 10c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" /></svg>
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-800">SSO / SAML Configuration</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Single Sign-On for enterprise authentication (full implementation in Task #28)</p>
+              <h2 className="text-base font-semibold text-slate-800">SSO / SAML 2.0 Configuration</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Configure SP-initiated SAML 2.0 for enterprise single sign-on</p>
             </div>
           </div>
+
+          {/* ── SP metadata — copy into IdP ── */}
+          {ssoConfigData?.sp && (
+            <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-semibold text-slate-700">Service Provider (SP) Details — paste these into your IdP</p>
+              <div>
+                <label className="block text-xs text-slate-500 mb-0.5">Entity ID / Audience URI</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-800 font-mono truncate">{ssoConfigData.sp.entityId}</code>
+                  <button onClick={() => navigator.clipboard.writeText(ssoConfigData.sp.entityId)} className="text-xs px-2 py-1 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-100">Copy</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-0.5">ACS URL (Assertion Consumer Service)</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-800 font-mono truncate">{ssoConfigData.sp.acsUrl}</code>
+                  <button onClick={() => navigator.clipboard.writeText(ssoConfigData.sp.acsUrl)} className="text-xs px-2 py-1 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-100">Copy</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-0.5">SP Metadata XML</label>
+                <a href={`/api/orgs/${orgId}/sso/metadata`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Download metadata.xml</a>
+              </div>
+            </div>
+          )}
+
+          {/* ── IdP configuration form ── */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Provider</label><select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"><option value="">Disabled</option><option value="okta">Okta</option><option value="azure_ad">Microsoft Entra ID</option><option value="google">Google Workspace</option><option value="saml">Generic SAML 2.0</option></select></div>
-              <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Domain</label><input type="text" placeholder="company.com" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Provider</label>
+                <select value={ssoProvider} onChange={e => setSsoProvider(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">Select provider…</option>
+                  <option value="okta">Okta</option>
+                  <option value="azure_ad">Microsoft Entra ID (Azure AD)</option>
+                  <option value="google">Google Workspace</option>
+                  <option value="saml">Generic SAML 2.0</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Domain</label>
+                <input type="text" value={ssoDomain} onChange={e => setSsoDomain(e.target.value)} placeholder="company.com" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
             </div>
-            <button onClick={() => { const el = document.createElement("div"); el.style.cssText = "position:fixed;bottom:24px;right:24px;background:#7c3aed;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999"; el.textContent = "SSO configuration saved"; document.body.appendChild(el); setTimeout(() => el.remove(), 2500); }} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Save SSO Configuration</button>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">IdP Entity ID</label>
+              <input type="text" value={idpEntityId} onChange={e => setIdpEntityId(e.target.value)} placeholder="https://your-idp.com/saml/entity-id" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">IdP SSO URL (Single Sign-On endpoint)</label>
+              <input type="url" value={idpSsoUrl} onChange={e => setIdpSsoUrl(e.target.value)} placeholder="https://your-idp.com/saml2/sso" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">IdP Signing Certificate (PEM)</label>
+              <textarea
+                value={idpCertificate}
+                onChange={e => setIdpCertificate(e.target.value)}
+                placeholder={"-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"}
+                rows={5}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono resize-none"
+              />
+              <p className="text-xs text-slate-400 mt-1">Paste the X.509 certificate from your IdP's metadata (with or without PEM headers)</p>
+            </div>
+
+            {ssoError && (
+              <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{ssoError}</div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => ssoMutation.mutate()}
+                disabled={!orgId || !idpEntityId || !idpSsoUrl || !idpCertificate || ssoMutation.isPending}
+                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                {ssoMutation.isPending ? "Saving…" : "Save SSO Configuration"}
+              </button>
+              {ssoSaved && (
+                <div className="flex items-center gap-1.5 text-xs text-green-700 font-semibold">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  SSO configuration saved
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </PlanGate>

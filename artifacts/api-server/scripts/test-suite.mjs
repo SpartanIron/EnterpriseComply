@@ -1397,6 +1397,322 @@ section("SECTION 13 — PUBLIC STATUS API: /api/public/status returns correct sh
   ).catch(() => {});
 }
 
+// ── Section 14: SSO / SAML endpoints ─────────────────────────────────────────
+
+section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth flow");
+
+{
+  // Create a fresh enterprise org for SSO tests
+  const user14   = uid();
+  const sess14   = uid();
+  const tok14    = uid();
+  const slug14   = slug();
+  const email14  = `sso-test-${user14.slice(0, 8)}@test.local`;
+
+  await db.query(`INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt") VALUES ($1, 'SSO Test User', $2, TRUE, NOW(), NOW())`, [user14, email14]);
+  const org14Res = await db.query(`INSERT INTO organizations (name, slug, plan, onboarding_complete) VALUES ('SSO Test Org', $1, 'enterprise', TRUE) RETURNING id`, [slug14]);
+  const org14Id = org14Res.rows[0].id;
+  await db.query(`INSERT INTO org_members (org_id, clerk_user_id, email, role) VALUES ($1, $2, $3, 'admin')`, [org14Id, user14, email14]);
+  await db.query(`INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId") VALUES ($1, NOW() + INTERVAL '8 hours', $2, NOW(), NOW(), $3)`, [sess14, tok14, user14]);
+  const cookie14 = cookieHdr(tok14);
+
+  // Create a starter-plan org to test the plan gate
+  const user14s   = uid();
+  const sess14s   = uid();
+  const tok14s    = uid();
+  const slug14s   = slug();
+  const email14s  = `sso-starter-${user14s.slice(0, 8)}@test.local`;
+
+  await db.query(`INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt") VALUES ($1, 'SSO Starter User', $2, TRUE, NOW(), NOW())`, [user14s, email14s]);
+  const org14sRes = await db.query(`INSERT INTO organizations (name, slug, plan, onboarding_complete) VALUES ('SSO Starter Org', $1, 'starter', TRUE) RETURNING id`, [slug14s]);
+  const org14sId = org14sRes.rows[0].id;
+  await db.query(`INSERT INTO org_members (org_id, clerk_user_id, email, role) VALUES ($1, $2, $3, 'admin')`, [org14sId, user14s, email14s]);
+  await db.query(`INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId") VALUES ($1, NOW() + INTERVAL '8 hours', $2, NOW(), NOW(), $3)`, [sess14s, tok14s, user14s]);
+  const cookie14s = cookieHdr(tok14s);
+
+  // 1. GET /sso/config before any config is saved — should return configured: false
+  const preConfigRes = await fetch(`${BASE}/orgs/${org14Id}/sso/config`, {
+    headers: { Cookie: cookie14, "Content-Type": "application/json", Host: new URL(BASE).host },
+  });
+  check("GET /sso/config returns 200 for enterprise admin", preConfigRes.status, 200);
+  const preConfig = preConfigRes.ok ? await preConfigRes.json() : {};
+  check("GET /sso/config returns configured: false before save", preConfig?.configured === false ? 200 : 422, 200);
+  check("GET /sso/config returns sp.entityId string", typeof preConfig?.sp?.entityId === "string" ? 200 : 422, 200);
+  check("GET /sso/config returns sp.acsUrl string",   typeof preConfig?.sp?.acsUrl   === "string" ? 200 : 422, 200);
+
+  // 2. POST /sso/config — save an IdP configuration
+  const ssoPayload = {
+    provider: "okta",
+    domain: "testcorp.com",
+    idpEntityId: `https://idp.testcorp.com/saml/${slug14}`,
+    idpSsoUrl:   "https://idp.testcorp.com/app/saml/sso",
+    idpCertificate: [
+      "-----BEGIN CERTIFICATE-----",
+      "MIIDpDCCAoygAwIBAgIGAVIFG6IZMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYDVQQG",
+      "EwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNU2FuIEZyYW5jaXNj",
+      "bzENMAsGA1UECgwET2t0YTEUMBIGA1UECwwLU1NPUHJvdmlkZXIxEzARBgNVBAMM",
+      "Cmludm9pY2VzaW0wHhcNMTYwMTIxMjMzNjE5WhcNMjYwMTIxMjMzNzE5WjCBkjEL",
+      "MAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNhbiBG",
+      "cmFuY2lzY28xDTALBgNVBAoMBE9rdGExFDASBgNVBAsMC1NTT1Byb3ZpZGVyMRMw",
+      "EQYDVQQDDAppbnZvaWNlc2ltMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC",
+      "AQEAxrBl9hDu8F/QHyOFBQBkFQJkgqGCqABWujnbPa6OVubMBfMRpU/XZRB1zQVB",
+      "fake-cert-for-testing-only-not-valid",
+      "-----END CERTIFICATE-----",
+    ].join("\n"),
+  };
+
+  const saveRes = await fetch(`${BASE}/orgs/${org14Id}/sso/config`, {
+    method: "POST",
+    headers: { Cookie: cookie14, "Content-Type": "application/json", Host: new URL(BASE).host },
+    body: JSON.stringify(ssoPayload),
+  });
+  check("POST /sso/config returns 200 for enterprise admin", saveRes.status, 200);
+  const saveBody = saveRes.ok ? await saveRes.json() : {};
+  check("POST /sso/config returns ok: true", saveBody?.ok === true ? 200 : 422, 200);
+
+  // 3. GET /sso/config after save — should return configured: true
+  const postConfigRes = await fetch(`${BASE}/orgs/${org14Id}/sso/config`, {
+    headers: { Cookie: cookie14, "Content-Type": "application/json", Host: new URL(BASE).host },
+  });
+  const postConfig = postConfigRes.ok ? await postConfigRes.json() : {};
+  check("GET /sso/config returns configured: true after save", postConfig?.configured === true ? 200 : 422, 200);
+  check("GET /sso/config returns correct provider after save", postConfig?.config?.provider === "okta" ? 200 : 422, 200);
+  check("GET /sso/config returns correct domain after save", postConfig?.config?.domain === "testcorp.com" ? 200 : 422, 200);
+
+  // 4. GET /sso/metadata — should return XML content
+  const metaRes = await fetch(`${BASE}/orgs/${org14Id}/sso/metadata`, {
+    headers: { Cookie: cookie14, "Content-Type": "application/json", Host: new URL(BASE).host },
+  });
+  check("GET /sso/metadata returns 200", metaRes.status, 200);
+  const metaText = metaRes.ok ? await metaRes.text() : "";
+  check("GET /sso/metadata returns XML EntityDescriptor", metaText.includes("EntityDescriptor") ? 200 : 422, 200);
+  check("GET /sso/metadata contains ACS URL", metaText.includes("AssertionConsumerService") ? 200 : 422, 200);
+
+  // 5. Plan gate — starter org gets 402 on SSO config endpoints
+  const gateConfigRes = await fetch(`${BASE}/orgs/${org14sId}/sso/config`, {
+    headers: { Cookie: cookie14s, "Content-Type": "application/json", Host: new URL(BASE).host },
+  });
+  check("GET /sso/config returns 402 for starter plan org", gateConfigRes.status, 402);
+
+  const gateSaveRes = await fetch(`${BASE}/orgs/${org14sId}/sso/config`, {
+    method: "POST",
+    headers: { Cookie: cookie14s, "Content-Type": "application/json", Host: new URL(BASE).host },
+    body: JSON.stringify(ssoPayload),
+  });
+  check("POST /sso/config returns 402 for starter plan org", gateSaveRes.status, 402);
+
+  // 6. POST /sso/config with missing required fields — should get 400
+  const badSaveRes = await fetch(`${BASE}/orgs/${org14Id}/sso/config`, {
+    method: "POST",
+    headers: { Cookie: cookie14, "Content-Type": "application/json", Host: new URL(BASE).host },
+    body: JSON.stringify({ provider: "okta" }), // missing idpEntityId, idpSsoUrl, idpCertificate
+  });
+  check("POST /sso/config returns 400 for missing required fields", badSaveRes.status, 400);
+
+  // 7. GET /saml/:orgSlug/login — redirects (302) to IdP or error page (no follow-redirect)
+  const loginRes = await fetch(`${BASE}/saml/${slug14}/login`, {
+    method: "GET",
+    headers: { Host: new URL(BASE).host },
+    redirect: "manual",
+  });
+  check("GET /saml/:orgSlug/login returns 302 redirect", loginRes.status, 302);
+  const locationHdr = loginRes.headers.get("location") ?? "";
+  check("GET /saml/:orgSlug/login Location header is non-empty", locationHdr.length > 0 ? 200 : 422, 200);
+
+  // 8. GET /saml/:orgSlug/login for non-existent org — redirects to error page
+  const badLoginRes = await fetch(`${BASE}/saml/org-does-not-exist-xyz/login`, {
+    method: "GET",
+    headers: { Host: new URL(BASE).host },
+    redirect: "manual",
+  });
+  check("GET /saml/nonexistent/login returns 302 redirect to error", badLoginRes.status, 302);
+  const badLocation = badLoginRes.headers.get("location") ?? "";
+  check("non-existent org SSO login redirects to error page", badLocation.includes("error=") ? 200 : 422, 200);
+
+  // 9. POST /saml/:orgSlug/callback with invalid SAMLResponse — 302 to error
+  const badCallbackRes = await fetch(`${BASE}/saml/${slug14}/callback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Host: new URL(BASE).host },
+    body: "SAMLResponse=not-a-valid-saml-response",
+    redirect: "manual",
+  });
+  check("POST /saml/:orgSlug/callback with invalid SAMLResponse returns 302", badCallbackRes.status, 302);
+  const cbLocation = badCallbackRes.headers.get("location") ?? "";
+  check("invalid SAML callback redirects to error page", cbLocation.includes("error=") || cbLocation.includes("sign-in") ? 200 : 422, 200);
+
+  // 10-12. E2E: real signed SAMLResponse → valid BetterAuth session → protected route access
+  // This proves the full login path works and that unsigned assertions are rejected.
+  {
+    // Generate a fresh RSA key + self-signed cert for the test IdP using openssl
+    const { execSync } = await import("child_process");
+    const { readFileSync } = await import("fs");
+    execSync(
+      "openssl req -x509 -newkey rsa:2048 -keyout /tmp/saml-test-idp.key -out /tmp/saml-test-idp.crt" +
+      " -days 3650 -nodes -subj '/CN=TestIdP' -sha256 2>/dev/null"
+    );
+    const TEST_IDP_KEY  = readFileSync("/tmp/saml-test-idp.key", "utf8");
+    const TEST_IDP_CERT = readFileSync("/tmp/saml-test-idp.crt", "utf8");
+    const TEST_IDP_CERT_BODY = TEST_IDP_CERT
+      .replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----/g, "")
+      .replace(/\s+/g, "");
+    const TEST_IDP_ENTITY  = "https://test-idp.e2e.example.com";
+    const TEST_IDP_SSO_URL = "https://test-idp.e2e.example.com/saml/sso";
+
+    // Import xml-crypto (a direct dependency of @node-saml/node-saml)
+    const { SignedXml } = await import("xml-crypto");
+
+    // Set up a fresh enterprise org with the real test IdP cert
+    const userE2e  = uid(); const sessE2e = uid(); const tokE2e = uid();
+    const slugE2e  = `e2e-saml-${uid().slice(0, 10)}`;
+    const emailE2e = `saml-admin-${userE2e.slice(0, 8)}@e2e.test`;
+
+    await db.query(`INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt") VALUES ($1,'E2E Admin',$2,TRUE,NOW(),NOW())`, [userE2e, emailE2e]);
+    const orgE2eR = await db.query(`INSERT INTO organizations (name, slug, plan, onboarding_complete) VALUES ('E2E SSO Org',$1,'enterprise',TRUE) RETURNING id`, [slugE2e]);
+    const orgE2eId = orgE2eR.rows[0].id;
+    await db.query(`INSERT INTO org_members (org_id, clerk_user_id, email, role) VALUES ($1,$2,$3,'admin')`, [orgE2eId, userE2e, emailE2e]);
+    await db.query(`INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId") VALUES ($1, NOW() + INTERVAL '8 hours', $2, NOW(), NOW(), $3)`, [sessE2e, tokE2e, userE2e]);
+    const cookieE2e = cookieHdr(tokE2e);
+
+    // Save IdP config with the real test cert
+    await fetch(`${BASE}/orgs/${orgE2eId}/sso/config`, {
+      method: "POST",
+      headers: { Cookie: cookieE2e, "Content-Type": "application/json", Host: new URL(BASE).host },
+      body: JSON.stringify({ provider: "saml", domain: "e2e.example.com", idpEntityId: TEST_IDP_ENTITY, idpSsoUrl: TEST_IDP_SSO_URL, idpCertificate: TEST_IDP_CERT }),
+    });
+
+    // Fetch SP metadata values (entity ID + ACS URL) for assertion construction
+    const spData = await fetch(`${BASE}/orgs/${orgE2eId}/sso/config`, {
+      headers: { Cookie: cookieE2e, "Content-Type": "application/json", Host: new URL(BASE).host },
+    }).then(r => r.json());
+    const spEntityId = spData.sp.entityId;
+    const acsUrl     = spData.sp.acsUrl;
+
+    // Build and sign a SAMLResponse with a properly signed Assertion
+    const testSamlEmail = `saml-login-${uid().slice(0, 8)}@e2e.example.com`;
+    const assertionId   = `_a${uid()}`;
+    const responseId    = `_r${uid()}`;
+    const nowIso        = new Date().toISOString();
+    const notAfterIso   = new Date(Date.now() + 8 * 3600 * 1000).toISOString();
+
+    const assertionXml =
+      `<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="${assertionId}" Version="2.0" IssueInstant="${nowIso}">` +
+        `<saml:Issuer>${TEST_IDP_ENTITY}</saml:Issuer>` +
+        `<saml:Subject>` +
+          `<saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">${testSamlEmail}</saml:NameID>` +
+          `<saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">` +
+            `<saml:SubjectConfirmationData NotOnOrAfter="${notAfterIso}" Recipient="${acsUrl}"/>` +
+          `</saml:SubjectConfirmation>` +
+        `</saml:Subject>` +
+        `<saml:Conditions NotBefore="2020-01-01T00:00:00Z" NotOnOrAfter="${notAfterIso}">` +
+          `<saml:AudienceRestriction><saml:Audience>${spEntityId}</saml:Audience></saml:AudienceRestriction>` +
+        `</saml:Conditions>` +
+        `<saml:AuthnStatement AuthnInstant="${nowIso}">` +
+          `<saml:AuthnContext><saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:Password</saml:AuthnContextClassRef></saml:AuthnContext>` +
+        `</saml:AuthnStatement>` +
+      `</saml:Assertion>`;
+
+    // Sign the Assertion (enveloped XMLDSig, RSA-SHA256)
+    const sig = new SignedXml();
+    sig.signatureAlgorithm    = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
+    sig.canonicalizationAlgorithm = "http://www.w3.org/2001/10/xml-exc-c14n#";
+    sig.addReference({
+      xpath: `//*[@ID='${assertionId}']`,
+      transforms: [
+        "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
+        "http://www.w3.org/2001/10/xml-exc-c14n#",
+      ],
+      digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256",
+    });
+    sig.privateKey  = TEST_IDP_KEY;
+    sig.publicCert  = TEST_IDP_CERT;
+    sig.getKeyInfoContent = () =>
+      `<X509Data><X509Certificate>${TEST_IDP_CERT_BODY}</X509Certificate></X509Data>`;
+    sig.computeSignature(assertionXml, {
+      location: { reference: `//*[@ID='${assertionId}']`, action: "append" },
+    });
+    const signedAssertion = sig.getSignedXml();
+
+    // Wrap in a SAMLResponse (response itself is unsigned; assertion is signed)
+    const responseXml =
+      `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"` +
+        ` ID="${responseId}" Version="2.0" IssueInstant="${nowIso}" Destination="${acsUrl}">` +
+        `<saml:Issuer>${TEST_IDP_ENTITY}</saml:Issuer>` +
+        `<samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>` +
+        signedAssertion +
+      `</samlp:Response>`;
+
+    const samlB64 = Buffer.from(responseXml).toString("base64");
+
+    // POST to ACS and verify redirect to /dashboard (not error page)
+    const e2eRes = await fetch(`${BASE}/saml/${slugE2e}/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Host: new URL(BASE).host },
+      body: `SAMLResponse=${encodeURIComponent(samlB64)}`,
+      redirect: "manual",
+    });
+    check("E2E SAML: signed assertion callback returns 302",        e2eRes.status, 302);
+    const e2eLoc = e2eRes.headers.get("location") ?? "";
+    check("E2E SAML: signed assertion redirects to /dashboard",     e2eLoc.includes("/dashboard") ? 200 : 422, 200);
+
+    // Extract the session cookie and verify it gives access to a protected route
+    const setCookieVal = e2eRes.headers.get("set-cookie") ?? "";
+    const tokenMatch   = setCookieVal.match(/__Secure-better-auth\.session_token=([^;]+)/);
+    const samlToken    = tokenMatch?.[1] ?? "";
+    check("E2E SAML: callback sets session cookie",                 samlToken.length > 0 ? 200 : 422, 200);
+
+    if (samlToken) {
+      // The SAML user is added as 'member', so SSO config endpoint (requires admin) → 403
+      // A 401 would mean auth failed; anything but 401 proves the session is valid.
+      const guardRes = await fetch(`${BASE}/orgs/${orgE2eId}/sso/config`, {
+        headers: { Cookie: `__Secure-better-auth.session_token=${samlToken}`, Host: new URL(BASE).host },
+      });
+      check("E2E SAML: session cookie accepted by auth guard (non-401)", guardRes.status !== 401 ? 200 : 422, 200);
+    }
+
+    // SECURITY REGRESSION: post an unsigned assertion — must be rejected
+    const unsignedResponse =
+      `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"` +
+        ` ID="_unsigned${uid()}" Version="2.0" IssueInstant="${nowIso}" Destination="${acsUrl}">` +
+        `<saml:Issuer>${TEST_IDP_ENTITY}</saml:Issuer>` +
+        `<samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>` +
+        assertionXml +   // same assertion, but NO signature
+      `</samlp:Response>`;
+    const unsignedB64 = Buffer.from(unsignedResponse).toString("base64");
+
+    const unsignedRes = await fetch(`${BASE}/saml/${slugE2e}/callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Host: new URL(BASE).host },
+      body: `SAMLResponse=${encodeURIComponent(unsignedB64)}`,
+      redirect: "manual",
+    });
+    check("SECURITY: unsigned assertion POST returns 302",          unsignedRes.status, 302);
+    const unsignedLoc = unsignedRes.headers.get("location") ?? "";
+    check("SECURITY: unsigned assertion redirects to error (not /dashboard)",
+      !unsignedLoc.includes("/dashboard") && (unsignedLoc.includes("error=") || unsignedLoc.includes("sign-in")) ? 200 : 422, 200);
+
+    // Cleanup E2E org
+    await db.query(`DELETE FROM org_sso_config WHERE org_id = $1`, [orgE2eId]).catch(() => {});
+    await db.query(`DELETE FROM session WHERE "userId" IN (SELECT id FROM "user" WHERE email = $1)`, [testSamlEmail]).catch(() => {});
+    await db.query(`DELETE FROM org_members WHERE email = $1`, [testSamlEmail]).catch(() => {});
+    await db.query(`DELETE FROM "user" WHERE email = $1`, [testSamlEmail]).catch(() => {});
+    await db.query(`DELETE FROM org_members WHERE clerk_user_id = $1`, [userE2e]).catch(() => {});
+    await db.query(`DELETE FROM session WHERE id = $1`, [sessE2e]).catch(() => {});
+    await db.query(`DELETE FROM "user" WHERE id = $1`, [userE2e]).catch(() => {});
+    await db.query(`DELETE FROM organizations WHERE id = $1`, [orgE2eId]).catch(() => {});
+  }
+
+  // Cleanup
+  await db.query(`DELETE FROM org_sso_config WHERE org_id = $1`, [org14Id]).catch(() => {});
+  await db.query(`DELETE FROM org_members WHERE clerk_user_id = $1`, [user14]).catch(() => {});
+  await db.query(`DELETE FROM org_members WHERE clerk_user_id = $1`, [user14s]).catch(() => {});
+  await db.query(`DELETE FROM session WHERE id = $1`, [sess14]).catch(() => {});
+  await db.query(`DELETE FROM session WHERE id = $1`, [sess14s]).catch(() => {});
+  await db.query(`DELETE FROM "user" WHERE id = $1`, [user14]).catch(() => {});
+  await db.query(`DELETE FROM "user" WHERE id = $1`, [user14s]).catch(() => {});
+  await db.query(`DELETE FROM organizations WHERE id = $1`, [org14Id]).catch(() => {});
+  await db.query(`DELETE FROM organizations WHERE id = $1`, [org14sId]).catch(() => {});
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();

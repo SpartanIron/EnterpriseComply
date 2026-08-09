@@ -959,6 +959,22 @@ CREATE TABLE IF NOT EXISTS email_drip_log (
 );
 `;
 
+const MIGRATION_SQL_V5 = `
+CREATE TABLE IF NOT EXISTS org_sso_config (
+  id             SERIAL PRIMARY KEY,
+  org_id         INTEGER NOT NULL UNIQUE,
+  provider       TEXT NOT NULL DEFAULT 'saml',
+  idp_entity_id  TEXT NOT NULL,
+  idp_sso_url    TEXT NOT NULL,
+  idp_certificate TEXT NOT NULL,
+  domain         TEXT,
+  enabled        BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_sso_config_org_id ON org_sso_config (org_id);
+`;
+
 const MIGRATION_SQL_V4 = `
 CREATE TABLE IF NOT EXISTS system_health_log (
   id          SERIAL PRIMARY KEY,
@@ -992,6 +1008,7 @@ export class StartupService implements OnApplicationBootstrap {
     await this.runMigrationsV3();
     await this.runMigrationsV2();
     await this.runMigrationsV4();
+    await this.runMigrationsV5();
 
     // Security hardening — these migrations throw on failure and are NOT caught here.
     // A failure propagates up to NestFactory.create() which logs it and exits the process.
@@ -1035,6 +1052,15 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.log('System health V4 migrations complete');
     } catch (err) {
       this.logger.error('V4 migration failed - continuing', (err as any)?.message ?? String(err));
+    }
+  }
+  private async runMigrationsV5() {
+    try {
+      const client5 = await pool.connect();
+      try { await client5.query(MIGRATION_SQL_V5); } finally { client5.release(); }
+      this.logger.log('SSO V5 migrations complete');
+    } catch (err) {
+      this.logger.error('V5 migration failed - continuing', (err as any)?.message ?? String(err));
     }
   }
 
