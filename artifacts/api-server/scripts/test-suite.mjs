@@ -2200,6 +2200,149 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
   ).catch(() => {});
 }
 
+// ── Section 17: Admin — magic-link throttle clear ────────────────────────────
+
+{
+  section("SECTION 17 — ADMIN: super_admin can read and clear magic-link throttle windows");
+
+  const now17     = new Date().toISOString();
+  const expires17 = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+  const slug17    = slug();
+
+  // ── Seed a super_admin user ───────────────────────────────────────────────
+  const userSa   = uid();
+  const sessSa   = `sess-sa-${uid()}`;
+  const tokSa    = `tok-sa-${uid()}`;
+
+  // ── Seed a non-super_admin user (owner role, but no super_admin in any org) ─
+  const userNsa  = uid();
+  const sessNsa  = `sess-nsa-${uid()}`;
+  const tokNsa   = `tok-nsa-${uid()}`;
+
+  const org17Res = await db.query(
+    `INSERT INTO organizations (name, slug, industry, size, plan)
+     VALUES ($1, $2, 'technology', '11-50', 'starter') RETURNING id`,
+    [`Admin Test Org ${slug17}`, slug17],
+  );
+  const org17Id = org17Res.rows[0].id;
+
+  // Users
+  for (const [id, name, email] of [
+    [userSa,  "Super Admin 17",  `sa-17-${slug17}@test.invalid`],
+    [userNsa, "Non SuperAdmin 17", `nsa-17-${slug17}@test.invalid`],
+  ]) {
+    await db.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, true, $4::timestamptz, $4::timestamptz) ON CONFLICT DO NOTHING`,
+      [id, name, email, now17],
+    );
+  }
+
+  // Sessions
+  for (const [id, token, userId] of [
+    [sessSa,  tokSa,  userSa],
+    [sessNsa, tokNsa, userNsa],
+  ]) {
+    await db.query(
+      `INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId")
+       VALUES ($1, $2::timestamptz, $3, $4::timestamptz, $4::timestamptz, $5) ON CONFLICT DO NOTHING`,
+      [id, expires17, token, now17, userId],
+    );
+  }
+
+  // Memberships — super_admin for userSa, owner (not super_admin) for userNsa
+  for (const [orgId, userId, role, email] of [
+    [org17Id, userSa,  "super_admin", `sa-17-${slug17}@test.invalid`],
+    [org17Id, userNsa, "owner",       `nsa-17-${slug17}@test.invalid`],
+  ]) {
+    await db.query(
+      `INSERT INTO org_members (org_id, clerk_user_id, role, email)
+       VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+      [orgId, userId, role, email],
+    );
+  }
+
+  const cookieSa  = cookieHdr(tokSa);
+  const cookieNsa = cookieHdr(tokNsa);
+  const testIp17  = "10.17.0.1";
+
+  // ── Ensure schema and seed a throttle row for testIp17 ───────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS ip_magic_link_rate (
+      ip            TEXT    PRIMARY KEY,
+      count         INTEGER NOT NULL DEFAULT 0,
+      window_start  BIGINT  NOT NULL,
+      blocked_until BIGINT  NOT NULL DEFAULT 0
+    )
+  `).catch(() => {});
+
+  const nowBigint = BigInt(Date.now());
+  const futureBigint = nowBigint + BigInt(60 * 1000); // blocked for 1 min
+  await db.query(
+    `INSERT INTO ip_magic_link_rate (ip, count, window_start, blocked_until)
+     VALUES ($1, 6, $2, $3)
+     ON CONFLICT (ip) DO UPDATE
+       SET count=EXCLUDED.count, window_start=EXCLUDED.window_start, blocked_until=EXCLUDED.blocked_until`,
+    [testIp17, nowBigint, futureBigint],
+  );
+
+  const HOST = new URL(BASE).host;
+
+  // ── 17.1 Non-super_admin is rejected (403) on GET /admin/rate-limits ─────
+  const nsa401 = await fetch(`${BASE}/admin/rate-limits`, {
+    headers: { Cookie: cookieNsa, Host: HOST },
+  });
+  check("17.1 non-super_admin: GET /admin/rate-limits returns 403", nsa401.status, 403);
+
+  // ── 17.2 Non-super_admin is rejected (403) on DELETE /admin/magic-link-rate/:ip ─
+  const nsaDel = await fetch(`${BASE}/admin/magic-link-rate/${testIp17}`, {
+    method: "DELETE",
+    headers: { Cookie: cookieNsa, Host: HOST },
+  });
+  check("17.2 non-super_admin: DELETE /admin/magic-link-rate/:ip returns 403", nsaDel.status, 403);
+
+  // ── 17.3 Super_admin can read rate limits and see the seeded IP ──────────
+  const saGet = await fetch(`${BASE}/admin/rate-limits`, {
+    headers: { Cookie: cookieSa, Host: HOST },
+  });
+  check("17.3 super_admin: GET /admin/rate-limits returns 200", saGet.status, 200);
+
+  let foundThrottle = false;
+  if (saGet.status === 200) {
+    const body = await saGet.json().catch(() => ({}));
+    const throttles = body?.magicLinkThrottles ?? [];
+    foundThrottle = Array.isArray(throttles) && throttles.some((t) => t.ip === testIp17);
+  }
+  check("17.4 super_admin: seeded IP appears in magicLinkThrottles", foundThrottle ? 200 : 404, 200);
+
+  // ── 17.5 Super_admin can clear the throttle window ───────────────────────
+  const saDel = await fetch(`${BASE}/admin/magic-link-rate/${testIp17}`, {
+    method: "DELETE",
+    headers: { Cookie: cookieSa, Host: HOST },
+  });
+  check("17.5 super_admin: DELETE /admin/magic-link-rate/:ip returns 200", saDel.status, 200);
+
+  let deleteOk = false;
+  if (saDel.status === 200) {
+    const body = await saDel.json().catch(() => ({}));
+    deleteOk = body?.ok === true;
+  }
+  check("17.6 super_admin: DELETE response body has { ok: true }", deleteOk ? 200 : 422, 200);
+
+  // ── 17.7 Row is gone from the database ───────────────────────────────────
+  const remaining = await db.query(
+    `SELECT 1 FROM ip_magic_link_rate WHERE ip = $1`, [testIp17],
+  );
+  check("17.7 ip_magic_link_rate row is deleted after clear", remaining.rowCount === 0 ? 200 : 409, 200);
+
+  // ── Cleanup ───────────────────────────────────────────────────────────────
+  await db.query(`DELETE FROM ip_magic_link_rate WHERE ip = $1`, [testIp17]).catch(() => {});
+  await db.query(`DELETE FROM org_members WHERE clerk_user_id = ANY($1::text[])`, [[userSa, userNsa]]).catch(() => {});
+  await db.query(`DELETE FROM session WHERE id = ANY($1::text[])`, [[sessSa, sessNsa]]).catch(() => {});
+  await db.query(`DELETE FROM "user" WHERE id = ANY($1::text[])`, [[userSa, userNsa]]).catch(() => {});
+  await db.query(`DELETE FROM organizations WHERE id = $1`, [org17Id]).catch(() => {});
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();
