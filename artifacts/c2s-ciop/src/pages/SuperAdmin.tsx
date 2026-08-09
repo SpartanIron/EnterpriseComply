@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/queryClient";
 import { useRole } from "@/context/RoleContext";
 
@@ -11,6 +11,21 @@ import { useRole } from "@/context/RoleContext";
 //
 // Real data: GET /api/orgs/admin — requires super_admin role in org_members.
 // Only users with that DB role in any org can view this panel.
+
+interface BlockedIp {
+  ip: string;
+  failureCount: number;
+  blockedUntil: string;
+  secondsRemaining: number;
+}
+
+interface MagicLinkThrottle {
+  ip: string;
+  requestCount: number;
+  windowStart: string;
+  blockedUntil: string | null;
+  secondsRemaining: number;
+}
 
 interface AdminOrg {
   id: number;
@@ -42,17 +57,19 @@ const EmptyState = ({ title, body }: { title: string; body: string }) => (
   </div>
 );
 
-type Tab = "tenants" | "onboard" | "billing" | "platform" | "support";
+type Tab = "tenants" | "onboard" | "billing" | "platform" | "security" | "support";
 const TABS: { id: Tab; label: string }[] = [
   { id: "tenants", label: "Tenant Management" },
   { id: "onboard", label: "Onboard New Client" },
   { id: "billing", label: "Billing & Licenses" },
   { id: "platform", label: "Platform Health" },
+  { id: "security", label: "Security" },
   { id: "support", label: "Support Access" },
 ];
 
 export default function SuperAdmin() {
   const { role, can } = useRole();
+  const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("tenants");
   const [search, setSearch] = useState("");
   const [onboardForm, setOnboardForm] = useState({ name: "", industry: "", size: "", website: "" });
@@ -76,7 +93,28 @@ export default function SuperAdmin() {
     staleTime: 30_000,
   });
 
+  const { data: blockedData, isLoading: blockedLoading, isError: blockedError, refetch: refetchBlocked } = useQuery<{ blocked: BlockedIp[]; magicLinkThrottles: MagicLinkThrottle[] }>({
+    queryKey: ["admin-rate-limits"],
+    queryFn: () => apiFetch("/admin/rate-limits"),
+    staleTime: 15_000,
+    refetchInterval: activeTab === "security" ? 30_000 : false,
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: (ip: string) =>
+      apiFetch(`/admin/rate-limits/${encodeURIComponent(ip)}`, { method: "DELETE" }),
+    onSuccess: (_data, ip) => {
+      toast(`Unblocked ${ip}`, "#16a34a");
+      qc.invalidateQueries({ queryKey: ["admin-rate-limits"] });
+    },
+    onError: (_err, ip) => {
+      toast(`Failed to unblock ${ip}`, "#dc2626");
+    },
+  });
+
   const orgs = data?.orgs ?? [];
+  const blocked = blockedData?.blocked ?? [];
+  const magicLinkThrottles = blockedData?.magicLinkThrottles ?? [];
   const filtered = orgs.filter(o =>
     o.name.toLowerCase().includes(search.toLowerCase()) ||
     (o.industry ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -234,6 +272,135 @@ export default function SuperAdmin() {
 
       {activeTab === "platform" && (
         <EmptyState title="Platform metrics not available" body="Uptime, API latency, and infrastructure health metrics require a monitoring integration (Datadog, PagerDuty, etc.). No monitoring API is connected to this panel." />
+      )}
+
+      {activeTab === "security" && (
+        <div className="space-y-8">
+          {/* ── Auth-failure blocked IPs ─────────────────────────────────── */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Blocked IPs — Auth Failures</h3>
+                <p className="text-sm text-slate-500 mt-0.5">IPs blocked after repeated login failures (NIST AC-7). Click Unblock to clear immediately.</p>
+              </div>
+              <button onClick={() => refetchBlocked()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 text-slate-600 bg-white hover:bg-slate-50">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Refresh
+              </button>
+            </div>
+
+            {blockedLoading ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-sm text-slate-400">Loading…</div>
+            ) : blockedError ? (
+              <div className="bg-white rounded-xl border border-red-200 p-12 text-center text-sm text-red-500">Failed to load blocked IPs.</div>
+            ) : blocked.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-10 flex flex-col items-center text-center">
+                <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center mb-3">
+                  <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                </div>
+                <p className="text-sm font-bold text-slate-800 mb-1">No IPs blocked</p>
+                <p className="text-xs text-slate-500">The auth-failure tracker has no active blocks.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">IP Address</th>
+                      <th className="text-right px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Failures</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Block Expires</th>
+                      <th className="text-right px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Remaining</th>
+                      <th className="px-5 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {blocked.map(entry => (
+                      <tr key={entry.ip} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-3.5 font-mono text-sm text-slate-900">{entry.ip}</td>
+                        <td className="px-5 py-3.5 text-right">
+                          <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{entry.failureCount}</span>
+                        </td>
+                        <td className="px-5 py-3.5 text-sm text-slate-600">{new Date(entry.blockedUntil).toLocaleString()}</td>
+                        <td className="px-5 py-3.5 text-right text-sm text-slate-600 font-mono">
+                          {entry.secondsRemaining >= 60 ? `${Math.ceil(entry.secondsRemaining / 60)}m` : `${entry.secondsRemaining}s`}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <button
+                            disabled={unblockMutation.isPending}
+                            onClick={() => unblockMutation.mutate(entry.ip)}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                          >
+                            Unblock
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── Magic-link active throttle windows ───────────────────────── */}
+          <div>
+            <div className="mb-4">
+              <h3 className="text-base font-bold text-slate-900">Active Throttle Windows — Magic Link</h3>
+              <p className="text-sm text-slate-500 mt-0.5">IPs in an active magic-link send window (5 req/min limit). Blocked rows are highlighted.</p>
+            </div>
+
+            {blockedLoading ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-sm text-slate-400">Loading…</div>
+            ) : blockedError ? (
+              <div className="bg-white rounded-xl border border-red-200 p-12 text-center text-sm text-red-500">Failed to load throttle windows.</div>
+            ) : magicLinkThrottles.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-10 flex flex-col items-center text-center">
+                <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center mb-3">
+                  <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                </div>
+                <p className="text-sm font-bold text-slate-800 mb-1">No active throttle windows</p>
+                <p className="text-xs text-slate-500">No IPs are in an active magic-link rate-limit window right now.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">IP Address</th>
+                      <th className="text-right px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Requests</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Window Start</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
+                      <th className="text-right px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Block Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {magicLinkThrottles.map(entry => (
+                      <tr key={entry.ip} className={`transition-colors ${entry.blockedUntil ? "bg-red-50 hover:bg-red-100" : "hover:bg-slate-50"}`}>
+                        <td className="px-5 py-3.5 font-mono text-sm text-slate-900">{entry.ip}</td>
+                        <td className="px-5 py-3.5 text-right">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${entry.requestCount >= 5 ? "text-red-700 bg-red-100" : "text-amber-700 bg-amber-100"}`}>
+                            {entry.requestCount}/5
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-sm text-slate-600">{new Date(entry.windowStart).toLocaleString()}</td>
+                        <td className="px-5 py-3.5">
+                          {entry.blockedUntil
+                            ? <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">Blocked until {new Date(entry.blockedUntil).toLocaleTimeString()}</span>
+                            : <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Active window</span>
+                          }
+                        </td>
+                        <td className="px-5 py-3.5 text-right text-sm text-slate-600 font-mono">
+                          {entry.secondsRemaining > 0
+                            ? (entry.secondsRemaining >= 60 ? `${Math.ceil(entry.secondsRemaining / 60)}m` : `${entry.secondsRemaining}s`)
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {activeTab === "support" && (

@@ -44,6 +44,7 @@ import { TelemetryModule } from "./modules/telemetry/telemetry.module";
 import { EMassModule } from "./modules/emass/emass.module";
 import { PublicStatusModule } from "./modules/public-status/public-status.module";
 import { SsoModule } from "./modules/sso/sso.module";
+import { AdminModule } from "./modules/admin/admin.module";
 import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
 
 @Module({
@@ -105,6 +106,7 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
     SchedulerModule,
     PublicStatusModule,
     SsoModule,
+    AdminModule,
   ],
   providers: [
     {

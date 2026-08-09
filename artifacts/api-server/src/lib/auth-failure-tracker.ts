@@ -130,3 +130,50 @@ export async function resetIpFailures(ip: string): Promise<void> {
   const pool = getRateLimitPool();
   await pool.query("DELETE FROM ip_failure_tracker WHERE ip = $1", [ip]);
 }
+
+export interface BlockedIpEntry {
+  ip: string;
+  failureCount: number;
+  blockedUntil: string; // ISO-8601
+  secondsRemaining: number;
+}
+
+/**
+ * List all IPs that are currently blocked (blocked_until > now).
+ * Used by the super-admin rate-limit dashboard.
+ */
+export async function listBlocked(): Promise<BlockedIpEntry[]> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
+  const now = Date.now();
+  const { rows } = await pool.query<{
+    ip: string;
+    count: number;
+    blocked_until: string;
+  }>(
+    `SELECT ip, count, blocked_until
+     FROM ip_failure_tracker
+     WHERE blocked_until > $1
+     ORDER BY blocked_until DESC`,
+    [BigInt(now)],
+  );
+  return rows.map(r => {
+    const bu = Number(r.blocked_until);
+    return {
+      ip: r.ip,
+      failureCount: r.count,
+      blockedUntil: new Date(bu).toISOString(),
+      secondsRemaining: Math.max(0, Math.ceil((bu - now) / 1000)),
+    };
+  });
+}
+
+/**
+ * Clear the block for a specific IP (deletes the row entirely).
+ * Used by the super-admin unblock action.
+ */
+export async function clearBlock(ip: string): Promise<void> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
+  await pool.query("DELETE FROM ip_failure_tracker WHERE ip = $1", [ip]);
+}

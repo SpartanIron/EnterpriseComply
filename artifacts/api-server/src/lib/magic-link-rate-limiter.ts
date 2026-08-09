@@ -95,6 +95,51 @@ export async function resetMagicLinkRateForIp(ip: string): Promise<void> {
   await pool.query("DELETE FROM ip_magic_link_rate WHERE ip = $1", [ip]);
 }
 
+export interface MagicLinkThrottleEntry {
+  ip: string;
+  requestCount: number;
+  windowStart: string;  // ISO-8601
+  blockedUntil: string | null; // ISO-8601, null if not currently blocked
+  secondsRemaining: number;    // 0 if not blocked
+}
+
+/**
+ * List all IPs that are currently in a live magic-link throttle window
+ * (either actively blocked or within their current counting window).
+ * Used by the super-admin security dashboard.
+ */
+export async function listActiveThrottles(): Promise<MagicLinkThrottleEntry[]> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
+  const now = Date.now();
+  const windowMs = BigInt(WINDOW_MS);
+  // Return IPs blocked right now OR whose window started within the last WINDOW_MS
+  const { rows } = await pool.query<{
+    ip: string;
+    count: number;
+    window_start: string;
+    blocked_until: string;
+  }>(
+    `SELECT ip, count, window_start, blocked_until
+     FROM ip_magic_link_rate
+     WHERE blocked_until > $1
+        OR $1 - window_start < $2
+     ORDER BY blocked_until DESC, count DESC`,
+    [BigInt(now), windowMs],
+  );
+  return rows.map(r => {
+    const bu = Number(r.blocked_until);
+    const isBlocked = bu > now;
+    return {
+      ip: r.ip,
+      requestCount: r.count,
+      windowStart: new Date(Number(r.window_start)).toISOString(),
+      blockedUntil: isBlocked ? new Date(bu).toISOString() : null,
+      secondsRemaining: isBlocked ? Math.max(0, Math.ceil((bu - now) / 1000)) : 0,
+    };
+  });
+}
+
 // ── Express middleware ────────────────────────────────────────────────────────
 
 /**
