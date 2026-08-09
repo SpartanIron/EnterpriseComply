@@ -66,8 +66,8 @@ export default function SystemBoundary() {
   const { data, isLoading } = useQuery<Asset[]>({
     queryKey: ["assets", orgId],
     queryFn: async () => {
-      const res = await apiFetch(`/orgs/${orgId}/assets`);
-      return (res as any) ?? [];
+      const res = await apiFetch(`/orgs/${orgId}/assets`) as any;
+      return (res?.assets ?? res ?? []) as Asset[];
     },
     enabled: !!orgId,
   });
