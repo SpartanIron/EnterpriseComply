@@ -1,32 +1,35 @@
 /**
- * rate-limit-cleanup.service.ts — Nightly pruning of stale rate-limit rows.
+ * rate-limit-cleanup.service.ts — Periodic pruning of stale rate-limit rows.
  *
- * The `throttle_hits` and `ip_failure_tracker` tables accumulate one row per
- * unique IP+route combination and never shrink on their own.  After months of
- * production traffic this grows unboundedly and adds latency to every
- * rate-limit check.
+ * Tables covered:
+ *   • throttle_hits         — nightly at 03:00 UTC (fixed-window rows, 1 day safety buffer)
+ *   • ip_failure_tracker    — nightly at 03:00 UTC (15-min window, 1 day safety buffer)
+ *   • ip_magic_link_rate    — hourly (1-min window; needs more frequent pruning to
+ *                             prevent bot traffic from filling the table)
  *
- * This service runs at 03:00 UTC every night and deletes rows whose windows or
- * blocks expired at least one full day ago — so any active limit is never
- * touched.
+ * Each cleanup only removes rows that are fully expired plus a safety buffer,
+ * so active blocks and live windows are never touched.
  */
 
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { Cron } from "@nestjs/schedule";
 import { getRateLimitPool } from "../../lib/pg-pool.js";
+
+// Safety buffer for magic-link rows: 60 seconds past full expiry.
+const MAGIC_LINK_SAFETY_MS = BigInt(60 * 1000);
 
 @Injectable()
 export class RateLimitCleanupService {
   private readonly logger = new Logger(RateLimitCleanupService.name);
 
   /**
-   * Prune stale throttle_hits rows.
+   * Prune stale throttle_hits and ip_failure_tracker rows.
    *
-   * A row is safe to delete when expire_at is more than one day in the past
-   * (i.e. the fixed window expired over 24 hours ago).  Active or recently
-   * expired windows are left untouched.
+   * Runs nightly at 03:00 UTC.  A row is safe to delete when its window or
+   * block expired more than one full day ago — active or recently expired
+   * entries are left untouched.
    */
-  @Cron("0 3 * * *", { name: "rate-limit-cleanup" })
+  @Cron("0 3 * * *", { name: "rate-limit-cleanup-nightly" })
   async pruneStaleRows(): Promise<void> {
     const pool = getRateLimitPool();
     const oneDayAgoMs = BigInt(Date.now()) - BigInt(24 * 60 * 60 * 1000);
@@ -71,7 +74,53 @@ export class RateLimitCleanupService {
       );
     } catch (err) {
       this.logger.error(
-        "[rate-limit-cleanup] Pruning failed — tables were NOT modified.",
+        "[rate-limit-cleanup] Nightly pruning failed — tables were NOT modified.",
+        err instanceof Error ? err.stack : String(err),
+      );
+    }
+  }
+
+  /**
+   * Prune stale ip_magic_link_rate rows.
+   *
+   * Runs once per hour (at minute 0).  The magic-link window is only 1 minute,
+   * so rows expire quickly; under sustained bot traffic the table can grow to
+   * millions of rows within days if not pruned frequently.
+   *
+   * A row is deleted only when BOTH:
+   *   • blocked_until < now() - 60 s  (any block has fully expired + buffer)
+   *   • window_start  < now() - 60 s  (the counting window has also expired)
+   *
+   * This 60-second buffer ensures no in-flight request can land on a row that
+   * was just deleted mid-UPSERT.
+   */
+  @Cron("0 * * * *", { name: "magic-link-rate-cleanup-hourly" })
+  async pruneMagicLinkRateRows(): Promise<void> {
+    const pool = getRateLimitPool();
+    // Threshold: everything older than (now - 60 s) is safe to remove.
+    const cutoffMs = BigInt(Date.now()) - MAGIC_LINK_SAFETY_MS;
+
+    this.logger.log("[magic-link-rate-cleanup] Starting hourly ip_magic_link_rate pruning …");
+
+    try {
+      const result = await pool.query<{ count: string }>(
+        `WITH deleted AS (
+           DELETE FROM ip_magic_link_rate
+           WHERE blocked_until < $1
+             AND window_start  < $1
+           RETURNING 1
+         )
+         SELECT count(*)::text AS count FROM deleted`,
+        [cutoffMs],
+      );
+      const deleted = result.rows[0]?.count ?? "0";
+
+      this.logger.log(
+        `[magic-link-rate-cleanup] Done — ip_magic_link_rate: ${deleted} rows deleted.`,
+      );
+    } catch (err) {
+      this.logger.error(
+        "[magic-link-rate-cleanup] Hourly pruning failed — ip_magic_link_rate was NOT modified.",
         err instanceof Error ? err.stack : String(err),
       );
     }
