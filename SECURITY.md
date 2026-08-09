@@ -28,7 +28,13 @@ We will acknowledge your report within 48 hours and provide a detailed response 
 
 **API Security**
 - Security headers enforced via Helmet.js (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
-- Rate limiting on all API endpoints (120 requests per minute per IP)
+- Rate limiting via three named NestJS Throttler profiles, selected per-route by a custom `RateLimitGuard`:
+  - `default` — 120 req/min per IP (all authenticated endpoints); tighter per-route overrides on LLM/CPU-heavy routes (SSP generate: 5/min, SSP export: 10/min, gap analysis: 8/min)
+  - `auth` — 5 req/min per IP (SAML login initiation)
+  - `webhook` — 300 req/min per IP (CI/CD webhook ingestion)
+- IP failure block on SAML ACS callback: 10 failures within 15 minutes triggers a 15-minute IP ban (`Retry-After: 900`)
+- Magic-link endpoint (`POST /api/auth/sign-in/magic-link`) additionally limited to 5 requests per 15 minutes per IP and 5 per 60 minutes per email address via Express middleware
+- All throttle counters and IP block state stored in Postgres (`throttle_hits`, `ip_failure_tracker`, `magic_link_rate_limit` tables) — state survives rolling deploys
 - CORS restricted to same origin in production; configurable via `ALLOWED_ORIGIN`
 - All input validated via Zod schemas before processing
 

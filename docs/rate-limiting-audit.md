@@ -124,7 +124,7 @@ State is persisted in Postgres so that a rolling Railway deploy does **not** res
 
 | Gap | Risk | Recommendation |
 |-----|------|----------------|
-| BetterAuth magic-link endpoint not individually throttled at 5/min | Medium — email rate limit (5/hour/email) partially mitigates | Add Express middleware before NestJS that applies IP-based 5/min limit on `POST /api/auth/magic-link/send` |
+| ~~BetterAuth magic-link endpoint not individually throttled at 5/min~~ | ✅ Fixed — Express middleware (`MagicLinkRateLimitMiddleware`) applies 5/15 min per IP and 5/60 min per email before NestJS routing; counters in Postgres `magic_link_rate_limit` table | — |
 | ~~In-memory throttle state resets on deploy~~ | ✅ Fixed — both `ThrottlerModule` and `auth-failure-tracker` now use Postgres-backed storage (`throttle_hits` and `ip_failure_tracker` tables); state survives rolling deploys | — |
 | No per-authenticated-user limits (only per-IP) | Low — All auth endpoints require session | Sufficient for current single-tenant Railway deployment |
 | Cloudflare WAF rules not configured | Medium — Bot traffic not blocked at edge | Out of scope; infrastructure concern |
@@ -133,6 +133,8 @@ State is persisted in Postgres so that a rolling Railway deploy does **not** res
 ---
 
 ## Implementation Files
+
+### Phase 1 — Named profiles + IP failure block (Task #30)
 
 | File | Change |
 |------|--------|
@@ -148,6 +150,28 @@ State is persisted in Postgres so that a rolling Railway deploy does **not** res
 | `artifacts/api-server/src/modules/health/health.controller.ts` | explicit skip |
 | `artifacts/api-server/src/modules/auth/providers.controller.ts` | explicit skip |
 | `artifacts/api-server/src/modules/sso/sso.controller.ts` | explicit skip on metadata |
-| `artifacts/api-server/src/modules/ssp/ssp.controller.ts` | rename `default` → `api` in @Throttle |
-| `artifacts/api-server/src/modules/gap-analysis/gap-analysis.controller.ts` | rename `default` → `api` |
+| `artifacts/api-server/src/modules/ssp/ssp.controller.ts` | tighter per-route `@Throttle` overrides |
+| `artifacts/api-server/src/modules/gap-analysis/gap-analysis.controller.ts` | tighter per-route `@Throttle` override |
 | `artifacts/api-server/scripts/test-rate-limit-persistence.mjs` | New: regression test verifying counter persistence across simulated restarts |
+
+### Phase 2 — Magic-link rate limiting (Task #51)
+
+| File | Change |
+|------|--------|
+| `artifacts/api-server/src/middlewares/magic-link-rate-limit.middleware.ts` | New: Express middleware enforcing 5/15 min per IP and 5/60 min per email on `POST /api/auth/sign-in/magic-link`; counters in Postgres `magic_link_rate_limit` table |
+| `artifacts/api-server/src/app.module.ts` | **Updated:** `configure()` registers `MagicLinkRateLimitMiddleware` for the magic-link route |
+| `artifacts/api-server/src/lib/better-auth.ts` | **Updated:** removed stale in-memory `magicLinkRateMap` |
+
+### Phase 3 — Operator visibility (Tasks #53 and #55)
+
+| File | Change |
+|------|--------|
+| `artifacts/api-server/src/modules/super-admin/super-admin.controller.ts` | **Updated:** new `GET /api/super-admin/rate-limits/blocked-ips` and `GET /api/super-admin/rate-limits/throttle-windows` endpoints; `DELETE /api/super-admin/rate-limits/blocked-ips/:ip` to manually unblock |
+| `artifacts/api-server/src/modules/super-admin/super-admin.controller.ts` | **Updated:** `GET /api/super-admin/rate-limits/magic-link-hits` returns per-IP and per-email hit counts from `magic_link_rate_limit` table; `DELETE` to clear a specific window |
+| `artifacts/c2s-ciop/src/pages/SuperAdmin.tsx` | **Updated:** live "Blocked IPs" tab and "Magic-Link Rate Limits" tab showing active windows with unblock/clear actions |
+
+### Phase 4 — Nightly cleanup (Task #54)
+
+| File | Change |
+|------|--------|
+| `artifacts/api-server/src/startup/startup.service.ts` | **Updated:** scheduled job (cron, nightly at 03:00 UTC) prunes expired rows from `throttle_hits`, `ip_failure_tracker`, and `magic_link_rate_limit`; only deletes rows where the window has fully elapsed so no active block or live counter is touched |

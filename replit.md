@@ -29,8 +29,8 @@ Full-stack compliance automation SaaS platform by ColorCode Solutions - offered 
 - `lib/db/src/seed-colorcomply.ts` - seeds 41 UCO controls + 147 framework mappings + 6 automated tests
 - `lib/db/src/seed-intelligence.ts` - stub/no-op (superseded by seed-colorcomply.ts)
 - `artifacts/api-server/src/modules/` - 19 NestJS modules
-- `artifacts/api-server/src/guards/` - ClerkAuthGuard, OrgContextGuard, param decorators
-- `artifacts/api-server/src/middlewares/` - ClerkProxyMiddleware (production only)
+- `artifacts/api-server/src/guards/` - ClerkAuthGuard, OrgContextGuard, RateLimitGuard (single-profile throttler selection), param decorators
+- `artifacts/api-server/src/middlewares/` - ClerkProxyMiddleware (production only), MagicLinkRateLimitMiddleware (5/15 min per IP + 5/60 min per email on magic-link endpoint)
 - `artifacts/c2s-ciop/src/pages/` - 23 pages
 - `artifacts/c2s-ciop/src/components/layout/AppShell.tsx` - sidebar + layout shell
 - `artifacts/c2s-ciop/src/hooks/useOrg.ts` - shared org hook
