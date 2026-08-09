@@ -1,0 +1,39 @@
+# Gitleaks configuration — EnterpriseComply
+# Suppressions for known-safe test/CI values that would otherwise produce false positives.
+# Real secrets must never appear in code. If gitleaks flags something you believe is safe,
+# add a specific allowlist rule here with a comment explaining why it is safe.
+
+title = "EnterpriseComply gitleaks config"
+
+[allowlist]
+  description = "Allowlist for known-safe test and CI values"
+
+  # CI workflow test values — these are explicitly documented as non-production
+  # placeholders and have no security value (they're in public workflow YAML).
+  regexes = [
+    "ci-test-secret-not-for-production",
+    "ci-webhook-secret",
+    "cipassword",                           # CI postgres password, ephemeral container only
+    "ec-dev-secret-change-in-production",   # dev fallback, documented in better-auth.ts
+    "ci-no-op",                             # placeholder Resend key in CI env
+  ]
+
+  # Paths that are allowed to contain token-like strings for legitimate reasons
+  paths = [
+    # Test scripts create HMAC-signed tokens; these are synthetic test values
+    "artifacts/api-server/scripts/test-suite.mjs",
+    "artifacts/api-server/scripts/run-isolation-test.mjs",
+    "artifacts/api-server/scripts/test-isolation.mjs",
+    # GitHub Actions workflows define CI-only placeholder env values
+    ".github/workflows",
+  ]
+
+# Rule overrides — tune individual gitleaks rules to reduce false-positive noise.
+# Uncomment and customize if the default rules produce false positives on this codebase.
+
+# [[rules]]
+#   id = "generic-api-key"
+#   description = "Generic API Key"
+#   regex = '''(?i)(api_key|apikey|api-key)\s*[=:]\s*['"]([a-z0-9]{32,})['"]'''
+#   [rules.allowlist]
+#     regexes = ["example", "placeholder", "your-api-key-here"]
