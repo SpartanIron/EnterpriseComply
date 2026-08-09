@@ -1,5 +1,5 @@
 import { Injectable, OnApplicationBootstrap, OnApplicationShutdown } from "@nestjs/common";
-import { db, orgIntegrationsTable, orgMonitoringJobsTable, orgControlResultsTable, organizationsTable } from "@workspace/db";
+import { db, orgIntegrationsTable, orgMonitoringJobsTable, orgControlResultsTable, organizationsTable, integrationSyncLogTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { IntegrationsService } from "../integrations/integrations.service";
@@ -96,6 +96,94 @@ export class IntegrationSchedulerService implements OnApplicationBootstrap, OnAp
     if (this.timer) clearInterval(this.timer);
   }
 
+  /**
+   * Shared per-integration dispatch + catch helper.
+   *
+   * Called by BOTH `runDueIntegrations()` (production scheduler) AND
+   * `runDueForOrg()` (scoped test/admin trigger), so the failure persistence
+   * path is guaranteed to be identical in both contexts.  This is the single
+   * source of truth for the dispatch-and-log pattern.
+   */
+  private async _dispatchIntegration(
+    integration: typeof orgIntegrationsTable.$inferSelect,
+  ): Promise<void> {
+    const dispatch = SYNC_DISPATCH[integration.integrationKey];
+    if (!dispatch) return;
+    try {
+      const scope = INTEGRATION_CONTROL_SCOPE[integration.integrationKey] ?? [];
+      const preStatuses = await this.snapshotControlStatuses(integration.orgId, scope);
+
+      await db.update(orgMonitoringJobsTable)
+        .set({ triggeredAt: new Date(), status: "running" } as any)
+        .where(and(
+          eq(orgMonitoringJobsTable.orgId, integration.orgId),
+          eq(orgMonitoringJobsTable.integrationKey, integration.integrationKey),
+        ));
+
+      logger.info(`IntegrationScheduler: dispatching sync org=${integration.orgId} key=${integration.integrationKey}`);
+      await dispatch(this.integrationsSvc, integration.orgId);
+
+      await db.update(orgIntegrationsTable)
+        .set({ lastSyncAt: new Date() } as any)
+        .where(eq(orgIntegrationsTable.id, integration.id));
+
+      logger.info(`IntegrationScheduler: sync complete org=${integration.orgId} key=${integration.integrationKey}`);
+
+      const postStatuses = await this.snapshotControlStatuses(integration.orgId, scope);
+      const newlyFailing = scope
+        .filter(id => preStatuses[id] !== "failing" && postStatuses[id] === "failing")
+        .map(id => ({ id, name: CONTROL_NAMES[id] ?? id }));
+      const newlyPassing = scope
+        .filter(id => preStatuses[id] === "failing" && postStatuses[id] !== "failing")
+        .map(id => ({ id, name: CONTROL_NAMES[id] ?? id }));
+
+      if (newlyFailing.length > 0) {
+        await this.notificationsSvc.notifyControlFailures(
+          integration.orgId, integration.integrationKey, newlyFailing,
+        ).catch(e => logger.error(`[scheduler] notifyControlFailures: ${e}`));
+
+        const orgData = await this.getOrgData(integration.orgId);
+
+        await this.slackAlertSvc.alertControlFailure({
+          orgName: orgData.name,
+          orgId: integration.orgId,
+          integrationKey: integration.integrationKey,
+          failingControls: newlyFailing,
+          passingControls: newlyPassing,
+          complianceScore: orgData.complianceScore,
+        }, orgData.slackWebhookUrl).catch(e => logger.error(`[scheduler] slackControlFailure: ${e}`));
+
+        const admins = await this.notificationsSvc.getOrgAdminEmails(integration.orgId).catch(() => []);
+        for (const admin of admins) {
+          await sendControlFailureEmail({
+            to: admin.email,
+            firstName: admin.firstName,
+            orgName: orgData.name,
+            failingControls: newlyFailing,
+            integrationKey: integration.integrationKey,
+          }).catch(e => logger.error(`[scheduler] sendControlFailureEmail: ${e}`));
+        }
+      }
+    } catch (e) {
+      // Credentials not configured is an expected state — log as warn, not error
+      if (isCredentialsMissing(e)) {
+        logger.warn(`IntegrationScheduler: skipping sync org=${integration.orgId} key=${integration.integrationKey} — credentials not configured`);
+      } else {
+        logger.error(`IntegrationScheduler: sync failed org=${integration.orgId} key=${integration.integrationKey}: ${e}`);
+      }
+      // Persist failure to integration_sync_log so it surfaces in Test Run History
+      // regardless of whether the error is a credential gap or transient API failure.
+      await db.insert(integrationSyncLogTable).values({
+        orgId: integration.orgId,
+        integrationKey: integration.integrationKey,
+        status: "failed",
+        evidenceCount: 0,
+        controlsUpdated: 0,
+        errorMessage: String((e as any)?.message ?? e).slice(0, 500),
+      }).catch(() => {});
+    }
+  }
+
   async runDueIntegrations(): Promise<void> {
     try {
       const integrations = await db.query.orgIntegrationsTable.findMany({
@@ -106,75 +194,125 @@ export class IntegrationSchedulerService implements OnApplicationBootstrap, OnAp
         const interval = SYNC_INTERVALS[integration.integrationKey] ?? SYNC_INTERVALS.default;
         const lastSync = integration.lastSyncAt ? new Date(integration.lastSyncAt).getTime() : 0;
         if ((now - lastSync) < interval) continue;
-        const dispatch = SYNC_DISPATCH[integration.integrationKey];
-        if (!dispatch) continue;
-        try {
-          const scope = INTEGRATION_CONTROL_SCOPE[integration.integrationKey] ?? [];
-          const preStatuses = await this.snapshotControlStatuses(integration.orgId, scope);
-
-          await db.update(orgMonitoringJobsTable)
-            .set({ triggeredAt: new Date(), status: "running" } as any)
-            .where(and(
-              eq(orgMonitoringJobsTable.orgId, integration.orgId),
-              eq(orgMonitoringJobsTable.integrationKey, integration.integrationKey),
-            ));
-
-          logger.info(`IntegrationScheduler: dispatching sync org=${integration.orgId} key=${integration.integrationKey}`);
-          await dispatch(this.integrationsSvc, integration.orgId);
-
-          await db.update(orgIntegrationsTable)
-            .set({ lastSyncAt: new Date() } as any)
-            .where(eq(orgIntegrationsTable.id, integration.id));
-
-          logger.info(`IntegrationScheduler: sync complete org=${integration.orgId} key=${integration.integrationKey}`);
-
-          const postStatuses = await this.snapshotControlStatuses(integration.orgId, scope);
-          const newlyFailing = scope
-            .filter(id => preStatuses[id] !== "failing" && postStatuses[id] === "failing")
-            .map(id => ({ id, name: CONTROL_NAMES[id] ?? id }));
-          const newlyPassing = scope
-            .filter(id => preStatuses[id] === "failing" && postStatuses[id] !== "failing")
-            .map(id => ({ id, name: CONTROL_NAMES[id] ?? id }));
-
-          if (newlyFailing.length > 0) {
-            await this.notificationsSvc.notifyControlFailures(
-              integration.orgId, integration.integrationKey, newlyFailing,
-            ).catch(e => logger.error(`[scheduler] notifyControlFailures: ${e}`));
-
-            const orgData = await this.getOrgData(integration.orgId);
-
-            await this.slackAlertSvc.alertControlFailure({
-              orgName: orgData.name,
-              orgId: integration.orgId,
-              integrationKey: integration.integrationKey,
-              failingControls: newlyFailing,
-              passingControls: newlyPassing,
-              complianceScore: orgData.complianceScore,
-            }, orgData.slackWebhookUrl).catch(e => logger.error(`[scheduler] slackControlFailure: ${e}`));
-
-            const admins = await this.notificationsSvc.getOrgAdminEmails(integration.orgId).catch(() => []);
-            for (const admin of admins) {
-              await sendControlFailureEmail({
-                to: admin.email,
-                firstName: admin.firstName,
-                orgName: orgData.name,
-                failingControls: newlyFailing,
-                integrationKey: integration.integrationKey,
-              }).catch(e => logger.error(`[scheduler] sendControlFailureEmail: ${e}`));
-            }
-          }
-        } catch (e) {
-          // Credentials not configured is an expected state — log as warn, not error
-          if (isCredentialsMissing(e)) {
-            logger.warn(`IntegrationScheduler: skipping sync org=${integration.orgId} key=${integration.integrationKey} — credentials not configured`);
-          } else {
-            logger.error(`IntegrationScheduler: sync failed org=${integration.orgId} key=${integration.integrationKey}: ${e}`);
-          }
-        }
+        await this._dispatchIntegration(integration);
       }
     } catch (e) {
       logger.error(`IntegrationScheduler: runDueIntegrations error: ${e}`);
     }
+  }
+
+  /**
+   * Runs `_dispatchIntegration` for every connected integration belonging to
+   * `orgId`, bypassing the interval gate.  Because both this method and
+   * `runDueIntegrations` delegate to the same `_dispatchIntegration` helper,
+   * testing this path is equivalent to exercising the production scheduler's
+   * per-integration dispatch+catch logic — including sync-log failure persistence.
+   */
+  async runDueForOrg(orgId: number): Promise<void> {
+    const integrations = await db.query.orgIntegrationsTable.findMany({
+      where: and(
+        eq(orgIntegrationsTable.orgId, orgId),
+        eq(orgIntegrationsTable.status, "connected"),
+      ),
+    });
+    for (const integration of integrations) {
+      await this._dispatchIntegration(integration);
+    }
+  }
+
+  /**
+   * Immediately syncs all connected integrations for the given org, bypassing
+   * the normal interval gate.  Used by the "Run Tests Now" button in the UI.
+   */
+  async syncOrgNow(orgId: number): Promise<{
+    triggered: number;
+    results: Array<{
+      integrationKey: string;
+      name: string;
+      status: "success" | "partial" | "failed";
+      checksRun: number;
+      checksPassed: number;
+      evidenceCollected: number;
+      durationMs?: number;
+      error?: string;
+    }>;
+  }> {
+    const integrations = await db.query.orgIntegrationsTable.findMany({
+      where: and(
+        eq(orgIntegrationsTable.orgId, orgId),
+        eq(orgIntegrationsTable.status, "connected"),
+      ),
+    });
+
+    const results: Array<{
+      integrationKey: string;
+      name: string;
+      status: "success" | "partial" | "failed";
+      checksRun: number;
+      checksPassed: number;
+      evidenceCollected: number;
+      durationMs?: number;
+      error?: string;
+    }> = [];
+
+    for (const integration of integrations) {
+      const dispatch = SYNC_DISPATCH[integration.integrationKey];
+      if (!dispatch) continue;
+
+      const start = Date.now();
+      try {
+        logger.info(`syncOrgNow: dispatching org=${orgId} key=${integration.integrationKey}`);
+        const raw = (await dispatch(this.integrationsSvc, orgId)) as {
+          checksRun?: number;
+          checksPassed?: number;
+          evidenceCollected?: number;
+        } | undefined;
+
+        const checksRun     = raw?.checksRun      ?? 0;
+        const checksPassed  = raw?.checksPassed   ?? 0;
+        const evidenceCollected = raw?.evidenceCollected ?? 0;
+        const syncStatus: "success" | "partial" | "failed" =
+          checksPassed === checksRun ? "success" :
+          checksPassed > 0           ? "partial"  : "failed";
+
+        results.push({
+          integrationKey:   integration.integrationKey,
+          name:             integration.name ?? integration.integrationKey,
+          status:           syncStatus,
+          checksRun,
+          checksPassed,
+          evidenceCollected,
+          durationMs:       Date.now() - start,
+        });
+        logger.info(`syncOrgNow: complete org=${orgId} key=${integration.integrationKey} status=${syncStatus}`);
+      } catch (e) {
+        const errMsg = String((e as any)?.message ?? e);
+        logger.error(`syncOrgNow: failed org=${orgId} key=${integration.integrationKey}: ${errMsg}`);
+
+        // Persist the failure so it appears in Test Run History
+        await db.insert(integrationSyncLogTable).values({
+          orgId,
+          integrationKey: integration.integrationKey,
+          status: "failed",
+          evidenceCount: 0,
+          controlsUpdated: 0,
+          errorMessage: errMsg.slice(0, 500),
+        }).catch(() => {});
+
+        results.push({
+          integrationKey:   integration.integrationKey,
+          name:             integration.name ?? integration.integrationKey,
+          status:           "failed",
+          checksRun:        0,
+          checksPassed:     0,
+          evidenceCollected: 0,
+          durationMs:       Date.now() - start,
+          error:            errMsg,
+        });
+      }
+    }
+
+    return { triggered: results.length, results };
   }
 
   async runEvidenceExpirySweep(): Promise<void> {

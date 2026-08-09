@@ -33,7 +33,13 @@ export default function TestRunHistory() {
   });
   const orgId = orgData?.org?.id;
 
-  const { data, isLoading } = useQuery<{ runs: any[]; totalRuns: number; passing: number; failing: number }>({
+  const { data, isLoading } = useQuery<{
+    runs: any[];
+    totalRuns: number;
+    passing: number;
+    failing: number;
+    noIntegrations?: boolean;
+  }>({
     queryKey: ["test-runs", orgId],
     queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/test-runs`), { credentials: "include" })).json(),
     enabled: !!orgId,
@@ -62,10 +68,11 @@ export default function TestRunHistory() {
   const passing   = data?.passing   ?? 0;
   const failing   = data?.failing   ?? 0;
   const passRate  = totalRuns > 0 ? Math.round((passing / totalRuns) * 100) : 0;
+  const noIntegrations = data?.noIntegrations ?? false;
 
   const filtered = runs.filter(r => {
     if (filterStatus !== "all" && r.status !== filterStatus) return false;
-    if (searchQ && !r.testName.toLowerCase().includes(searchQ.toLowerCase()) && !r.controlId?.toLowerCase().includes(searchQ.toLowerCase())) return false;
+    if (searchQ && !r.testName.toLowerCase().includes(searchQ.toLowerCase())) return false;
     return true;
   });
 
@@ -82,18 +89,18 @@ export default function TestRunHistory() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Automated Test Run History</h1>
-          <p className="text-sm text-slate-500 mt-1">30-day history of automated control tests and their pass/fail results.</p>
+          <p className="text-sm text-slate-500 mt-1">30-day history of real integration sync results.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {runTriggered && (
             <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium">
               <svg className="h-4 w-4 text-green-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              Running tests...
+              Syncing integrations...
             </div>
           )}
           <button
             onClick={() => triggerMutation.mutate()}
-            disabled={triggerMutation.isPending || runTriggered || !orgId}
+            disabled={triggerMutation.isPending || runTriggered || !orgId || noIntegrations}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <svg className={`h-4 w-4 ${triggerMutation.isPending ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -102,7 +109,7 @@ export default function TestRunHistory() {
                 : <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               }
             </svg>
-            {triggerMutation.isPending ? "Triggering..." : "Run Tests Now"}
+            {triggerMutation.isPending ? "Syncing..." : "Run Tests Now"}
           </button>
           <a href="/controls" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
@@ -114,10 +121,10 @@ export default function TestRunHistory() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total Runs",  value: totalRuns,     color: "text-slate-900" },
-          { label: "Passed",      value: passing,       color: "text-green-600" },
-          { label: "Failed",      value: failing,       color: "text-red-600" },
-          { label: "Pass Rate",   value: `${passRate}%`, color: passRate >= 80 ? "text-green-600" : passRate >= 60 ? "text-amber-600" : "text-red-600" },
+          { label: "Total Syncs",  value: totalRuns,     color: "text-slate-900" },
+          { label: "Passed",       value: passing,       color: "text-green-600" },
+          { label: "Failed",       value: failing,       color: "text-red-600" },
+          { label: "Pass Rate",    value: `${passRate}%`, color: passRate >= 80 ? "text-green-600" : passRate >= 60 ? "text-amber-600" : "text-red-600" },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3.5">
             <div className={`text-2xl font-extrabold ${color} leading-tight`}>{value}</div>
@@ -130,7 +137,7 @@ export default function TestRunHistory() {
       {totalRuns > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-5 py-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-700">Overall Pass Rate - Last 30 days</span>
+            <span className="text-xs font-bold text-slate-700">Overall Pass Rate — Last 30 days</span>
             <span className={`text-sm font-bold ${passRate >= 80 ? "text-green-600" : passRate >= 60 ? "text-amber-600" : "text-red-600"}`}>{passRate}%</span>
           </div>
           <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden flex gap-0.5">
@@ -145,42 +152,70 @@ export default function TestRunHistory() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input
-            type="text"
-            placeholder="Search test name or control..."
-            value={searchQ}
-            onChange={e => setSearchQ(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      {runs.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 max-w-xs">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input
+              type="text"
+              placeholder="Search integration name..."
+              value={searchQ}
+              onChange={e => setSearchQ(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex gap-1.5">
+            {[["all", "All"], ["pass", "Passed"], ["fail", "Failed"], ["warning", "Warning"]].map(([v, l]) => (
+              <button key={v} onClick={() => setFilterStatus(v)}
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${filterStatus === v ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}>
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-1.5">
-          {[["all", "All"], ["pass", "Passed"], ["fail", "Failed"]].map(([v, l]) => (
-            <button key={v} onClick={() => setFilterStatus(v)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${filterStatus === v ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Run list */}
       {isLoading ? (
         <div className="space-y-2">{[...Array(8)].map((_, i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
-      ) : filtered.length === 0 ? (
+      ) : noIntegrations ? (
+        /* No integrations connected at all */
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-14 text-center">
+          <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 ring-1 ring-slate-200">
+            <svg className="h-7 w-7 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+          </div>
+          <p className="text-sm font-bold text-slate-700">No integrations connected</p>
+          <p className="text-xs text-slate-400 mt-1 mb-5">
+            Connect an integration to start collecting automated security test results.<br />
+            Each integration sync generates a real pass/fail result logged here.
+          </p>
+          <a
+            href="/integrations"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Connect an Integration
+          </a>
+        </div>
+      ) : runs.length > 0 && filtered.length === 0 ? (
+        /* Runs exist but filtered away */
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-10 text-center">
+          <p className="text-sm font-bold text-slate-700">No results match your filter</p>
+          <button onClick={() => { setFilterStatus("all"); setSearchQ(""); }} className="text-xs text-blue-600 mt-2 hover:underline">Clear filters</button>
+        </div>
+      ) : runs.length === 0 ? (
+        /* Integrations are connected but no syncs have run yet */
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-14 text-center">
           <svg className="h-10 w-10 text-slate-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-          <p className="text-sm font-bold text-slate-700">No test runs yet</p>
-          <p className="text-xs text-slate-400 mt-1 mb-4">Connect an integration to start collecting automated test results.</p>
+          <p className="text-sm font-bold text-slate-700">No syncs recorded yet</p>
+          <p className="text-xs text-slate-400 mt-1 mb-4">Your integrations are connected. Trigger a sync to collect your first results.</p>
           <button
             onClick={() => triggerMutation.mutate()}
             disabled={triggerMutation.isPending || !orgId}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg>
-            Run First Test
+            <svg className={`h-4 w-4 ${triggerMutation.isPending ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg>
+            {triggerMutation.isPending ? "Syncing..." : "Run First Sync"}
           </button>
         </div>
       ) : (
@@ -190,7 +225,7 @@ export default function TestRunHistory() {
               <div className="flex items-center gap-3 mb-2.5">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{date}</span>
                 <div className="flex-1 h-px bg-slate-100" />
-                <span className="text-xs text-slate-400">{dayRuns.length} run{dayRuns.length !== 1 ? "s" : ""}</span>
+                <span className="text-xs text-slate-400">{dayRuns.length} sync{dayRuns.length !== 1 ? "s" : ""}</span>
               </div>
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 {dayRuns.map((run: any, idx: number) => {
@@ -201,9 +236,6 @@ export default function TestRunHistory() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2.5">
                           <span className="font-semibold text-sm text-slate-800 truncate">{run.testName}</span>
-                          {run.controlId && (
-                            <span className="font-mono text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded flex-shrink-0">{run.controlId}</span>
-                          )}
                         </div>
                         {run.errorMessage && (
                           <p className="text-xs text-red-600 mt-0.5 truncate">{run.errorMessage}</p>

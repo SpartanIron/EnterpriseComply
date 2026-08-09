@@ -41,12 +41,27 @@ export async function runGitHubChecks(
   const controlResults: GitHubCheckResult[] = [];
   const evidenceItems: GitHubEvidenceItem[] = [];
 
-  // Resolve the authenticated user / org to inspect
-  const user = (await ghFetch(personalAccessToken, "/user")) as {
-    login: string;
-    two_factor_authentication?: boolean;
-    type?: string;
-  };
+  // Resolve the authenticated user — if the token is invalid this throws a
+  // "401 Unauthorized" error. Catch it here so the provider returns failing
+  // control results rather than propagating an unhandled exception (which
+  // would cause the connect endpoint to return 500 instead of 200/201).
+  let user: { login: string; two_factor_authentication?: boolean; type?: string };
+  try {
+    user = (await ghFetch(personalAccessToken, "/user")) as {
+      login: string;
+      two_factor_authentication?: boolean;
+      type?: string;
+    };
+    if (!user || typeof user !== "object") throw new Error("GitHub API returned no user — token may be invalid or lacks required scopes");
+  } catch (err) {
+    controlResults.push({
+      ucoControlId: "UCO-AC-001",
+      status: "failing",
+      result: `GitHub token verification failed: ${String(err)}. Verify the token is valid and has the required scopes (read:org, repo).`,
+      integrationKey: "github",
+    });
+    return { controlResults, evidenceItems, checksRun: controlResults.length, checksPassed: 0 };
+  }
   const owner = orgOrOwner ?? user?.login ?? "";
 
   // --- Check 1: Admin / org-level MFA enforcement ---

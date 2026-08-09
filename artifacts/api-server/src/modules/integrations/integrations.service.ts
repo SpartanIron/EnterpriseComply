@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { Injectable, BadRequestException } from "@nestjs/common";
-import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable } from "@workspace/db";
+import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable, integrationSyncLogTable } from "@workspace/db";
 import { eq, and, sql, isNotNull } from "drizzle-orm";
 import { runAwsChecks } from "./providers/aws.provider";
 import { runOktaChecks } from "./providers/okta.provider";
@@ -886,22 +886,36 @@ export class IntegrationsService {
       });
     }
 
+    // Derive actual sync status from control outcomes — never hard-code "success"
+    const awsConnectFailCount = controlResults.filter((r) => r.status === "failing").length;
+    const awsConnectPassCount = controlResults.filter((r) => r.status === "passing").length;
+    const awsConnectStatus = awsConnectFailCount === 0 ? "success" : awsConnectPassCount > 0 ? "partial" : "failed";
+
     const credentials = encryptCredential(JSON.stringify({ accessKeyId, secretAccessKey, region }));
     const existing = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "aws")),
     });
     if (existing) {
       await db.update(orgIntegrationsTable)
-        .set({ accessToken: credentials, status: "connected", lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length, accountLogin: region })
+        .set({ accessToken: credentials, status: "connected", lastSyncAt: new Date(), lastSyncStatus: awsConnectStatus, evidenceCollected: evidenceItems.length, accountLogin: region })
         .where(eq(orgIntegrationsTable.id, existing.id));
     } else {
       await db.insert(orgIntegrationsTable).values({
         orgId, integrationKey: "aws", name: "Amazon Web Services",
         status: "connected", accessToken: credentials,
-        lastSyncAt: new Date(), lastSyncStatus: "success",
+        lastSyncAt: new Date(), lastSyncStatus: awsConnectStatus,
         evidenceCollected: evidenceItems.length, accountLogin: region,
       });
     }
+
+    // Persist to sync log so Test Run History reflects the connect-time sync
+    await db.insert(integrationSyncLogTable).values({
+      orgId,
+      integrationKey: "aws",
+      status: awsConnectStatus,
+      evidenceCount: evidenceItems.length,
+      controlsUpdated: controlResults.length,
+    }).catch(() => {});
 
     return { success: true, checksRun, checksPassed, evidenceCollected: evidenceItems.length };
   }
@@ -946,9 +960,23 @@ export class IntegrationsService {
       });
     }
 
+    // Derive actual sync status from control outcomes — never hard-code "success"
+    const awsFailCount = controlResults.filter((r) => r.status === "failing").length;
+    const awsPassCount = controlResults.filter((r) => r.status === "passing").length;
+    const awsSyncStatus = awsFailCount === 0 ? "success" : awsPassCount > 0 ? "partial" : "failed";
+
     await db.update(orgIntegrationsTable)
-      .set({ lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length })
+      .set({ lastSyncAt: new Date(), lastSyncStatus: awsSyncStatus, evidenceCollected: evidenceItems.length })
       .where(eq(orgIntegrationsTable.id, integration.id));
+
+    // Persist to sync log so Test Run History reflects every AWS sync
+    await db.insert(integrationSyncLogTable).values({
+      orgId,
+      integrationKey: "aws",
+      status: awsSyncStatus,
+      evidenceCount: evidenceItems.length,
+      controlsUpdated: controlResults.length,
+    }).catch(() => {});
 
     return { success: true, checksRun, checksPassed };
   }
@@ -979,22 +1007,36 @@ export class IntegrationsService {
       });
     }
 
+    // Derive actual sync status from control outcomes — never hard-code "success"
+    const oktaConnectFailCount = controlResults.filter((r) => r.status === "failing").length;
+    const oktaConnectPassCount = controlResults.filter((r) => r.status === "passing").length;
+    const oktaConnectStatus = oktaConnectFailCount === 0 ? "success" : oktaConnectPassCount > 0 ? "partial" : "failed";
+
     const credentials = encryptCredential(JSON.stringify({ domain, apiToken }));
     const existing = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "okta")),
     });
     if (existing) {
       await db.update(orgIntegrationsTable)
-        .set({ accessToken: credentials, status: "connected", lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length, accountLogin: domain })
+        .set({ accessToken: credentials, status: "connected", lastSyncAt: new Date(), lastSyncStatus: oktaConnectStatus, evidenceCollected: evidenceItems.length, accountLogin: domain })
         .where(eq(orgIntegrationsTable.id, existing.id));
     } else {
       await db.insert(orgIntegrationsTable).values({
         orgId, integrationKey: "okta", name: "Okta",
         status: "connected", accessToken: credentials,
-        lastSyncAt: new Date(), lastSyncStatus: "success",
+        lastSyncAt: new Date(), lastSyncStatus: oktaConnectStatus,
         evidenceCollected: evidenceItems.length, accountLogin: domain,
       });
     }
+
+    // Persist to sync log so Test Run History reflects the connect-time sync
+    await db.insert(integrationSyncLogTable).values({
+      orgId,
+      integrationKey: "okta",
+      status: oktaConnectStatus,
+      evidenceCount: evidenceItems.length,
+      controlsUpdated: controlResults.length,
+    }).catch(() => {});
 
     return { success: true, checksRun, checksPassed, evidenceCollected: evidenceItems.length };
   }
@@ -1039,9 +1081,23 @@ export class IntegrationsService {
       });
     }
 
+    // Derive actual sync status from control outcomes — never hard-code "success"
+    const oktaFailCount = controlResults.filter((r) => r.status === "failing").length;
+    const oktaPassCount = controlResults.filter((r) => r.status === "passing").length;
+    const oktaSyncStatus = oktaFailCount === 0 ? "success" : oktaPassCount > 0 ? "partial" : "failed";
+
     await db.update(orgIntegrationsTable)
-      .set({ lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length })
+      .set({ lastSyncAt: new Date(), lastSyncStatus: oktaSyncStatus, evidenceCollected: evidenceItems.length })
       .where(eq(orgIntegrationsTable.id, integration.id));
+
+    // Persist to sync log so Test Run History reflects every Okta sync
+    await db.insert(integrationSyncLogTable).values({
+      orgId,
+      integrationKey: "okta",
+      status: oktaSyncStatus,
+      evidenceCount: evidenceItems.length,
+      controlsUpdated: controlResults.length,
+    }).catch(() => {});
 
     return { success: true, checksRun, checksPassed };
   }
@@ -1156,9 +1212,23 @@ export class IntegrationsService {
         collectedAt: new Date(),
       });
     }
+    // Derive actual sync status from control outcomes — never hard-code "success"
+    const failCount = controlResults.filter((r) => r.status === "failing").length;
+    const passCount = controlResults.filter((r) => r.status === "passing").length;
+    const syncStatus = failCount === 0 ? "success" : passCount > 0 ? "partial" : "failed";
+
     await db.update(orgIntegrationsTable)
-      .set({ lastSyncAt: new Date(), lastSyncStatus: "success" })
+      .set({ lastSyncAt: new Date(), lastSyncStatus: syncStatus })
       .where(eq(orgIntegrationsTable.id, integrationId));
+
+    // Write one row to integration_sync_log so Test Run History shows real data
+    await db.insert(integrationSyncLogTable).values({
+      orgId,
+      integrationKey,
+      status:          syncStatus,
+      evidenceCount:   evidenceItems.length,
+      controlsUpdated: controlResults.length,
+    }).catch(() => {/* non-fatal: sync log is best-effort */});
   }
 
   async connectDemo(orgId: number, integrationKey: string) {
@@ -1212,9 +1282,14 @@ export class IntegrationsService {
 
     const evidenceCount = evidenceItems.length;
 
+    // Derive actual status from control outcomes — demo syncs can have partial/failed results
+    const demoFailCount = demoControlResults.filter((r) => r.status === "failing").length;
+    const demoPassCount = demoControlResults.filter((r) => r.status === "passing").length;
+    const demoSyncStatus = demoFailCount === 0 ? "success" : demoPassCount > 0 ? "partial" : "failed";
+
     if (existing) {
       await db.update(orgIntegrationsTable)
-        .set({ status: "connected", lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceCount })
+        .set({ status: "connected", lastSyncAt: new Date(), lastSyncStatus: demoSyncStatus, evidenceCollected: evidenceCount })
         .where(eq(orgIntegrationsTable.id, existing.id));
     } else {
       await db.insert(orgIntegrationsTable).values({
@@ -1223,10 +1298,19 @@ export class IntegrationsService {
         name: catalogItem.name,
         status: "connected",
         lastSyncAt: new Date(),
-        lastSyncStatus: "success",
+        lastSyncStatus: demoSyncStatus,
         evidenceCollected: evidenceCount,
       });
     }
+
+    // Write a sync log row so Test Run History shows demo-connected integrations
+    await db.insert(integrationSyncLogTable).values({
+      orgId,
+      integrationKey,
+      status:          demoSyncStatus,
+      evidenceCount:   evidenceCount,
+      controlsUpdated: demoControlResults.length,
+    }).catch(() => {/* non-fatal: sync log is best-effort */});
 
     return { success: true, evidenceCollected: evidenceCount, controlsUpdated: demoControlResults.length };
   }
@@ -1486,13 +1570,37 @@ export class IntegrationsService {
         await db.insert(orgEvidenceTable).values({ orgId, ...ev, collectedAt: new Date() });
       }
 
+      // Derive actual sync status from control outcomes — never hard-code "success"
+      const ghFailCount = controlResults.filter((r) => r.status === "failing").length;
+      const ghPassCount = controlResults.filter((r) => r.status === "passing").length;
+      const ghOAuthStatus = ghFailCount === 0 ? "success" : ghPassCount > 0 ? "partial" : "failed";
+
       await db.update(orgIntegrationsTable)
-        .set({ status: "connected", lastSyncAt: new Date(), lastSyncStatus: "success", evidenceCollected: evidenceItems.length })
+        .set({ status: "connected", lastSyncAt: new Date(), lastSyncStatus: ghOAuthStatus, evidenceCollected: evidenceItems.length })
         .where(and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")));
+
+      // Persist to sync log so Test Run History reflects every GitHub OAuth sync
+      await db.insert(integrationSyncLogTable).values({
+        orgId,
+        integrationKey: "github",
+        status: ghFailCount === 0 ? "success" : ghPassCount > 0 ? "partial" : "failed",
+        evidenceCount: evidenceItems.length,
+        controlsUpdated: controlResults.length,
+      }).catch(() => {});
     } catch (err) {
       await db.update(orgIntegrationsTable)
         .set({ lastSyncAt: new Date(), lastSyncStatus: "error", lastSyncError: String(err) })
         .where(and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "github")));
+
+      // Persist failure to sync log so it appears in history
+      await db.insert(integrationSyncLogTable).values({
+        orgId,
+        integrationKey: "github",
+        status: "failed",
+        evidenceCount: 0,
+        controlsUpdated: 0,
+        errorMessage: String(err).slice(0, 500),
+      }).catch(() => {});
     }
   }
 }

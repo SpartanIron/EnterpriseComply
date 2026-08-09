@@ -9,5 +9,6 @@ import { NotificationsModule } from "../notifications/notifications.module";
 @Module({
   imports: [ScheduleModule.forRoot(), IntegrationsModule, NotificationsModule],
   providers: [LifecycleEmailService, IntegrationSchedulerService, ComplianceAlertsService],
+  exports: [IntegrationSchedulerService],
 })
 export class SchedulerModule {}

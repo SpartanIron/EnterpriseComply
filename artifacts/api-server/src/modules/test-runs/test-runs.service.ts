@@ -1,105 +1,110 @@
 import { Injectable } from "@nestjs/common";
-import { db, testRunsTable, ucoAutomatedTestsTable, orgControlResultsTable, ucoControlsTable, orgIntegrationsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import {
+  db,
+  orgIntegrationsTable,
+  integrationSyncLogTable,
+} from "@workspace/db";
+import { eq, and, desc, gte } from "drizzle-orm";
+import { IntegrationSchedulerService } from "../scheduler/integration-scheduler.service";
 
-const FALLBACK_TEST_NAMES = [
-  "MFA enforcement check",
-  "Branch protection rules",
-  "Code review policy",
-  "Dependency vulnerability scan",
-  "Employee offboarding audit",
-  "Access review completeness",
-  "Backup verification test",
-  "Incident response plan review",
-  "Encryption at rest check",
-  "TLS enforcement scan",
-];
+// Status mapping: sync log → test run display
+const SYNC_STATUS_MAP: Record<string, "pass" | "fail" | "warning"> = {
+  success: "pass",
+  partial: "warning",
+  failed:  "fail",
+};
 
 @Injectable()
 export class TestRunsService {
-  async getTestRuns(orgId: number) {
-    let runs: any[] = [];
-    try {
-      runs = await db
-        .select()
-        .from(testRunsTable)
-        .where(eq(testRunsTable.orgId, orgId))
-        .orderBy(desc(testRunsTable.runAt))
-        .limit(200);
-    } catch (_) {}
+  constructor(
+    private readonly schedulerService: IntegrationSchedulerService,
+  ) {}
 
-    if (runs.length > 0) {
+  async getTestRuns(orgId: number) {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // Query real sync log joined to integration display names
+    const logs = await db
+      .select({
+        id:               integrationSyncLogTable.id,
+        integrationKey:   integrationSyncLogTable.integrationKey,
+        status:           integrationSyncLogTable.status,
+        syncedAt:         integrationSyncLogTable.syncedAt,
+        evidenceCount:    integrationSyncLogTable.evidenceCount,
+        controlsUpdated:  integrationSyncLogTable.controlsUpdated,
+        errorMessage:     integrationSyncLogTable.errorMessage,
+        integrationName:  orgIntegrationsTable.name,
+      })
+      .from(integrationSyncLogTable)
+      .leftJoin(
+        orgIntegrationsTable,
+        and(
+          eq(integrationSyncLogTable.orgId, orgIntegrationsTable.orgId),
+          eq(integrationSyncLogTable.integrationKey, orgIntegrationsTable.integrationKey),
+        ),
+      )
+      .where(
+        and(
+          eq(integrationSyncLogTable.orgId, orgId),
+          gte(integrationSyncLogTable.syncedAt, thirtyDaysAgo),
+        ),
+      )
+      .orderBy(desc(integrationSyncLogTable.syncedAt))
+      .limit(200);
+
+    // If no sync log rows, check whether any integrations are connected at all
+    if (logs.length === 0) {
+      const connected = await db
+        .select({ id: orgIntegrationsTable.id })
+        .from(orgIntegrationsTable)
+        .where(
+          and(
+            eq(orgIntegrationsTable.orgId, orgId),
+            eq(orgIntegrationsTable.status, "connected"),
+          ),
+        )
+        .limit(1);
+
       return {
-        runs,
-        totalRuns: runs.length,
-        passing: runs.filter(r => r.status === "pass").length,
-        failing: runs.filter(r => r.status === "fail").length,
+        runs: [],
+        totalRuns: 0,
+        passing: 0,
+        failing: 0,
+        noIntegrations: connected.length === 0,
       };
     }
 
-    // Generate synthetic 30-day run history from UCO tests + control results
-    const [ucoTests, controls, ucoControls] = await Promise.all([
-      db.select().from(ucoAutomatedTestsTable),
-      db.select().from(orgControlResultsTable).where(eq(orgControlResultsTable.orgId, orgId)),
-      db.select().from(ucoControlsTable),
-    ]);
+    // Map sync log rows to the test-run shape expected by the frontend
+    const runs = logs.map((log) => {
+      const displayStatus = SYNC_STATUS_MAP[log.status] ?? "warning";
+      const name = log.integrationName ?? capitalize(log.integrationKey);
+      const detailParts: string[] = [];
+      if (log.controlsUpdated) detailParts.push(`${log.controlsUpdated} control${log.controlsUpdated !== 1 ? "s" : ""} updated`);
+      if (log.evidenceCount)   detailParts.push(`${log.evidenceCount} evidence item${log.evidenceCount !== 1 ? "s" : ""} collected`);
 
-    if (ucoTests.length === 0 && controls.length === 0) {
-      return { runs: [], totalRuns: 0, passing: 0, failing: 0 };
-    }
+      return {
+        id:           log.id,
+        orgId,
+        testId:       null,
+        testName:     `${name} Integration Sync`,
+        controlId:    null,
+        status:       displayStatus,
+        runAt:        log.syncedAt,
+        durationMs:   null,
+        details:      detailParts.length > 0 ? detailParts.join(", ") : undefined,
+        errorMessage: log.errorMessage ?? undefined,
+      };
+    });
 
-    const controlMap = new Map(ucoControls.map(c => [c.controlId, c]));
-
-    // Build test sources: prefer actual UCO tests, fall back to control results
-    const testSources = ucoTests.length > 0
-      ? ucoTests.map(t => ({
-          id: t.id,
-          testName: t.name,
-          controlId: t.ucoControlId,
-          basePassRate: 0.75,
-        }))
-      : controls.slice(0, 10).map((c, i) => ({
-          id: i,
-          testName: FALLBACK_TEST_NAMES[i % FALLBACK_TEST_NAMES.length],
-          controlId: c.ucoControlId,
-          basePassRate: c.status === "passing" ? 0.9 : c.status === "failing" ? 0.25 : 0.65,
-        }));
-
-    const now = Date.now();
-    const syntheticRuns: any[] = [];
-
-    for (let day = 29; day >= 0; day--) {
-      const numRuns = Math.floor(Math.random() * 3) + 1;
-      for (let r = 0; r < numRuns; r++) {
-        const src = testSources[Math.floor(Math.random() * testSources.length)];
-        const runAt = new Date(now - day * 86400000 - Math.random() * 3600000);
-        const ctrl = src.controlId ? controlMap.get(src.controlId) : null;
-        // Recent runs are slightly more likely to pass (improvement over time)
-        const passRate = src.basePassRate + (day > 14 ? -0.1 : 0);
-        const pass = Math.random() < Math.max(0.1, Math.min(0.95, passRate));
-
-        syntheticRuns.push({
-          id: syntheticRuns.length + 1,
-          orgId,
-          testId: src.id ?? null,
-          testName: src.testName,
-          controlId: src.controlId ?? null,
-          status: pass ? "pass" : "fail",
-          runAt,
-          durationMs: Math.floor(Math.random() * 3000) + 200,
-          details: pass ? "All checks passed" : `Failed: ${ctrl?.name ?? src.testName} requirement not met`,
-          errorMessage: !pass ? `${ctrl?.name ?? src.testName} did not meet threshold` : null,
-        });
-      }
-    }
-
-    syntheticRuns.sort((a, b) => new Date(b.runAt).getTime() - new Date(a.runAt).getTime());
+    const passing = runs.filter((r) => r.status === "pass").length;
+    const failing  = runs.filter((r) => r.status === "fail").length;
 
     return {
-      runs: syntheticRuns,
-      totalRuns: syntheticRuns.length,
-      passing: syntheticRuns.filter(r => r.status === "pass").length,
-      failing: syntheticRuns.filter(r => r.status === "fail").length,
+      runs,
+      totalRuns: runs.length,
+      passing,
+      failing,
+      noIntegrations: false,
     };
   }
 
@@ -109,9 +114,9 @@ export class TestRunsService {
       .from(orgIntegrationsTable)
       .where(eq(orgIntegrationsTable.orgId, orgId));
 
-    const connected = integrations.filter(i => i.status === "connected");
+    const connected = integrations.filter((i) => i.status === "connected");
 
-    const health = connected.map(intg => {
+    const health = connected.map((intg) => {
       const hoursSinceSync = intg.lastSyncAt
         ? (Date.now() - new Date(intg.lastSyncAt).getTime()) / 3600000
         : null;
@@ -124,70 +129,75 @@ export class TestRunsService {
             : "error";
 
       return {
-        key: intg.integrationKey,
-        name: intg.name,
-        status: intg.status,
-        lastSyncAt: intg.lastSyncAt,
-        lastSyncStatus: syncStatus,
+        key:             intg.integrationKey,
+        name:            intg.name,
+        status:          intg.status,
+        lastSyncAt:      intg.lastSyncAt,
+        lastSyncStatus:  syncStatus,
         evidenceCollected: intg.evidenceCollected,
-        nextSyncAt: new Date(Date.now() + 3600000),
-        accountName: intg.accountName,
-        accountLogin: intg.accountLogin,
+        nextSyncAt:      new Date(Date.now() + 3600000),
+        accountName:     intg.accountName,
+        accountLogin:    intg.accountLogin,
       };
     });
 
     return { health };
   }
+
   async triggerTestRuns(orgId: number) {
-    // Re-run all automated integration checks and persist results
-    const integrations = await db
-      .select()
-      .from(orgIntegrationsTable)
-      .where(eq(orgIntegrationsTable.orgId, orgId));
+    // Run a real immediate sync of all connected integrations for this org
+    const { triggered, results } = await this.schedulerService.syncOrgNow(orgId);
 
-    const connected = integrations.filter(i => i.status === "connected");
-    const triggered: any[] = [];
-
-    for (const intg of connected) {
-      // Create a synthetic run record simulating a fresh test execution
-      const pass = Math.random() > 0.25;
-      const testName = `${intg.name} Integration Check`;
-      const runAt = new Date();
-      try {
-        const [run] = await db.insert(testRunsTable).values({
-          orgId,
-          testName,
-          status: pass ? "pass" : "fail",
-          runAt,
-          durationMs: Math.floor(Math.random() * 2000) + 300,
-          details: pass ? "All checks passed" : "Integration check failed - verify credentials and permissions",
-          errorMessage: pass ? null : `${intg.name} did not respond within expected parameters`,
-        }).returning();
-        triggered.push(run);
-      } catch (_) {
-        // Insert failed, still track it
-        triggered.push({ testName, status: "skip", runAt });
-      }
+    if (triggered === 0) {
+      return {
+        triggered: 0,
+        message: "No integrations connected. Connect one from the Integrations page to run automated tests.",
+        runs: [],
+        noIntegrations: true,
+      };
     }
 
-    if (triggered.length === 0) {
-      // No connected integrations — run a baseline health check
-      const [run] = await db.insert(testRunsTable).values({
-        orgId,
-        testName: "Platform Health Check",
-        status: "pass",
-        runAt: new Date(),
-        durationMs: 124,
-        details: "Platform services healthy. Connect integrations to run automated security tests.",
-      }).returning().catch(() => [{ testName: "Platform Health Check", status: "pass" }]);
-      triggered.push(run);
-    }
+    // Map dispatcher results to the run response shape
+    const runs = results.map((r, idx) => ({
+      id:           Date.now() + idx,
+      orgId,
+      testId:       null,
+      testName:     `${r.name} Integration Sync`,
+      controlId:    null,
+      status:       r.status === "success" ? "pass" : r.status === "partial" ? "warning" : "fail",
+      runAt:        new Date(),
+      durationMs:   r.durationMs ?? null,
+      details:      r.checksPassed != null
+        ? `${r.checksPassed}/${r.checksRun} checks passed`
+        : undefined,
+      errorMessage: r.error ?? null,
+    }));
+
+    const passing = runs.filter((r) => r.status === "pass").length;
+    const failing  = runs.filter((r) => r.status === "fail").length;
 
     return {
-      triggered: triggered.length,
-      message: `Successfully triggered ${triggered.length} test run${triggered.length !== 1 ? "s" : ""}.`,
-      runs: triggered,
+      triggered: runs.length,
+      message:   `Successfully triggered ${runs.length} integration sync${runs.length !== 1 ? "s" : ""}.`,
+      passing,
+      failing,
+      runs,
     };
   }
 
+  /**
+   * Exercises the scheduler's full dispatch-and-catch path for one org,
+   * bypassing the interval gate.  Used by the /run-scheduled endpoint so
+   * integration tests can verify that scheduled-path failures are persisted
+   * to integration_sync_log without waiting for the real scheduler tick.
+   */
+  async runScheduledForOrg(orgId: number): Promise<{ done: true }> {
+    await this.schedulerService.runDueForOrg(orgId);
+    return { done: true };
+  }
+}
+
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

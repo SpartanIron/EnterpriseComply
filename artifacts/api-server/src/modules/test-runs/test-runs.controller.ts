@@ -26,4 +26,17 @@ export class TestRunsController {
   triggerTestRuns(@OrgContext() ctx: OrgCtx) {
     return this.testRunsService.triggerTestRuns(ctx.orgId);
   }
+
+  /**
+   * Runs the scheduler's full dispatch-and-catch path for every connected
+   * integration belonging to the org, bypassing the interval gate.
+   * Exercises the same per-integration try/catch as runDueIntegrations()
+   * (including sync-log failure persistence), scoped to one org.
+   * Requires owner role — intentionally the same guard as the connect endpoints.
+   */
+  @Post("orgs/:orgId/test-runs/run-scheduled")
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
+  runScheduled(@OrgContext() ctx: OrgCtx) {
+    return this.testRunsService.runScheduledForOrg(ctx.orgId);
+  }
 }
