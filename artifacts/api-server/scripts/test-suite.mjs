@@ -1713,6 +1713,211 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
   await db.query(`DELETE FROM organizations WHERE id = $1`, [org14sId]).catch(() => {});
 }
 
+// ── Section 15: Rate limiting & DoS protection ───────────────────────────────
+
+{
+  section("SECTION 15 — RATE LIMITING: throttler profiles, headers, IP failure block");
+
+  // ── 15.1 Normal API endpoint returns rate-limit headers ────────────────────
+  // Use a unique IP so this section doesn't interact with previous test state.
+  // The X-Forwarded-For header is trusted because main.ts sets trust proxy.
+  const ip15a = "10.15.10.1";
+  const rlRes = await fetch(`${BASE}/healthz`, {
+    headers: { "X-Forwarded-For": ip15a, Host: new URL(BASE).host },
+  });
+  check("15.1 healthz returns 200 (not throttled)",  rlRes.status, 200);
+
+  // ── 15.2 Public status endpoint is exempt from throttling ──────────────────
+  const ip15b  = "10.15.10.2";
+  let allOk = true;
+  for (let i = 0; i < 10; i++) {
+    const r = await fetch(`${BASE}/public/status`, {
+      headers: { "X-Forwarded-For": ip15b, Host: new URL(BASE).host },
+    });
+    if (r.status !== 200) { allOk = false; break; }
+  }
+  check("15.2 public/status not throttled over 10 rapid requests", allOk ? 200 : 429, 200);
+
+  // ── 15.3 Auth endpoint (SAML login) is throttled at 5 req/min per IP ──────
+  const ip15c   = "10.15.10.3";
+  const slug15  = "nonexistent-org-throttle-test-15";
+  const reqFn   = () => fetch(`${BASE}/saml/${slug15}/login`, {
+    redirect: "manual",
+    headers:  { "X-Forwarded-For": ip15c, Host: new URL(BASE).host },
+  });
+
+  // First 5 requests → redirects (302 to error page because org doesn't exist)
+  let allRedirect = true;
+  for (let i = 0; i < 5; i++) {
+    const r = await reqFn();
+    if (r.status !== 302) { allRedirect = false; }
+  }
+  check("15.3a SAML login: first 5 req within limit (302 each)", allRedirect ? 200 : 422, 200);
+
+  // 6th request from same IP → 429 (auth throttler at 5/min)
+  const throttled = await reqFn();
+  check("15.3b SAML login: 6th request is throttled (429)", throttled.status, 429);
+  // Standard Retry-After header must be present (guard normalizes from Retry-After-auth)
+  check("15.3c SAML login: throttled 429 includes standard Retry-After header",
+    throttled.headers.get("retry-after") != null ? 200 : 422, 200);
+
+  // ── 15.4 IP failure block — 10 bad SAML assertions → 429 on 11th ──────────
+  const ip15d  = "10.15.10.4";
+  const slug15d = "nonexistent-org-ip-block-test-15";
+
+  // Send 10 invalid SAMLResponse values → each triggers a validation failure
+  // which calls recordAuthFailure().  10th failure crosses the threshold.
+  // Note: the SAML callback itself is auth-throttled at 5/min, but the IP
+  // block accumulates across different throttler windows.
+  // We reset between bursts by using a distinct IP not used elsewhere.
+  for (let i = 0; i < 10; i++) {
+    await fetch(`${BASE}/saml/${slug15d}/callback`, {
+      method:   "POST",
+      redirect: "manual",
+      headers:  {
+        "Content-Type":    "application/x-www-form-urlencoded",
+        "X-Forwarded-For": ip15d,
+        Host:              new URL(BASE).host,
+      },
+      body: `SAMLResponse=${encodeURIComponent("invalid-saml-response-" + i)}`,
+    });
+  }
+
+  // 11th request: IP is now blocked → must return 429 with Retry-After header
+  const blocked = await fetch(`${BASE}/saml/${slug15d}/callback`, {
+    method:   "POST",
+    redirect: "manual",
+    headers:  {
+      "Content-Type":    "application/x-www-form-urlencoded",
+      "X-Forwarded-For": ip15d,
+      Host:              new URL(BASE).host,
+    },
+    body: "SAMLResponse=invalid",
+  });
+  check("15.4a IP failure block: 11th request returns 429", blocked.status, 429);
+  check("15.4b IP failure block: Retry-After header present",
+    blocked.headers.get("retry-after") != null ? 200 : 422, 200);
+  const retryAfter = Number(blocked.headers.get("retry-after") ?? 0);
+  check("15.4c IP failure block: Retry-After ≤ 900s", retryAfter > 0 && retryAfter <= 900 ? 200 : 422, 200);
+
+  // ── 15.5 Gap-analysis enforces 8 req/min throttle (default profile override) ─
+  // Uses X-Forwarded-For to isolate this test from previous loopback requests.
+  {
+    const gaNow     = new Date().toISOString();
+    const gaExpires = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+    const gaSlug    = slug();
+    const gaUser    = uid();
+    const gaSess    = uid();
+    const gaToken   = uid();
+    const ip15e     = "10.15.10.5";
+
+    const gaOrgRes = await db.query(
+      `INSERT INTO organizations (name, slug, industry, size, plan) VALUES ($1, $2, 'technology', '11-50', 'professional') RETURNING id`,
+      [`Throttle GA Org ${gaSlug}`, gaSlug],
+    );
+    const gaOrgId = gaOrgRes.rows[0].id;
+    await db.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt", role) VALUES ($1,$2,$3,true,$4,$4,'member')`,
+      [gaUser, "GA Throttle User", `ga-throttle-${gaSlug}@test.invalid`, gaNow],
+    );
+    await db.query(
+      `INSERT INTO session (id, "userId", "expiresAt", token, "createdAt", "updatedAt") VALUES ($1,$2,$3,$4,$5,$5)`,
+      [gaSess, gaUser, gaExpires, gaToken, gaNow],
+    );
+    await db.query(
+      `INSERT INTO org_members (org_id, clerk_user_id, role, email, created_at) VALUES ($1,$2,'compliance_manager',$3,$4)`,
+      [gaOrgId, gaUser, `ga-throttle-${gaSlug}@test.invalid`, gaNow],
+    );
+    const gaCookieVal = `__Secure-better-auth.session_token=${gaToken}`;
+
+    const gaFetch = (i) => fetch(`${BASE}/orgs/${gaOrgId}/gap-analysis`, {
+      method:  "POST",
+      headers: {
+        "Content-Type":    "application/json",
+        Cookie:            gaCookieVal,
+        Host:              new URL(BASE).host,
+        "X-Forwarded-For": ip15e,
+      },
+      body: "{}",
+    });
+
+    // First 8 requests → within the 8/min limit (200, 500, or similar — not 429)
+    let gaAllowed = true;
+    for (let i = 0; i < 8; i++) {
+      const r = await gaFetch(i);
+      if (r.status === 429) { gaAllowed = false; }
+    }
+    check("15.5a gap-analysis: 8 requests within 8/min limit (not throttled)", gaAllowed ? 200 : 429, 200);
+
+    // 9th request → 429 (default throttler overridden to limit=8)
+    const gaThrottled = await gaFetch(8);
+    check("15.5b gap-analysis: 9th request is throttled (429)", gaThrottled.status, 429);
+
+    await db.query(`DELETE FROM org_members WHERE clerk_user_id = $1`, [gaUser]).catch(() => {});
+    await db.query(`DELETE FROM session WHERE id = $1`, [gaSess]).catch(() => {});
+    await db.query(`DELETE FROM "user" WHERE id = $1`, [gaUser]).catch(() => {});
+    await db.query(`DELETE FROM organizations WHERE id = $1`, [gaOrgId]).catch(() => {});
+  }
+
+  // ── 15.6 SSP generate enforces 5 req/min throttle (default profile override) ─
+  {
+    const sspNow     = new Date().toISOString();
+    const sspExpires = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+    const sspSlug    = slug();
+    const sspUser    = uid();
+    const sspSess    = uid();
+    const sspToken   = uid();
+    const ip15f      = "10.15.10.6";
+
+    const sspOrgRes = await db.query(
+      `INSERT INTO organizations (name, slug, industry, size, plan) VALUES ($1, $2, 'technology', '11-50', 'federal') RETURNING id`,
+      [`Throttle SSP Org ${sspSlug}`, sspSlug],
+    );
+    const sspOrgId = sspOrgRes.rows[0].id;
+    await db.query(
+      `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt", role) VALUES ($1,$2,$3,true,$4,$4,'member')`,
+      [sspUser, "SSP Throttle User", `ssp-throttle-${sspSlug}@test.invalid`, sspNow],
+    );
+    await db.query(
+      `INSERT INTO session (id, "userId", "expiresAt", token, "createdAt", "updatedAt") VALUES ($1,$2,$3,$4,$5,$5)`,
+      [sspSess, sspUser, sspExpires, sspToken, sspNow],
+    );
+    await db.query(
+      `INSERT INTO org_members (org_id, clerk_user_id, role, email, created_at) VALUES ($1,$2,'owner',$3,$4)`,
+      [sspOrgId, sspUser, `ssp-throttle-${sspSlug}@test.invalid`, sspNow],
+    );
+    const sspCookieVal = `__Secure-better-auth.session_token=${sspToken}`;
+
+    const sspFetch = () => fetch(`${BASE}/orgs/${sspOrgId}/ssp/generate`, {
+      method:  "POST",
+      headers: {
+        "Content-Type":    "application/json",
+        Cookie:            sspCookieVal,
+        Host:              new URL(BASE).host,
+        "X-Forwarded-For": ip15f,
+      },
+      body: "{}",
+    });
+
+    // First 5 requests → within the 5/min limit (200, 500, or similar — not 429)
+    let sspAllowed = true;
+    for (let i = 0; i < 5; i++) {
+      const r = await sspFetch();
+      if (r.status === 429) { sspAllowed = false; }
+    }
+    check("15.6a ssp/generate: 5 requests within 5/min limit (not throttled)", sspAllowed ? 200 : 429, 200);
+
+    // 6th request → 429 (default throttler overridden to limit=5)
+    const sspThrottled = await sspFetch();
+    check("15.6b ssp/generate: 6th request is throttled (429)", sspThrottled.status, 429);
+
+    await db.query(`DELETE FROM org_members WHERE clerk_user_id = $1`, [sspUser]).catch(() => {});
+    await db.query(`DELETE FROM session WHERE id = $1`, [sspSess]).catch(() => {});
+    await db.query(`DELETE FROM "user" WHERE id = $1`, [sspUser]).catch(() => {});
+    await db.query(`DELETE FROM organizations WHERE id = $1`, [sspOrgId]).catch(() => {});
+  }
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();

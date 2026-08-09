@@ -1,5 +1,6 @@
 // webhooks.controller.ts — BetterAuth lifecycle webhook controller
 import { Controller, Post, Req, Res, HttpCode, Logger } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import type { Request, Response } from "express";
 import { WebhooksService } from "./webhooks.service";
 
@@ -22,7 +23,11 @@ function validateWebhookSecret(req: Request, res: Response): boolean {
   return true;
 }
 
+// High-volume throttler profile: 300 req/min per source IP.
+// CI/CD pipelines and BetterAuth lifecycle hooks send bursts of webhooks;
+// 300/min comfortably handles those while still blocking DoS at the wire.
 @Controller("webhooks")
+@Throttle({ webhook: { limit: 300, ttl: 60000 } })
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
 

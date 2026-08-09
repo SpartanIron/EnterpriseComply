@@ -79,6 +79,13 @@ async function bootstrap() {
   validateEnv();
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
+  // ── Trust proxy headers ────────────────────────────────────────────────────
+  // Railway (and Cloudflare in front of it) forward the real client IP in
+  // X-Forwarded-For.  Setting trust proxy makes Express populate req.ip and
+  // req.ips from that header so ThrottlerGuard and IP-block logic see the
+  // correct source address rather than the proxy's address.
+  app.getHttpAdapter().getInstance().set("trust proxy", 1);
+
   // ── HTTP → HTTPS redirect (origin-level defense-in-depth) ─────────────────────────────
   // Cloudflare handles the 301 in production, but if the Railway origin is ever reached
   // directly over HTTP (bypass, misconfiguration, monitoring) this catches it before any
@@ -148,7 +155,14 @@ async function bootstrap() {
     origin: allowedOrigins,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['X-Total-Count'],
+    // Expose rate-limit headers so the frontend can display quota feedback
+    exposedHeaders: [
+      'X-Total-Count',
+      'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset',
+      'X-RateLimit-Limit-auth', 'X-RateLimit-Remaining-auth', 'X-RateLimit-Reset-auth',
+      'X-RateLimit-Limit-webhook', 'X-RateLimit-Remaining-webhook', 'X-RateLimit-Reset-webhook',
+      'Retry-After',
+    ],
   });
 
   app.setGlobalPrefix("api");

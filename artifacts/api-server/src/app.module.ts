@@ -1,7 +1,8 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
-import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { RateLimitGuard } from "./guards/rate-limit.guard";
 import { AuthModule } from "./modules/auth/auth.module";
 import { StartupModule } from "./startup/startup.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -47,7 +48,16 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    // Named throttler profiles — applied selectively by RateLimitGuard:
+    //   "default"  → authenticated API endpoints     (120 req/60s per IP)
+    //   "auth"     → auth/SAML endpoints             (  5 req/60s per IP)
+    //   "webhook"  → inbound CI/CD webhook endpoint  (300 req/60s per IP)
+    // Public endpoints (health, status page) use @SkipThrottle() to bypass all profiles.
+    ThrottlerModule.forRoot([
+      { name: "default", ttl: 60000, limit: 120 },
+      { name: "auth",    ttl: 60000, limit: 5   },
+      { name: "webhook", ttl: 60000, limit: 300  },
+    ]),
     AuthModule,
     StartupModule,
     HealthModule,
@@ -92,7 +102,7 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: RateLimitGuard,
     },
   ],
 })
