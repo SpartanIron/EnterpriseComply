@@ -10,6 +10,11 @@
     "test:isolation": "pnpm --filter @workspace/api-server run test"
   },
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "path-to-regexp": ">=8.4.0"
+    }
+  },
   "devDependencies": {
     "typescript": "~5.9.2",
     "prettier": "^3.8.1"
