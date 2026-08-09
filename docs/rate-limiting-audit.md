@@ -114,9 +114,9 @@ File: `artifacts/api-server/src/lib/auth-failure-tracker.ts`
 | Threshold | 10 consecutive failures |
 | Block duration | 15 minutes |
 | `Retry-After` | 900 seconds |
-| Storage | In-memory Map (single-instance) |
+| Storage | Postgres `ip_failure_tracker` table (persistent across restarts) |
 
-**Recommendation for multi-instance deployments:** Replace the in-memory Map with a Redis `INCR` + `EXPIREAT` pattern so the failure count is shared across Railway instances.
+State is persisted in Postgres so that a rolling Railway deploy does **not** reset failure counters.  The table is created automatically on first use (idempotent `CREATE TABLE IF NOT EXISTS`).
 
 ---
 
@@ -125,7 +125,7 @@ File: `artifacts/api-server/src/lib/auth-failure-tracker.ts`
 | Gap | Risk | Recommendation |
 |-----|------|----------------|
 | BetterAuth magic-link endpoint not individually throttled at 5/min | Medium — email rate limit (5/hour/email) partially mitigates | Add Express middleware before NestJS that applies IP-based 5/min limit on `POST /api/auth/magic-link/send` |
-| In-memory throttle state resets on deploy | Low — Rolling deploys have short overlap | Acceptable for single-instance; use Redis for multi-instance |
+| ~~In-memory throttle state resets on deploy~~ | ✅ Fixed — both `ThrottlerModule` and `auth-failure-tracker` now use Postgres-backed storage (`throttle_hits` and `ip_failure_tracker` tables); state survives rolling deploys | — |
 | No per-authenticated-user limits (only per-IP) | Low — All auth endpoints require session | Sufficient for current single-tenant Railway deployment |
 | Cloudflare WAF rules not configured | Medium — Bot traffic not blocked at edge | Out of scope; infrastructure concern |
 | OAuth initiation (`GET /api/auth/sign-in/github`) uses default 120/min | Medium | Move to `auth` profile if credential-stuffing concern arises |
@@ -137,10 +137,12 @@ File: `artifacts/api-server/src/lib/auth-failure-tracker.ts`
 | File | Change |
 |------|--------|
 | `artifacts/api-server/src/guards/rate-limit.guard.ts` | New: custom guard selecting single throttler profile per route |
-| `artifacts/api-server/src/lib/auth-failure-tracker.ts` | New: IP block tracker (10 failures → 15-min block) |
-| `artifacts/api-server/src/app.module.ts` | Named throttlers + RateLimitGuard |
+| `artifacts/api-server/src/lib/auth-failure-tracker.ts` | **Updated:** Postgres-backed (was in-memory Map); all functions are now async |
+| `artifacts/api-server/src/lib/pg-pool.ts` | New: singleton `pg.Pool` for rate-limit tables |
+| `artifacts/api-server/src/lib/pg-throttler-storage.ts` | New: `PgThrottlerStorage` — implements `ThrottlerStorage` backed by `throttle_hits` table |
+| `artifacts/api-server/src/app.module.ts` | **Updated:** `ThrottlerModule.forRoot` now uses object form with `storage: new PgThrottlerStorage()` |
+| `artifacts/api-server/src/modules/sso/saml-auth.controller.ts` | **Updated:** `isIpBlocked`, `blockRemainingSeconds`, `recordAuthFailure` now awaited |
 | `artifacts/api-server/src/main.ts` | trust proxy + expose rate limit headers in CORS |
-| `artifacts/api-server/src/modules/sso/saml-auth.controller.ts` | auth throttle + IP failure block |
 | `artifacts/api-server/src/modules/webhooks/webhooks.controller.ts` | webhook throttle |
 | `artifacts/api-server/src/modules/public-status/public-status.controller.ts` | explicit skip |
 | `artifacts/api-server/src/modules/health/health.controller.ts` | explicit skip |
@@ -148,3 +150,4 @@ File: `artifacts/api-server/src/lib/auth-failure-tracker.ts`
 | `artifacts/api-server/src/modules/sso/sso.controller.ts` | explicit skip on metadata |
 | `artifacts/api-server/src/modules/ssp/ssp.controller.ts` | rename `default` → `api` in @Throttle |
 | `artifacts/api-server/src/modules/gap-analysis/gap-analysis.controller.ts` | rename `default` → `api` |
+| `artifacts/api-server/scripts/test-rate-limit-persistence.mjs` | New: regression test verifying counter persistence across simulated restarts |

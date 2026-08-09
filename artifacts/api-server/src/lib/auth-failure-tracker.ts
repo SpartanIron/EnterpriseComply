@@ -1,5 +1,5 @@
 /**
- * auth-failure-tracker.ts — In-memory IP-based auth failure block.
+ * auth-failure-tracker.ts — Postgres-backed IP auth failure block.
  *
  * After FAILURE_THRESHOLD consecutive auth failures from the same source IP
  * within FAILURE_WINDOW_MS, that IP is blocked for BLOCK_DURATION_MS.
@@ -7,84 +7,126 @@
  *
  * NIST AC-7: limit consecutive invalid logon attempts.
  *
- * NOTE: Single-instance only.  For distributed deployments replace the Map
- *       with a Redis-backed counter (INCRBY + EXPIREAT).
+ * State is persisted in the `ip_failure_tracker` Postgres table so that
+ * a rolling Railway deploy or process restart does NOT reset counters.
+ * The schema is created automatically on first use (idempotent DDL).
+ *
+ * Concurrency: recordAuthFailure uses a single atomic UPSERT — no separate
+ * SELECT — so concurrent first-requests for the same IP cannot both compute
+ * count=1 and overwrite each other; every failure is counted.
  */
+
+import { getRateLimitPool } from "./pg-pool.js";
 
 const FAILURE_WINDOW_MS  = 15 * 60 * 1000; // 15-minute sliding window
 const FAILURE_THRESHOLD  = 10;             // failures before block
 const BLOCK_DURATION_MS  = 15 * 60 * 1000; // block duration after threshold
 export const BLOCK_SECONDS = 900;          // Retry-After value (seconds)
 
-interface Entry {
-  count:       number;
-  windowStart: number;
-  blockedUntil: number | null;
+// ── Schema bootstrap ─────────────────────────────────────────────────────────
+
+let _schemaReady = false;
+
+async function ensureSchema(): Promise<void> {
+  if (_schemaReady) return;
+  const pool = getRateLimitPool();
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ip_failure_tracker (
+      ip            TEXT    PRIMARY KEY,
+      count         INTEGER NOT NULL DEFAULT 0,
+      window_start  BIGINT  NOT NULL,
+      blocked_until BIGINT  NOT NULL DEFAULT 0
+    );
+  `);
+  _schemaReady = true;
 }
 
-const failureMap = new Map<string, Entry>();
+// ── Public API (all async — use await at call sites) ─────────────────────────
 
 /**
  * Record one auth failure for an IP.
+ *
+ * Uses a single atomic UPSERT so concurrent failures from the same IP are
+ * never silently dropped — every call increments or resets exactly once.
+ *
  * @returns true if the IP is now blocked (crossed threshold on THIS call or was already blocked)
  */
-export function recordAuthFailure(ip: string): boolean {
-  const now   = Date.now();
-  const entry = failureMap.get(ip);
+export async function recordAuthFailure(ip: string): Promise<boolean> {
+  await ensureSchema();
+  const pool         = getRateLimitPool();
+  const now          = BigInt(Date.now());
+  const windowMs     = BigInt(FAILURE_WINDOW_MS);
+  const blockDurMs   = BigInt(BLOCK_DURATION_MS);
+  const threshold    = FAILURE_THRESHOLD;
 
-  if (!entry) {
-    failureMap.set(ip, { count: 1, windowStart: now, blockedUntil: null });
-    return false;
-  }
+  // One atomic UPSERT — no separate SELECT.
+  // ON CONFLICT expressions reference the committed row values (ip_failure_tracker.*)
+  // so all arithmetic is serialised inside Postgres and no update is lost.
+  const { rows } = await pool.query<{
+    count:         number;
+    blocked_until: string;
+  }>(
+    `INSERT INTO ip_failure_tracker (ip, count, window_start, blocked_until)
+     VALUES ($1, 1, $2, 0)
+     ON CONFLICT (ip) DO UPDATE SET
+       count = CASE
+         WHEN ip_failure_tracker.blocked_until > $2 THEN ip_failure_tracker.count
+         WHEN $2 - ip_failure_tracker.window_start > $3  THEN 1
+         ELSE ip_failure_tracker.count + 1
+       END,
+       window_start = CASE
+         WHEN ip_failure_tracker.blocked_until > $2 THEN ip_failure_tracker.window_start
+         WHEN $2 - ip_failure_tracker.window_start > $3  THEN $2
+         ELSE ip_failure_tracker.window_start
+       END,
+       blocked_until = CASE
+         WHEN ip_failure_tracker.blocked_until > $2 THEN ip_failure_tracker.blocked_until
+         WHEN $2 - ip_failure_tracker.window_start > $3  THEN 0
+         WHEN ip_failure_tracker.count + 1 >= $4           THEN $2 + $5
+         ELSE 0
+       END
+     RETURNING count, blocked_until`,
+    [ip, now, windowMs, threshold, blockDurMs],
+  );
 
-  // Already blocked — re-check; block duration might have expired
-  if (entry.blockedUntil !== null) {
-    if (now < entry.blockedUntil) return true; // still blocked
-    // Block expired — reset and start a fresh window
-    entry.count       = 1;
-    entry.windowStart = now;
-    entry.blockedUntil = null;
-    return false;
-  }
-
-  // Window expired — reset
-  if (now - entry.windowStart > FAILURE_WINDOW_MS) {
-    entry.count       = 1;
-    entry.windowStart = now;
-    return false;
-  }
-
-  // Increment and check threshold
-  entry.count++;
-  if (entry.count >= FAILURE_THRESHOLD) {
-    entry.blockedUntil = now + BLOCK_DURATION_MS;
-    return true;
-  }
-  return false;
+  const row = rows[0];
+  return BigInt(row.blocked_until) > now;
 }
 
 /**
  * Check if an IP is currently blocked without recording a failure.
  */
-export function isIpBlocked(ip: string): boolean {
-  const now   = Date.now();
-  const entry = failureMap.get(ip);
-  if (!entry) return false;
-  if (entry.blockedUntil !== null && now < entry.blockedUntil) return true;
-  return false;
+export async function isIpBlocked(ip: string): Promise<boolean> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
+  const now  = Date.now();
+  const { rows } = await pool.query<{ blocked_until: string }>(
+    "SELECT blocked_until FROM ip_failure_tracker WHERE ip = $1",
+    [ip],
+  );
+  if (!rows[0]) return false;
+  return Number(rows[0].blocked_until) > now;
 }
 
 /**
  * Seconds remaining until the block expires (for the Retry-After header).
  */
-export function blockRemainingSeconds(ip: string): number {
-  const now   = Date.now();
-  const entry = failureMap.get(ip);
-  if (!entry?.blockedUntil) return BLOCK_SECONDS;
-  return Math.max(0, Math.ceil((entry.blockedUntil - now) / 1000));
+export async function blockRemainingSeconds(ip: string): Promise<number> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
+  const now  = Date.now();
+  const { rows } = await pool.query<{ blocked_until: string }>(
+    "SELECT blocked_until FROM ip_failure_tracker WHERE ip = $1",
+    [ip],
+  );
+  if (!rows[0]) return BLOCK_SECONDS;
+  const bu = Number(rows[0].blocked_until);
+  return bu > now ? Math.ceil((bu - now) / 1000) : 0;
 }
 
 /** Reset a specific IP — used in automated tests to clear state between runs. */
-export function resetIpFailures(ip: string): void {
-  failureMap.delete(ip);
+export async function resetIpFailures(ip: string): Promise<void> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
+  await pool.query("DELETE FROM ip_failure_tracker WHERE ip = $1", [ip]);
 }

@@ -88,8 +88,8 @@ export class SamlAuthController {
     const ip   = (req.ips?.length ? req.ips[0] : req.ip) ?? "0.0.0.0";
 
     // ── IP failure block check (NIST AC-7) ────────────────────────────────
-    if (isIpBlocked(ip)) {
-      const retryAfter = blockRemainingSeconds(ip);
+    if (await isIpBlocked(ip)) {
+      const retryAfter = await blockRemainingSeconds(ip);
       logger.warn({ ip, orgSlug }, "[sso] SAML callback blocked — too many auth failures");
       res.setHeader("Retry-After", String(retryAfter));
       return res.status(429).json({
@@ -121,7 +121,7 @@ export class SamlAuthController {
       return res.redirect(302, `${base}/dashboard`);
     } catch (err) {
       // Record the failure; if this call crosses the threshold the IP is now blocked
-      const nowBlocked = recordAuthFailure(ip);
+      const nowBlocked = await recordAuthFailure(ip);
       logger.warn({ err, orgSlug, ip, nowBlocked }, "[sso] SAML callback failed");
 
       if (nowBlocked) {
