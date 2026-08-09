@@ -193,3 +193,59 @@ export function decryptConfigCredentials(
   }
   return result;
 }
+
+/**
+ * Re-encrypt a single credential value with a new key (hex string, 32 bytes / 64 chars).
+ * Decrypts with the current INTEGRATION_CREDENTIAL_KEY, then re-encrypts with newKeyHex.
+ * If decryption fails (wrong key / tampered data), the original value is returned unchanged
+ * and a warning is logged.
+ * Returns null for null/undefined/empty input.
+ */
+export function reEncryptWithNewKey(
+  cipherStr: string | null | undefined,
+  newKeyHex: string,
+): string | null {
+  if (!cipherStr) return cipherStr ?? null;
+
+  // Decrypt with the current key
+  const plain = decryptCredential(cipherStr);
+  if (plain === null) {
+    log.warn(
+      'reEncryptWithNewKey: could not decrypt value with current key — leaving unchanged. ' +
+      'Ensure INTEGRATION_CREDENTIAL_KEY matches the key used to encrypt this value.',
+    );
+    return cipherStr;
+  }
+
+  // Encrypt with the new key
+  const newKeyBuf = Buffer.from(newKeyHex, 'hex');
+  if (newKeyBuf.length !== 32) {
+    throw new Error('newKeyHex must be a 64-char hex string (32 bytes)');
+  }
+
+  const iv = randomBytes(12);
+  const cipher = createCipheriv(ALGO, newKeyBuf, iv);
+  const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+
+  return `${ENC_PREFIX}${iv.toString('hex')}$${encrypted.toString('hex')}$${tag.toString('hex')}`;
+}
+
+/**
+ * Re-encrypt credential sub-keys within a JSONB config object using a new key.
+ * Only processes the listed fields; other fields are left unchanged.
+ */
+export function reEncryptConfigWithNewKey(
+  config: Record<string, unknown> | null | undefined,
+  credentialKeys: string[],
+  newKeyHex: string,
+): Record<string, unknown> | null {
+  if (!config) return config ?? null;
+  const result = { ...config };
+  for (const key of credentialKeys) {
+    if (typeof result[key] === 'string') {
+      result[key] = reEncryptWithNewKey(result[key] as string, newKeyHex);
+    }
+  }
+  return result;
+}

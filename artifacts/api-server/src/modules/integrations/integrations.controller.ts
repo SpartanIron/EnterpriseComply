@@ -169,6 +169,13 @@ export class IntegrationsController {
     return this.integrationsService.syncOrgCloudflare(ctx.orgId);
   }
 
+  // ── Verify connection (on-demand ping) ──────────────────────────────────────
+  @Post("orgs/:orgId/integrations/:key/verify")
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  verifyConnection(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
+    return this.integrationsService.verifyIntegrationConnection(ctx.orgId, key);
+  }
+
   // ── Demo connect for all other integrations ───────────────────────────────────
   @Post("orgs/:orgId/integrations/:key/demo-connect")
   @UseGuards(OrgContextGuard, RequireRole("owner"))

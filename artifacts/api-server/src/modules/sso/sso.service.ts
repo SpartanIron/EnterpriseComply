@@ -11,12 +11,15 @@ import {
 } from "../../lib/saml-sp.js";
 
 export interface SaveSsoConfigDto {
-  provider:       string;
-  domain?:        string;
-  idpEntityId:    string;
-  idpSsoUrl:      string;
-  idpCertificate: string;
+  provider:          string;
+  domain?:           string;
+  idpEntityId:       string;
+  idpSsoUrl:         string;
+  idpCertificate:    string;
+  samlGroupMappings?: Record<string, string>;
 }
+
+const ROLE_HIERARCHY = ['member', 'compliance_manager', 'admin'];
 
 @Injectable()
 export class SsoService {
@@ -44,14 +47,15 @@ export class SsoService {
       configured: !!configRow,
       config: configRow
         ? {
-            provider:    configRow.provider,
-            domain:      configRow.domain,
-            idpEntityId: configRow.idpEntityId,
-            idpSsoUrl:   configRow.idpSsoUrl,
+            provider:          configRow.provider,
+            domain:            configRow.domain,
+            idpEntityId:       configRow.idpEntityId,
+            idpSsoUrl:         configRow.idpSsoUrl,
             // Return partial cert (first 64 chars) — don't expose full cert for security UX;
             // the full cert is stored and used server-side only.
-            idpCertificate: configRow.idpCertificate,
-            enabled:     configRow.enabled,
+            idpCertificate:    configRow.idpCertificate,
+            enabled:           configRow.enabled,
+            samlGroupMappings: configRow.samlGroupMappings ?? {},
           }
         : null,
       sp: { entityId, acsUrl },
@@ -72,23 +76,25 @@ export class SsoService {
       .insert(orgSsoConfigTable)
       .values({
         orgId,
-        provider:       dto.provider || "saml",
-        domain:         dto.domain || null,
-        idpEntityId:    dto.idpEntityId,
-        idpSsoUrl:      dto.idpSsoUrl,
-        idpCertificate: dto.idpCertificate,
-        enabled:        true,
+        provider:          dto.provider || "saml",
+        domain:            dto.domain || null,
+        idpEntityId:       dto.idpEntityId,
+        idpSsoUrl:         dto.idpSsoUrl,
+        idpCertificate:    dto.idpCertificate,
+        enabled:           true,
+        samlGroupMappings: dto.samlGroupMappings ?? null,
       })
       .onConflictDoUpdate({
         target: orgSsoConfigTable.orgId,
         set: {
-          provider:       dto.provider || "saml",
-          domain:         dto.domain || null,
-          idpEntityId:    dto.idpEntityId,
-          idpSsoUrl:      dto.idpSsoUrl,
-          idpCertificate: dto.idpCertificate,
-          enabled:        true,
-          updatedAt:      new Date(),
+          provider:          dto.provider || "saml",
+          domain:            dto.domain || null,
+          idpEntityId:       dto.idpEntityId,
+          idpSsoUrl:         dto.idpSsoUrl,
+          idpCertificate:    dto.idpCertificate,
+          enabled:           true,
+          samlGroupMappings: dto.samlGroupMappings ?? null,
+          updatedAt:         new Date(),
         },
       });
 
@@ -153,6 +159,25 @@ export class SsoService {
 
     const name = (profile.displayName || profile.cn || profile.name || email.split("@")[0]) as string;
 
+    // Extract IdP groups from SAML assertion attributes
+    const rawGroups = (profile.groups ?? profile.memberOf ??
+      profile['http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'] ?? []) as string | string[];
+    const groups: string[] = Array.isArray(rawGroups)
+      ? rawGroups.map(String)
+      : String(rawGroups).split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+
+    // Determine role from group mappings (config already loaded above)
+    const groupMappings = (config.samlGroupMappings ?? {}) as Record<string, string>;
+    let assignedRole = 'member';
+    for (const group of groups) {
+      const mapped = groupMappings[group];
+      if (mapped && ROLE_HIERARCHY.includes(mapped)) {
+        const newIdx = ROLE_HIERARCHY.indexOf(mapped);
+        const curIdx = ROLE_HIERARCHY.indexOf(assignedRole);
+        if (newIdx > curIdx) assignedRole = mapped; // take highest role from all groups
+      }
+    }
+
     // Upsert user + session
     const { signedToken, expiresAt } = await this.upsertUserAndSession(
       email,
@@ -160,6 +185,7 @@ export class SsoService {
       org.id,
       ipAddress,
       userAgent,
+      assignedRole,
     );
 
     logger.info({ email, orgSlug }, "[sso] SAML login successful");
@@ -204,6 +230,7 @@ export class SsoService {
     orgId: number,
     ipAddress?: string,
     userAgent?: string,
+    role: string = 'member',
   ): Promise<{ signedToken: string; expiresAt: Date }> {
     const client = await pool.connect();
     try {
@@ -223,17 +250,29 @@ export class SsoService {
       );
       const actualUserId: string = userRow.rows[0].id;
 
-      // 2. Ensure org membership — INSERT only if not already a member
+      // 2. Ensure org membership — INSERT only if not already a member; upgrade role if higher
+      const PROTECTED_ROLES = ['owner', 'super_admin'];
       const existingMember = await client.query(
-        `SELECT id FROM org_members WHERE org_id = $1 AND clerk_user_id = $2 LIMIT 1`,
+        `SELECT id, role FROM org_members WHERE org_id = $1 AND clerk_user_id = $2 LIMIT 1`,
         [orgId, actualUserId],
       );
       if (existingMember.rows.length === 0) {
         await client.query(
           `INSERT INTO org_members (org_id, clerk_user_id, email, role, created_at)
-           VALUES ($1, $2, $3, 'member', NOW())`,
-          [orgId, actualUserId, email],
+           VALUES ($1, $2, $3, $4, NOW())`,
+          [orgId, actualUserId, email, role],
         );
+      } else {
+        const curRole = existingMember.rows[0].role as string;
+        if (
+          !PROTECTED_ROLES.includes(curRole) &&
+          ROLE_HIERARCHY.indexOf(role) > ROLE_HIERARCHY.indexOf(curRole)
+        ) {
+          await client.query(
+            `UPDATE org_members SET role = $1 WHERE org_id = $2 AND clerk_user_id = $3`,
+            [role, orgId, actualUserId],
+          );
+        }
       }
 
       // 3. Create session

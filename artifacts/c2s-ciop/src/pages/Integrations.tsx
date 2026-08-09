@@ -583,7 +583,7 @@ export default function Integrations() {
   };
 
   const integrations = data?.integrations ?? [];
-  const connectedList = integrations.filter((i) => i.connection?.status === "connected");
+  const connectedList = integrations.filter((i) => i.connection?.status === "connected" || i.connection?.status === "degraded");
   const availableList = integrations.filter((i) => !i.connection && i.available);
   const apiComingSoon = integrations.filter((i) => !i.connection && !i.available);
 
@@ -772,6 +772,7 @@ export default function Integrations() {
           <div className="space-y-3">
             {connectedList.map((i: any) => (
               <ConnectedCard key={i.key} integration={i}
+                orgId={orgId}
                 onSync={() => syncMutation.mutate(i.key)}
                 syncing={syncMutation.isPending && syncMutation.variables === i.key} />
             ))}
@@ -814,22 +815,53 @@ export default function Integrations() {
   );
 }
 
-function ConnectedCard({ integration, onSync, syncing }: { integration: any; onSync: () => void; syncing: boolean }) {
+const VERIFIABLE_INTEGRATIONS = ["railway", "replit", "betterauth"];
+
+function ConnectedCard({ integration, onSync, syncing, orgId }: { integration: any; onSync: () => void; syncing: boolean; orgId?: number }) {
   const conn = integration.connection;
   const lastSync = conn?.lastSyncAt ? new Date(conn.lastSyncAt).toLocaleString() : "Never";
   const isRealIntegration = ["github", "aws", "okta", "cloudflare", "railway", "replit", "betterauth"].includes(integration.key);
+  const canVerify = VERIFIABLE_INTEGRATIONS.includes(integration.key);
+  const isDegraded = conn?.status === "degraded";
+
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{ ok: boolean; latencyMs: number; error?: string } | null>(null);
+
+  const handleVerify = async () => {
+    if (!orgId) return;
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/${integration.key}/verify`), {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      setVerifyResult(data);
+    } catch {
+      setVerifyResult({ ok: false, latencyMs: 0, error: "Network error" });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <div className="flex items-center gap-4">
         <IntegrationLogo name={integration.key} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p className="font-semibold text-slate-900">{integration.name}</p>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
               Connected
             </span>
+            {isDegraded && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full ring-1 ring-amber-300" title="Last sync had failing checks">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Degraded
+              </span>
+            )}
             {isRealIntegration && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full ring-1 ring-blue-200">
                 Live
@@ -838,11 +870,31 @@ function ConnectedCard({ integration, onSync, syncing }: { integration: any; onS
           </div>
           {conn?.accountLogin && <p className="text-xs text-slate-500">@{conn.accountLogin}</p>}
           <p className="text-xs text-slate-400 mt-0.5">Last sync: {lastSync} &middot; {conn?.evidenceCollected ?? 0} evidence items</p>
+          {verifyResult && (
+            <p className={`text-xs mt-1 font-medium ${verifyResult.ok ? "text-green-600" : "text-red-600"}`}>
+              {verifyResult.ok
+                ? `✓ Connection verified (${verifyResult.latencyMs}ms)`
+                : `✗ Verification failed: ${verifyResult.error ?? "Unknown error"}`}
+            </p>
+          )}
         </div>
-        <button onClick={onSync} disabled={syncing}
-          className="flex-shrink-0 px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50">
-          {syncing ? "Syncing..." : "Sync now"}
-        </button>
+        <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
+          <button onClick={onSync} disabled={syncing}
+            className="px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50 w-full">
+            {syncing ? "Syncing..." : "Sync now"}
+          </button>
+          {canVerify && (
+            <button onClick={handleVerify} disabled={verifying}
+              className="px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50 w-full flex items-center justify-center gap-1.5">
+              {verifying ? (
+                <>
+                  <span className="h-3 w-3 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" />
+                  Verifying...
+                </>
+              ) : "Verify"}
+            </button>
+          )}
+        </div>
       </div>
       {integration.controls?.length > 0 && (
         <div className="mt-4 pt-3 border-t border-slate-100">

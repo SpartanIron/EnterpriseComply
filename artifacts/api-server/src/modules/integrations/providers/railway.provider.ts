@@ -158,12 +158,24 @@ export async function runRailwayChecks(token: string): Promise<RailwaySyncResult
 
     const totalDeploys = successfulDeploys + failedDeploys;
     const successRate = totalDeploys > 0 ? Math.round((successfulDeploys / totalDeploys) * 100) : 100;
-    const deployHealthy = failedDeploys === 0 || successRate >= 80;
+    // Deployment health: passing ≥80% success, failing <50%, warning in between.
+    // Use 'failing' (not 'warning') when the majority of deployments are broken so
+    // the GRC notification pipeline surfaces it as a real-time control alert.
+    const deployStatus: "passing" | "failing" | "warning" =
+      failedDeploys === 0 || successRate >= 80
+        ? "passing"
+        : successRate < 50
+        ? "failing"
+        : "warning";
+    const failureReason =
+      deployStatus === "failing"
+        ? `${failedDeploys} of ${totalDeploys} recent Railway deployments failed (${100 - successRate}% failure rate). Latest: ${latestServiceName} (${latestDeployStatus}) in ${latestEnvName}.`
+        : undefined;
 
     controlResults.push({
       ucoControlId: "UCO-CM-001",
-      status: deployHealthy ? "passing" : "warning",
-      result: `Railway deployment health: ${successRate}% success rate across ${totalDeploys} recent deployments. ${totalServices} services across ${projects.length} projects. Latest deploy: ${latestServiceName} (${latestDeployStatus}) in ${latestEnvName}.`,
+      status: deployStatus,
+      result: `Railway deployment health: ${successRate}% success rate across ${totalDeploys} recent deployments. ${totalServices} services across ${projects.length} projects. Latest deploy: ${latestServiceName} (${latestDeployStatus}) in ${latestEnvName}.${failureReason ? ` FAILURE: ${failureReason}` : ""}`,
       integrationKey: "railway",
     });
 
@@ -218,8 +230,8 @@ export async function runRailwayChecks(token: string): Promise<RailwaySyncResult
   } catch (err) {
     controlResults.push({
       ucoControlId: "UCO-CM-001",
-      status: "warning",
-      result: `Railway deployment status check failed: ${String(err)}`,
+      status: "failing",
+      result: `Railway deployment status check failed: ${String(err)}. Unable to verify deployment health — investigate Railway API connectivity and token permissions.`,
       integrationKey: "railway",
     });
   }

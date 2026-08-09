@@ -37,6 +37,7 @@ interface AdminOrg {
   onboardingComplete: boolean;
   memberCount: number;
   createdAt: string;
+  plan: string;
 }
 
 function toast(msg: string, color = "#2563eb") {
@@ -124,6 +125,16 @@ export default function SuperAdmin() {
     },
   });
 
+  const planMutation = useMutation({
+    mutationFn: ({ orgId, plan }: { orgId: number; plan: string }) =>
+      apiFetch(`/admin/orgs/${orgId}/plan`, { method: "PATCH", body: JSON.stringify({ plan }) }),
+    onSuccess: (_data, { plan }) => {
+      toast(`Plan updated to ${plan}`, "#16a34a");
+      qc.invalidateQueries({ queryKey: ["admin-orgs"] });
+    },
+    onError: () => toast("Failed to update plan", "#dc2626"),
+  });
+
   const orgs = data?.orgs ?? [];
   const blocked = blockedData?.blocked ?? [];
   const magicLinkThrottles = blockedData?.magicLinkThrottles ?? [];
@@ -198,6 +209,7 @@ export default function SuperAdmin() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Size</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Members</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Plan</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Created</th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-100">
@@ -217,6 +229,17 @@ export default function SuperAdmin() {
                           ? <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Active</span>
                           : <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Onboarding</span>
                         }
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <select
+                          value={org.plan ?? "starter"}
+                          onChange={e => planMutation.mutate({ orgId: org.id, plan: e.target.value })}
+                          className="text-xs font-semibold px-2 py-1 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {["starter","professional","enterprise","federal"].map(p => (
+                            <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-5 py-3.5 text-xs text-slate-400">{new Date(org.createdAt).toLocaleDateString()}</td>
                     </tr>
@@ -279,7 +302,101 @@ export default function SuperAdmin() {
       )}
 
       {activeTab === "billing" && (
-        <EmptyState title="Billing data not available" body="Subscription plans, license counts, and contract data are managed externally. No billing API is connected to this panel." />
+        <div className="space-y-6">
+          {/* Plan Distribution Summary */}
+          <div>
+            <h3 className="text-base font-bold text-slate-900 mb-4">Plan Distribution</h3>
+            <div className="grid grid-cols-4 gap-4">
+              {[
+                { tier: "federal", label: "Federal", bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", badge: "bg-purple-100 text-purple-700" },
+                { tier: "enterprise", label: "Enterprise", bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", badge: "bg-blue-100 text-blue-700" },
+                { tier: "professional", label: "Professional", bg: "bg-green-50", border: "border-green-200", text: "text-green-700", badge: "bg-green-100 text-green-700" },
+                { tier: "starter", label: "Starter", bg: "bg-slate-50", border: "border-slate-200", text: "text-slate-700", badge: "bg-slate-100 text-slate-600" },
+              ].map(({ tier, label, bg, border, text, badge }) => {
+                const count = orgs.filter(o => (o.plan ?? "starter") === tier).length;
+                return (
+                  <div key={tier} className={`rounded-xl p-5 border ${bg} ${border}`}>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badge}`}>{label}</span>
+                    <p className={`text-3xl font-extrabold mt-3 ${text}`}>{isLoading ? "—" : count}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                      {isLoading || orgs.length === 0 ? "" : `${Math.round((count / orgs.length) * 100)}% of tenants`}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Plan-by-Org Table */}
+          <div>
+            <h3 className="text-base font-bold text-slate-900 mb-4">Tenant Plan Management</h3>
+            {isLoading ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-sm text-slate-400">Loading tenants…</div>
+            ) : isError ? (
+              <div className="bg-white rounded-xl border border-red-200 p-12 text-center text-sm text-red-500">Failed to load tenant data.</div>
+            ) : orgs.length === 0 ? (
+              <EmptyState title="No tenants found" body="No organizations are registered in the database yet." />
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Organization</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Current Plan</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Change Plan</th>
+                      <th className="text-right px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Members</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {orgs.map(org => {
+                      const plan = org.plan ?? "starter";
+                      const planBadge: Record<string, string> = {
+                        federal: "bg-purple-100 text-purple-700",
+                        enterprise: "bg-blue-100 text-blue-700",
+                        professional: "bg-green-100 text-green-700",
+                        starter: "bg-slate-100 text-slate-600",
+                      };
+                      return (
+                        <tr key={org.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-5 py-3.5">
+                            <div>
+                              <p className="font-semibold text-slate-900">{org.name}</p>
+                              <p className="text-xs text-slate-400 font-mono">{org.slug}</p>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${planBadge[plan] ?? planBadge.starter}`}>
+                              {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <select
+                              value={plan}
+                              onChange={e => planMutation.mutate({ orgId: org.id, plan: e.target.value })}
+                              className="text-xs font-semibold px-2 py-1 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {["starter","professional","enterprise","federal"].map(p => (
+                                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-5 py-3.5 text-sm text-slate-600 text-right font-mono">{org.memberCount}</td>
+                          <td className="px-5 py-3.5">
+                            {org.onboardingComplete
+                              ? <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Active</span>
+                              : <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Onboarding</span>
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {activeTab === "platform" && (

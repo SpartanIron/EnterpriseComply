@@ -4,3 +4,6 @@
 - [Frontend data-binding patterns](frontend-data-binding.md) — Controls status is at c.result.status (nested), not c.status; framework keys in FRAMEWORK_INFO must match backend catalog keys exactly; isLoading must combine orgLoading||fwLoading for dependent queries.
 - [Multi-org isolation](multi-org-isolation.md) — All UPDATE/DELETE must include orgId predicate; never use @Param("orgId") in guarded routes; agent endpoints need AgentSecretGuard; verification test pattern uses magic link → DB token intercept.
 - [Dashboard control counts](dashboard-control-counts.md) — cs.total = org_control_results (assigned controls for the org), NOT the 71-control UCO catalog; label separately to avoid auditor confusion.
+- [Integration health status](integration-health.md) — status must be "degraded" (not "connected") when checksPassed < checksRun; credentials validated before storing; verify endpoint at POST /orgs/:orgId/integrations/:key/verify.
+- [SAML group mapping](saml-group-mapping.md) — saml_group_mappings JSONB column on org_sso_config; groups extracted from profile.groups/memberOf/AD claim; highest role wins; never demotes owner/super_admin.
+- [Credential key rotation](credential-key-rotation.md) — reEncryptWithNewKey() in credential-crypto.ts; rotate via POST /api/admin/credentials/rotate-key (supports dryRun); update env var + redeploy after.

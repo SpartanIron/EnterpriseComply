@@ -2343,6 +2343,148 @@ section("SECTION 14 — SSO / SAML: config CRUD, plan gate, SP metadata, auth fl
   await db.query(`DELETE FROM organizations WHERE id = $1`, [org17Id]).catch(() => {});
 }
 
+// ── Section 18: Public Status Page — Down / Recovery ─────────────────────────
+
+{
+  section("SECTION 18 — Public Status Page: down / degraded / recovery");
+
+  // The public status endpoint is GET /api/public/status
+  // It reads from system_health_log to derive current_status per component.
+  // We insert synthetic probe rows for a unique test component and verify the
+  // endpoint returns 200 (the body shape is checked separately; the integration
+  // test here focuses on correct HTTP behaviour across status transitions).
+
+  const component18 = `test-component-${Date.now()}`;
+
+  // 18.1 — healthy probe → endpoint still responds 200
+  await db.query(
+    `INSERT INTO system_health_log (component, status, checked_at) VALUES ($1, 'healthy', NOW())`,
+    [component18],
+  ).catch(() => {});
+
+  const res181 = await fetch(`${BASE}/public/status`).catch(() => null);
+  check("18.1 status endpoint returns 200 after healthy probe", res181?.status ?? 0, 200);
+
+  // 18.2 — degraded probe → endpoint still responds 200 (never 5xx)
+  await db.query(
+    `INSERT INTO system_health_log (component, status, checked_at) VALUES ($1, 'degraded', NOW())`,
+    [component18],
+  ).catch(() => {});
+
+  const res182 = await fetch(`${BASE}/public/status`).catch(() => null);
+  check("18.2 status endpoint returns 200 after degraded probe", res182?.status ?? 0, 200);
+
+  // 18.3 — verify response body is valid JSON with an 'overall' field
+  let bodyOk183 = false;
+  if (res182?.status === 200) {
+    try {
+      // Re-fetch to get a fresh body (res182 may have already been consumed)
+      const res183b = await fetch(`${BASE}/public/status`);
+      const data = await res183b.json();
+      bodyOk183 = typeof data?.overall === "string";
+    } catch {
+      bodyOk183 = false;
+    }
+  }
+  check("18.3 status response body has an 'overall' field", bodyOk183 ? 200 : 422, 200);
+
+  // 18.4 — recovery probe → endpoint still responds 200
+  await db.query(
+    `INSERT INTO system_health_log (component, status, checked_at) VALUES ($1, 'healthy', NOW())`,
+    [component18],
+  ).catch(() => {});
+
+  const res184 = await fetch(`${BASE}/public/status`).catch(() => null);
+  check("18.4 status endpoint returns 200 after recovery probe", res184?.status ?? 0, 200);
+
+  // 18.5 — response body contains a 'components' array
+  let hasComponents = false;
+  if (res184?.status === 200) {
+    try {
+      const res185b = await fetch(`${BASE}/public/status`);
+      const data = await res185b.json();
+      hasComponents = Array.isArray(data?.components) && data.components.length > 0;
+    } catch {
+      hasComponents = false;
+    }
+  }
+  check("18.5 status response body has a non-empty 'components' array", hasComponents ? 200 : 422, 200);
+
+  // Cleanup
+  await db.query(`DELETE FROM system_health_log WHERE component = $1`, [component18]).catch(() => {});
+}
+
+// ── Section 19: SSO / SAML Callback ──────────────────────────────────────────
+
+{
+  section("SECTION 19 — SSO / SAML Callback: error handling");
+
+  // The SAML ACS endpoint is POST /api/saml/:orgSlug/callback
+  // On failures it redirects (302) to the sign-in page with an error query param.
+  // We verify error paths without a valid IdP assertion.
+
+  // 19.1 — no SAMLResponse in body → redirect to error page
+  const res191 = await fetch(`${BASE}/saml/no-such-org-slug-xyz/callback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ RelayState: "" }).toString(),
+    redirect: "manual",
+  }).catch(() => null);
+
+  const loc191 = res191?.headers.get("location") ?? "";
+  check(
+    "19.1 missing SAMLResponse → redirect (302/429)",
+    res191?.status ?? 0,
+    302, 429,
+  );
+
+  // 19.2 — missing SAMLResponse redirect goes to an error destination
+  const isErrorRedirect191 = loc191.includes("error=") || loc191.includes("sign-in") || loc191.includes("saml");
+  check(
+    "19.2 missing SAMLResponse redirect points to an error page",
+    isErrorRedirect191 ? 200 : 422,
+    200,
+  );
+
+  // 19.3 — invalid base64 SAMLResponse → redirect to saml_failed
+  const res193 = await fetch(`${BASE}/saml/no-such-org-slug-xyz/callback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      SAMLResponse: Buffer.from("not-a-valid-saml-response").toString("base64"),
+    }).toString(),
+    redirect: "manual",
+  }).catch(() => null);
+
+  check(
+    "19.3 invalid SAMLResponse → redirect (302/429)",
+    res193?.status ?? 0,
+    302, 429,
+  );
+
+  const loc193 = res193?.headers.get("location") ?? "";
+  const isErrorRedirect193 = loc193.includes("saml_failed") || loc193.includes("error") || loc193.includes("sign-in");
+  check(
+    "19.4 invalid SAMLResponse redirect points to an error page",
+    isErrorRedirect193 ? 200 : 422,
+    200,
+  );
+
+  // 19.5 — org with no SSO config → redirect to error
+  const res195 = await fetch(`${BASE}/saml/totally-nonexistent-org-abc123/callback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ SAMLResponse: "dGVzdA==" }).toString(),
+    redirect: "manual",
+  }).catch(() => null);
+
+  check(
+    "19.5 no SSO config org → redirect or error response",
+    res195?.status ?? 0,
+    302, 400, 404, 429,
+  );
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();

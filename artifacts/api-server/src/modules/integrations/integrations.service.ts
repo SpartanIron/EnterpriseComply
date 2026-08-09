@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { Injectable, BadRequestException } from "@nestjs/common";
-import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable, integrationSyncLogTable } from "@workspace/db";
+import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable, integrationSyncLogTable, notificationsTable } from "@workspace/db";
 import { eq, and, sql, isNotNull } from "drizzle-orm";
 import { runAwsChecks } from "./providers/aws.provider";
 import { runOktaChecks } from "./providers/okta.provider";
@@ -1212,6 +1212,26 @@ export class IntegrationsService {
         collectedAt: new Date(),
       });
     }
+
+    // ── GRC alert: notify on new failing controls ─────────────────────────────
+    // For each control that transitioned to 'failing', create a notification so
+    // compliance teams are alerted in real time rather than discovering gaps on
+    // the next manual audit pass.
+    const failingResults = controlResults.filter((r) => r.status === "failing");
+    if (failingResults.length > 0) {
+      const notificationRows = failingResults.map((r) => ({
+        orgId,
+        type: "control_failure",
+        title: "Control gap detected",
+        body: `Integration sync (${integrationKey}) found a failing control: ${r.ucoControlId}. ${r.result}`,
+        read: false,
+      }));
+      await db.insert(notificationsTable).values(notificationRows).catch((err) => {
+        // Non-fatal: notification delivery failure must never block sync persistence
+        console.warn("[integrations] Failed to insert control_failure notifications:", err);
+      });
+    }
+
     // Derive actual sync status from control outcomes — never hard-code "success"
     const failCount = controlResults.filter((r) => r.status === "failing").length;
     const passCount = controlResults.filter((r) => r.status === "passing").length;
@@ -1349,21 +1369,34 @@ export class IntegrationsService {
   // ── Railway ──────────────────────────────────────────────────────────────────
 
   async connectRailway(orgId: number, apiToken: string) {
+    // #37: Validate credentials BEFORE storing — fail fast on bad tokens
+    let syncResult: Awaited<ReturnType<typeof runRailwayChecks>>;
+    try {
+      syncResult = await runRailwayChecks(apiToken);
+    } catch (err) {
+      const msg = (err as Error).message ?? "";
+      if (msg.includes("401") || msg.includes("403") || msg.includes("Unauthorized") || msg.includes("Invalid token")) {
+        throw new BadRequestException("Invalid Railway API token. Verify the token has read access to your project.");
+      }
+      throw err;
+    }
+    // Only store credentials after validation succeeds
     const encryptedConfig = encryptConfigCredentials({ apiToken }, ["apiToken"]);
     let integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "railway")),
     });
+    // #40: Set status based on check outcomes, not unconditionally "connected"
+    const newStatus = syncResult.checksPassed < syncResult.checksRun ? "degraded" : "connected";
     if (!integration) {
       [integration] = await db.insert(orgIntegrationsTable).values({
-        orgId, integrationKey: "railway", name: "Railway", status: "connected",
+        orgId, integrationKey: "railway", name: "Railway", status: newStatus,
         config: encryptedConfig,
       }).returning();
     } else {
       [integration] = await db.update(orgIntegrationsTable)
-        .set({ status: "connected", config: encryptedConfig })
+        .set({ status: newStatus, config: encryptedConfig })
         .where(eq(orgIntegrationsTable.id, integration.id)).returning();
     }
-    const syncResult = await runRailwayChecks(apiToken);
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "railway", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed, evidenceCollected: syncResult.evidenceItems.length };
   }
@@ -1372,13 +1405,18 @@ export class IntegrationsService {
     const integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "railway")),
     });
-    if (!integration || integration.status !== "connected") throw new BadRequestException("Railway integration not connected");
+    if (!integration || (integration.status !== "connected" && integration.status !== "degraded")) throw new BadRequestException("Railway integration not connected");
     const cfg = decryptConfigCredentials(
       integration.config as Record<string, unknown> | null,
       ["apiToken"],
     ) as { apiToken?: string } | null;
     if (!cfg?.apiToken) throw new BadRequestException("Railway credentials not configured");
     const syncResult = await runRailwayChecks(cfg.apiToken);
+    // #40: Update status based on check outcomes after each sync
+    const newStatus = syncResult.checksPassed < syncResult.checksRun ? "degraded" : "connected";
+    await db.update(orgIntegrationsTable)
+      .set({ status: newStatus, lastSyncAt: new Date() })
+      .where(eq(orgIntegrationsTable.id, integration.id));
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "railway", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
   }
@@ -1386,21 +1424,34 @@ export class IntegrationsService {
   // ── Replit ───────────────────────────────────────────────────────────────────
 
   async connectReplit(orgId: number, apiToken: string) {
+    // #37: Validate credentials BEFORE storing — fail fast on bad tokens
+    let syncResult: Awaited<ReturnType<typeof runReplitChecks>>;
+    try {
+      syncResult = await runReplitChecks(apiToken);
+    } catch (err) {
+      const msg = (err as Error).message ?? "";
+      if (msg.includes("401") || msg.includes("403") || msg.includes("Unauthorized") || msg.includes("Invalid token")) {
+        throw new BadRequestException("Invalid Replit API token. Verify the token has access to your account.");
+      }
+      throw err;
+    }
+    // Only store credentials after validation succeeds
     const encryptedConfig = encryptConfigCredentials({ apiToken }, ["apiToken"]);
     let integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "replit")),
     });
+    // #40: Set status based on check outcomes
+    const newStatus = syncResult.checksPassed < syncResult.checksRun ? "degraded" : "connected";
     if (!integration) {
       [integration] = await db.insert(orgIntegrationsTable).values({
-        orgId, integrationKey: "replit", name: "Replit", status: "connected",
+        orgId, integrationKey: "replit", name: "Replit", status: newStatus,
         config: encryptedConfig,
       }).returning();
     } else {
       [integration] = await db.update(orgIntegrationsTable)
-        .set({ status: "connected", config: encryptedConfig })
+        .set({ status: newStatus, config: encryptedConfig })
         .where(eq(orgIntegrationsTable.id, integration.id)).returning();
     }
-    const syncResult = await runReplitChecks(apiToken);
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "replit", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed, evidenceCollected: syncResult.evidenceItems.length };
   }
@@ -1409,13 +1460,18 @@ export class IntegrationsService {
     const integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "replit")),
     });
-    if (!integration || integration.status !== "connected") throw new BadRequestException("Replit integration not connected");
+    if (!integration || (integration.status !== "connected" && integration.status !== "degraded")) throw new BadRequestException("Replit integration not connected");
     const cfg = decryptConfigCredentials(
       integration.config as Record<string, unknown> | null,
       ["apiToken"],
     ) as { apiToken?: string } | null;
     if (!cfg?.apiToken) throw new BadRequestException("Replit credentials not configured");
     const syncResult = await runReplitChecks(cfg.apiToken);
+    // #40: Update status based on check outcomes after each sync
+    const newStatus = syncResult.checksPassed < syncResult.checksRun ? "degraded" : "connected";
+    await db.update(orgIntegrationsTable)
+      .set({ status: newStatus, lastSyncAt: new Date() })
+      .where(eq(orgIntegrationsTable.id, integration.id));
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "replit", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
   }
@@ -1434,35 +1490,45 @@ export class IntegrationsService {
       );
     }
 
+    // #37: Validate credentials BEFORE storing — fail fast on bad credentials
+    let syncResult: Awaited<ReturnType<typeof runBetterAuthChecks>>;
+    try {
+      syncResult = await runBetterAuthChecks(apiKey, baseUrl);
+    } catch (err) {
+      if (err instanceof SsrfBlockedError) throw new BadRequestException(`Invalid baseUrl: ${err.message}`);
+      const msg = (err as Error).message ?? "";
+      if (msg.includes("401") || msg.includes("403") || msg.includes("Unauthorized") || msg.includes("Invalid token")) {
+        throw new BadRequestException("Invalid BetterAuth API key. Verify the key has admin access.");
+      }
+      throw err;
+    }
+
+    // Only store credentials after validation succeeds
     const encryptedConfig = encryptConfigCredentials({ apiKey, baseUrl }, ["apiKey"]);
     let integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "betterauth")),
     });
+    // #40: Set status based on check outcomes
+    const newStatus = syncResult.checksPassed < syncResult.checksRun ? "degraded" : "connected";
     if (!integration) {
       [integration] = await db.insert(orgIntegrationsTable).values({
-        orgId, integrationKey: "betterauth", name: "BetterAuth", status: "connected",
+        orgId, integrationKey: "betterauth", name: "BetterAuth", status: newStatus,
         config: encryptedConfig, accountLogin: baseUrl,
       }).returning();
     } else {
       [integration] = await db.update(orgIntegrationsTable)
-        .set({ status: "connected", config: encryptedConfig, accountLogin: baseUrl })
+        .set({ status: newStatus, config: encryptedConfig, accountLogin: baseUrl })
         .where(eq(orgIntegrationsTable.id, integration.id)).returning();
     }
-    try {
-      const syncResult = await runBetterAuthChecks(apiKey, baseUrl);
-      await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "betterauth", integration.id);
-      return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed, evidenceCollected: syncResult.evidenceItems.length };
-    } catch (err) {
-      if (err instanceof SsrfBlockedError) throw new BadRequestException(`Invalid baseUrl: ${err.message}`);
-      throw err;
-    }
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "betterauth", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed, evidenceCollected: syncResult.evidenceItems.length };
   }
 
   async syncOrgBetterAuth(orgId: number) {
     const integration = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "betterauth")),
     });
-    if (!integration || integration.status !== "connected") throw new BadRequestException("BetterAuth integration not connected");
+    if (!integration || (integration.status !== "connected" && integration.status !== "degraded")) throw new BadRequestException("BetterAuth integration not connected");
     const cfg = decryptConfigCredentials(
       integration.config as Record<string, unknown> | null,
       ["apiKey"],
@@ -1479,11 +1545,48 @@ export class IntegrationsService {
     }
     try {
       const syncResult = await runBetterAuthChecks(cfg.apiKey, cfg.baseUrl);
+      // #40: Update status based on check outcomes after each sync
+      const newStatus = syncResult.checksPassed < syncResult.checksRun ? "degraded" : "connected";
+      await db.update(orgIntegrationsTable)
+        .set({ status: newStatus, lastSyncAt: new Date() })
+        .where(eq(orgIntegrationsTable.id, integration.id));
       await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "betterauth", integration.id);
       return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
     } catch (err) {
       if (err instanceof SsrfBlockedError) throw new BadRequestException(`baseUrl blocked: ${err.message}`);
       throw err;
+    }
+  }
+
+  // ── Verify connection (on-demand ping) ──────────────────────────────────────
+
+  async verifyIntegrationConnection(orgId: number, key: string): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, key)),
+    });
+    if (!integration || integration.status === "disconnected") {
+      return { ok: false, latencyMs: 0, error: "Integration not connected" };
+    }
+    const start = Date.now();
+    try {
+      if (key === "railway") {
+        const cfg = decryptConfigCredentials(integration.config as Record<string, unknown>, ["apiToken"]) as { apiToken?: string };
+        if (!cfg?.apiToken) return { ok: false, latencyMs: 0, error: "No credentials stored" };
+        await runRailwayChecks(cfg.apiToken);
+      } else if (key === "replit") {
+        const cfg = decryptConfigCredentials(integration.config as Record<string, unknown>, ["apiToken"]) as { apiToken?: string };
+        if (!cfg?.apiToken) return { ok: false, latencyMs: 0, error: "No credentials stored" };
+        await runReplitChecks(cfg.apiToken);
+      } else if (key === "betterauth") {
+        const cfg = decryptConfigCredentials(integration.config as Record<string, unknown>, ["apiKey"]) as { apiKey?: string; baseUrl?: string };
+        if (!cfg?.apiKey || !cfg?.baseUrl) return { ok: false, latencyMs: 0, error: "No credentials stored" };
+        await runBetterAuthChecks(cfg.apiKey, cfg.baseUrl);
+      } else {
+        return { ok: false, latencyMs: 0, error: "Verify not supported for this integration type" };
+      }
+      return { ok: true, latencyMs: Date.now() - start };
+    } catch (err) {
+      return { ok: false, latencyMs: Date.now() - start, error: (err as Error).message };
     }
   }
 

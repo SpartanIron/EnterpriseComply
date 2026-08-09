@@ -18,16 +18,22 @@ const COMPONENTS = ["api", "database", "auth", "scheduler", "evidence_vault"] as
 @Injectable()
 export class SystemHealthService implements OnApplicationBootstrap, OnApplicationShutdown {
   private timer: ReturnType<typeof setInterval> | null = null;
+  private pruneTimer: ReturnType<typeof setInterval> | null = null;
 
   onApplicationBootstrap() {
     // First probe 90 seconds after startup (give the server time to come up fully)
     setTimeout(() => this.runAllProbes(), 90_000);
     // Then every 5 minutes
     this.timer = setInterval(() => this.runAllProbes(), 5 * 60 * 1000);
+
+    // Prune stale health rows once per day; first run after 60 seconds
+    setTimeout(() => this.pruneStaleHealthRows(), 60_000);
+    this.pruneTimer = setInterval(() => this.pruneStaleHealthRows(), 24 * 60 * 60 * 1000);
   }
 
   onApplicationShutdown() {
     if (this.timer) clearInterval(this.timer);
+    if (this.pruneTimer) clearInterval(this.pruneTimer);
   }
 
   // ── Public interface ──────────────────────────────────────────────────────
@@ -262,6 +268,28 @@ export class SystemHealthService implements OnApplicationBootstrap, OnApplicatio
       }
     } catch (err) {
       logger.error({ err, component: pr.component }, "[health] Failed to persist probe result");
+    }
+  }
+
+  async pruneStaleHealthRows(): Promise<void> {
+    try {
+      const healthResult = await db.execute(sql.raw(`
+        DELETE FROM system_health_log
+        WHERE checked_at < NOW() - INTERVAL '90 days'
+      `));
+      const incidentResult = await db.execute(sql.raw(`
+        DELETE FROM incidents
+        WHERE resolved_at IS NOT NULL
+          AND resolved_at < NOW() - INTERVAL '90 days'
+      `));
+      const healthDeleted = (healthResult as unknown as { rowCount?: number }).rowCount ?? 0;
+      const incidentDeleted = (incidentResult as unknown as { rowCount?: number }).rowCount ?? 0;
+      logger.debug(
+        { healthDeleted, incidentDeleted },
+        "[health] Pruned stale rows older than 90 days",
+      );
+    } catch (err) {
+      logger.error({ err }, "[health] Failed to prune stale health rows");
     }
   }
 

@@ -973,6 +973,7 @@ CREATE TABLE IF NOT EXISTS org_sso_config (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_org_sso_config_org_id ON org_sso_config (org_id);
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS saml_group_mappings JSONB DEFAULT NULL;
 `;
 
 const MIGRATION_SQL_V4 = `

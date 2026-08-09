@@ -159,6 +159,7 @@ return { org };
         onboardingComplete: o.onboardingComplete ?? false,
         memberCount: countsByOrg[o.id] ?? 0,
         createdAt: o.createdAt,
+        plan: o.plan ?? "starter",
       })),
     };
   }
