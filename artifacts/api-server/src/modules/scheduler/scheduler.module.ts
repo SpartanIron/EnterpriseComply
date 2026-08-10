@@ -15,6 +15,6 @@ import { NotificationsModule } from "../notifications/notifications.module";
     ComplianceAlertsService,
     RateLimitCleanupService,
   ],
-  exports: [IntegrationSchedulerService],
+  exports: [IntegrationSchedulerService, RateLimitCleanupService],
 })
 export class SchedulerModule {}

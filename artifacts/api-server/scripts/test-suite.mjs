@@ -2655,6 +2655,238 @@ async function runMagicLinkCleanup(cutoffMs) {
   );
 }
 
+// ── Section 20: Scheduler Health — error counter + /healthz/scheduler ────────
+//
+// Verifies:
+//   20.1  GET /api/healthz/scheduler returns 200 with expected shape when healthy.
+//   20.2  Response body has required fields; no raw error text is exposed.
+//   20.3  pruneStaleRows() (real production code, broken pool) increments nightly
+//         errorCount and sets failed=true — verified via the actual catch path.
+//   20.4  getHealth() is sanitised: no raw error strings in the public shape.
+//   20.5  pruneMagicLinkRateRows() (real production code) increments magic-link counter.
+//   20.6  errorCount accumulates across repeated failures.
+//   20.7  schedulerHealth() returns HTTP 503 (via HttpException) when health.healthy=false.
+//   20.8  A successful run after a failure resets lastSuccess to true.
+
+{
+  section("SECTION 20 — SCHEDULER HEALTH: error counter + /healthz/scheduler endpoint");
+
+  // ── 20.1 & 20.2: HTTP shape check (live server, no prior failures) ────────
+  const res201 = await fetch(`${BASE}/healthz/scheduler`).catch(() => null);
+  check("20.1 GET /healthz/scheduler returns 200 when healthy", res201?.status ?? 0, 200);
+
+  let body201 = null;
+  try { body201 = await res201?.json(); } catch { /* ignored */ }
+
+  check(
+    "20.2a response has 'healthy' boolean field",
+    typeof body201?.healthy === "boolean" ? 200 : 422,
+    200,
+  );
+  check(
+    "20.2b response has 'nightly' job health block",
+    body201?.nightly && typeof body201.nightly === "object" ? 200 : 422,
+    200,
+  );
+  check(
+    "20.2c response has 'magicLinkHourly' job health block",
+    body201?.magicLinkHourly && typeof body201.magicLinkHourly === "object" ? 200 : 422,
+    200,
+  );
+  check(
+    "20.2d 'nightly' block has errorCount field",
+    typeof body201?.nightly?.errorCount === "number" ? 200 : 422,
+    200,
+  );
+  check(
+    "20.2e response does NOT expose raw error text (no 'lastError' string field)",
+    Object.prototype.hasOwnProperty.call(body201?.nightly ?? {}, "lastError") ? 422 : 200,
+    200,
+  );
+
+  // ── 20.3 – 20.8: Unit-level via _setPoolFactory() — real production code ──
+  //
+  // RateLimitCleanupService exposes _setPoolFactory() so tests can inject a
+  // broken pool and then call the ACTUAL pruneStaleRows / pruneMagicLinkRateRows
+  // methods.  No methods are overridden — the real catch paths are exercised.
+
+  const { RateLimitCleanupService } = await import(
+    "../src/modules/scheduler/rate-limit-cleanup.service.ts"
+  );
+  const { HealthController } = await import(
+    "../src/modules/health/health.controller.ts"
+  );
+
+  // Silence the NestJS Logger on every instance created below.
+  const silent = { log: () => {}, error: () => {}, warn: () => {}, debug: () => {} };
+
+  // No-op SlackAlertService stub — prevents real HTTP calls in unit tests.
+  const noOpSlack = { sendRawMessage: () => Promise.resolve() };
+
+  function makeService() {
+    const svc = new RateLimitCleanupService(noOpSlack);
+    svc.logger = silent;
+    return svc;
+  }
+
+  // A pool stub that always rejects — simulates a DB outage.
+  function brokenPool(msg = "ECONNREFUSED: DB is down") {
+    return { query: () => Promise.reject(new Error(msg)) };
+  }
+
+  // A pool stub that always succeeds — simulates a working DB.
+  function workingPool() {
+    return { query: () => Promise.resolve({ rows: [{ count: "0" }] }) };
+  }
+
+  // ── 20.3: pruneStaleRows() increments nightly errorCount on pool failure ──
+  {
+    const svc = makeService();
+    svc._setPoolFactory(() => brokenPool("nightly-pool-down"));
+    await svc.pruneStaleRows();   // ← calls actual production method
+
+    const h = svc.getHealth();
+    check("20.3a nightly errorCount = 1 after first failure", h.nightly.errorCount, 1);
+    check("20.3b nightly lastSuccess = false",                h.nightly.lastSuccess, false);
+    check("20.3c nightly failed = true",                      h.nightly.failed,      true);
+    check(
+      "20.3d nightly lastRunAt is an ISO timestamp",
+      typeof h.nightly.lastRunAt === "string" && h.nightly.lastRunAt.includes("T") ? 200 : 422,
+      200,
+    );
+  }
+
+  // ── 20.4: getHealth() must not expose raw error text ─────────────────────
+  {
+    const svc = makeService();
+    svc._setPoolFactory(() => brokenPool("raw-error-text-must-not-leak"));
+    await svc.pruneStaleRows();
+
+    const h = svc.getHealth();
+    check(
+      "20.4a getHealth().nightly has no 'lastError' raw string",
+      Object.prototype.hasOwnProperty.call(h.nightly, "lastError") ? 422 : 200,
+      200,
+    );
+    check("20.4b getHealth().healthy = false",    h.healthy,        false);
+    check("20.4c getHealth().nightly.failed=true", h.nightly.failed, true);
+  }
+
+  // ── 20.5: pruneMagicLinkRateRows() increments magic-link counter ─────────
+  {
+    const svc = makeService();
+    svc._setPoolFactory(() => brokenPool("magic-link-pool-down"));
+    await svc.pruneMagicLinkRateRows();   // ← actual production method
+
+    const h = svc.getHealth();
+    check("20.5a magicLink errorCount = 1",    h.magicLinkHourly.errorCount, 1);
+    check("20.5b magicLink lastSuccess=false", h.magicLinkHourly.lastSuccess, false);
+    check("20.5c magicLink failed=true",       h.magicLinkHourly.failed,     true);
+  }
+
+  // ── 20.6: errorCount accumulates across repeated failures ─────────────────
+  {
+    const svc = makeService();
+    svc._setPoolFactory(() => brokenPool("repeated-failure"));
+    await svc.pruneStaleRows();
+    await svc.pruneStaleRows();
+    await svc.pruneStaleRows();
+    await svc.pruneMagicLinkRateRows();
+    await svc.pruneMagicLinkRateRows();
+
+    const h = svc.getHealth();
+    check("20.6a nightly errorCount = 3 after three failures",  h.nightly.errorCount,       3);
+    check("20.6b magicLink errorCount = 2 after two failures",  h.magicLinkHourly.errorCount, 2);
+    check("20.6c getHealth().healthy = false (both failed)",     h.healthy,                  false);
+  }
+
+  // ── 20.7: schedulerHealth() throws HttpException(503) when unhealthy ──────
+  //
+  // We import HealthController, construct it with the unhealthy service, call
+  // schedulerHealth() and assert it throws with status 503.
+  {
+    const svc = makeService();
+    svc._setPoolFactory(() => brokenPool("controller-503-test"));
+    await svc.pruneStaleRows();   // make the service unhealthy
+
+    const ctrl = new HealthController(svc);
+    let caught = null;
+    try {
+      ctrl.schedulerHealth();
+    } catch (e) {
+      caught = e;
+    }
+
+    check(
+      "20.7a schedulerHealth() throws when unhealthy (HttpException)",
+      caught !== null ? 200 : 422,
+      200,
+    );
+    check(
+      "20.7b thrown HttpException has status 503",
+      caught?.getStatus?.() ?? 0,
+      503,
+    );
+    check(
+      "20.7c thrown exception body has healthy=false",
+      caught?.getResponse?.()?.healthy === false ? 200 : 422,
+      200,
+    );
+  }
+
+  // ── 20.8: successful run resets lastSuccess to true ───────────────────────
+  {
+    const svc = makeService();
+    svc._setPoolFactory(() => brokenPool("initial-failure"));
+    await svc.pruneStaleRows();               // fail once
+    check("20.8 pre: failed=true after failure", svc.getHealth().nightly.failed, true);
+
+    svc._setPoolFactory(() => workingPool()); // switch to working pool
+    await svc.pruneStaleRows();               // succeed
+    const h = svc.getHealth();
+    check("20.8a lastSuccess=true after recovery",  h.nightly.lastSuccess, true);
+    check("20.8b failed=false after recovery",       h.nightly.failed,      false);
+    check("20.8c errorCount unchanged after recovery", h.nightly.errorCount, 1); // count doesn't reset
+    check("20.8d getHealth().healthy=true after recovery", h.healthy, true);
+  }
+
+  // ── 20.9: HTTP 503 integration test (full NestJS server round-trip) ────────
+  //
+  // Runs test-scheduler-http-503.ts as a subprocess.  That script:
+  //   • Boots a minimal NestJS app with HealthController + RateLimitCleanupService
+  //   • Injects a broken pool factory via _setPoolFactory()
+  //   • Calls the real pruneStaleRows() to trigger the catch path
+  //   • Hits GET /healthz/scheduler and asserts HTTP 503 + sanitised body
+  //   • Verifies recovery (200) after a successful run
+  // Exit code 0 = all assertions passed.
+  {
+    const { spawnSync } = await import("child_process");
+    const path = await import("path");
+    const scriptPath = path.resolve(
+      new URL(".", import.meta.url).pathname,
+      "test-scheduler-http-503.ts",
+    );
+
+    process.stdout.write("\n  ── 20.9 HTTP-503 round-trip (subprocess) ──\n");
+    const result = spawnSync(
+      "node",
+      ["--import", "@swc-node/register/esm-register", scriptPath],
+      {
+        stdio: "inherit",
+        env: { ...process.env },
+        timeout: 30_000,
+      },
+    );
+
+    const exitCode = result.status ?? 1;
+    check(
+      "20.9 HTTP-503 integration: test-scheduler-http-503.ts exit code = 0",
+      exitCode,
+      0,
+    );
+  }
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 await cleanup();
