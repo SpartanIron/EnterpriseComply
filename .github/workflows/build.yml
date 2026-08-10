@@ -1,0 +1,51 @@
+# EnterpriseComply - CI: Production Build Parity
+#
+# Runs the exact commands Railway runs, on the same Node major version, so a
+# broken production build fails here instead of in production. The absence of
+# this job is why the nanoid v5 (ESM-only) override reached Railway and broke
+# the deploy rather than failing a pull request.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Production build (Railway parity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          # Must match nixpacks.toml. Vite requires >=20.19 or >=22.12.
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build frontend and API (same commands as railway.toml)
+        run: |
+          BASE_PATH=/ pnpm --filter @workspace/c2s-ciop run build
+          pnpm --filter @workspace/api-server run build
+
+      - name: Verify deployable artifacts exist
+        run: |
+          test -f artifacts/api-server/dist/main.mjs
+          test -f artifacts/api-server/scripts/migrate.cjs
