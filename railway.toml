@@ -3,7 +3,11 @@ builder = "NIXPACKS"
 buildCommand = "pnpm install && BASE_PATH=/ pnpm --filter @workspace/c2s-ciop run build && pnpm --filter @workspace/api-server run build"
 
 [deploy]
-startCommand = "node artifacts/api-server/scripts/migrate.cjs && node --enable-source-maps artifacts/api-server/dist/main.mjs"
+# Migrations run once per deployment, not once per container start. Previously
+# they were chained into startCommand, so every replica restart re-ran them and
+# a migration failure looked like a crash loop instead of a failed deploy.
+preDeployCommand = "node artifacts/api-server/scripts/migrate.cjs"
+startCommand = "node --enable-source-maps artifacts/api-server/dist/main.mjs"
 healthcheckPath = "/api/healthz"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
