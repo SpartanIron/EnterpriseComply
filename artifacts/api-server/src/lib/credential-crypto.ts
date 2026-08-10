@@ -159,6 +159,14 @@ export function isEncryptedCredential(value: string | null | undefined): boolean
 }
 
 /**
+ * Returns the current active key buffer (derived from env vars).
+ * Useful when callers need the raw key for explicit-key operations.
+ */
+export function getDerivedKeyBuffer(): Buffer {
+  return getDerivedKey();
+}
+
+/**
  * Encrypt credential sub-keys within a JSONB config object.
  * Only encrypts the listed fields; other fields are left unchanged.
  */
@@ -192,6 +200,94 @@ export function decryptConfigCredentials(
     }
   }
   return result;
+}
+
+/**
+ * Decrypt a credential using an explicit 32-byte key buffer rather than the env-derived key.
+ * Returns null on auth-tag failure (wrong key / tampered data).
+ * Returns the plaintext (or legacy plaintext) for non-encrypted values.
+ */
+export function decryptCredentialWithKey(
+  cipherStr: string | null | undefined,
+  keyBuf: Buffer,
+): string | null {
+  if (cipherStr == null || cipherStr === '') return cipherStr ?? null;
+  if (!cipherStr.startsWith(ENC_PREFIX)) return cipherStr; // legacy plaintext
+
+  const body = cipherStr.slice(ENC_PREFIX.length);
+  const parts = body.split('$');
+  if (parts.length !== 3) return null;
+
+  const [ivHex, ctHex, tagHex] = parts;
+  try {
+    const decipher = createDecipheriv(ALGO, keyBuf, Buffer.from(ivHex, 'hex'));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(ctHex, 'hex')),
+      decipher.final(),
+    ]);
+    return decrypted.toString('utf8');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Encrypt a plaintext string using an explicit 32-byte key buffer.
+ * Returns enc:v1:<iv>$<ct>$<tag>.
+ */
+export function encryptCredentialWithKey(plain: string, keyBuf: Buffer): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv(ALGO, keyBuf, iv);
+  const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${ENC_PREFIX}${iv.toString('hex')}$${encrypted.toString('hex')}$${tag.toString('hex')}`;
+}
+
+export type RotateResult =
+  | { status: 'rotated'; newValue: string }
+  | { status: 'skipped_already_new_key' }
+  | { status: 'skipped_plaintext'; newValue: string }
+  | { status: 'failed'; reason: string };
+
+/**
+ * Rotate a single encrypted credential value from oldKey to newKey.
+ *
+ * Idempotency: if the value can already be decrypted with newKey, it is
+ * returned unchanged (already rotated).
+ *
+ * Returns a RotateResult describing what happened so callers can report
+ * counts accurately.
+ */
+export function rotateCredentialValue(
+  cipherStr: string | null | undefined,
+  oldKeyBuf: Buffer,
+  newKeyBuf: Buffer,
+): RotateResult | null {
+  if (cipherStr == null || cipherStr === '') return null;
+
+  // 1. Idempotency check — already encrypted with new key?
+  if (cipherStr.startsWith(ENC_PREFIX)) {
+    const alreadyDecrypted = decryptCredentialWithKey(cipherStr, newKeyBuf);
+    if (alreadyDecrypted !== null) {
+      return { status: 'skipped_already_new_key' };
+    }
+
+    // 2. Decrypt with old key
+    const plain = decryptCredentialWithKey(cipherStr, oldKeyBuf);
+    if (plain === null) {
+      return {
+        status: 'failed',
+        reason: 'Could not decrypt with old key — may be on a different key or tampered',
+      };
+    }
+
+    // 3. Re-encrypt with new key
+    return { status: 'rotated', newValue: encryptCredentialWithKey(plain, newKeyBuf) };
+  }
+
+  // Legacy plaintext — encrypt with new key
+  return { status: 'skipped_plaintext', newValue: encryptCredentialWithKey(cipherStr, newKeyBuf) };
 }
 
 /**
