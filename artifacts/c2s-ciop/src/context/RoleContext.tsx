@@ -84,7 +84,12 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
 };
 
 export function roleIndex(role: AppRole): number {
-  return ROLE_ORDER.indexOf(role);
+  const i = ROLE_ORDER.indexOf(role);
+  // SECURITY: an unrecognised role must be treated as the LEAST privileged, not the
+  // most. indexOf returns -1 for anything outside ROLE_ORDER (org_members.role still
+  // defaults to 'member' in the schema), and -1 <= any index, so the previous version
+  // silently satisfied every hasMinRole() check for unknown roles.
+  return i === -1 ? ROLE_ORDER.length : i;
 }
 
 export function hasMinRole(userRole: AppRole, minRole: AppRole): boolean {
@@ -106,12 +111,6 @@ const RoleContext = createContext<RoleContextValue>({
   canSeeSection: () => true,
   canVisitRoute: () => true,
 });
-
-const SUPER_ADMIN_EMAILS = [
-  "annankwekujude@gmail.com",
-  "admin@colorcodesolutions.com",
-  "ops@colorcodesolutions.com",
-];
 
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const session = authClient.useSession();
@@ -135,12 +134,11 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoaded) return;
-
-    if (userEmail && (SUPER_ADMIN_EMAILS.includes(userEmail) || userEmail.endsWith("@colorcodesolutions.com"))) {
-      setRole("super_admin");
-      setResolved(true);
-      return;
-    }
+    // SECURITY: the role is derived exclusively from the server
+    // (GET /api/orgs/me/role -> org_members.role). Never grant an elevated role
+    // client-side from the signed-in email address or its domain: every API guard
+    // reads org_members, so an email allow-list only produces a UI that claims
+    // access the backend will refuse - and an email suffix is not an auth control.
 
     if (!session.data?.user) {
       setRole("viewer");

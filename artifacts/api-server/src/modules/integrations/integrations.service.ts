@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable, integrationSyncLogTable, notificationsTable } from "@workspace/db";
-import { eq, and, sql, isNotNull } from "drizzle-orm";
+import { eq, and, sql, isNotNull, isNull } from "drizzle-orm";
 import { runAwsChecks } from "./providers/aws.provider";
 import { runOktaChecks } from "./providers/okta.provider";
 import { runGitHubChecks } from "./providers/github.provider";
@@ -156,6 +156,7 @@ export const INTEGRATION_CATALOG = [
     key: "cloudflare", name: "Cloudflare", category: "network",
     description: "WAF rule configuration, DDoS protection status, DNS security, TLS certificate management, and access logs.",
     available: true,
+    connectType: "credentials",
     controls: ["UCO-VM-003", "UCO-DP-001", "UCO-AL-001", "UCO-AC-002"],
   },
   {
@@ -786,6 +787,7 @@ export class IntegrationsService {
         and(
           eq(orgEvidenceTable.orgId, orgId),
           isNotNull(orgEvidenceTable.integrationKey),
+          isNull(orgEvidenceTable.deletedAt),
         ),
       )
       .groupBy(orgEvidenceTable.integrationKey);
@@ -881,7 +883,7 @@ export class IntegrationsService {
 
     for (const ev of evidenceItems) {
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        orgId, integrationKey: "aws", ucoControlId: ev.ucoControlId, title: ev.title,
         description: ev.description, type: "auto", source: "aws", collectedAt: new Date(),
       });
     }
@@ -955,7 +957,7 @@ export class IntegrationsService {
 
     for (const ev of evidenceItems) {
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        orgId, integrationKey: "aws", ucoControlId: ev.ucoControlId, title: ev.title,
         description: ev.description, type: "auto", source: "aws", collectedAt: new Date(),
       });
     }
@@ -1002,7 +1004,7 @@ export class IntegrationsService {
 
     for (const ev of evidenceItems) {
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        orgId, integrationKey: "okta", ucoControlId: ev.ucoControlId, title: ev.title,
         description: ev.description, type: "auto", source: "okta", collectedAt: new Date(),
       });
     }
@@ -1076,7 +1078,7 @@ export class IntegrationsService {
 
     for (const ev of evidenceItems) {
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        orgId, integrationKey: "okta", ucoControlId: ev.ucoControlId, title: ev.title,
         description: ev.description, type: "auto", source: "okta", collectedAt: new Date(),
       });
     }
@@ -1207,7 +1209,7 @@ export class IntegrationsService {
     }
     for (const ev of evidenceItems) {
       await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: ev.ucoControlId, title: ev.title,
+        orgId, integrationKey, ucoControlId: ev.ucoControlId, title: ev.title,
         description: ev.description, type: ev.type as any, source: ev.source,
         collectedAt: new Date(),
       });
@@ -1295,6 +1297,7 @@ export class IntegrationsService {
         description: ev.description,
         ucoControlId: ev.ucoControlId ?? null,
         type: "auto",
+        integrationKey,
         source: integrationKey,
         collectedAt: new Date(),
       });
@@ -1670,7 +1673,7 @@ export class IntegrationsService {
       }
 
       for (const ev of evidenceItems) {
-        await db.insert(orgEvidenceTable).values({ orgId, ...ev, collectedAt: new Date() });
+        await db.insert(orgEvidenceTable).values({ orgId, ...ev, integrationKey: "github", collectedAt: new Date() });
       }
 
       // Derive actual sync status from control outcomes — never hard-code "success"

@@ -105,6 +105,22 @@ async function migrate() {
     await client.query(`CREATE INDEX IF NOT EXISTS notifications_dedup_key_idx ON notifications (dedup_key) WHERE dedup_key IS NOT NULL`);
     console.log('EC Migration: notifications table ensured');
 
+    // org_evidence.integration_key backfill --------------------------------------
+    // Connector evidence written before integration_key was set on insert still
+    // carries the connector name in `source`, and the Integrations page counts
+    // evidence by integration_key. Recover the key so historical rows are counted.
+    // Guarded: this script also runs against a brand-new database where the
+    // application schema has not been created yet.
+    const evExists = await client.query("SELECT to_regclass('public.org_evidence') AS t");
+    if (evExists.rows[0] && evExists.rows[0].t) {
+      const backfilled = await client.query(`UPDATE org_evidence SET integration_key = source
+         WHERE integration_key IS NULL
+           AND source IN ('aws','okta','github','cloudflare','railway','replit','betterauth')`);
+      console.log('EC Migration: org_evidence.integration_key backfilled from source (' + backfilled.rowCount + ' rows)');
+    } else {
+      console.log('EC Migration: org_evidence absent, skipping integration_key backfill');
+    }
+
   } catch (err) {
     console.error('EC Migration error:', err.message);
   } finally {

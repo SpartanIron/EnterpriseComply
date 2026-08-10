@@ -510,6 +510,104 @@ function OktaConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClos
   );
 }
 
+function CloudflareConnectModal({ orgId, onClose, onSuccess }: { orgId: number; onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({ apiToken: "", zoneId: "" });
+  const [error, setError] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/orgs/${orgId}/integrations/cloudflare/connect`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Connection failed");
+      return data;
+    },
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold">CF</span>
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Connect Cloudflare</p>
+                <p className="text-white text-sm">WAF rules, TLS posture, DNS security, and access logs</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3.5 text-sm text-orange-800">
+            <p className="font-semibold mb-1.5">Create a scoped API token</p>
+            <p className="text-xs text-orange-700">In Cloudflare: My Profile &rarr; API Tokens &rarr; Create Token. Read-only is enough: Zone.Zone, Zone.Zone Settings, Zone.Firewall Services and Zone.Logs, scoped to the single zone you want monitored.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">API Token</label>
+            <input
+              type="password"
+              value={form.apiToken}
+              onChange={(e) => setForm((f) => ({ ...f, apiToken: e.target.value }))}
+              placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Zone ID</label>
+            <input
+              type="text"
+              value={form.zoneId}
+              onChange={(e) => setForm((f) => ({ ...f, zoneId: e.target.value }))}
+              placeholder="023e105f4ecef8ad9ca31a8372d0c353"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            <p className="text-xs text-slate-500 mt-1.5">Cloudflare dashboard &rarr; your domain &rarr; Overview, in the API panel on the right.</p>
+          </div>
+          {error && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>}
+          {mutation.isSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+              Connected! {(mutation.data as any)?.checksPassed ?? 0} of {(mutation.data as any)?.checksRun ?? 0} checks passed.
+            </div>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={!form.apiToken || !form.zoneId || mutation.isPending}
+              className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {mutation.isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Running checks...
+                </span>
+              ) : "Connect and run checks"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Integrations() {
   const [location] = useLocation();
   const { orgId } = useOrg();
@@ -521,6 +619,7 @@ export default function Integrations() {
   const [showRailwayModal, setShowRailwayModal] = useState(false);
   const [showReplitModal, setShowReplitModal] = useState(false);
   const [showBetterAuthModal, setShowBetterAuthModal] = useState(false);
+  const [showCloudflareModal, setShowCloudflareModal] = useState(false);
 
   const { data, isLoading } = useQuery<{ integrations: any[] }>({
     queryKey: ["org-integrations", orgId],
@@ -567,6 +666,7 @@ export default function Integrations() {
     if (key === "railway") { setShowRailwayModal(true); return; }
     if (key === "replit") { setShowReplitModal(true); return; }
     if (key === "betterauth") { setShowBetterAuthModal(true); return; }
+    if (key === "cloudflare") { setShowCloudflareModal(true); return; }
     setDemoConnecting(key);
     try {
       await demoConnectMutation.mutateAsync(key);
@@ -617,6 +717,9 @@ export default function Integrations() {
       )}
       {showBetterAuthModal && orgId && (
         <BetterAuthConnectModal orgId={orgId} onClose={() => setShowBetterAuthModal(false)} onSuccess={handleCredentialConnectSuccess} />
+      )}
+      {showCloudflareModal && orgId && (
+        <CloudflareConnectModal orgId={orgId} onClose={() => setShowCloudflareModal(false)} onSuccess={handleCredentialConnectSuccess} />
       )}
 
       <div className="mb-5 flex items-start justify-between gap-4 flex-wrap">

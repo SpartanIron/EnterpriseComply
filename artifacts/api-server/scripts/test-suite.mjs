@@ -4956,6 +4956,45 @@ check(
   403,
 );
 
+
+// =============================================================================
+section("39. Connector integrity, evidence attribution, and client-side roles");
+// Static guards. These are regressions that unit tests over HTTP cannot see:
+// the symptom is a card that reads "0 evidence items" or "Connect (Demo)" while
+// every API call still returns 200.
+{
+  const fsx = await import("node:fs");
+  const ROOT = new URL("../../../", import.meta.url);
+  const read = (p) => fsx.readFileSync(new URL(p, ROOT), "utf8");
+  const svc = read("artifacts/api-server/src/modules/integrations/integrations.service.ts");
+  const page = read("artifacts/c2s-ciop/src/pages/Integrations.tsx");
+  const role = read("artifacts/c2s-ciop/src/context/RoleContext.tsx");
+  const liveKeys = ["aws", "okta", "cloudflare", "railway", "replit", "betterauth"];
+
+  const evInserts = svc.split("insert(orgEvidenceTable).values({").slice(1);
+  const missingKey = evInserts.filter((seg) => !seg.slice(0, seg.indexOf("})")).includes("integrationKey"));
+  check("39.1 every evidence insert stamps its integrationKey", evInserts.length > 0 && missingKey.length === 0, true);
+  check("39.2 evidence insert sites found", evInserts.length, 7);
+  check("39.3 live evidence counts ignore soft-deleted rows", svc.includes("isNull(orgEvidenceTable.deletedAt)"), true);
+
+  const notCredentials = liveKeys.filter((k) => {
+    const i = svc.indexOf('key: "' + k + '",');
+    if (i === -1) return true;
+    const end = svc.indexOf("\n  },", i);
+    return !svc.slice(i, end === -1 ? i + 800 : end).includes('connectType: "credentials"');
+  });
+  check("39.4 every live connector is catalogued as a credentials connector", notCredentials.join(",") || "none", "none");
+
+  const hcStart = page.indexOf("const handleConnect = async (key: string) => {");
+  const hc = hcStart === -1 ? "" : page.slice(hcStart, page.indexOf("\n  };", hcStart));
+  const fallsThroughToDemo = liveKeys.filter((k) => !hc.includes('key === "' + k + '"'));
+  check("39.5 no live connector falls through to the demo connect path", fallsThroughToDemo.join(",") || "none", "none");
+
+  check("39.6 the client does not grant roles from an email allow-list", /SUPER_ADMIN_EMAILS/.test(role), false);
+  check("39.7 an unrecognised role is treated as least privileged", role.includes("ROLE_ORDER.length : i"), true);
+}
+
+
 await cleanup();
 
 const bar = "═".repeat(70);
