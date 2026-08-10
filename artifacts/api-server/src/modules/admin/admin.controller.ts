@@ -101,7 +101,7 @@ export class AdminController {
     @Param("orgId") orgId: string,
     @Body() body: { plan: string },
   ) {
-    await assertSuperAdmin(userId);
+    const planActor = await assertSuperAdmin(userId);
     const VALID_PLANS = ["starter", "professional", "enterprise", "federal"];
     if (!VALID_PLANS.includes(body.plan)) {
       throw new BadRequestException("plan must be one of: " + VALID_PLANS.join(", "));
@@ -127,6 +127,7 @@ export class AdminController {
       String(numericOrgId),
       { previousPlan, newPlan: body.plan, changedBy: userId },
       userId,
+      (planActor as { email?: string | null }).email ?? undefined,
     );
 
     return { ok: true, orgId: numericOrgId, plan: body.plan };

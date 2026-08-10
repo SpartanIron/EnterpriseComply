@@ -3577,6 +3577,101 @@ for (const stmt of SCHEDULER_MAINTENANCE_SQL) {
   check(`29.1 ${stmt.name} plans against the live schema${why}`, planned, true);
 }
 
+
+// —— Section 30: Plan changes — super-admin only + audited ——————————
+
+section("SECTION 30 — PLAN CHANGES: super_admin only, audited, and immutable");
+
+const planUrl30 = `/admin/orgs/${org28Id}/plan`;
+
+async function patchPlan30(cookie, body) {
+  try {
+    const r = await fetch(`${BASE}${planUrl30}`, {
+      method: "PATCH",
+      headers: {
+        Cookie: cookie,
+        "Content-Type": "application/json",
+        Host: new URL(BASE).host,
+      },
+      body: JSON.stringify(body),
+    });
+    return { status: r.status };
+  } catch {
+    return { status: 0 };
+  }
+}
+const planOf30 = async () => {
+  const r = await db
+    .query(`SELECT plan FROM organizations WHERE id = $1`, [org28Id])
+    .catch(() => ({ rows: [] }));
+  return r.rows[0]?.plan ?? null;
+};
+
+// 30.1 — an org owner must not be able to upgrade their own org
+const r301 = await patchPlan30(cookieNsa28, { plan: "federal" });
+check("30.1 non-super_admin PATCH org plan is rejected", r301.status, 403);
+check("30.1 the rejected attempt did not change the plan", await planOf30(), "enterprise");
+
+// 30.2 — unknown tiers are refused rather than silently stored
+const r302 = await patchPlan30(cookieSa28, { plan: "platinum" });
+check("30.2 an unknown plan tier is rejected", r302.status, 400);
+check("30.2 the invalid attempt did not change the plan", await planOf30(), "enterprise");
+
+// 30.3 — a super_admin can change the plan
+const r303 = await patchPlan30(cookieSa28, { plan: "professional" });
+check("30.3 super_admin PATCH org plan succeeds", r303.status, 200, 201);
+check("30.3 the new plan is persisted", await planOf30(), "professional");
+
+// 30.4 — the change is recorded in the audit trail with before/after
+const audit304 = await db
+  .query(
+    `SELECT details, actor_id, actor_email FROM org_audit_log
+      WHERE org_id = $1 AND action = 'plan.changed'
+      ORDER BY id DESC LIMIT 1`,
+    [org28Id],
+  )
+  .catch(() => ({ rows: [] }));
+const entry304 = audit304.rows[0] ?? null;
+check("30.4 a plan.changed audit entry was written", entry304 !== null, true);
+check("30.4 the audit entry records the previous plan", entry304?.details?.previousPlan, "enterprise");
+check("30.4 the audit entry records the new plan", entry304?.details?.newPlan, "professional");
+check("30.4 the audit entry identifies the acting super_admin", entry304?.actor_id, userSa28);
+check(
+  "30.4 the audit entry carries the actor email",
+  typeof entry304?.actor_email === "string" && entry304.actor_email.length > 0,
+  true,
+);
+
+// 30.5 — the plan-change trail is write-once, even for a super_admin
+let wormBlocked30 = false;
+try {
+  await db.query(
+    `UPDATE org_audit_log SET action = 'tampered' WHERE org_id = $1 AND action = 'plan.changed'`,
+    [org28Id],
+  );
+} catch {
+  wormBlocked30 = true;
+}
+check("30.5 plan-change audit rows cannot be updated (WORM)", wormBlocked30, true);
+
+let wormDelBlocked30 = false;
+try {
+  await db.query(`DELETE FROM org_audit_log WHERE org_id = $1 AND action = 'plan.changed'`, [org28Id]);
+} catch {
+  wormDelBlocked30 = true;
+}
+check("30.5 plan-change audit rows cannot be deleted (WORM)", wormDelBlocked30, true);
+
+// 30.6 — downgrades are audited too, so a support downgrade is traceable
+await patchPlan30(cookieSa28, { plan: "starter" });
+const count306 = await db
+  .query(
+    `SELECT count(*)::int AS n FROM org_audit_log WHERE org_id = $1 AND action = 'plan.changed'`,
+    [org28Id],
+  )
+  .catch(() => ({ rows: [{ n: 0 }] }));
+check("30.6 a downgrade adds a second audit entry", count306.rows[0].n >= 2, true);
+
 await cleanup();
 
 const bar = "═".repeat(70);
