@@ -29,6 +29,10 @@ import {
   keyFingerprint,
 } from "../src/lib/credential-crypto.ts";
 import { SCHEDULER_MAINTENANCE_SQL } from "../src/modules/scheduler/cleanup-sql.ts";
+import {
+  recordAndCheckEmail,
+  resetMagicLinkRateForEmail,
+} from "../src/lib/magic-link-rate-limiter.ts";
 import pg from "pg";
 
 const { Client } = pg;
@@ -148,6 +152,7 @@ async function seed() {
       "throttle_hits",
       "ip_failure_tracker",
       "ip_magic_link_rate",
+      "email_magic_link_rate",
     ]) {
       await db.query(`TRUNCATE TABLE ${t}`).catch(() => {});
     }
@@ -3671,6 +3676,56 @@ const count306 = await db
   )
   .catch(() => ({ rows: [{ n: 0 }] }));
 check("30.6 a downgrade adds a second audit entry", count306.rows[0].n >= 2, true);
+
+
+// —— Section 31: Magic-link per-email limit is shared, not per-process ————
+
+section("SECTION 31 — MAGIC LINK: per-email limit survives IP rotation, restarts and replicas");
+
+const rlEmail31 = `rl-${uid()}@test.invalid`;
+await resetMagicLinkRateForEmail(rlEmail31);
+
+// 31.1 — the first EMAIL_LIMIT sends are allowed regardless of source IP.
+// The limit is keyed on the address, so rotating IPs buys an attacker nothing.
+const attempts31 = [];
+for (let i = 0; i < 4; i++) attempts31.push(await recordAndCheckEmail(rlEmail31));
+check("31.1 send 1 is allowed", attempts31[0].blocked, false);
+check("31.1 send 2 is allowed", attempts31[1].blocked, false);
+check("31.1 send 3 is allowed", attempts31[2].blocked, false);
+check("31.1 send 4 is blocked no matter which IP it came from", attempts31[3].blocked, true);
+check("31.1 the block reports a retry-after window", attempts31[3].retryAfterMs > 0, true);
+
+// 31.2 — the counter lives in Postgres, so it is shared by every replica and
+//        survives a process restart. An in-memory Map would reset on deploy and
+//        would not be seen by a second instance at all.
+const persisted31 = await db
+  .query(`SELECT count FROM email_magic_link_rate WHERE email = $1`, [rlEmail31])
+  .catch(() => ({ rows: [] }));
+check("31.2 the per-email counter is persisted in Postgres", persisted31.rows.length, 1);
+check("31.2 the persisted counter reflects every attempt", Number(persisted31.rows[0]?.count) >= 4, true);
+
+// 31.3 — a fresh caller reading the same shared state also sees the block,
+//        which is what a second replica would do.
+const stillBlocked31 = await recordAndCheckEmail(rlEmail31);
+check("31.3 a different caller sees the same block", stillBlocked31.blocked, true);
+
+// 31.4 — the address is matched case-insensitively and after trimming, so
+//        "User@x" and " user@x " cannot each get their own quota.
+const upperBlocked31 = await recordAndCheckEmail(`  ${rlEmail31.toUpperCase()}  `);
+check("31.4 case and whitespace variants share one quota", upperBlocked31.blocked, true);
+
+// 31.5 — an unrelated address is unaffected (the limit is not global)
+const otherEmail31 = `rl-other-${uid()}@test.invalid`;
+await resetMagicLinkRateForEmail(otherEmail31);
+const other31 = await recordAndCheckEmail(otherEmail31);
+check("31.5 an unrelated address is not collaterally blocked", other31.blocked, false);
+
+// 31.6 — reset clears the persisted row, not just process memory
+await resetMagicLinkRateForEmail(rlEmail31);
+const cleared31 = await db
+  .query(`SELECT count FROM email_magic_link_rate WHERE email = $1`, [rlEmail31])
+  .catch(() => ({ rows: [{ count: -1 }] }));
+check("31.6 reset removes the persisted row", cleared31.rows.length, 0);
 
 await cleanup();
 

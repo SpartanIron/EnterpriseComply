@@ -31,8 +31,6 @@ export const RETRY_AFTER_SECONDS = 60; // Retry-After header value
 export const EMAIL_LIMIT = 3;                        // max sends per email per window
 export const EMAIL_WINDOW_MS = 10 * 60 * 1000;      // 10-minute window
 
-/** In-memory map: email → { count, windowStart } for per-email rate limiting. */
-const emailRateMap = new Map<string, { count: number; windowStart: number }>();
 
 // ── Schema bootstrap ──────────────────────────────────────────────────────────
 
@@ -48,6 +46,13 @@ async function ensureSchema(): Promise<void> {
       window_start BIGINT  NOT NULL,
       blocked_until BIGINT NOT NULL DEFAULT 0
     );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_magic_link_rate (
+      email        TEXT    PRIMARY KEY,
+      count        INTEGER NOT NULL DEFAULT 0,
+      window_start BIGINT  NOT NULL
+    )
   `);
   _schemaReady = true;
 }
@@ -107,26 +112,43 @@ async function recordAndCheck(ip: string): Promise<boolean> {
  *
  * @returns { blocked: boolean; retryAfterMs: number }
  */
-export function recordAndCheckEmail(email: string): { blocked: boolean; retryAfterMs: number } {
-  const now = Date.now();
+export async function recordAndCheckEmail(
+  email: string,
+): Promise<{ blocked: boolean; retryAfterMs: number }> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
   const key = email.toLowerCase().trim();
-  const entry = emailRateMap.get(key);
+  const now = BigInt(Date.now());
+  const windowMs = BigInt(EMAIL_WINDOW_MS);
 
-  if (!entry || now - entry.windowStart > EMAIL_WINDOW_MS) {
-    // New window — first request is always allowed.
-    emailRateMap.set(key, { count: 1, windowStart: now });
-    return { blocked: false, retryAfterMs: 0 };
+  // One atomic upsert: the window either rolls over or the counter increments,
+  // so two concurrent requests can never both slip past the limit, and the
+  // state is shared by every replica instead of living in one process.
+  const { rows } = await pool.query<{ count: number; window_start: string }>(
+    `INSERT INTO email_magic_link_rate (email, count, window_start)
+     VALUES ($1, 1, $2)
+     ON CONFLICT (email) DO UPDATE SET
+       count = CASE
+         WHEN $2 - email_magic_link_rate.window_start > $3 THEN 1
+         ELSE email_magic_link_rate.count + 1
+       END,
+       window_start = CASE
+         WHEN $2 - email_magic_link_rate.window_start > $3 THEN $2
+         ELSE email_magic_link_rate.window_start
+       END
+     RETURNING count, window_start::text AS window_start`,
+    [key, now, windowMs],
+  );
+
+  const row = rows[0];
+  if (!row) return { blocked: false, retryAfterMs: 0 };
+  if (row.count > EMAIL_LIMIT) {
+    const windowExpiresAt = Number(row.window_start) + EMAIL_WINDOW_MS;
+    return {
+      blocked: true,
+      retryAfterMs: Math.max(0, windowExpiresAt - Date.now()),
+    };
   }
-
-  if (entry.count >= EMAIL_LIMIT) {
-    // Over limit — calculate time remaining in this window.
-    const windowExpiresAt = entry.windowStart + EMAIL_WINDOW_MS;
-    const retryAfterMs = Math.max(0, windowExpiresAt - now);
-    return { blocked: true, retryAfterMs };
-  }
-
-  // Within limit — increment and allow.
-  entry.count++;
   return { blocked: false, retryAfterMs: 0 };
 }
 
@@ -138,8 +160,12 @@ export async function resetMagicLinkRateForIp(ip: string): Promise<void> {
 }
 
 /** Reset email rate state for a specific address — used in automated tests. */
-export function resetMagicLinkRateForEmail(email: string): void {
-  emailRateMap.delete(email.toLowerCase().trim());
+export async function resetMagicLinkRateForEmail(email: string): Promise<void> {
+  await ensureSchema();
+  const pool = getRateLimitPool();
+  await pool.query("DELETE FROM email_magic_link_rate WHERE email = $1", [
+    email.toLowerCase().trim(),
+  ]);
 }
 
 export interface MagicLinkThrottleEntry {
@@ -213,7 +239,7 @@ export function magicLinkRateLimiterMiddleware(
   // req.ip is populated correctly because main.ts sets "trust proxy" = 1
   const ip = req.ip ?? "unknown";
 
-  recordAndCheck(ip).then((limited) => {
+  recordAndCheck(ip).then(async (limited) => {
     if (limited) {
       res
         .status(429)
@@ -231,7 +257,7 @@ export function magicLinkRateLimiterMiddleware(
     // req.body is populated by express.json() registered in main.ts before this middleware.
     const email: string | undefined = req.body?.email ?? req.body?.identifier;
     if (email) {
-      const emailCheck = recordAndCheckEmail(email);
+      const emailCheck = await recordAndCheckEmail(email);
       if (emailCheck.blocked) {
         const retryAfterSeconds = Math.ceil(emailCheck.retryAfterMs / 1000);
         res

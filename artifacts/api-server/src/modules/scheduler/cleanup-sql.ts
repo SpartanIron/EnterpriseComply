@@ -62,6 +62,18 @@ export const IP_FAILURE_PRUNE_SQL = `
   )
   SELECT count(*)::text AS count FROM deleted`;
 
+/**
+ * $1 = cutoff epoch-ms. The per-email magic-link window is 10 minutes, so a
+ * window that started before the cutoff is long expired and safe to drop.
+ */
+export const EMAIL_MAGIC_LINK_PRUNE_SQL = `
+  WITH deleted AS (
+    DELETE FROM email_magic_link_rate
+     WHERE window_start < $1
+    RETURNING 1
+  )
+  SELECT count(*)::text AS count FROM deleted`;
+
 /** Every maintenance statement, for schema-contract testing. */
 export const SCHEDULER_MAINTENANCE_SQL: {
   name: string;
@@ -72,4 +84,5 @@ export const SCHEDULER_MAINTENANCE_SQL: {
   { name: "ip_failure_tracker row cap", sql: IP_FAILURE_CAP_SQL, params: [] },
   { name: "throttle_hits nightly prune", sql: THROTTLE_HITS_PRUNE_SQL, params: ["0"] },
   { name: "ip_failure_tracker nightly prune", sql: IP_FAILURE_PRUNE_SQL, params: ["0"] },
+  { name: "email magic-link rate prune", sql: EMAIL_MAGIC_LINK_PRUNE_SQL, params: ["0"] },
 ];

@@ -36,6 +36,7 @@ import {
   IP_FAILURE_CAP_SQL,
   THROTTLE_HITS_PRUNE_SQL,
   IP_FAILURE_PRUNE_SQL,
+  EMAIL_MAGIC_LINK_PRUNE_SQL,
 } from "./cleanup-sql.js";
 
 // Safety buffer for magic-link rows: 60 seconds past full expiry.
@@ -405,6 +406,15 @@ export class RateLimitCleanupService implements OnModuleInit {
         [oneDayAgoMs],
       );
       const ipDeleted = ipResult.rows[0]?.count ?? "0";
+
+    // Per-email magic-link windows are persisted too, so they need pruning
+    // on the same schedule or the table grows for the life of the product.
+    const emailRateResult = await pool.query<{ count: string }>(
+      EMAIL_MAGIC_LINK_PRUNE_SQL,
+      [oneDayAgoMs],
+    );
+    const emailRateDeleted = emailRateResult.rows[0]?.count ?? "0";
+    void emailRateDeleted;
 
       this.logger.log(
         `[rate-limit-cleanup] Done — throttle_hits: ${throttleDeleted} rows deleted, ` +
