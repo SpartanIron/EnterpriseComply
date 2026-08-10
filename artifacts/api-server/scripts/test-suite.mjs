@@ -4388,6 +4388,203 @@ check(
 );
 
 
+section("SECTION 36 - LOGGING & IDENTITY: platform-wide audit coverage and MFA policy");
+
+const auditCount36 = async (action, resourceId) => {
+  const r = await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND action = $2 AND ($3::text IS NULL OR resource_id = $3)`,
+    [state.orgAId, action, resourceId ?? null],
+  );
+  return Number(r.rows[0]?.n ?? 0);
+};
+
+// ---- 36.1 a write to a module that never had its own audit code is recorded
+const before361 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND details->>'source' = 'http'`,
+    [state.orgAId],
+  )
+).rows[0].n;
+
+const cal36 = await evReq34(
+  cookieOwnerA,
+  `/orgs/${state.orgAId}/compliance-calendar`,
+  "POST",
+  {
+    title: "sec36 audit coverage probe",
+    event_type: "review",
+    due_date: "2027-01-15",
+    recurrence: "annual",
+  },
+);
+check("36.1 the calendar write succeeded", [200, 201].includes(cal36.status), true);
+
+await new Promise((r) => setTimeout(r, 400));
+const after361 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND details->>'source' = 'http'`,
+    [state.orgAId],
+  )
+).rows[0].n;
+check(
+  "36.2 the interceptor recorded it without the module writing any audit code",
+  Number(after361) > Number(before361),
+  true,
+);
+
+// ---- 36.3 the entry carries actor, method, status and no request body -----
+const entry36 = (
+  await db.query(
+    `SELECT * FROM org_audit_log
+      WHERE org_id = $1 AND details->>'source' = 'http'
+      ORDER BY id DESC LIMIT 1`,
+    [state.orgAId],
+  )
+).rows[0];
+check("36.3 the audit entry names the actor", typeof entry36?.actor_id === "string", true);
+check("36.4 the audit entry records the HTTP method", entry36?.details?.method, "POST");
+check("36.5 the audit entry records the status", Number(entry36?.details?.status), 200);
+const serialised36 = JSON.stringify(entry36?.details ?? {});
+check(
+  "36.6 the audit entry does not contain the request body",
+  serialised36.includes("sec36 audit coverage probe"),
+  false,
+);
+check(
+  "36.7 the audit entry stores the path without a query string",
+  String(entry36?.details?.path ?? "").includes("?"),
+  false,
+);
+
+// ---- 36.8 an authorisation denial becomes a security event ---------------
+const denied36 = await evReq34(
+  cookieOwnerB,
+  `/orgs/${state.orgAId}/compliance-calendar`,
+  "GET",
+);
+check("36.8 org B is refused org A's calendar", denied36.status !== 200, true);
+
+// ---- 36.9 ordinary reads are NOT audited (the trail must stay usable) ----
+const beforeRead36 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND details->>'method' = 'GET'`,
+    [state.orgAId],
+  )
+).rows[0].n;
+await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/evidence`, "GET");
+await new Promise((r) => setTimeout(r, 300));
+const afterRead36 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND details->>'method' = 'GET'`,
+    [state.orgAId],
+  )
+).rows[0].n;
+check(
+  "36.9 a routine list read does not flood the audit trail",
+  Number(afterRead36) === Number(beforeRead36),
+  true,
+);
+
+// ---- 36.10 ...but a sensitive read is -----------------------------------
+await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/evidence/ledger/export`, "GET");
+await new Promise((r) => setTimeout(r, 400));
+const sensitive36 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND details->>'path' LIKE '%ledger/export%'`,
+    [state.orgAId],
+  )
+).rows[0].n;
+check("36.10 exporting the evidence ledger is recorded", Number(sensitive36) > 0, true);
+
+// ---- 36.11 MFA policy: default state ------------------------------------
+const mfa0 = await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/mfa-policy`, "GET");
+check("36.11 the MFA policy endpoint answers", mfa0.status, 200);
+check("36.12 MFA is not enforced by default", mfa0.body?.enforced, false);
+check(
+  "36.13 enrolment coverage is computed, not hard-coded",
+  typeof mfa0.body?.coveragePct === "number",
+  true,
+);
+
+// ---- 36.14 only an admin may change it ----------------------------------
+const mfaViewer = await evReq34(
+  cookieViewerA,
+  `/orgs/${state.orgAId}/mfa-policy`,
+  "PATCH",
+  { enforced: true },
+);
+check("36.14 a viewer cannot enable MFA enforcement", mfaViewer.status, 403);
+const stillOff36 = await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/mfa-policy`, "GET");
+check("36.15 the policy did not change", stillOff36.body?.enforced, false);
+
+// ---- 36.16 an admin can enable it, with a grace window -------------------
+const mfaOn = await evReq34(
+  cookieOwnerA,
+  `/orgs/${state.orgAId}/mfa-policy`,
+  "PATCH",
+  { enforced: true, graceDays: 30 },
+);
+check("36.16 an owner can enable MFA enforcement", mfaOn.status, 200);
+check("36.17 enforcement is on", mfaOn.body?.enforced, true);
+check("36.18 the grace window is stamped", typeof mfaOn.body?.graceEndsAt, "string");
+check("36.19 the grace window is in the future", new Date(mfaOn.body?.graceEndsAt) > new Date(), true);
+
+// ---- 36.20 enabling MFA must never lock the org out mid-grace -----------
+const duringGrace36 = await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/evidence`, "GET");
+check(
+  "36.20 members with no authenticator still work inside the grace window",
+  duringGrace36.status,
+  200,
+);
+
+// ---- 36.21 the policy change is in the audit trail ----------------------
+check(
+  "36.21 enabling MFA enforcement is audited",
+  (await auditCount36("org.mfa_enforcement_enabled", String(state.orgAId))) > 0,
+  true,
+);
+
+// ---- 36.22 once the grace window has closed, access is refused ----------
+await db.query(
+  `UPDATE organizations SET mfa_enforced_at = NOW() - INTERVAL '400 days' WHERE id = $1`,
+  [state.orgAId],
+);
+const afterGrace36 = await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/evidence`, "GET");
+check("36.22 an unenrolled member is refused after the grace window", afterGrace36.status, 403);
+check(
+  "36.23 the refusal is machine-readable so the UI can route to enrolment",
+  afterGrace36.body?.message?.error ?? afterGrace36.body?.error,
+  "mfa_enrollment_required",
+);
+
+// the shell and the policy page must stay reachable, otherwise the user is
+// stranded with no way to enrol
+const shell36 = await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/mfa-policy`, "GET");
+check("36.24 the MFA policy page stays reachable when locked out", shell36.status, 200);
+
+// ---- 36.25 turning it back off restores access --------------------------
+const mfaOff = await evReq34(
+  cookieOwnerA,
+  `/orgs/${state.orgAId}/mfa-policy`,
+  "PATCH",
+  { enforced: false },
+);
+check("36.25 an owner can disable enforcement again", mfaOff.body?.enforced, false);
+const restored36 = await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/evidence`, "GET");
+check("36.26 access is restored", restored36.status, 200);
+check(
+  "36.27 disabling enforcement is audited",
+  (await auditCount36("org.mfa_enforcement_disabled", String(state.orgAId))) > 0,
+  true,
+);
+
+
 await cleanup();
 
 const bar = "═".repeat(70);

@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, ForbiddenException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import {
 db,
 organizationsTable,
@@ -9,7 +14,8 @@ orgIntegrationsTable,
 orgPoliciesTable,
 orgPeopleTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
+import { writeAuditLog } from "../../lib/audit-log.js";
 import { sendWelcomeEmail } from "../../lib/email";
 import { logger } from "../../lib/logger";
 import { getRateLimitPool } from "../../lib/pg-pool";
@@ -245,4 +251,89 @@ peopleCount: people.length,
 recentActivity: [],
 };
 }
+
+  /**
+   * Multi-factor policy + real enrolment coverage for the organisation.
+   *
+   * Coverage is computed from the better-auth two_factor table rather than a
+   * cached counter, so it cannot drift away from reality.
+   */
+  async getMfaPolicy(orgId: number) {
+    const org = await db.query.organizationsTable.findFirst({
+      where: eq(organizationsTable.id, orgId),
+    });
+    if (!org) throw new NotFoundException({ error: "no_org" });
+
+    const rows = await db.execute(sql`
+      SELECT
+        COUNT(*)::int AS members,
+        COUNT(t."userId")::int AS enrolled
+      FROM org_members m
+      LEFT JOIN two_factor t ON t."userId" = m.clerk_user_id
+      WHERE m.org_id = ${orgId}
+    `);
+    const r = (rows.rows as any[])[0] ?? { members: 0, enrolled: 0 };
+    const enforcedAt = (org as any).mfaEnforcedAt
+      ? new Date((org as any).mfaEnforcedAt)
+      : null;
+    const graceDays = (org as any).mfaGraceDays ?? 14;
+
+    return {
+      enforced: org.mfaEnforced === true,
+      enforcedAt: enforcedAt ? enforcedAt.toISOString() : null,
+      graceDays,
+      graceEndsAt: enforcedAt
+        ? new Date(enforcedAt.getTime() + graceDays * 86400000).toISOString()
+        : null,
+      members: r.members ?? 0,
+      enrolled: r.enrolled ?? 0,
+      coveragePct:
+        (r.members ?? 0) === 0 ? 0 : Math.round(((r.enrolled ?? 0) / r.members) * 100),
+      control: "NIST IA-2(1) / CMMC IA.L2-3.5.3 / SOC 2 CC6.1",
+    };
+  }
+
+  async setMfaPolicy(
+    orgId: number,
+    actorId: string,
+    body: { enforced?: boolean; graceDays?: number },
+  ) {
+    const org = await db.query.organizationsTable.findFirst({
+      where: eq(organizationsTable.id, orgId),
+    });
+    if (!org) throw new NotFoundException({ error: "no_org" });
+
+    const enforced = body?.enforced === true;
+    const graceDays = Number.isInteger(body?.graceDays)
+      ? Math.min(Math.max(body!.graceDays as number, 0), 90)
+      : ((org as any).mfaGraceDays ?? 14);
+
+    // Only stamp the clock on an off -> on transition, so re-saving the
+    // settings page cannot silently extend an in-flight rollout.
+    const turningOn = enforced && org.mfaEnforced !== true;
+
+    await db.execute(sql`
+      UPDATE organizations
+         SET mfa_enforced = ${enforced},
+             mfa_grace_days = ${graceDays},
+             mfa_enforced_at = CASE
+               WHEN ${turningOn} THEN NOW()
+               WHEN ${enforced} THEN mfa_enforced_at
+               ELSE NULL
+             END
+       WHERE id = ${orgId}
+    `);
+
+    await writeAuditLog(
+      orgId,
+      enforced ? "org.mfa_enforcement_enabled" : "org.mfa_enforcement_disabled",
+      "organization",
+      String(orgId),
+      { enforced, graceDays, previous: org.mfaEnforced === true },
+      actorId,
+    );
+
+    return this.getMfaPolicy(orgId);
+  }
+
 }

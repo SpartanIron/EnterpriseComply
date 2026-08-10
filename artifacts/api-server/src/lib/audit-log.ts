@@ -11,6 +11,7 @@ export async function writeAuditLog(
   details?: unknown,
   actorId?: string,
   actorEmail?: string,
+  ipAddress?: string,
 ): Promise<void> {
   try {
     await db.insert(orgAuditLogTable).values({
@@ -21,6 +22,7 @@ export async function writeAuditLog(
       details: details ?? undefined,
       actorId: actorId ?? undefined,
       actorEmail: actorEmail ?? undefined,
+      ipAddress: ipAddress ?? undefined,
     });
   } catch (err) {
     // An audit write must never block the operation it is recording, but a
@@ -30,4 +32,31 @@ export async function writeAuditLog(
         (err instanceof Error ? err.message : String(err)),
     );
   }
+}
+
+/**
+ * Security events (authorisation denials, rate-limit blocks, suspicious
+ * input) are recorded in the same append-only table as everything else so an
+ * auditor only has one place to look. The action is always prefixed
+ * "security." so the events can be filtered and alerted on.
+ */
+export async function writeSecurityEvent(
+  orgId: number,
+  event: string,
+  resource: string,
+  details: Record<string, unknown>,
+  actorId?: string,
+  actorEmail?: string,
+  ipAddress?: string,
+): Promise<void> {
+  await writeAuditLog(
+    orgId,
+    "security." + event,
+    resource,
+    null,
+    details,
+    actorId,
+    actorEmail,
+    ipAddress,
+  );
 }

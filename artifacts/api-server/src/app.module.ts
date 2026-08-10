@@ -1,9 +1,10 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { PgThrottlerStorage } from "./lib/pg-throttler-storage.js";
 import { RateLimitGuard } from "./guards/rate-limit.guard";
+import { AuditInterceptor } from "./interceptors/audit.interceptor";
 import { AuthModule } from "./modules/auth/auth.module";
 import { StartupModule } from "./startup/startup.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -114,6 +115,11 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
     {
       provide: APP_GUARD,
       useClass: RateLimitGuard,
+    },
+    {
+      // Audit coverage is a platform property, not a per-module choice.
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
   ],
 })

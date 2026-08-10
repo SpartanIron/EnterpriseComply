@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { db } from '@workspace/db';
 import { sql } from 'drizzle-orm';
 import { runWormLedgerMigration } from '../../migrations/worm-evidence-ledger.migration';
-import { runTenantRlsMigration, runEvidenceRetentionMigration, readDbSecurityPosture, type DbSecurityPosture } from '../../migrations/tenant-rls.migration';
+import { runTenantRlsMigration, runEvidenceRetentionMigration, runOrgSecuritySettingsMigration, readDbSecurityPosture, type DbSecurityPosture } from '../../migrations/tenant-rls.migration';
 
 export interface LedgerVerificationResult {
   orgId: number;
@@ -38,6 +38,7 @@ export class WormLedgerService implements OnModuleInit {
       // Retention columns must exist before the WORM trigger starts rejecting
       // DELETEs, otherwise evidence removal has nowhere to go.
       await runEvidenceRetentionMigration(db);
+      await runOrgSecuritySettingsMigration(db);
     } catch (err) {
       this.logger.error(
         'Evidence retention migration failed: ' + ((err as any)?.message ?? String(err)),

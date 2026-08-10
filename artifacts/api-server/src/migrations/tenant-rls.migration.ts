@@ -232,3 +232,20 @@ export async function runEvidenceRetentionMigration(db: any): Promise<void> {
       ON org_evidence (org_id) WHERE deleted_at IS NULL
   `);
 }
+
+/**
+ * Organisation-level security settings.
+ *
+ * mfa_enforced already existed but nothing read it, so the toggle was
+ * decorative. These two columns give enforcement a safe rollout: switching
+ * the policy on stamps mfa_enforced_at and members get mfa_grace_days to
+ * enrol before they are refused. Without that, enabling MFA on a tenant
+ * where nobody has enrolled locks every user out instantly.
+ */
+export async function runOrgSecuritySettingsMigration(db: any): Promise<void> {
+  await db.execute(sql`
+    ALTER TABLE organizations
+      ADD COLUMN IF NOT EXISTS mfa_enforced_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS mfa_grace_days INTEGER NOT NULL DEFAULT 14
+  `);
+}

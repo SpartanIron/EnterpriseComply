@@ -85,4 +85,32 @@ export class OrgsController {
     }
     return this.orgsService.updateAuditRetention(ctx.orgId, days);
   }
+
+  /**
+   * Read the organisation's multi-factor policy plus live enrolment coverage.
+   * Enterprise buyers ask for this number in every security questionnaire.
+   */
+  @Get(":orgId/mfa-policy")
+  @UseGuards(OrgContextGuard)
+  async getMfaPolicy(@OrgContext() ctx: OrgCtx) {
+    return this.orgsService.getMfaPolicy(ctx.orgId);
+  }
+
+  /**
+   * Turn multi-factor enforcement on or off for the organisation.
+   *
+   * Owner/admin only, always audited. Enabling stamps mfa_enforced_at so the
+   * enrolment grace window starts from the moment of the decision rather than
+   * retroactively locking existing members out.
+   */
+  @Patch(":orgId/mfa-policy")
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  async setMfaPolicy(
+    @OrgContext() ctx: OrgCtx,
+    @ClerkUserId() userId: string,
+    @Body() body: { enforced?: boolean; graceDays?: number },
+  ) {
+    return this.orgsService.setMfaPolicy(ctx.orgId, userId, body);
+  }
+
 }

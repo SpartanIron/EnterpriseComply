@@ -15,6 +15,10 @@ export const organizationsTable = pgTable("organizations", {
   plan: text("plan").notNull().default("starter"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   mfaEnforced: boolean("mfa_enforced").notNull().default(false),
+  /** When enforcement was switched on. Starts the enrolment grace clock. */
+  mfaEnforcedAt: timestamp("mfa_enforced_at", { withTimezone: true }),
+  /** Days a member has to enrol before they are locked out. 0 = immediate. */
+  mfaGraceDays: integer("mfa_grace_days").notNull().default(14),
   auditRetentionDays: integer("audit_retention_days").notNull().default(1095),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
