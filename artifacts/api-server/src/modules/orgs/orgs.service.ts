@@ -12,6 +12,7 @@ orgPeopleTable,
 import { eq, and } from "drizzle-orm";
 import { sendWelcomeEmail } from "../../lib/email";
 import { logger } from "../../lib/logger";
+import { getRateLimitPool } from "../../lib/pg-pool";
 
 @Injectable()
 export class OrgsService {
@@ -40,6 +41,16 @@ name: string; industry?: string; size?: string; website?: string;
 email?: string; firstName?: string; lastName?: string;
 }) {
 const { name, industry, size, website, email, firstName, lastName } = body;
+// Resolve the owner identity BEFORE creating the organization so a failure
+// cannot leave an org behind whose owner has no usable email address.
+const memberEmail =
+  (email ?? "").trim() || (await this.resolveUserEmail(userId));
+if (!memberEmail) {
+  throw new ConflictException(
+    "Could not determine the owner email address for this organization. Sign in again and retry.",
+  );
+}
+
 const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 let slug = baseSlug;
@@ -68,13 +79,13 @@ throw new ConflictException("Could not generate a unique organization identifier
 }
 
 await db.insert(orgMembersTable).values({
-orgId: org.id, clerkUserId: userId, email: email ?? "",
+orgId: org.id, clerkUserId: userId, email: memberEmail,
 firstName, lastName, role: "owner",
 });
 
 // Send welcome email â fire and forget, never block org creation
-if (email) {
-sendWelcomeEmail({ to: email, firstName: firstName ?? undefined, orgName: name })
+if (memberEmail) {
+sendWelcomeEmail({ to: memberEmail, firstName: firstName ?? undefined, orgName: name })
 .catch((err) => logger.error({ err, email }, "[orgs] welcome email failed"));
 }
 
@@ -114,10 +125,52 @@ const [org] = await db.update(organizationsTable)
 return { org };
 }
 
+  /**
+   * Resolve a member's email address from the auth store.
+   *
+   * Org member rows used to be written with an empty email when the caller did
+   * not supply one. A member without an identity is unusable for RBAC and
+   * worthless as access-review evidence, and it rendered as a blank row on
+   * Users & Roles.
+   */
+  private async resolveUserEmail(userId: string): Promise<string | null> {
+    try {
+      const { rows } = await getRateLimitPool().query<{ email: string | null }>(
+        'SELECT email FROM "user" WHERE id = $1 LIMIT 1',
+        [userId],
+      );
+      const email = rows[0]?.email?.trim();
+      return email ? email : null;
+    } catch (err) {
+      logger.error(
+        { err, userId },
+        "[orgs] could not resolve member email from auth store",
+      );
+      return null;
+    }
+  }
+
   async getOrgMembers(orgId: number) {
     const members = await db.query.orgMembersTable.findMany({
       where: eq(orgMembersTable.orgId, orgId),
     });
+
+    // Self-heal rows created before the empty-email guard below existed.
+    // Idempotent: only touches rows whose email is missing or blank.
+    for (const m of members) {
+      if (m.email?.trim()) continue;
+      const resolved = await this.resolveUserEmail(m.clerkUserId);
+      if (!resolved) continue;
+      await db
+        .update(orgMembersTable)
+        .set({ email: resolved })
+        .where(eq(orgMembersTable.id, m.id));
+      m.email = resolved;
+      logger.info(
+        { orgId, memberId: m.id },
+        "[orgs] backfilled blank org member email from auth store",
+      );
+    }
     return {
       members: members.map((m) => ({
         id: String(m.id),
