@@ -40,8 +40,22 @@ function calDate(value: unknown): string {
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 }
 
+/**
+ * Number.parseInt is deliberately forgiving: parseInt("1 OR 1=1") is 1, and
+ * parseInt("7abc") is 7. That turns a malformed identifier into a valid one and
+ * silently addresses a different row than the caller named. Identifiers are
+ * matched strictly instead.
+ */
+const STRICT_ID_RE = /^\d{1,15}$/;
+
 function calId(value: unknown): number | null {
-  const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value > 0 && value <= Number.MAX_SAFE_INTEGER ? value : null;
+  }
+  if (typeof value !== "string") return null;
+  const raw = value.trim();
+  if (!STRICT_ID_RE.test(raw)) return null;
+  const n = Number(raw);
   return Number.isInteger(n) && n > 0 && n <= Number.MAX_SAFE_INTEGER ? n : null;
 }
 

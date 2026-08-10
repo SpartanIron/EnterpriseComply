@@ -3840,7 +3840,7 @@ check("32.5 hostile patched title round-trips verbatim", row325?.title, `patched
 
 // 32.6 - a non-numeric event id cannot be smuggled into the WHERE clause
 const c326 = await calReq32(cookieOwnerA, `${calUrlA32}/1 OR 1=1`, "PATCH", { status: "cancelled" });
-check("32.6 a non-numeric event id is rejected or no-ops", c326.status !== 500, true);
+check("32.6 a non-numeric event id is rejected outright", c326.status, 400);
 const row326 = await calRow32(evId32);
 check("32.6 the existing row was not mass-updated", row326?.status, row325?.status);
 

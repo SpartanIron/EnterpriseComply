@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, UseGuards } from "@nestjs/common";
 import { RisksService } from "./risks.service";
 import { OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
@@ -65,8 +65,8 @@ export class RisksController {
 
   @Patch("orgs/:orgId/compliance-calendar/:eventId")
   @UseGuards(OrgContextGuard, RequireRole("analyst"))
-  async updateCalendarEvent(@OrgContext() ctx: OrgCtx, @Param("eventId") eventId: string, @Body() body: any) {
-    return this.risksService.updateCalendarEvent(ctx.orgId, parseInt(eventId), body);
+  async updateCalendarEvent(@OrgContext() ctx: OrgCtx, @Param("eventId", ParseIntPipe) eventId: number, @Body() body: any) {
+    return this.risksService.updateCalendarEvent(ctx.orgId, eventId, body);
   }
 
   @Get("orgs/:orgId/sub-processors")
