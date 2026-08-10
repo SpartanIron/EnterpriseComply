@@ -38,8 +38,9 @@ export class EvidenceController {
   @UseGuards(RequireRole("compliance_manager"))
   deleteEvidence(
     @OrgContext() ctx: OrgCtx,
+    @ClerkUserId() userId: string,
     @Param("id", ParseIntPipe) evidenceId: number,
   ) {
-    return this.evidenceService.deleteEvidence(ctx.orgId, evidenceId);
+    return this.evidenceService.deleteEvidence(ctx.orgId, evidenceId, userId);
   }
 }

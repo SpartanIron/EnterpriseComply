@@ -3980,6 +3980,112 @@ if (ssrf33) {
   check("33.7 IPv6 link-local is in the block list", ssrf33.isBlockedIPv6("fe80::1"), true);
 }
 
+
+section("SECTION 34 - EVIDENCE: URL allow-list and lifecycle audit trail");
+
+const evUrlA34 = `/orgs/${state.orgAId}/evidence`;
+
+async function evReq34(cookie, url, method, body) {
+  try {
+    const r = await fetch(`${BASE}${url}`, {
+      method,
+      headers: { Cookie: cookie, "Content-Type": "application/json", Host: new URL(BASE).host },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    let j = null;
+    try { j = await r.json(); } catch {}
+    return { status: r.status, body: j };
+  } catch {
+    return { status: 0, body: null };
+  }
+}
+const evRow34 = async (id) => {
+  const r = await db.query(`SELECT * FROM org_evidence WHERE id = $1`, [id]).catch(() => ({ rows: [] }));
+  return r.rows[0] ?? null;
+};
+const auditFor34 = async (action, resourceId) => {
+  const r = await db
+    .query(
+      `SELECT * FROM org_audit_log WHERE org_id = $1 AND action = $2 AND resource_id = $3 ORDER BY id DESC LIMIT 1`,
+      [state.orgAId, action, String(resourceId)],
+    )
+    .catch(() => ({ rows: [] }));
+  return r.rows[0] ?? null;
+};
+
+const makeEvidence34 = (url) => ({
+  title: "SSP snapshot",
+  description: "regression fixture",
+  source: "manual",
+  type: "document",
+  ucoControlId: "UCO-AC-001",
+  collectedAt: new Date().toISOString(),
+  url,
+});
+
+// 34.1 - a javascript: URL must never be stored; it would execute in the
+//        browser of every other member of the org, auditors included.
+const e341 = await evReq34(cookieOwnerA, evUrlA34, "POST", makeEvidence34("javascript:alert(document.cookie)"));
+check("34.1 evidence create succeeds", [200, 201].includes(e341.status), true);
+const id341 = e341.body?.id ?? null;
+const row341 = id341 ? await evRow34(id341) : null;
+check("34.1 a javascript: URL is not stored", row341?.url, null);
+
+// 34.2 - data: URLs are the same class of problem
+const e342 = await evReq34(cookieOwnerA, evUrlA34, "POST", makeEvidence34("data:text/html,<script>alert(1)</script>"));
+const id342 = e342.body?.id ?? null;
+const row342 = id342 ? await evRow34(id342) : null;
+check("34.2 a data: URL is not stored", row342?.url, null);
+
+// 34.3 - and a legitimate https link still works unchanged
+const e343 = await evReq34(cookieOwnerA, evUrlA34, "POST", makeEvidence34("https://evidence.example.com/report.pdf?v=2"));
+const id343 = e343.body?.id ?? null;
+const row343 = id343 ? await evRow34(id343) : null;
+check("34.3 an https URL is preserved", row343?.url, "https://evidence.example.com/report.pdf?v=2");
+
+// 34.4 - creating evidence is recorded in the append-only audit log
+const audit344 = id343 ? await auditFor34("evidence.created", id343) : null;
+check("34.4 evidence creation writes an audit entry", audit344 !== null, true);
+check("34.4 the audit entry names the evidence resource", audit344?.resource, "evidence");
+check(
+  "34.4 the audit entry carries the content hash",
+  typeof (audit344?.details ?? {}).contentHash === "string",
+  true,
+);
+
+// 34.5 - deleting evidence is a destructive compliance action and must leave a
+//        durable snapshot behind, not just vanish.
+const e345 = await evReq34(cookieOwnerA, `${evUrlA34}/${id343}`, "DELETE");
+check("34.5 evidence delete succeeds", [200, 201, 204].includes(e345.status), true);
+check("34.5 the evidence row is gone", await evRow34(id343), null);
+const audit345 = await auditFor34("evidence.deleted", id343);
+check("34.5 deletion writes an audit entry", audit345 !== null, true);
+check("34.5 the deletion snapshot keeps the title", (audit345?.details ?? {}).title, "SSP snapshot");
+check(
+  "34.5 the deletion snapshot keeps the content hash",
+  typeof (audit345?.details ?? {}).contentHash === "string",
+  true,
+);
+
+// 34.6 - the deletion record itself is immutable (WORM)
+let worm346 = "no-error";
+try {
+  await db.query(`DELETE FROM org_audit_log WHERE id = $1`, [audit345?.id]);
+} catch (err) {
+  worm346 = "blocked";
+}
+check("34.6 the deletion audit record cannot itself be deleted", worm346, "blocked");
+
+// 34.7 - org B cannot delete org A's evidence
+const e347 = await evReq34(cookieOwnerB, `/orgs/${state.orgBId}/evidence/${id341}`, "DELETE");
+check("34.7 cross-org delete does not 500", e347.status !== 500, true);
+check("34.7 org A's evidence survives an org B delete", (await evRow34(id341)) !== null, true);
+
+// cleanup the fixtures this section created
+for (const id of [id341, id342]) {
+  if (id) await db.query(`DELETE FROM org_evidence WHERE id = $1`, [id]).catch(() => {});
+}
+
 await cleanup();
 
 const bar = "═".repeat(70);

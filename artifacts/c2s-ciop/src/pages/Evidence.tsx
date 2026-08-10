@@ -3,6 +3,22 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import { PageHeader, EmptyState, PrimaryButton, SectionLabel } from "@/components/ui/PageHeader";
 
+/**
+ * Defence in depth against stored XSS. The API already rejects anything that is
+ * not absolute http(s), but records written before that guard existed are still
+ * in the table, so never hand an untrusted scheme to an anchor href.
+ */
+function safeHref(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+
 const SOURCE_LABEL: Record<string, { label: string; cls: string }> = {
   auto: { label: "Automated", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
   manual: { label: "Manual", cls: "bg-slate-100 text-slate-600 ring-1 ring-slate-200" },
@@ -287,7 +303,7 @@ function EvidenceTable({ items, onDelete }: { items: any[]; onDelete: (id: numbe
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-slate-900 text-sm leading-snug">{e.title}</p>
                         {e.url && (
-                          <a href={e.url} target="_blank" rel="noopener noreferrer"
+                          <a href={safeHref(e.url)} target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors flex-shrink-0"
                             title={e.url}>
                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

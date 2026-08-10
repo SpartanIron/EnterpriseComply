@@ -2,6 +2,36 @@ import { Injectable } from "@nestjs/common";
 import { createHash } from "crypto";
 import { db, orgEvidenceTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { writeAuditLog } from "../../lib/audit-log.js";
+
+/**
+ * SECURITY - stored XSS (OWASP A03:2021).
+ * `url` is operator-supplied and is rendered as an anchor href in the evidence
+ * table. With no scheme allow-list, a `javascript:` or `data:text/html` URL
+ * saved by one member runs in the browser of every other member of the org -
+ * including the external auditors who are deliberately granted read access.
+ * Only absolute http(s) URLs are stored; anything else is dropped.
+ */
+const EVIDENCE_URL_SCHEMES = new Set(["http:", "https:"]);
+
+function safeEvidenceUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const raw = value.trim();
+  if (!raw || raw.length > 2048) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return null;
+  }
+  return EVIDENCE_URL_SCHEMES.has(parsed.protocol) ? parsed.toString() : null;
+}
+
+function boundedText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.replace(/\u0000/g, "").trim();
+  return trimmed ? trimmed.slice(0, max) : null;
+}
 
 /**
  * Phase 3A — Commercial Evidence Locker
@@ -96,9 +126,9 @@ export class EvidenceService {
         description,
         type: (body.type ?? "document") as any,
         source: source as any,
-        url: body.url ?? null,
-        filename: body.filename ?? null,
-        mimeType: body.mimeType ?? null,
+        url: safeEvidenceUrl(body.url),
+        filename: boundedText(body.filename, 512),
+        mimeType: boundedText(body.mimeType, 255),
         uploadedBy: clerkUserId,
         collectedAt: new Date(collectedAt),
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
@@ -106,13 +136,53 @@ export class EvidenceService {
       })
       .returning();
 
+    // Evidence lifecycle events must be traceable (SOC 2 CC7.3 / NIST AU-2).
+    await writeAuditLog(
+      orgId,
+      "evidence.created",
+      "evidence",
+      String(row.id),
+      {
+        title: row.title,
+        ucoControlId: row.ucoControlId,
+        source: row.source,
+        contentHash,
+      },
+      clerkUserId,
+    );
+
     return { ...row, contentHash };
   }
 
-  async deleteEvidence(orgId: number, evidenceId: number) {
+  async deleteEvidence(orgId: number, evidenceId: number, clerkUserId?: string) {
+    // Snapshot before removal: a compliance artefact must never be able to
+    // disappear without leaving a durable record in the append-only audit log.
+    const existing = await db.query.orgEvidenceTable.findFirst({
+      where: and(eq(orgEvidenceTable.orgId, orgId), eq(orgEvidenceTable.id, evidenceId)),
+    });
+
     await db
       .delete(orgEvidenceTable)
       .where(and(eq(orgEvidenceTable.orgId, orgId), eq(orgEvidenceTable.id, evidenceId)));
+
+    if (existing) {
+      const meta = existing.metadata as Record<string, unknown> | null;
+      await writeAuditLog(
+        orgId,
+        "evidence.deleted",
+        "evidence",
+        String(evidenceId),
+        {
+          title: existing.title,
+          ucoControlId: existing.ucoControlId,
+          source: existing.source,
+          collectedAt: existing.collectedAt,
+          contentHash: meta?.contentHash ?? null,
+        },
+        clerkUserId,
+      );
+    }
+
     return { success: true };
   }
 

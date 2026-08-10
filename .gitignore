@@ -52,3 +52,22 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# --- secrets (never commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/public/**/*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+service-account*.json
+gcp-credentials*.json
+aws-credentials*
+.npmrc
+secrets/
