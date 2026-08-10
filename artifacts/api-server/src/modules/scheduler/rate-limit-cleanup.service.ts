@@ -31,6 +31,12 @@ import { Cron } from "@nestjs/schedule";
 import type { Pool } from "pg";
 import { getRateLimitPool } from "../../lib/pg-pool.js";
 import { SlackAlertService } from "../notifications/slack-alert.service.js";
+import {
+  THROTTLE_HITS_CAP_SQL,
+  IP_FAILURE_CAP_SQL,
+  THROTTLE_HITS_PRUNE_SQL,
+  IP_FAILURE_PRUNE_SQL,
+} from "./cleanup-sql.js";
 
 // Safety buffer for magic-link rows: 60 seconds past full expiry.
 const MAGIC_LINK_SAFETY_MS = BigInt(60 * 1000);
@@ -366,18 +372,12 @@ export class RateLimitCleanupService implements OnModuleInit {
 
       // Cap throttle_hits at 100,000 rows — delete oldest first.
       await pool.query(
-        `DELETE FROM throttle_hits WHERE id IN (
-           SELECT id FROM throttle_hits ORDER BY created_at ASC
-           LIMIT GREATEST(0, (SELECT COUNT(*) FROM throttle_hits) - 100000)
-         )`,
+        THROTTLE_HITS_CAP_SQL,
       );
 
       // Cap ip_failure_tracker at 50,000 rows — delete oldest first.
       await pool.query(
-        `DELETE FROM ip_failure_tracker WHERE id IN (
-           SELECT id FROM ip_failure_tracker ORDER BY last_attempt_at ASC
-           LIMIT GREATEST(0, (SELECT COUNT(*) FROM ip_failure_tracker) - 50000)
-         )`,
+        IP_FAILURE_CAP_SQL,
       );
 
       // ── throttle_hits ────────────────────────────────────────────────────────
@@ -390,13 +390,7 @@ export class RateLimitCleanupService implements OnModuleInit {
       // Note: block_expire_at defaults to 0 (no block), so 0 < oneDayAgoMs
       // is always true for unblocked rows — the AND predicate is safe.
       const throttleResult = await pool.query<{ count: string }>(
-        `WITH deleted AS (
-           DELETE FROM throttle_hits
-           WHERE expire_at       < $1
-             AND block_expire_at < $1
-           RETURNING 1
-         )
-         SELECT count(*)::text AS count FROM deleted`,
+        THROTTLE_HITS_PRUNE_SQL,
         [oneDayAgoMs],
       );
       const throttleDeleted = throttleResult.rows[0]?.count ?? "0";
@@ -407,13 +401,7 @@ export class RateLimitCleanupService implements OnModuleInit {
       //   • window_start  < now() - 1 day  (failure window also well expired)
       // This guarantees no active block or live window is removed.
       const ipResult = await pool.query<{ count: string }>(
-        `WITH deleted AS (
-           DELETE FROM ip_failure_tracker
-           WHERE blocked_until < $1
-             AND window_start  < $1
-           RETURNING 1
-         )
-         SELECT count(*)::text AS count FROM deleted`,
+        IP_FAILURE_PRUNE_SQL,
         [oneDayAgoMs],
       );
       const ipDeleted = ipResult.rows[0]?.count ?? "0";

@@ -26,7 +26,9 @@ import {
   decryptCredential,
   isEncryptedCredential,
   ENC_PREFIX,
+  keyFingerprint,
 } from "../src/lib/credential-crypto.ts";
+import { SCHEDULER_MAINTENANCE_SQL } from "../src/modules/scheduler/cleanup-sql.ts";
 import pg from "pg";
 
 const { Client } = pg;
@@ -131,6 +133,71 @@ async function seed() {
     const staleIds = stale.rows.map((r) => r.id);
     await db.query(`DELETE FROM org_members WHERE clerk_user_id = ANY($1::text[])`, [staleIds]).catch(() => {});
     await db.query(`DELETE FROM "user" WHERE id = ANY($1::text[])`, [staleIds]).catch(() => {});
+  }
+
+  // -- Pre-seed hygiene (2): make the suite hermetic ------------------------
+  // Orgs and global rate-limit state are NOT torn down by cleanup() when a
+  // previous run crashed, and the throttle / IP-block / scheduler-health
+  // tables are global rather than org-scoped. Left alone they accumulate and
+  // make repeated local runs fail (429 / 503) even though the code is fine.
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && process.env.TEST_SUITE_FORCE_RESET !== "1") {
+    console.warn("[setup] NODE_ENV=production - skipping destructive reset");
+  } else {
+    for (const t of [
+      "throttle_hits",
+      "ip_failure_tracker",
+      "ip_magic_link_rate",
+    ]) {
+      await db.query(`TRUNCATE TABLE ${t}`).catch(() => {});
+    }
+
+    // Orgs left behind by an interrupted run. Dependent rows are removed by
+    // walking every table that carries an org_id, so new tables are covered
+    // automatically and this never drifts out of date.
+    const orphanOrgs = await db
+      .query(
+        `SELECT id FROM organizations
+          WHERE slug LIKE 'test-iso-%' OR name LIKE 'Admin Test Org %'
+             OR name LIKE 'Test Org A %' OR name LIKE 'Test Org B %'`,
+      )
+      .catch(() => ({ rows: [] }));
+    const orphanIds = orphanOrgs.rows.map((r) => r.id);
+    if (orphanIds.length > 0) {
+      const scoped = await db
+        .query(
+          `SELECT table_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND column_name = 'org_id'`,
+        )
+        .catch(() => ({ rows: [] }));
+      for (const { table_name } of scoped.rows) {
+        await db
+          .query(`DELETE FROM "${table_name}" WHERE org_id = ANY($1::int[])`, [orphanIds])
+          .catch(() => {});
+      }
+      await db
+        .query(`DELETE FROM organizations WHERE id = ANY($1::int[])`, [orphanIds])
+        .catch(() => {});
+      console.log(`[setup] purged ${orphanIds.length} orphaned test org(s)`);
+    }
+
+    // Users/sessions left behind under the reserved test domain.
+    const orphanUsers = await db
+      .query(`SELECT id FROM "user" WHERE email LIKE '%@test.invalid'`)
+      .catch(() => ({ rows: [] }));
+    const orphanUserIds = orphanUsers.rows.map((r) => r.id);
+    if (orphanUserIds.length > 0) {
+      await db
+        .query(`DELETE FROM session WHERE "userId" = ANY($1::text[])`, [orphanUserIds])
+        .catch(() => {});
+      await db
+        .query(`DELETE FROM org_members WHERE clerk_user_id = ANY($1::text[])`, [orphanUserIds])
+        .catch(() => {});
+      await db
+        .query(`DELETE FROM "user" WHERE id = ANY($1::text[])`, [orphanUserIds])
+        .catch(() => {});
+      console.log(`[setup] purged ${orphanUserIds.length} orphaned test user(s)`);
+    }
   }
 
   // ── Create two isolated test orgs ─────────────────────────────────────────
@@ -3326,6 +3393,189 @@ async function runMagicLinkCleanup(cutoffMs) {
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
+
+
+// —— Section 28: Credential key rotation — audit trail & retired keys ————
+
+section("SECTION 28 — CREDENTIAL ROTATION: audit trail, fingerprints, retired-key reuse");
+
+const slug28    = slug();
+const now28     = new Date().toISOString();
+const exp28     = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+const userSa28  = uid();
+const sessSa28  = `sess-sa28-${uid()}`;
+const tokSa28   = `tok-sa28-${uid()}`;
+const userNsa28 = uid();
+const sessNsa28 = `sess-nsa28-${uid()}`;
+const tokNsa28  = `tok-nsa28-${uid()}`;
+
+const org28Res = await db.query(
+  `INSERT INTO organizations (name, slug, industry, size, plan)
+   VALUES ($1, $2, 'technology', '11-50', 'enterprise') RETURNING id`,
+  [`Admin Test Org ${slug28}`, slug28],
+);
+const org28Id = org28Res.rows[0].id;
+
+for (const [id, name, email] of [
+  [userSa28,  "Super Admin 28",    `sa-28-${slug28}@test.invalid`],
+  [userNsa28, "Non SuperAdmin 28", `nsa-28-${slug28}@test.invalid`],
+]) {
+  await db.query(
+    `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+     VALUES ($1, $2, $3, true, $4::timestamptz, $4::timestamptz) ON CONFLICT DO NOTHING`,
+    [id, name, email, now28],
+  );
+}
+for (const [id, token, userId] of [
+  [sessSa28,  tokSa28,  userSa28],
+  [sessNsa28, tokNsa28, userNsa28],
+]) {
+  await db.query(
+    `INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "userId")
+     VALUES ($1, $2::timestamptz, $3, $4::timestamptz, $4::timestamptz, $5) ON CONFLICT DO NOTHING`,
+    [id, exp28, token, now28, userId],
+  );
+}
+for (const [userId, role, email] of [
+  [userSa28,  "super_admin", `sa-28-${slug28}@test.invalid`],
+  [userNsa28, "owner",       `nsa-28-${slug28}@test.invalid`],
+]) {
+  await db.query(
+    `INSERT INTO org_members (org_id, clerk_user_id, role, email)
+     VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+    [org28Id, userId, role, email],
+  );
+}
+
+const cookieSa28  = cookieHdr(tokSa28);
+const cookieNsa28 = cookieHdr(tokNsa28);
+
+// A credential encrypted under the CURRENT key, so a dry run has real work to count.
+await db.query(
+  `INSERT INTO org_integrations (org_id, integration_key, name, status, access_token)
+   VALUES ($1, $2, 'Rotation Fixture', 'connected', $3)`,
+  [org28Id, `rot-fixture-${slug28}`, encryptCredential(`rot-secret-${uid()}`)],
+).catch(() => {});
+
+const keyA28       = randomBytes(32).toString("hex");
+const keyB28       = randomBytes(32).toString("hex");
+const retiredKey28 = randomBytes(32).toString("hex");
+
+async function rotate28(cookie, body) {
+  try {
+    const r = await fetch(`${BASE}/admin/credentials/rotate-key`, {
+      method: "POST",
+      headers: {
+        Cookie: cookie,
+        "Content-Type": "application/json",
+        Host: new URL(BASE).host,
+      },
+      body: JSON.stringify(body),
+    });
+    let json = null;
+    try { json = await r.json(); } catch { /* non-JSON error body */ }
+    return { status: r.status, json };
+  } catch {
+    return { status: 0, json: null };
+  }
+}
+
+// 28.1 — a non-super-admin must never be able to touch key material
+const r281 = await rotate28(cookieNsa28, { newKeyHex: keyA28, oldKeyHex: keyB28, dryRun: true });
+check("28.1 non-super_admin POST rotate-key is rejected", r281.status, 403);
+
+// 28.2 — malformed key material is rejected before anything is read
+const r282 = await rotate28(cookieSa28, { newKeyHex: "not-a-hex-key", dryRun: true });
+check("28.2 malformed newKeyHex is rejected", r282.status, 400);
+
+// 28.3 — rotating a key onto itself must fail loudly, not report success
+const r283 = await rotate28(cookieSa28, { newKeyHex: keyA28, oldKeyHex: keyA28, dryRun: true });
+check("28.3 newKeyHex identical to oldKeyHex is rejected", r283.status, 400);
+
+// 28.4 — a dry run reports but writes nothing at all
+const r284 = await rotate28(cookieSa28, { newKeyHex: keyA28, oldKeyHex: keyB28, dryRun: true });
+check("28.4 dry run succeeds", r284.status, 200, 201);
+check("28.4 dry run is flagged as a dry run", r284.json?.dryRun === true, true);
+check(
+  "28.4 dry run returns a summary",
+  typeof r284.json?.summary === "object" && r284.json?.summary !== null,
+  true,
+);
+const audit284 = await db
+  .query(
+    `SELECT count(*)::int AS n FROM org_audit_log
+      WHERE action = 'credential_key.rotated' AND org_id = $1`,
+    [org28Id],
+  )
+  .catch(() => ({ rows: [{ n: -1 }] }));
+check("28.4 dry run writes no audit rows", audit284.rows[0].n, 0);
+
+// 28.5 — a key retired by an earlier rotation can never be put back into service,
+//        even if an operator still has a backup copy of it lying around.
+await db
+  .query(
+    `INSERT INTO org_audit_log (org_id, action, resource, details, actor_id)
+     VALUES ($1, 'credential_key.rotated', 'integration_credentials', $2::jsonb, $3)`,
+    [
+      org28Id,
+      JSON.stringify({
+        oldKeyFingerprint: keyFingerprint(retiredKey28),
+        newKeyFingerprint: keyFingerprint(keyA28),
+        rowsRotated: 1,
+      }),
+      userSa28,
+    ],
+  )
+  .catch(() => {});
+const r285 = await rotate28(cookieSa28, { newKeyHex: retiredKey28, oldKeyHex: keyB28, dryRun: true });
+check("28.5 a previously retired key is refused as the new key", r285.status, 400);
+
+// 28.6 — an unrelated fresh key is still accepted (the check is not over-broad)
+const r286 = await rotate28(cookieSa28, {
+  newKeyHex: randomBytes(32).toString("hex"),
+  oldKeyHex: keyB28,
+  dryRun: true,
+});
+check("28.6 a fresh key is still accepted", r286.status, 200, 201);
+
+// 28.7 — fingerprints are one-way and never carry key material
+check(
+  "28.7 fingerprint is a truncated sha256, never the key itself",
+  keyFingerprint(keyA28).startsWith("sha256:") && !keyFingerprint(keyA28).includes(keyA28),
+  true,
+);
+check(
+  "28.7 fingerprint is stable for the same key",
+  keyFingerprint(keyA28) === keyFingerprint(keyA28),
+  true,
+);
+check(
+  "28.7 different keys produce different fingerprints",
+  keyFingerprint(keyA28) !== keyFingerprint(keyB28),
+  true,
+);
+
+
+// —— Section 29: Scheduler SQL contract ————————————————————————
+
+section("SECTION 29 — SCHEDULER SQL CONTRACT: maintenance statements match the live schema");
+
+// The nightly job used to reference columns that do not exist (id, created_at,
+// last_attempt_at). It threw on its first statement every night while the tests
+// kept passing, because the tests re-implemented the SQL instead of running it.
+// EXPLAIN executes the planner against the real schema without touching data,
+// so a column rename can never silently break the scheduler again.
+for (const stmt of SCHEDULER_MAINTENANCE_SQL) {
+  let planned = true;
+  let why = "";
+  try {
+    await db.query(`EXPLAIN ${stmt.sql}`, stmt.params);
+  } catch (e) {
+    planned = false;
+    why = ` -> ${e.message}`;
+  }
+  check(`29.1 ${stmt.name} plans against the live schema${why}`, planned, true);
+}
 
 await cleanup();
 
