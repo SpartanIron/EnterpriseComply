@@ -1,0 +1,143 @@
+# EnterpriseComply — Security Architecture
+
+Last reviewed: 2026-08-10. Owner: Security Engineering.
+
+This document describes how EnterpriseComply is built and where the trust
+boundaries are. It is written to be handed to a customer's security team
+without redaction: it contains no secrets, no internal hostnames beyond the
+ones already published in DNS, and no credentials.
+
+## 1. System overview
+
+EnterpriseComply is a multi-tenant SaaS GRC platform. A single application
+serves every tenant; tenants are separated by data, not by deployment.
+
+```
+                    ┌──────────────────────────────────────────┐
+   End user ─TLS1.3─▶│ Cloudflare edge                          │
+   (browser)         │  WAF · DDoS · bot control · rate limits  │
+                     │  TLS termination · HSTS · HTTP/2 + /3    │
+                     └────────────────┬─────────────────────────┘
+                                      │ TLS (origin pull)
+                     ┌────────────────▼─────────────────────────┐
+                     │ Railway — US West                        │
+                     │                                          │
+                     │  ┌────────────────────────────────────┐  │
+                     │  │ EnterpriseComply service           │  │
+                     │  │  · React SPA (static, Vite build)  │  │
+                     │  │  · NestJS API  (/api/*)            │  │
+                     │  │  · helmet CSP/HSTS, CORS allowlist │  │
+                     │  │  · RateLimitGuard (global)         │  │
+                     │  │  · ClerkAuthGuard → OrgContextGuard│  │
+                     │  │    → RequireRole → RequirePlan     │  │
+                     │  │  · AuditInterceptor (global)       │  │
+                     │  │  · IdleTimeoutMiddleware (30 min)  │  │
+                     │  └───────────────┬────────────────────┘  │
+                     │                  │ private network       │
+                     │                  │ *.railway.internal    │
+                     │  ┌───────────────▼────────────────────┐  │
+                     │  │ PostgreSQL 16                      │  │
+                     │  │  · row level security per tenant   │  │
+                     │  │  · WORM triggers (audit, evidence) │  │
+                     │  │  · hash-chain evidence ledger      │  │
+                     │  │  · PITR + daily volume backups     │  │
+                     │  └────────────────────────────────────┘  │
+                     └──────────────────┬───────────────────────┘
+                                        │ egress, SSRF-guarded,
+                                        │ HTTPS only, IP-pinned
+                     ┌──────────────────▼───────────────────────┐
+                     │ Customer-authorised integrations         │
+                     │ AWS · GitHub · Okta · Google Workspace · │
+                     │ Cloudflare · Railway · Vault · 15 more   │
+                     └──────────────────────────────────────────┘
+```
+
+## 2. Trust boundaries
+
+| # | Boundary | Crossed by | Control |
+|---|----------|-----------|---------|
+| 1 | Internet → edge | Every request | Cloudflare WAF, TLS 1.2+, HSTS, bot management, edge rate limits |
+| 2 | Edge → origin | Proxied requests | Cloudflare proxy on both hostnames; origin reachable only over HTTPS |
+| 3 | Anonymous → authenticated | Sign-in | better-auth magic link, 15-minute single-use token, invite-gated. Password authentication is disabled entirely |
+| 4 | Authenticated → tenant data | Every API call | `OrgContextGuard` resolves membership, rejects URL org IDs that do not match the caller's membership, then RBAC and plan gates |
+| 5 | Tenant A → tenant B | Never permitted | Application-layer org predicates on every query, plus PostgreSQL RLS policies bound to `app.current_org_id` |
+| 6 | Application → third party | Integration sync | `guardedFetch` — HTTPS only, DNS re-resolution, private/loopback/link-local/CGNAT rejected, connection pinned to the validated IP |
+| 7 | Operator → production | Deploys and admin | GitHub branch protection, CI gates, Railway deploy from `main` only, super-admin actions audited |
+
+## 3. Identity and access
+
+**Authentication.** Passwordless magic link via better-auth. Tokens expire in
+15 minutes and are single use (NIST IA-5(1)). Email/password sign-in is
+disabled in configuration, which removes the entire credential-stuffing
+surface. Self-service organisation creation is off, so accounts only exist by
+invitation (NIST AC-2).
+
+**Sessions.** 8-hour absolute lifetime with `updateAge: 0`, so a session
+cannot be extended indefinitely by activity. Cookies are `httpOnly`,
+`secure`, `SameSite=Lax` and carry the `__Secure-` prefix. A 30-minute idle
+timeout middleware applies to every API route (NIST AC-12).
+
+**Multi-factor.** TOTP (30-second period, 6 digits) with 10 single-use backup
+codes. Enforcement is a per-organisation policy: enabling it starts a
+configurable grace window (default 14 days) during which members are warned
+via an `X-MFA-Enrollment-Deadline` header, after which unenrolled members are
+refused with a machine-readable `mfa_enrollment_required` error while the
+enrolment route stays reachable.
+
+**SSO.** SAML 2.0 per organisation, gated to the Enterprise plan. Per-org SP
+metadata is published for the IdP; assertions are validated before a session
+is issued.
+
+**Authorisation.** Six roles in ascending order: `viewer`, `analyst`,
+`compliance_manager`, `admin`, `owner`, and the platform-level `super_admin`.
+Guards compose as authentication → org context → role → plan.
+
+## 4. Data protection
+
+**In transit.** TLS 1.2+ at the edge with HTTP/2 and HTTP/3, HSTS
+`max-age=31536000; includeSubDomains`, and a permanent redirect from HTTP.
+Application-to-database traffic stays on Railway's private network.
+
+**At rest.** Railway-managed volume encryption for PostgreSQL. Integration
+credentials are additionally encrypted at the application layer with
+AES-256-GCM under a dedicated key (`enc:v1:` envelope, random IV per value,
+authentication tag enforced), with a transactional, idempotent key-rotation
+endpoint and audit entries for every rotation.
+
+**Tenant isolation.** Three independent layers. The application scopes every
+query by `org_id`; PostgreSQL enforces `tenant_isolation` RLS policies on all
+51 tenant tables; and a least-privilege database role removes the ability to
+bypass those policies. See CONTROLS.md for the current enforcement state of
+layer three.
+
+**Integrity.** The audit log and evidence records are Write-Once-Read-Many at
+the database layer: triggers reject `UPDATE` and `DELETE` outright. Evidence
+removal is a retention state change, never a destructive operation, and a
+`legal_hold` flag refuses removal entirely. Every evidence write is appended
+to a SHA-256 hash chain (`evidence_ledger`) that an auditor can verify
+independently through `GET /api/orgs/:orgId/evidence/ledger/verify`.
+
+## 5. Egress and integrations
+
+All 22 integration connectors route through a single hardened fetch. The
+guard resolves DNS, rejects any address in loopback, RFC1918, CGNAT,
+link-local (including the cloud metadata endpoints), IPv6 loopback, ULA and
+link-local ranges, refuses plaintext HTTP, and then pins the connection to
+the exact address it validated so a DNS rebind between check and connect
+cannot redirect the request.
+
+## 6. What this architecture does not yet do
+
+Stated plainly, because a security reviewer will find these anyway:
+
+- The application currently connects to PostgreSQL as a superuser, which
+  carries `BYPASSRLS`. The RLS policies are installed and correct but are not
+  the enforcing control until the least-privilege role cutover completes.
+- A single service replica in a single region. There is no automated
+  failover; recovery is a redeploy.
+- Evidence is stored as URL and metadata, not as uploaded bytes. There is no
+  file upload path, and therefore no malware scanning requirement today. The
+  planned upgrade is object storage with S3 Object Lock.
+- The Cloudflare edge Content-Security-Policy permits `unsafe-inline` and
+  `unsafe-eval` for scripts. The origin policy is stricter; the edge policy
+  wins.
