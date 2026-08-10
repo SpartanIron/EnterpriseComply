@@ -648,6 +648,19 @@ export default function Integrations() {
     },
   });
 
+  const disconnectMutation = useMutation({
+    mutationFn: (integrationKey: string) =>
+      apiFetch(`/orgs/${orgId}/integrations/${integrationKey}/disconnect`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-integrations"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["org-controls"] });
+      qc.invalidateQueries({ queryKey: ["evidence"] });
+    },
+  });
+
   const [demoConnecting, setDemoConnecting] = useState<string | null>(null);
 
   const handleConnect = async (key: string) => {
@@ -684,7 +697,10 @@ export default function Integrations() {
 
   const integrations = data?.integrations ?? [];
   const connectedList = integrations.filter((i) => i.connection?.status === "connected" || i.connection?.status === "degraded");
-  const availableList = integrations.filter((i) => !i.connection && i.available);
+  const availableList = integrations.filter(
+    (i) =>
+      (!i.connection || i.connection.status === "disconnected") && i.available,
+  );
   const apiComingSoon = integrations.filter((i) => !i.connection && !i.available);
 
   const connectedKeys = new Set(integrations.map(i => i.key));
@@ -877,7 +893,10 @@ export default function Integrations() {
               <ConnectedCard key={i.key} integration={i}
                 orgId={orgId}
                 onSync={() => syncMutation.mutate(i.key)}
-                syncing={syncMutation.isPending && syncMutation.variables === i.key} />
+                syncing={syncMutation.isPending && syncMutation.variables === i.key}
+                onReconnect={() => handleConnect(i.key)}
+                onDisconnect={() => disconnectMutation.mutate(i.key)}
+                disconnecting={disconnectMutation.isPending && disconnectMutation.variables === i.key} />
             ))}
           </div>
         </div>
@@ -920,7 +939,7 @@ export default function Integrations() {
 
 const VERIFIABLE_INTEGRATIONS = ["railway", "replit", "betterauth"];
 
-function ConnectedCard({ integration, onSync, syncing, orgId }: { integration: any; onSync: () => void; syncing: boolean; orgId?: number }) {
+function ConnectedCard({ integration, onSync, syncing, orgId, onReconnect, onDisconnect, disconnecting }: { integration: any; onSync: () => void; syncing: boolean; orgId?: number; onReconnect?: () => void; onDisconnect?: () => void; disconnecting?: boolean }) {
   const conn = integration.connection;
   const lastSync = conn?.lastSyncAt ? new Date(conn.lastSyncAt).toLocaleString() : "Never";
   const isRealIntegration = ["github", "aws", "okta", "cloudflare", "railway", "replit", "betterauth"].includes(integration.key);
@@ -928,6 +947,7 @@ function ConnectedCard({ integration, onSync, syncing, orgId }: { integration: a
   const isDegraded = conn?.status === "degraded";
 
   const [verifying, setVerifying] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ ok: boolean; latencyMs: number; error?: string } | null>(null);
 
   const handleVerify = async () => {
@@ -973,6 +993,11 @@ function ConnectedCard({ integration, onSync, syncing, orgId }: { integration: a
           </div>
           {conn?.accountLogin && <p className="text-xs text-slate-500">@{conn.accountLogin}</p>}
           <p className="text-xs text-slate-400 mt-0.5">Last sync: {lastSync} &middot; {conn?.evidenceCollected ?? 0} evidence items</p>
+          {conn?.lastSyncError && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1 break-words" title={conn.lastSyncError}>
+              {conn.lastSyncError}
+            </p>
+          )}
           {verifyResult && (
             <p className={`text-xs mt-1 font-medium ${verifyResult.ok ? "text-green-600" : "text-red-600"}`}>
               {verifyResult.ok
@@ -996,6 +1021,44 @@ function ConnectedCard({ integration, onSync, syncing, orgId }: { integration: a
                 </>
               ) : "Verify"}
             </button>
+          )}
+          {onReconnect && (
+            <button
+              onClick={onReconnect}
+              disabled={disconnecting}
+              className="px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50 w-full"
+            >
+              Reconnect
+            </button>
+          )}
+          {onDisconnect && !confirmDisconnect && (
+            <button
+              onClick={() => setConfirmDisconnect(true)}
+              disabled={disconnecting}
+              className="px-3 py-1.5 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 disabled:opacity-50 w-full"
+            >
+              Disconnect
+            </button>
+          )}
+          {onDisconnect && confirmDisconnect && (
+            <div className="w-full">
+              <p className="text-xs text-red-700 mb-1 text-right">Revoke stored credentials?</p>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => { setConfirmDisconnect(false); onDisconnect(); }}
+                  disabled={disconnecting}
+                  className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 flex-1"
+                >
+                  {disconnecting ? "Working..." : "Confirm"}
+                </button>
+                <button
+                  onClick={() => setConfirmDisconnect(false)}
+                  className="px-3 py-1.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 flex-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

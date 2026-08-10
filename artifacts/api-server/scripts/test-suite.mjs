@@ -5006,6 +5006,46 @@ section("39. Connector integrity, evidence attribution, and client-side roles");
 }
 
 
+// =============================================================
+section("40. Integration lifecycle: disconnect, reconnect, and honest verify");
+// Static guards. A connector you cannot rotate or revoke is an audit finding,
+// and a Verify button that can only ever say yes is worse than none at all.
+{
+  const fsx = await import("node:fs");
+  const ROOT = new URL("../../../", import.meta.url);
+  const read = (p) => fsx.readFileSync(new URL(p, ROOT), "utf8");
+  const svc = read("artifacts/api-server/src/modules/integrations/integrations.service.ts");
+  const ctl = read("artifacts/api-server/src/modules/integrations/integrations.controller.ts");
+  const ui = read("artifacts/c2s-ciop/src/pages/Integrations.tsx");
+  const dStart = svc.indexOf("async disconnectIntegration(");
+  const disc = dStart < 0 ? "" : svc.slice(dStart, dStart + 2200);
+
+  check("40.1 disconnect route exists and is owner-guarded",
+    /@Post\("orgs\/:orgId\/integrations\/:key\/disconnect"\)\s*\n\s*@UseGuards\(OrgContextGuard, RequireRole\("owner"\)\)/.test(ctl), true);
+  check("40.2 disconnect revokes the stored credential",
+    disc.includes('status: "disconnected"') &&
+    disc.includes("accessToken: null") &&
+    disc.includes("refreshToken: null") &&
+    disc.includes("config: {}"), true);
+  check("40.3 disconnect is recorded in the audit log",
+    disc.includes('"integration.disconnected"'), true);
+  check("40.4 disconnect never deletes the row", /db\s*\.?\s*delete\(/.test(disc), false);
+  check("40.5 verify can report failure, not just ok",
+    /checks\.checksRun > 0 && checks\.checksPassed === 0/.test(svc) && /ok: false,/.test(svc), true);
+  check("40.6 a degraded sync persists the reason",
+    svc.includes("lastSyncError: syncError"), true);
+  check("40.7 credential material is not serialised to the browser",
+    svc.includes("redactConnectionCredentials(conn)") && svc.includes("config: safeConfig,"), true);
+  check("40.8 a connector whose checks all fail never reports connected",
+    (svc.match(/syncResult\.checksPassed < syncResult\.checksRun \? "degraded" : "connected"/g) || []).length >= 3, true);
+  check("40.9 connected cards expose reconnect and disconnect",
+    ui.includes("onReconnect") && ui.includes("onDisconnect") && ui.includes("Disconnect"), true);
+  check("40.10 a disconnected integration returns to the available list",
+    /i\.connection\.status === "disconnected"/.test(ui), true);
+  check("40.11 the card shows why a sync degraded",
+    ui.includes("conn?.lastSyncError"), true);
+}
+
 await cleanup();
 
 const bar = "═".repeat(70);

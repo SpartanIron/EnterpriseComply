@@ -16,6 +16,44 @@ import {
   encryptConfigCredentials,
   decryptConfigCredentials,
 } from "../../lib/credential-crypto";
+import { writeAuditLog } from "../../lib/audit-log.js";
+
+// Credential material must never be serialised to a browser - not even as
+// ciphertext. Callers only need to know whether a credential is on file.
+const CREDENTIAL_CONFIG_KEYS = new Set([
+  "apitoken",
+  "apikey",
+  "accesstoken",
+  "refreshtoken",
+  "token",
+  "secret",
+  "clientsecret",
+  "password",
+  "privatekey",
+  "adminkey",
+]);
+
+export function redactConnectionCredentials(
+  conn: Record<string, unknown>,
+): Record<string, unknown> {
+  const rawConfig = (conn.config ?? {}) as Record<string, unknown>;
+  const safeConfig: Record<string, unknown> = {};
+  let configHasCredential = false;
+  for (const [k, v] of Object.entries(rawConfig)) {
+    if (CREDENTIAL_CONFIG_KEYS.has(k.toLowerCase())) {
+      configHasCredential = true;
+      continue;
+    }
+    safeConfig[k] = v;
+  }
+  return {
+    ...conn,
+    accessToken: null,
+    refreshToken: null,
+    config: safeConfig,
+    hasStoredCredentials: Boolean(conn.accessToken) || configHasCredential,
+  };
+}
 
 export const INTEGRATION_CATALOG = [
   {
@@ -801,7 +839,10 @@ export class IntegrationsService {
       return {
         ...c,
         connection: conn
-          ? { ...conn, evidenceCollected: liveCountMap[c.key] ?? 0 }
+          ? {
+              ...redactConnectionCredentials(conn),
+              evidenceCollected: liveCountMap[c.key] ?? 0,
+            }
           : null,
       };
     });
@@ -1239,8 +1280,22 @@ export class IntegrationsService {
     const passCount = controlResults.filter((r) => r.status === "passing").length;
     const syncStatus = failCount === 0 ? "success" : passCount > 0 ? "partial" : "failed";
 
+    // Persist *why* a sync degraded. Without this the integrations card can
+    // only say "Degraded" and an operator has to dig through control results.
+    const syncError =
+      failingResults.length > 0
+        ? failingResults
+            .map((r) => r.ucoControlId + ": " + r.result)
+            .join(" | ")
+            .slice(0, 1000)
+        : null;
+
     await db.update(orgIntegrationsTable)
-      .set({ lastSyncAt: new Date(), lastSyncStatus: syncStatus })
+      .set({
+        lastSyncAt: new Date(),
+        lastSyncStatus: syncStatus,
+        lastSyncError: syncError,
+      })
       .where(eq(orgIntegrationsTable.id, integrationId));
 
     // Write one row to integration_sync_log so Test Run History shows real data
@@ -1561,6 +1616,60 @@ export class IntegrationsService {
     }
   }
 
+  // Disconnect: revoke the stored credential but keep the row so the audit
+  // trail, previously collected evidence and control history stay intact.
+  // Nothing is deleted - a disconnected integration can be reconnected.
+  async disconnectIntegration(
+    orgId: number,
+    key: string,
+    actor?: { userId?: string; email?: string; ip?: string },
+  ) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(
+        eq(orgIntegrationsTable.orgId, orgId),
+        eq(orgIntegrationsTable.integrationKey, key),
+      ),
+    });
+    if (!integration) {
+      throw new BadRequestException("Integration is not connected");
+    }
+
+    await db
+      .update(orgIntegrationsTable)
+      .set({
+        status: "disconnected",
+        accessToken: null,
+        refreshToken: null,
+        tokenExpiresAt: null,
+        installationId: null,
+        accountLogin: null,
+        accountName: null,
+        accountAvatarUrl: null,
+        scopes: [],
+        config: {},
+        lastSyncStatus: null,
+        lastSyncError: null,
+      })
+      .where(eq(orgIntegrationsTable.id, integration.id));
+
+    await writeAuditLog(
+      orgId,
+      "integration.disconnected",
+      "integration",
+      key,
+      {
+        integrationKey: key,
+        previousStatus: integration.status,
+        credentialsRevoked: true,
+      },
+      actor?.userId,
+      actor?.email,
+      actor?.ip,
+    );
+
+    return { success: true, integrationKey: key, status: "disconnected" };
+  }
+
   // ── Verify connection (on-demand ping) ──────────────────────────────────────
 
   async verifyIntegrationConnection(orgId: number, key: string): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
@@ -1571,21 +1680,40 @@ export class IntegrationsService {
       return { ok: false, latencyMs: 0, error: "Integration not connected" };
     }
     const start = Date.now();
+    // Capture the check results so a dead credential reports as a failure
+    // instead of a green tick. Verify must never be able to pass blindly.
+    let checks: {
+      checksRun: number;
+      checksPassed: number;
+      controlResults: Array<{ status: string; result: string }>;
+    } | null = null;
     try {
       if (key === "railway") {
         const cfg = decryptConfigCredentials(integration.config as Record<string, unknown>, ["apiToken"]) as { apiToken?: string };
         if (!cfg?.apiToken) return { ok: false, latencyMs: 0, error: "No credentials stored" };
-        await runRailwayChecks(cfg.apiToken);
+        checks = await runRailwayChecks(cfg.apiToken);
       } else if (key === "replit") {
         const cfg = decryptConfigCredentials(integration.config as Record<string, unknown>, ["apiToken"]) as { apiToken?: string };
         if (!cfg?.apiToken) return { ok: false, latencyMs: 0, error: "No credentials stored" };
-        await runReplitChecks(cfg.apiToken);
+        checks = await runReplitChecks(cfg.apiToken);
       } else if (key === "betterauth") {
         const cfg = decryptConfigCredentials(integration.config as Record<string, unknown>, ["apiKey"]) as { apiKey?: string; baseUrl?: string };
         if (!cfg?.apiKey || !cfg?.baseUrl) return { ok: false, latencyMs: 0, error: "No credentials stored" };
-        await runBetterAuthChecks(cfg.apiKey, cfg.baseUrl);
+        checks = await runBetterAuthChecks(cfg.apiKey, cfg.baseUrl);
       } else {
         return { ok: false, latencyMs: 0, error: "Verify not supported for this integration type" };
+      }
+      // A credential that answers nothing has not been verified. Report the
+      // provider's own error instead of a bare green tick.
+      if (checks && checks.checksRun > 0 && checks.checksPassed === 0) {
+        const firstFailure = checks.controlResults.find(
+          (r) => r.status === "failing",
+        );
+        return {
+          ok: false,
+          latencyMs: Date.now() - start,
+          error: firstFailure?.result ?? "All connection checks failed",
+        };
       }
       return { ok: true, latencyMs: Date.now() - start };
     } catch (err) {

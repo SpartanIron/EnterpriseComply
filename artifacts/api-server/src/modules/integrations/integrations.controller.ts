@@ -176,6 +176,21 @@ export class IntegrationsController {
     return this.integrationsService.verifyIntegrationConnection(ctx.orgId, key);
   }
 
+  // ---- Disconnect (revoke stored credentials, keep audit history) ----
+  @Post("orgs/:orgId/integrations/:key/disconnect")
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
+  disconnectIntegration(
+    @OrgContext() ctx: OrgCtx,
+    @Param("key") key: string,
+    @Req() req: Request,
+  ) {
+    return this.integrationsService.disconnectIntegration(ctx.orgId, key, {
+      userId: ctx.member?.clerkUserId as string | undefined,
+      email: ctx.member?.email as string | undefined,
+      ip: req.ip,
+    });
+  }
+
   // ── Demo connect for all other integrations ───────────────────────────────────
   @Post("orgs/:orgId/integrations/:key/demo-connect")
   @UseGuards(OrgContextGuard, RequireRole("owner"))
