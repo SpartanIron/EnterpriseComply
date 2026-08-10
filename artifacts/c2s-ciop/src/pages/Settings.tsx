@@ -73,10 +73,10 @@ export default function Settings() {
       <div className="flex items-center gap-1 mb-6 bg-slate-100 rounded-xl p-1 w-fit">
         <button onClick={() => setActiveTab("general")} className={"px-4 py-2 rounded-lg text-sm font-semibold transition-all " + (activeTab === "general" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>General</button>
         <button onClick={() => setActiveTab("security")} className={"px-4 py-2 rounded-lg text-sm font-semibold transition-all " + (activeTab === "security" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Security</button>
-        {can("org_admin") && <button onClick={() => setActiveTab("roles")} className={"px-4 py-2 rounded-lg text-sm font-semibold transition-all " + (activeTab === "roles" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Users &amp; Roles</button>}
+        {can("admin") && <button onClick={() => setActiveTab("roles")} className={"px-4 py-2 rounded-lg text-sm font-semibold transition-all " + (activeTab === "roles" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Users &amp; Roles</button>}
       </div>
 
-      {activeTab === "roles" && can("org_admin") && <RoleManagement />}
+      {activeTab === "roles" && can("admin") && <RoleManagement />}
       {activeTab === "security" && <SecurityTab />}
 
       {activeTab === "general" && (

@@ -8,7 +8,8 @@ import { ROLE_LABELS, ROLE_DESCRIPTIONS, ROLE_ORDER, type AppRole } from "@/cont
 // ─── Role badge colors ───────────────────────────────────────────────────────
 const ROLE_COLORS: Record<AppRole, string> = {
   super_admin:        "bg-red-100 text-red-700",
-  org_admin:          "bg-purple-100 text-purple-700",
+  owner:              "bg-indigo-100 text-indigo-700",
+  admin:          "bg-purple-100 text-purple-700",
   compliance_manager: "bg-blue-100 text-blue-700",
   analyst:            "bg-green-100 text-green-700",
   auditor:            "bg-amber-100 text-amber-700",
@@ -48,12 +49,13 @@ function roleColor(role: string | null | undefined): string {
   return ROLE_COLORS[role as AppRole] ?? "bg-slate-100 text-slate-700";
 }
 
-const ASSIGNABLE_ROLES: AppRole[] = ["org_admin","compliance_manager","analyst","auditor","viewer"];
+const ASSIGNABLE_ROLES: AppRole[] = ["admin","compliance_manager","analyst","auditor","viewer"];
 
 // Permission summary for each role
 const ROLE_PERMISSIONS: Record<AppRole, string[]> = {
   super_admin:        ["All platform access","Owner Control Panel","Cross-tenant support"],
-  org_admin:          ["Manage users & roles","Billing & settings","All GRC features"],
+  owner:              ["Owns the organisation","Users, billing & settings","All GRC features"],
+  admin:          ["Manage users & roles","Billing & settings","All GRC features"],
   compliance_manager: ["Controls & frameworks","Risk register","Evidence vault","Reporting","Federal compliance"],
   analyst:            ["Evidence submission","Control updates","Risk entries","POA&M items"],
   auditor:            ["Auditor portal (read)","Evidence review","Control read"],
@@ -120,7 +122,7 @@ export default function RoleManagement() {
     onError: () => toast("Failed to send invite", "#dc2626"),
   });
 
-  if (!can("org_admin")) {
+  if (!can("admin")) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="h-14 w-14 rounded-full bg-red-100 flex items-center justify-center mb-4">

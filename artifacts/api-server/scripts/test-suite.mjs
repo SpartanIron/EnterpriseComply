@@ -4992,6 +4992,17 @@ section("39. Connector integrity, evidence attribution, and client-side roles");
 
   check("39.6 the client does not grant roles from an email allow-list", /SUPER_ADMIN_EMAILS/.test(role), false);
   check("39.7 an unrecognised role is treated as least privileged", role.includes("ROLE_ORDER.length : i"), true);
+
+  // The client used to rank 'org_admin', which ROLE_HIERARCHY does not contain, while
+  // having no rank at all for 'owner', which it does. Two vocabularies for one
+  // decision is how a real owner ends up locked out and a default member gets in.
+  const guard = read("artifacts/api-server/src/guards/roles.guard.ts");
+  const serverRoles = (guard.match(/^\s{2}([a-z_]+):\s*\d+,/gm) ?? []).map((l) => l.trim().split(":")[0]);
+  const clientOrder = (role.match(/ROLE_ORDER: AppRole\[\] = \[([\s\S]*?)\]/) ?? [])[1] ?? "";
+  const clientRoles = (clientOrder.match(/"([a-z_]+)"/g) ?? []).map((q) => q.replace(/"/g, ""));
+  const unranked = clientRoles.filter((r) => !serverRoles.includes(r));
+  check("39.8 the server ranks every role the client can hold", unranked.join(",") || "none", "none");
+  check("39.9 the client ranks owner, which the server grants", clientRoles.includes("owner"), true);
 }
 
 

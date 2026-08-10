@@ -357,6 +357,29 @@ export class RateLimitCleanupService implements OnModuleInit {
    * Also enforces safety caps to prevent unbounded table growth regardless
    * of cron health.
    */
+  /**
+   * throttle_hits, ip_failure_tracker and ip_magic_link_rate are all created
+   * lazily, the first time a request exercises them. A freshly deployed
+   * environment therefore has neither the rows nor the tables, and "nothing to
+   * prune" is a successful run - not a failure that should mark the scheduler
+   * unhealthy and page on-call during its first hour.
+   */
+  private async cleanupTablesReady(pool: Pool, names: string[]): Promise<boolean> {
+    for (const name of names) {
+      const res = await pool.query<{ t: string | null }>(
+        "SELECT to_regclass($1)::text AS t",
+        ["public." + name],
+      );
+      if (!res.rows[0]?.t) {
+        this.logger.log(
+          `[rate-limit-cleanup] ${name} has not been created yet - nothing to prune.`,
+        );
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Cron("0 3 * * *", { name: "rate-limit-cleanup-nightly" })
   async pruneStaleRows(): Promise<void> {
     const pool = this.poolFactory();
@@ -367,6 +390,17 @@ export class RateLimitCleanupService implements OnModuleInit {
     this.logger.log("[rate-limit-cleanup] Starting nightly stale-row pruning …");
 
     try {
+      if (!(await this.cleanupTablesReady(pool, ["throttle_hits","ip_failure_tracker"]))) {
+        this.nightlyHealth = {
+          lastRunAt: runAt,
+          lastSuccess: true,
+          lastErrorInternal: null,
+          errorCount: this.nightlyHealth.errorCount,
+        };
+        await this.persistJobHealth(JOB_NAME, true);
+        return;
+      }
+
       // ── Safety cap: never let tables grow past hard limits regardless of cron health ──
       // These caps run BEFORE the time-based cleanup so that even if the nightly
       // job has been failing, the tables cannot accumulate indefinitely.
@@ -496,6 +530,17 @@ export class RateLimitCleanupService implements OnModuleInit {
     this.logger.log("[magic-link-rate-cleanup] Starting hourly ip_magic_link_rate pruning …");
 
     try {
+      if (!(await this.cleanupTablesReady(pool, ["ip_magic_link_rate"]))) {
+        this.magicLinkHealth = {
+          lastRunAt: runAt,
+          lastSuccess: true,
+          lastErrorInternal: null,
+          errorCount: this.magicLinkHealth.errorCount,
+        };
+        await this.persistJobHealth(JOB_NAME, true);
+        return;
+      }
+
       const result = await pool.query<{ count: string }>(
         `WITH deleted AS (
            DELETE FROM ip_magic_link_rate

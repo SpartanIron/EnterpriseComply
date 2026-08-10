@@ -6,7 +6,8 @@ import { apiUrl } from "@/lib/queryClient";
 // ─── Role Definitions ────────────────────────────────────────────────────────
 export type AppRole =
 | "super_admin"
-| "org_admin"
+| "owner"
+| "admin"
 | "compliance_manager"
 | "analyst"
 | "auditor"
@@ -14,7 +15,8 @@ export type AppRole =
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: "Super Admin",
-  org_admin: "Org Admin",
+  owner: "Owner",
+  admin: "Org Admin",
   compliance_manager: "Compliance Manager",
   analyst: "Analyst",
   auditor: "Auditor",
@@ -23,7 +25,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   super_admin: "Full platform access including Owner Control Panel.",
-  org_admin: "Manage users, settings, billing and all GRC features for this org.",
+  owner: "Owns this organisation: users, settings, billing and every GRC feature.",
+  admin: "Manage users, settings, billing and all GRC features for this org.",
   compliance_manager: "Full GRC access: controls, risks, evidence, reports. No user management.",
   analyst: "Contribute evidence, controls, risks and POA&M items. Read-only settings.",
   auditor: "Read-only access to Auditor Portal, controls, and evidence only.",
@@ -31,7 +34,7 @@ export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
 };
 
 export const ROLE_ORDER: AppRole[] = [
-  "super_admin", "org_admin", "compliance_manager", "analyst", "auditor", "viewer"
+  "super_admin", "owner", "admin", "compliance_manager", "analyst", "auditor", "viewer"
 ];
 
 export const SECTION_MIN_ROLE: Record<string, AppRole> = {
@@ -58,8 +61,8 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   "/evidence":          "analyst",
   "/monitoring":        "compliance_manager",
   "/policies":          "analyst",
-  "/people":            "org_admin",
-  "/access-reviews":    "org_admin",
+  "/people":            "admin",
+  "/access-reviews":    "admin",
   "/vendors":           "compliance_manager",
   "/audits":            "compliance_manager",
   "/questionnaires":    "compliance_manager",
@@ -76,8 +79,8 @@ export const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   "/conmon":            "compliance_manager",
   "/vuln-management":   "compliance_manager",
   "/control-crosswalk": "compliance_manager",
-  "/settings":          "org_admin",
-  "/audit-log":         "org_admin",
+  "/settings":          "admin",
+  "/audit-log":         "admin",
   "/docs":              "viewer",
   "/super-admin":       "super_admin",
   "/report":            "viewer",
@@ -90,6 +93,21 @@ export function roleIndex(role: AppRole): number {
   // defaults to 'member' in the schema), and -1 <= any index, so the previous version
   // silently satisfied every hasMinRole() check for unknown roles.
   return i === -1 ? ROLE_ORDER.length : i;
+}
+
+// The API is the only source of truth for a member's role. Its ROLE_HIERARCHY
+// (roles.guard.ts) ranks: viewer < auditor < analyst = member < compliance_manager
+// < admin < owner < super_admin. Map that vocabulary onto AppRole and fail closed:
+// anything unrecognised becomes the LEAST privileged role, never the most.
+const ROLE_ALIASES: Record<string, AppRole> = {
+  org_admin: "admin",  // client-only legacy name; the API does not rank it
+  member: "analyst",   // legacy org_members default; ranked alongside analyst
+};
+
+export function normalizeRole(raw: string | null | undefined): AppRole {
+  if (!raw) return "viewer";
+  const mapped = ROLE_ALIASES[raw] ?? raw;
+  return (ROLE_ORDER as string[]).includes(mapped) ? (mapped as AppRole) : "viewer";
 }
 
 export function hasMinRole(userRole: AppRole, minRole: AppRole): boolean {
@@ -117,7 +135,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const userEmail = session.data?.user?.email ?? "";
   const isLoaded = !session.isPending;
 
-  const { data: memberData, isLoading: memberLoading } = useQuery<{ role: AppRole | null }>({
+  const { data: memberData, isLoading: memberLoading } = useQuery<{ role: string | null }>({
     queryKey: ["member-role"],
     queryFn: async () => {
       const res = await fetch(apiUrl("/orgs/me/role"), { credentials: "include" });
@@ -148,7 +166,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
     if (memberLoading) return;
 
-    setRole(memberData?.role ?? "analyst");
+    setRole(normalizeRole(memberData?.role));
     setResolved(true);
   }, [isLoaded, userEmail, session.data?.user, memberData, memberLoading]);
 
