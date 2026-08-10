@@ -1,0 +1,191 @@
+diff --git a/.github/workflows/isolation-rbac.yml b/.github/workflows/isolation-rbac.yml
+index 97ac389..ac538ec 100644
+--- a/.github/workflows/isolation-rbac.yml
++++ b/.github/workflows/isolation-rbac.yml
+@@ -16,10 +16,16 @@ on:
+   pull_request:
+     branches: [main]
+ 
++# Least-privilege GITHUB_TOKEN: no job in this workflow writes to the repo.
++permissions:
++  contents: read
++
+ jobs:
+   test:
+     name: Cross-org isolation + RBAC
+     runs-on: ubuntu-latest
++    permissions:
++      contents: read
+     timeout-minutes: 15
+ 
+     services:
+@@ -52,14 +58,14 @@ jobs:
+ 
+     steps:
+       # ── Checkout ──────────────────────────────────────────────────────────
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+ 
+       # ── pnpm + Node ───────────────────────────────────────────────────────
+-      - uses: pnpm/action-setup@v4
++      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+         with:
+           version: 10
+ 
+-      - uses: actions/setup-node@v4
++      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+         with:
+           node-version: '22'
+           cache: 'pnpm'
+@@ -72,6 +78,11 @@ jobs:
+       # Uses swc-node so TypeScript is transpiled on the fly; no build step needed.
+       # StartupService runs migrations and seeds tables on first boot.
+       - name: Start API server
++        env:
++          # Prove the origin allow-list for real: the suite forges a Host header and
++          # expects a 421. Only localhost is trusted here, so a forged host is refused.
++          ORIGIN_TRUST_MODE: enforce
++          TRUSTED_HOSTS: localhost,127.0.0.1
+         run: |
+           pnpm --filter @workspace/api-server run dev > /tmp/api-server.log 2>&1 &
+           echo "API_SERVER_PID=$!" >> $GITHUB_ENV
+@@ -100,7 +111,7 @@ jobs:
+       # ── Upload server log on failure (for debugging) ───────────────────────
+       - name: Upload API server log
+         if: failure()
+-        uses: actions/upload-artifact@v4
++        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+         with:
+           name: api-server-log
+           path: /tmp/api-server.log
+diff --git a/.github/workflows/migration-safety.yml b/.github/workflows/migration-safety.yml
+index 9585207..2710aa5 100644
+--- a/.github/workflows/migration-safety.yml
++++ b/.github/workflows/migration-safety.yml
+@@ -26,20 +26,26 @@ concurrency:
+   group: migration-${{ github.ref }}
+   cancel-in-progress: true
+ 
++# Least-privilege GITHUB_TOKEN: no job in this workflow writes to the repo.
++permissions:
++  contents: read
++
+ jobs:
+   # ── Layer 1: Destructive-change static scan ──────────────────────────────────
+   static-scan:
+     name: Destructive SQL scan
+     runs-on: ubuntu-latest
++    permissions:
++      contents: read
+     timeout-minutes: 5
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+ 
+-      - uses: pnpm/action-setup@v4
++      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+         with:
+           version: 10
+ 
+-      - uses: actions/setup-node@v4
++      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+         with:
+           node-version: '22'
+ 
+@@ -58,6 +64,8 @@ jobs:
+   fresh-db-test:
+     name: Fresh-database migration test
+     runs-on: ubuntu-latest
++    permissions:
++      contents: read
+     timeout-minutes: 15
+ 
+     services:
+@@ -85,13 +93,13 @@ jobs:
+       WEBHOOK_SECRET: ci-webhook-secret
+ 
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+ 
+-      - uses: pnpm/action-setup@v4
++      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+         with:
+           version: 10
+ 
+-      - uses: actions/setup-node@v4
++      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+         with:
+           node-version: '22'
+           cache: 'pnpm'
+@@ -139,7 +147,7 @@ jobs:
+ 
+       - name: Upload full migration log on failure
+         if: failure()
+-        uses: actions/upload-artifact@v4
++        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+         with:
+           name: migration-test-log
+           path: /tmp/migration-test.log
+diff --git a/.github/workflows/security-scan.yml b/.github/workflows/security-scan.yml
+index 87e353d..3f538b8 100644
+--- a/.github/workflows/security-scan.yml
++++ b/.github/workflows/security-scan.yml
+@@ -25,6 +25,10 @@ concurrency:
+   group: security-${{ github.ref }}
+   cancel-in-progress: true
+ 
++# Least-privilege GITHUB_TOKEN: no job in this workflow writes to the repo.
++permissions:
++  contents: read
++
+ jobs:
+   # ── 1. Secrets scanning ──────────────────────────────────────────────────────
+   # gitleaks scans every file in the working tree for patterns matching known
+@@ -34,9 +38,11 @@ jobs:
+   secrets-scan:
+     name: Secrets scan (gitleaks)
+     runs-on: ubuntu-latest
++    permissions:
++      contents: read
+     timeout-minutes: 5
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+         with:
+           # Fetch full history so gitleaks can scan all commits in the PR, not just HEAD
+           fetch-depth: 0
+@@ -90,15 +96,17 @@ jobs:
+   dependency-audit:
+     name: Dependency audit (pnpm audit)
+     runs-on: ubuntu-latest
++    permissions:
++      contents: read
+     timeout-minutes: 5
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+ 
+-      - uses: pnpm/action-setup@v4
++      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+         with:
+           version: 10
+ 
+-      - uses: actions/setup-node@v4
++      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+         with:
+           node-version: '22'
+           cache: 'pnpm'
+@@ -128,9 +136,11 @@ jobs:
+   sast:
+     name: SAST (Semgrep)
+     runs-on: ubuntu-latest
++    permissions:
++      contents: read
+     timeout-minutes: 10
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+ 
+       - name: Install Semgrep
+         run: pip install semgrep --quiet
