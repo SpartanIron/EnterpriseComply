@@ -4585,6 +4585,139 @@ check(
 );
 
 
+section("SECTION 37 - MONITORING: detection over the immutable audit trail");
+
+// ---- 37.1 the feed is super-admin only ----------------------------------
+const feedNsa37 = await evReq34(cookieNsa28, "/admin/security-events", "GET");
+check("37.1 a non-super-admin cannot read the security event feed", feedNsa37.status, 403);
+
+const feed37 = await evReq34(cookieSa28, "/admin/security-events?hours=24", "GET");
+check("37.2 a super-admin can read the security event feed", feed37.status, 200);
+check(
+  "37.3 the detection rules are published with the feed",
+  Array.isArray(feed37.body?.rules) && feed37.body.rules.length > 0,
+  true,
+);
+check(
+  "37.4 every rule declares the control it supports",
+  (feed37.body?.rules ?? []).every((r) => typeof r.control === "string" && r.control.length > 0),
+  true,
+);
+
+// ---- 37.5 probing another tenant is detected ----------------------------
+// Six denied cross-tenant reads from org B against org A. The threshold is
+// five in fifteen minutes, so this must trip the rule.
+for (let i = 0; i < 6; i++) {
+  await evReq34(cookieOwnerB, `/orgs/${state.orgAId}/risks`, "GET");
+}
+await new Promise((r) => setTimeout(r, 600));
+
+const denials37 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND action = 'security.authorization_denied'
+        AND created_at >= NOW() - INTERVAL '15 minutes'`,
+    [state.orgBId],
+  )
+).rows[0];
+check(
+  "37.5 each cross-tenant attempt was recorded against the org that made it",
+  Number(denials37?.n) >= 6,
+  true,
+);
+
+const sweep37 = await evReq34(cookieSa28, "/admin/security-events/sweep", "POST", {});
+check("37.6 a super-admin can run the detection sweep on demand", sweep37.status, 201);
+check(
+  "37.7 the sweep evaluated every rule",
+  Number(sweep37.body?.evaluated) >= 5,
+  true,
+);
+
+const alert37 = (
+  await db.query(
+    `SELECT * FROM org_audit_log
+      WHERE org_id = $1 AND action = 'security.alert_cross_tenant_probing'
+      ORDER BY id DESC LIMIT 1`,
+    [state.orgBId],
+  )
+).rows[0];
+check("37.8 the probing was detected and an alert raised", alert37 != null, true);
+check(
+  "37.9 the alert names the subject it fired on",
+  typeof alert37?.details?.subject === "string" && alert37.details.subject.length > 0,
+  true,
+);
+check(
+  "37.10 the alert records the observed count and the threshold",
+  Number(alert37?.details?.count) >= Number(alert37?.details?.threshold),
+  true,
+);
+check(
+  "37.11 the alert carries a severity",
+  alert37?.details?.severity,
+  "critical",
+);
+
+// ---- 37.12 the alert is itself immutable --------------------------------
+let alertUpd37 = "no-error";
+try {
+  await db.query(`UPDATE org_audit_log SET action = 'tampered' WHERE id = $1`, [
+    alert37.id,
+  ]);
+} catch {
+  alertUpd37 = "blocked";
+}
+check("37.12 a detection record cannot be rewritten", alertUpd37, "blocked");
+
+// ---- 37.13 the same condition does not re-alert inside its cooldown -----
+const before37 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND action = 'security.alert_cross_tenant_probing'`,
+    [state.orgBId],
+  )
+).rows[0].n;
+await evReq34(cookieSa28, "/admin/security-events/sweep", "POST", {});
+await new Promise((r) => setTimeout(r, 400));
+const after37 = (
+  await db.query(
+    `SELECT COUNT(*)::int AS n FROM org_audit_log
+      WHERE org_id = $1 AND action = 'security.alert_cross_tenant_probing'`,
+    [state.orgBId],
+  )
+).rows[0].n;
+check(
+  "37.13 a persistent condition alerts once, not on every sweep",
+  Number(after37) === Number(before37),
+  true,
+);
+
+// ---- 37.14 the feed surfaces what was detected --------------------------
+const feed37b = await evReq34(cookieSa28, "/admin/security-events?hours=1", "GET");
+const actions37 = (feed37b.body?.events ?? []).map((e) => e.action);
+check(
+  "37.14 the feed contains the detection",
+  actions37.includes("security.alert_cross_tenant_probing"),
+  true,
+);
+check(
+  "37.15 the feed only ever contains security events",
+  actions37.every((a) => String(a).startsWith("security.")),
+  true,
+);
+check(
+  "37.16 the feed summarises event volume by type",
+  Array.isArray(feed37b.body?.summary) && feed37b.body.summary.length > 0,
+  true,
+);
+check(
+  "37.17 the feed states that its source is append-only",
+  feed37b.body?.immutable,
+  true,
+);
+
+
 await cleanup();
 
 const bar = "═".repeat(70);

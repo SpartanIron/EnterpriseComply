@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { ClerkAuthGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
@@ -21,6 +22,7 @@ import {
 } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { readDbSecurityPosture } from "../../migrations/tenant-rls.migration.js";
+import { SECURITY_RULES, SecurityMonitorService } from "./security-monitor.service";
 import { writeAuditLog } from "../../lib/audit-log.js";
 import { listBlocked, clearBlock } from "../../lib/auth-failure-tracker.js";
 import { listActiveThrottles, resetMagicLinkRateForIp } from "../../lib/magic-link-rate-limiter.js";
@@ -49,6 +51,8 @@ async function assertSuperAdmin(userId: string) {
 @Controller("admin")
 @UseGuards(ClerkAuthGuard)
 export class AdminController {
+  constructor(private readonly securityMonitor: SecurityMonitorService) {}
+
   /**
    * GET /api/admin/rate-limits
    * Returns all IPs currently blocked by the auth-failure tracker AND
@@ -511,6 +515,66 @@ export class AdminController {
       immutable: true,
       immutabilityMechanism: "PostgreSQL trigger audit_log_worm (UPDATE/DELETE denied)",
     };
+  }
+
+
+  /**
+   * The security event feed: authorisation denials, unauthenticated bursts
+   * and every detection the monitor has raised. Read-only, super-admin only,
+   * and served from the append-only audit table so it cannot have been
+   * edited after the fact.
+   */
+  @Get("security-events")
+  async getSecurityEvents(
+    @ClerkUserId() userId: string,
+    @Query("hours") hours?: string,
+    @Query("limit") limit?: string,
+  ) {
+    await assertSuperAdmin(userId);
+    const windowHours = Math.min(Math.max(parseInt(hours ?? "24", 10) || 24, 1), 720);
+    const max = Math.min(Math.max(parseInt(limit ?? "200", 10) || 200, 1), 1000);
+
+    const rows = await db.execute(sql`
+      SELECT id, org_id, action, resource, resource_id, details,
+             actor_id, actor_email, ip_address, created_at
+        FROM org_audit_log
+       WHERE action LIKE 'security.%'
+         AND created_at >= NOW() - (${windowHours} || ' hours')::interval
+       ORDER BY id DESC
+       LIMIT ${max}
+    `);
+
+    const summary = await db.execute(sql`
+      SELECT action, COUNT(*)::int AS count
+        FROM org_audit_log
+       WHERE action LIKE 'security.%'
+         AND created_at >= NOW() - (${windowHours} || ' hours')::interval
+       GROUP BY 1
+       ORDER BY 2 DESC
+    `);
+
+    return {
+      windowHours,
+      rules: SECURITY_RULES,
+      summary: summary.rows,
+      events: rows.rows,
+      immutable: true,
+      note:
+        "Served from the append-only audit table. Entries cannot be edited " +
+        "or deleted; the database rejects UPDATE and DELETE on this table.",
+    };
+  }
+
+  /**
+   * Run the detection rules immediately instead of waiting for the next
+   * five-minute sweep. Used during incident response and to demonstrate the
+   * control to an auditor.
+   */
+  @Post("security-events/sweep")
+  async runSecuritySweep(@ClerkUserId() userId: string) {
+    await assertSuperAdmin(userId);
+    const result = await this.securityMonitor.sweep();
+    return { ...result, ranAt: new Date().toISOString() };
   }
 
 }

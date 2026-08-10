@@ -103,6 +103,8 @@ export class AuditInterceptor implements NestInterceptor {
       // entry second - it is the signal a tenant boundary was probed.
       if (status === 401 || status === 403) {
         if (orgId === null) return;
+        if (req.__securityEventRecorded) return;
+        req.__securityEventRecorded = true;
         await writeSecurityEvent(
           orgId,
           status === 401 ? "unauthenticated_request" : "authorization_denied",
