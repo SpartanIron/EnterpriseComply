@@ -100,7 +100,7 @@ jobs:
       # ── Upload server log on failure (for debugging) ───────────────────────
       - name: Upload API server log
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api-server-log
           path: /tmp/api-server.log
