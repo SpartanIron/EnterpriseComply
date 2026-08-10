@@ -34,6 +34,9 @@ const { spawnSync } = require("child_process");
 
 const MIN_PASSPHRASE = 32;
 const SCRYPT_KEYLEN = 32;
+// Pinned explicitly. Without authTagLength, GCM will accept a truncated tag,
+// which lets an attacker forge ciphertexts (semgrep gcm-no-tag-length).
+const TAG_LENGTH = 16;
 const MAGIC = Buffer.from("ECBK1\0\0\0", "utf8"); // 8 bytes, versioned header
 
 function fail(message) {
@@ -85,7 +88,9 @@ function encryptFile(plainPath, cipherPath, passphrase) {
   const salt = crypto.randomBytes(16);
   const iv = crypto.randomBytes(12);
   const key = deriveKey(passphrase, salt);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv, {
+    authTagLength: TAG_LENGTH,
+  });
   const plain = fs.readFileSync(plainPath);
   const body = Buffer.concat([cipher.update(plain), cipher.final()]);
   const out = Buffer.concat([MAGIC, salt, iv, body, cipher.getAuthTag()]);
@@ -99,14 +104,20 @@ function encryptFile(plainPath, cipherPath, passphrase) {
 
 function decryptFile(cipherPath, plainPath, passphrase) {
   const raw = fs.readFileSync(cipherPath);
-  if (raw.length < MAGIC.length + 16 + 12 + 16) fail("ciphertext is truncated");
+  if (raw.length < MAGIC.length + 16 + 12 + TAG_LENGTH) fail("ciphertext is truncated");
   if (!raw.subarray(0, MAGIC.length).equals(MAGIC)) fail("not an ECBK1 backup file");
   let at = MAGIC.length;
   const salt = raw.subarray(at, (at += 16));
   const iv = raw.subarray(at, (at += 12));
-  const tag = raw.subarray(raw.length - 16);
-  const body = raw.subarray(at, raw.length - 16);
-  const decipher = crypto.createDecipheriv("aes-256-gcm", deriveKey(passphrase, salt), iv);
+  const tag = raw.subarray(raw.length - TAG_LENGTH);
+  const body = raw.subarray(at, raw.length - TAG_LENGTH);
+  if (tag.length !== TAG_LENGTH) fail("authentication tag is not " + TAG_LENGTH + " bytes");
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    deriveKey(passphrase, salt),
+    iv,
+    { authTagLength: TAG_LENGTH },
+  );
   decipher.setAuthTag(tag);
   let plain;
   try {
