@@ -1020,6 +1020,38 @@ section("SECTION 11 — PROVIDER BEHAVIOR: bad credentials return failing result
     200,
   );
 
+  // ── Generic sync router: dispatches railway/replit/betterauth keys ─────────
+  // Verifies IntegrationsController.syncIntegration() routes each key to the
+  // correct service method via a subprocess unit test with service spies.
+  // HTTP tests cannot prove generic-router dispatch because NestJS routes the
+  // more-specific provider-explicit routes first; only a direct controller
+  // invocation with spies can confirm the generic branch is exercised.
+  {
+    const { spawnSync } = await import("child_process");
+    const path = await import("path");
+    const unitScriptPath = path.resolve(
+      new URL(".", import.meta.url).pathname,
+      "test-sync-router-unit.ts",
+    );
+    const apiServerDir = path.resolve(new URL(".", import.meta.url).pathname, "..");
+    process.stdout.write("\n  ── sync router unit tests (subprocess) ──\n");
+    const unitResult = spawnSync(
+      "node",
+      ["--import", "@swc-node/register/esm-register", unitScriptPath],
+      {
+        stdio: "inherit",
+        cwd: apiServerDir,
+        env: { ...process.env },
+        timeout: 30_000,
+      },
+    );
+    check(
+      "Generic sync router unit tests (test-sync-router-unit.ts exit code = 0)",
+      unitResult.status ?? 1,
+      0,
+    );
+  }
+
   // ── Integration row exists in DB after all three connects ───────────────────
   const integRows = await db.query(
     `SELECT integration_key, status, last_sync_status FROM org_integrations WHERE org_id = $1 ORDER BY integration_key`,
