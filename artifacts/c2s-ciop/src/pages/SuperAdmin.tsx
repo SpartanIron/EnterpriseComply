@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/queryClient";
 import { useRole } from "@/context/RoleContext";
@@ -40,6 +40,22 @@ interface AdminOrg {
   plan: string;
 }
 
+interface CrosswalkRow {
+  id: number;
+  ucoControlId: string;
+  title: string;
+  domain: string | null;
+  nist80053: string | null;
+  cmmc: string | null;
+  nist800171: string | null;
+  soc2: string | null;
+  iso27001: string | null;
+  fedramp: string | null;
+  hipaa: string | null;
+  remediationSteps: string | null;
+  updatedAt: string;
+}
+
 function toast(msg: string, color = "#2563eb") {
   const el = document.createElement("div");
   el.style.cssText = `position:fixed;bottom:24px;right:24px;background:${color};color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.15)`;
@@ -58,7 +74,7 @@ const EmptyState = ({ title, body }: { title: string; body: string }) => (
   </div>
 );
 
-type Tab = "tenants" | "onboard" | "billing" | "platform" | "security" | "support";
+type Tab = "tenants" | "onboard" | "billing" | "platform" | "security" | "support" | "crosswalk";
 const TABS: { id: Tab; label: string }[] = [
   { id: "tenants", label: "Tenant Management" },
   { id: "onboard", label: "Onboard New Client" },
@@ -66,6 +82,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "platform", label: "Platform Health" },
   { id: "security", label: "Security" },
   { id: "support", label: "Support Access" },
+  { id: "crosswalk", label: "Crosswalk Mappings" },
 ];
 
 export default function SuperAdmin() {
@@ -74,6 +91,40 @@ export default function SuperAdmin() {
   const [activeTab, setActiveTab] = useState<Tab>("tenants");
   const [search, setSearch] = useState("");
   const [onboardForm, setOnboardForm] = useState({ name: "", industry: "", size: "", website: "" });
+
+  const { data, isLoading, isError, refetch } = useQuery<{ orgs: AdminOrg[] }>({
+    queryKey: ["admin-orgs"],
+    queryFn: () => apiFetch("/orgs/admin"),
+    staleTime: 30_000,
+  });
+
+  const blockedLastFetchedRef = useRef<number | null>(null);
+  const [blockedSecAgo, setBlockedSecAgo] = useState<number | null>(null);
+
+  const { data: blockedData, isLoading: blockedLoading, isError: blockedError, refetch: refetchBlocked, dataUpdatedAt: blockedDataUpdatedAt } = useQuery<{ blocked: BlockedIp[]; magicLinkThrottles: MagicLinkThrottle[] }>({
+    queryKey: ["admin-rate-limits"],
+    queryFn: () => apiFetch("/admin/rate-limits"),
+    staleTime: 15_000,
+    refetchInterval: activeTab === "security" ? 30_000 : false,
+  });
+
+  // Track last successful fetch time and update "X sec ago" every second
+  useEffect(() => {
+    if (blockedDataUpdatedAt && blockedDataUpdatedAt > 0) {
+      blockedLastFetchedRef.current = blockedDataUpdatedAt;
+      setBlockedSecAgo(0);
+    }
+  }, [blockedDataUpdatedAt]);
+
+  useEffect(() => {
+    if (blockedLastFetchedRef.current === null) return;
+    const id = setInterval(() => {
+      if (blockedLastFetchedRef.current !== null) {
+        setBlockedSecAgo(Math.floor((Date.now() - blockedLastFetchedRef.current) / 1000));
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Access control: must have super_admin role (verified server-side at the API level too)
   if (!can("super_admin")) {
@@ -87,19 +138,6 @@ export default function SuperAdmin() {
       </div>
     );
   }
-
-  const { data, isLoading, isError, refetch } = useQuery<{ orgs: AdminOrg[] }>({
-    queryKey: ["admin-orgs"],
-    queryFn: () => apiFetch("/orgs/admin"),
-    staleTime: 30_000,
-  });
-
-  const { data: blockedData, isLoading: blockedLoading, isError: blockedError, refetch: refetchBlocked } = useQuery<{ blocked: BlockedIp[]; magicLinkThrottles: MagicLinkThrottle[] }>({
-    queryKey: ["admin-rate-limits"],
-    queryFn: () => apiFetch("/admin/rate-limits"),
-    staleTime: 15_000,
-    refetchInterval: activeTab === "security" ? 30_000 : false,
-  });
 
   const unblockMutation = useMutation({
     mutationFn: (ip: string) =>
@@ -134,6 +172,41 @@ export default function SuperAdmin() {
     },
     onError: () => toast("Failed to update plan", "#dc2626"),
   });
+
+  // ── Crosswalk Mappings ────────────────────────────────────────────────────────
+  const [editingCrosswalk, setEditingCrosswalk] = useState<CrosswalkRow | null>(null);
+  const [crosswalkForm, setCrosswalkForm] = useState<Partial<CrosswalkRow>>({});
+  const [cwSearch, setCwSearch] = useState("");
+
+  const { data: crosswalkData, isLoading: cwLoading, isError: cwError, refetch: refetchCrosswalk } = useQuery<{ crosswalk: CrosswalkRow[] }>({
+    queryKey: ["admin-crosswalk"],
+    queryFn: () => apiFetch("/admin/crosswalk"),
+    staleTime: 30_000,
+    enabled: activeTab === "crosswalk",
+  });
+
+  const crosswalkMutation = useMutation({
+    mutationFn: ({ ucoControlId, body }: { ucoControlId: string; body: Partial<CrosswalkRow> }) =>
+      apiFetch(`/admin/crosswalk/${encodeURIComponent(ucoControlId)}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      toast("Crosswalk mapping saved", "#16a34a");
+      setEditingCrosswalk(null);
+      setCrosswalkForm({});
+      qc.invalidateQueries({ queryKey: ["admin-crosswalk"] });
+      qc.invalidateQueries({ queryKey: ["crosswalk-controls"] });
+    },
+    onError: () => toast("Failed to save crosswalk mapping", "#dc2626"),
+  });
+
+  const crosswalkRows = crosswalkData?.crosswalk ?? [];
+  const filteredCrosswalk = crosswalkRows.filter(r =>
+    r.ucoControlId.toLowerCase().includes(cwSearch.toLowerCase()) ||
+    r.title.toLowerCase().includes(cwSearch.toLowerCase()) ||
+    (r.domain ?? "").toLowerCase().includes(cwSearch.toLowerCase())
+  );
 
   const orgs = data?.orgs ?? [];
   const blocked = blockedData?.blocked ?? [];
@@ -468,6 +541,11 @@ export default function SuperAdmin() {
                 </table>
               </div>
             )}
+            {blockedData && blockedSecAgo !== null && (
+              <p data-testid="blocked-ips-last-updated" className="mt-2 text-xs text-slate-400">
+                Updated {blockedSecAgo} sec ago
+              </p>
+            )}
           </div>
 
           {/* ── Magic-link active throttle windows ───────────────────────── */}
@@ -544,6 +622,187 @@ export default function SuperAdmin() {
 
       {activeTab === "support" && (
         <EmptyState title="Support access not available" body="User impersonation for support requires a dedicated audit-safe access mechanism. This feature is not yet implemented. Use direct database access (read-only) for support investigations." />
+      )}
+
+      {/* ── Crosswalk Mappings ──────────────────────────────────────────── */}
+      {activeTab === "crosswalk" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Crosswalk Mappings</h3>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Edit framework mapping overrides for UCO controls. Changes take effect immediately without a code deploy.
+                Leave fields empty to fall back to the built-in static data.
+              </p>
+            </div>
+            <button onClick={() => refetchCrosswalk()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 text-slate-600 bg-white hover:bg-slate-50">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              Refresh
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              value={cwSearch}
+              onChange={e => setCwSearch(e.target.value)}
+              placeholder="Search by UCO ID, title, or domain…"
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {cwLoading ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-sm text-slate-400">Loading crosswalk data…</div>
+          ) : cwError ? (
+            <div className="bg-white rounded-xl border border-red-200 p-12 text-center text-sm text-red-500">Failed to load crosswalk mappings.</div>
+          ) : crosswalkRows.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+              <p className="text-sm font-bold text-slate-800 mb-2">No DB overrides yet</p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                The crosswalk table is empty. The page uses built-in static data.
+                To override a mapping, enter the UCO Control ID below and save.
+              </p>
+              <div className="mt-6 max-w-sm mx-auto text-left space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">UCO Control ID (e.g. UCO-AC-001)</label>
+                  <input
+                    value={crosswalkForm.ucoControlId ?? ""}
+                    onChange={e => setCrosswalkForm(p => ({ ...p, ucoControlId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="UCO-AC-001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Title</label>
+                  <input
+                    value={crosswalkForm.title ?? ""}
+                    onChange={e => setCrosswalkForm(p => ({ ...p, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Multi-Factor Authentication"
+                  />
+                </div>
+                <button
+                  disabled={!crosswalkForm.ucoControlId || !crosswalkForm.title || crosswalkMutation.isPending}
+                  onClick={() => {
+                    if (!crosswalkForm.ucoControlId || !crosswalkForm.title) return;
+                    crosswalkMutation.mutate({ ucoControlId: crosswalkForm.ucoControlId, body: crosswalkForm });
+                  }}
+                  className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {crosswalkMutation.isPending ? "Saving…" : "Create Override"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[800px]">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">UCO Control ID</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Title</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Domain</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">NIST 800-53</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">CMMC</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Updated</th>
+                        <th className="px-4 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredCrosswalk.map(row => (
+                        <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 font-mono text-xs font-bold text-blue-700">{row.ucoControlId}</td>
+                          <td className="px-4 py-3 text-sm text-slate-800">{row.title}</td>
+                          <td className="px-4 py-3 text-xs text-slate-500">{row.domain ?? <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-3 text-xs font-mono text-slate-600">{row.nist80053 ?? <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-3 text-xs font-mono text-slate-600">{row.cmmc ?? <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-3 text-xs text-slate-400">{new Date(row.updatedAt).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => { setEditingCrosswalk(row); setCrosswalkForm({ ...row }); }}
+                              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredCrosswalk.length === 0 && cwSearch && (
+                  <div className="py-8 text-center text-sm text-slate-400">No crosswalk rows match "{cwSearch}"</div>
+                )}
+              </div>
+
+              {/* Inline editor */}
+              {editingCrosswalk && (
+                <div className="bg-white rounded-xl border border-blue-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">Edit: <span className="font-mono text-blue-700">{editingCrosswalk.ucoControlId}</span></h4>
+                      <p className="text-xs text-slate-500 mt-0.5">Enter comma-separated values for framework mappings (e.g. "IA-2, IA-2(1)")</p>
+                    </div>
+                    <button onClick={() => { setEditingCrosswalk(null); setCrosswalkForm({}); }} className="text-xs text-slate-400 hover:text-slate-600">✕ Cancel</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { label: "Title", field: "title" as keyof CrosswalkRow },
+                      { label: "Domain / Family", field: "domain" as keyof CrosswalkRow },
+                      { label: "NIST 800-53 (comma-separated)", field: "nist80053" as keyof CrosswalkRow },
+                      { label: "CMMC 2.0 (comma-separated)", field: "cmmc" as keyof CrosswalkRow },
+                      { label: "NIST 800-171 (comma-separated)", field: "nist800171" as keyof CrosswalkRow },
+                      { label: "SOC 2 TSC (comma-separated)", field: "soc2" as keyof CrosswalkRow },
+                      { label: "ISO 27001:2022 (comma-separated)", field: "iso27001" as keyof CrosswalkRow },
+                      { label: "FedRAMP High (comma-separated)", field: "fedramp" as keyof CrosswalkRow },
+                      { label: "HIPAA §164 (comma-separated)", field: "hipaa" as keyof CrosswalkRow },
+                    ].map(({ label, field }) => (
+                      <div key={field}>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
+                        <input
+                          type="text"
+                          value={(crosswalkForm[field] as string) ?? ""}
+                          onChange={e => setCrosswalkForm(p => ({ ...p, [field]: e.target.value }))}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    ))}
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Remediation Steps</label>
+                      <textarea
+                        rows={3}
+                        value={crosswalkForm.remediationSteps ?? ""}
+                        onChange={e => setCrosswalkForm(p => ({ ...p, remediationSteps: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        placeholder="Describe remediation steps for this control…"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-4">
+                    <button
+                      onClick={() => { setEditingCrosswalk(null); setCrosswalkForm({}); }}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={crosswalkMutation.isPending}
+                      onClick={() => {
+                        crosswalkMutation.mutate({
+                          ucoControlId: editingCrosswalk.ucoControlId,
+                          body: crosswalkForm,
+                        });
+                      }}
+                      className="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      {crosswalkMutation.isPending ? "Saving…" : "Save Changes"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );

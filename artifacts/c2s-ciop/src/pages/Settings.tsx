@@ -184,6 +184,8 @@ function SecurityTab() {
   const [ssoError,          setSsoError]          = useState("");
   const [ssoInitialized,    setSsoInitialized]    = useState(false);
   const [groupMappings,     setGroupMappings]     = useState<{ group: string; role: string }[]>([]);
+  const [ssoTestNote,       setSsoTestNote]       = useState(false);
+  const [ssoTestBanner,     setSsoTestBanner]     = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const { data: ssoConfigData } = useQuery<{ configured: boolean; config: any; sp: { entityId: string; acsUrl: string } } | null>({
     queryKey: ["orgs", orgId, "sso-config"],
@@ -232,6 +234,29 @@ function SecurityTab() {
       setSsoError(err?.message ?? "Failed to save SSO configuration");
     },
   });
+
+  // ── SSO test: check query params on mount ───────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ssoVerified = params.get("sso_verified");
+    const ssoErrParam = params.get("error");
+    if (sessionStorage.getItem("ssoTestPending")) {
+      sessionStorage.removeItem("ssoTestPending");
+      if (ssoVerified !== null) {
+        setSsoTestBanner({ type: "success", message: "SSO connection verified ✓" });
+      } else if (ssoErrParam) {
+        setSsoTestBanner({ type: "error", message: `SSO test failed: ${ssoErrParam}` });
+      }
+      // Clean up URL params
+      if (ssoVerified !== null || ssoErrParam) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("sso_verified");
+        url.searchParams.delete("error");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (twoFactorEnabled) setSetupStep("idle");
@@ -760,13 +785,37 @@ function SecurityTab() {
               <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{ssoError}</div>
             )}
 
-            <div className="flex items-center gap-3">
+            {ssoTestBanner && (
+              <div className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${ssoTestBanner.type === "success" ? "bg-green-50 border border-green-200 text-green-700" : "bg-amber-50 border border-amber-200 text-amber-700"}`}>
+                {ssoTestBanner.type === "success"
+                  ? <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  : <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                }
+                {ssoTestBanner.message}
+                <button onClick={() => setSsoTestBanner(null)} className="ml-auto text-current opacity-60 hover:opacity-100">✕</button>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => ssoMutation.mutate()}
                 disabled={!orgId || !idpEntityId || !idpSsoUrl || !idpCertificate || ssoMutation.isPending}
                 className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50"
               >
                 {ssoMutation.isPending ? "Saving…" : "Save SSO Configuration"}
+              </button>
+              <button
+                data-testid="test-sso-btn"
+                onClick={() => {
+                  const orgSlug = org?.slug || orgId;
+                  sessionStorage.setItem("ssoTestPending", "1");
+                  setSsoTestNote(true);
+                  window.open(`/api/saml/${orgSlug}/login`, "_blank");
+                }}
+                disabled={!orgId || !idpEntityId || !idpSsoUrl || !idpCertificate}
+                className="px-4 py-2 bg-white border border-purple-300 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-50 disabled:opacity-50 transition-colors"
+              >
+                Test SSO Connection
               </button>
               {ssoSaved && (
                 <div className="flex items-center gap-1.5 text-xs text-green-700 font-semibold">
@@ -775,6 +824,9 @@ function SecurityTab() {
                 </div>
               )}
             </div>
+            {ssoTestNote && (
+              <p className="text-xs text-slate-500 mt-1">A login window opened. If successful, you'll see a green SSO Verified banner on return.</p>
+            )}
           </div>
         </div>
       </PlanGate>

@@ -14,7 +14,7 @@ const FRAMEWORKS = [
   { key: "hipaa",    label: "HIPAA §164",           color: "#7e22ce" },
 ];
 
-const FAMILIES = ["All", ...Array.from(new Set(CROSSWALK_DATA.map(c => c.family)))];
+// FAMILIES is computed dynamically inside the component from merged data (see below)
 
 function StatusBadge({ status }: { status: string }) {
   const cfg: Record<string, { label: string; color: string }> = {
@@ -179,6 +179,54 @@ function exportCrosswalkPdf(
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
+/** DB crosswalk row shape returned from the API */
+interface DbCrosswalkRow {
+  id: number;
+  ucoControlId: string;
+  title: string;
+  domain: string | null;
+  nist80053: string | null;
+  cmmc: string | null;
+  nist800171: string | null;
+  soc2: string | null;
+  iso27001: string | null;
+  fedramp: string | null;
+  hipaa: string | null;
+  remediationSteps: string | null;
+  updatedAt: string;
+}
+
+/** Split a comma-separated DB field into a string array (returns [] if null/empty) */
+function splitField(val: string | null | undefined): string[] {
+  if (!val) return [];
+  return val.split(",").map(s => s.trim()).filter(Boolean);
+}
+
+/** Merge static CROSSWALK_DATA with DB rows. DB takes precedence for matching ucoControlId. */
+function mergeWithDbRows(staticData: typeof CROSSWALK_DATA, dbRows: DbCrosswalkRow[]): typeof CROSSWALK_DATA {
+  if (!dbRows.length) return staticData;
+  const dbMap = new Map<string, DbCrosswalkRow>();
+  for (const row of dbRows) {
+    dbMap.set(row.ucoControlId, row);
+  }
+  return staticData.map(ctrl => {
+    const db = dbMap.get(ctrl.ucoId);
+    if (!db) return ctrl;
+    return {
+      ...ctrl,
+      ucoName: db.title || ctrl.ucoName,
+      family: db.domain || ctrl.family,
+      nist53: splitField(db.nist80053).length ? splitField(db.nist80053) : ctrl.nist53,
+      cmmc: splitField(db.cmmc).length ? splitField(db.cmmc) : ctrl.cmmc,
+      nist171: splitField(db.nist800171).length ? splitField(db.nist800171) : ctrl.nist171,
+      soc2: splitField(db.soc2).length ? splitField(db.soc2) : ctrl.soc2,
+      iso27001: splitField(db.iso27001).length ? splitField(db.iso27001) : ctrl.iso27001,
+      fedramp: splitField(db.fedramp).length ? splitField(db.fedramp) : ctrl.fedramp,
+      hipaa: splitField(db.hipaa).length ? splitField(db.hipaa) : ctrl.hipaa,
+    };
+  });
+}
+
 export default function ControlCrosswalk() {
   const { org, orgId } = useOrg();
 
@@ -192,6 +240,24 @@ export default function ControlCrosswalk() {
     enabled: !!orgId,
     staleTime: 60000,
   });
+
+  // Fetch DB crosswalk mappings (progressive enhancement — falls back to static data if empty)
+  const { data: dbCrosswalkData } = useQuery<{ crosswalk: DbCrosswalkRow[] }>({
+    queryKey: ["crosswalk-controls"],
+    queryFn: async () => {
+      const res = await fetch(apiUrl("/crosswalk/controls"), { credentials: "include" });
+      if (!res.ok) return { crosswalk: [] };
+      return res.json();
+    },
+    enabled: !!orgId,
+    staleTime: 300000,
+  });
+
+  // Merged crosswalk data: DB rows take precedence over static data for matching controls
+  const crosswalkData = useMemo(
+    () => mergeWithDbRows(CROSSWALK_DATA, dbCrosswalkData?.crosswalk ?? []),
+    [dbCrosswalkData],
+  );
 
   // Map UCO control ID → live control data
   const controlMap = useMemo(() => {
@@ -217,25 +283,31 @@ export default function ControlCrosswalk() {
     setActiveFrameworks(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
   };
 
-  const filtered = useMemo(() => CROSSWALK_DATA.filter(c => {
+  // Computed families from merged crosswalk data for the filter dropdown
+  const families = useMemo(
+    () => ["All", ...Array.from(new Set(crosswalkData.map(c => c.family)))],
+    [crosswalkData],
+  );
+
+  const filtered = useMemo(() => crosswalkData.filter(c => {
     if (search && !c.ucoId.toLowerCase().includes(search.toLowerCase()) && !c.ucoName.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterFamily !== "All" && c.family !== filterFamily) return false;
     const effectiveStatus = controlMap.get(c.ucoId)?.result?.status ?? c.status;
     if (filterStatus !== "all" && effectiveStatus !== filterStatus) return false;
     return true;
-  }), [search, filterFamily, filterStatus, controlMap]);
+  }), [search, filterFamily, filterStatus, controlMap, crosswalkData]);
 
   const stats = useMemo(() => {
     const getStatus = (c: (typeof CROSSWALK_DATA)[0]) =>
       (controlMap.get(c.ucoId)?.result?.status as string | undefined) ?? c.status;
     return {
-      total: CROSSWALK_DATA.length,
-      passing: CROSSWALK_DATA.filter(c => getStatus(c) === "passing").length,
-      partial: CROSSWALK_DATA.filter(c => getStatus(c) === "partial").length,
-      failing: CROSSWALK_DATA.filter(c => getStatus(c) === "failing").length,
-      avgCoverage: Math.round(CROSSWALK_DATA.reduce((s, c) => s + c.coverage, 0) / CROSSWALK_DATA.length),
+      total: crosswalkData.length,
+      passing: crosswalkData.filter(c => getStatus(c) === "passing").length,
+      partial: crosswalkData.filter(c => getStatus(c) === "partial").length,
+      failing: crosswalkData.filter(c => getStatus(c) === "failing").length,
+      avgCoverage: Math.round(crosswalkData.reduce((s, c) => s + c.coverage, 0) / (crosswalkData.length || 1)),
     };
-  }, [controlMap]);
+  }, [controlMap, crosswalkData]);
 
   function handleCsvExport() {
     setExporting("csv");
@@ -338,7 +410,7 @@ export default function ControlCrosswalk() {
           onChange={e => setFilterFamily(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}
+          {families.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
         <select
           value={filterStatus}

@@ -45,6 +45,7 @@ import { EMassModule } from "./modules/emass/emass.module";
 import { PublicStatusModule } from "./modules/public-status/public-status.module";
 import { SsoModule } from "./modules/sso/sso.module";
 import { AdminModule } from "./modules/admin/admin.module";
+import { CrosswalkModule } from "./modules/crosswalk/crosswalk.module";
 import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
 
 @Module({
@@ -107,6 +108,7 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
     PublicStatusModule,
     SsoModule,
     AdminModule,
+    CrosswalkModule,
   ],
   providers: [
     {

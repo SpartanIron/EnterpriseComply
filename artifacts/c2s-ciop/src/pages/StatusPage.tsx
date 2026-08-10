@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -91,6 +92,68 @@ function build90DayBars(buckets: Array<{ date: string; status: string }>) {
     bars.push({ date: key, status: map[key] ?? "unknown" });
   }
   return bars;
+}
+
+function SubscribeForm() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errMsg, setErrMsg] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus("loading");
+    try {
+      const res = await fetch(`${API}/public/status/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setStatus("success");
+    } catch (err: any) {
+      setErrMsg(err?.message ?? "Something went wrong");
+      setStatus("error");
+    }
+  }
+
+  if (status === "success") {
+    return (
+      <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "16px 20px", color: "#15803d", fontSize: 14 }}>
+        ✓ Check your inbox to confirm your subscription.
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        placeholder="your@email.com"
+        style={{
+          flex: 1, minWidth: 200, padding: "8px 12px", border: "1px solid #e2e8f0",
+          borderRadius: 8, fontSize: 14, background: "#fff", color: "#0f172a",
+        }}
+      />
+      <button
+        type="submit"
+        disabled={status === "loading"}
+        style={{
+          padding: "8px 18px", background: "#3b82f6", color: "#fff", border: "none",
+          borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
+          opacity: status === "loading" ? 0.6 : 1,
+        }}
+      >
+        {status === "loading" ? "Subscribing…" : "Subscribe"}
+      </button>
+      {status === "error" && (
+        <p style={{ width: "100%", fontSize: 13, color: "#dc2626", margin: 0 }}>{errMsg}</p>
+      )}
+    </form>
+  );
 }
 
 export default function StatusPage() {
@@ -272,6 +335,15 @@ export default function StatusPage() {
             </div>
           </section>
         )}
+
+        {/* ── Subscribe to alerts ── */}
+        <section style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>Subscribe to alerts</h2>
+          <p style={{ fontSize: 14, color: "#64748b", marginBottom: 12 }}>
+            Get notified by email when an incident opens or resolves.
+          </p>
+          <SubscribeForm />
+        </section>
 
         {/* ── Footer ── */}
         <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>

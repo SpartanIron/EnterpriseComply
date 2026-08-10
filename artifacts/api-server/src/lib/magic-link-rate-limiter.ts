@@ -13,6 +13,10 @@
  * deploys and process restarts do NOT reset the window — a bot cannot bypass
  * the limit by triggering a restart.
  *
+ * Additionally, a secondary in-memory per-email rate limit is enforced:
+ * max EMAIL_LIMIT sends per email per EMAIL_WINDOW_MS (10 minutes).
+ * This prevents a single address from being flooded from multiple IPs.
+ *
  * Controls: NIST AC-7 (limit auth attempts), OWASP ASVS 2.5.6 (ambiguous responses)
  */
 
@@ -22,6 +26,13 @@ import { getRateLimitPool } from "./pg-pool.js";
 const WINDOW_MS   = 60 * 1000;  // 1-minute sliding window
 const MAX_REQUESTS = 5;          // requests allowed per window
 export const RETRY_AFTER_SECONDS = 60; // Retry-After header value
+
+// ── Per-email rate limit constants ────────────────────────────────────────────
+export const EMAIL_LIMIT = 3;                        // max sends per email per window
+export const EMAIL_WINDOW_MS = 10 * 60 * 1000;      // 10-minute window
+
+/** In-memory map: email → { count, windowStart } for per-email rate limiting. */
+const emailRateMap = new Map<string, { count: number; windowStart: number }>();
 
 // ── Schema bootstrap ──────────────────────────────────────────────────────────
 
@@ -88,11 +99,47 @@ async function recordAndCheck(ip: string): Promise<boolean> {
   return BigInt(row.blocked_until) > now;
 }
 
+/**
+ * Record one magic-link send attempt for an email address using in-memory state.
+ *
+ * Max EMAIL_LIMIT (3) sends per email per EMAIL_WINDOW_MS (10 minutes).
+ * Uses a simple sliding window reset: if the window has expired, start fresh.
+ *
+ * @returns { blocked: boolean; retryAfterMs: number }
+ */
+export function recordAndCheckEmail(email: string): { blocked: boolean; retryAfterMs: number } {
+  const now = Date.now();
+  const key = email.toLowerCase().trim();
+  const entry = emailRateMap.get(key);
+
+  if (!entry || now - entry.windowStart > EMAIL_WINDOW_MS) {
+    // New window — first request is always allowed.
+    emailRateMap.set(key, { count: 1, windowStart: now });
+    return { blocked: false, retryAfterMs: 0 };
+  }
+
+  if (entry.count >= EMAIL_LIMIT) {
+    // Over limit — calculate time remaining in this window.
+    const windowExpiresAt = entry.windowStart + EMAIL_WINDOW_MS;
+    const retryAfterMs = Math.max(0, windowExpiresAt - now);
+    return { blocked: true, retryAfterMs };
+  }
+
+  // Within limit — increment and allow.
+  entry.count++;
+  return { blocked: false, retryAfterMs: 0 };
+}
+
 /** Reset a specific IP — used in automated tests to clear state between runs. */
 export async function resetMagicLinkRateForIp(ip: string): Promise<void> {
   await ensureSchema();
   const pool = getRateLimitPool();
   await pool.query("DELETE FROM ip_magic_link_rate WHERE ip = $1", [ip]);
+}
+
+/** Reset email rate state for a specific address — used in automated tests. */
+export function resetMagicLinkRateForEmail(email: string): void {
+  emailRateMap.delete(email.toLowerCase().trim());
 }
 
 export interface MagicLinkThrottleEntry {
@@ -145,6 +192,10 @@ export async function listActiveThrottles(): Promise<MagicLinkThrottleEntry[]> {
 /**
  * Intercept POST /api/auth/magic-link/send before NestJS routing.
  * All other paths and methods pass through immediately (no DB hit).
+ *
+ * Enforces two rate limits in order:
+ *   1. Per-IP limit (Postgres-backed): 5 req/min
+ *   2. Per-email limit (in-memory): 3 sends per 10 minutes
  */
 export function magicLinkRateLimiterMiddleware(
   req: Request,
@@ -172,9 +223,30 @@ export function magicLinkRateLimiterMiddleware(
           message: "Magic link requests are limited to 5 per minute per IP address.",
           retryAfter: RETRY_AFTER_SECONDS,
         });
-    } else {
-      next();
+      return;
     }
+
+    // ── Per-email check ───────────────────────────────────────────────────────
+    // Extract email from body. BetterAuth sends JSON body for this endpoint.
+    // req.body is populated by express.json() registered in main.ts before this middleware.
+    const email: string | undefined = req.body?.email ?? req.body?.identifier;
+    if (email) {
+      const emailCheck = recordAndCheckEmail(email);
+      if (emailCheck.blocked) {
+        const retryAfterSeconds = Math.ceil(emailCheck.retryAfterMs / 1000);
+        res
+          .status(429)
+          .set("Retry-After", String(retryAfterSeconds))
+          .json({
+            error: "Too Many Requests",
+            message: "Too many magic links sent to this address. Try again later.",
+            retryAfter: retryAfterSeconds,
+          });
+        return;
+      }
+    }
+
+    next();
   }).catch((err) => {
     // If the rate-limit DB is unavailable, fail open to avoid blocking legitimate users.
     // Log the error so operators are alerted.

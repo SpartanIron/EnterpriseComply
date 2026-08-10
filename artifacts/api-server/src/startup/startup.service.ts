@@ -959,6 +959,154 @@ CREATE TABLE IF NOT EXISTS email_drip_log (
 );
 `;
 
+const MIGRATION_SQL_V6 = `
+CREATE TABLE IF NOT EXISTS org_zta_assessments (
+  id                    SERIAL PRIMARY KEY,
+  org_id                INTEGER NOT NULL,
+  name                  TEXT NOT NULL DEFAULT 'Zero Trust Assessment',
+  overall_maturity_level TEXT,
+  overall_score         REAL,
+  rag_status            TEXT,
+  pillar_scores         JSONB,
+  dependency_violations JSONB,
+  pillar_weights        JSONB,
+  rule_set_version      TEXT NOT NULL DEFAULT 'ztmm-v2.0-2023',
+  scored_at             TIMESTAMPTZ,
+  created_by            TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_zta_assessments_org_id ON org_zta_assessments (org_id);
+
+CREATE TABLE IF NOT EXISTS org_zta_pillar_scores (
+  id                       SERIAL PRIMARY KEY,
+  org_id                   INTEGER NOT NULL,
+  zta_assessment_id        INTEGER NOT NULL,
+  pillar                   TEXT NOT NULL,
+  raw_score                REAL NOT NULL DEFAULT 0,
+  capped_score             REAL NOT NULL DEFAULT 0,
+  maturity_stage           TEXT NOT NULL DEFAULT 'traditional',
+  weight                   REAL NOT NULL DEFAULT 1.0,
+  automated_evidence_count INTEGER NOT NULL DEFAULT 0,
+  self_attested_count      INTEGER NOT NULL DEFAULT 0,
+  function_scores          JSONB,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_zta_pillar_scores_assessment ON org_zta_pillar_scores (zta_assessment_id);
+
+CREATE TABLE IF NOT EXISTS org_zta_function_scores (
+  id                SERIAL PRIMARY KEY,
+  org_id            INTEGER NOT NULL,
+  zta_assessment_id INTEGER NOT NULL,
+  pillar            TEXT NOT NULL,
+  function_key      TEXT NOT NULL,
+  function_label    TEXT NOT NULL,
+  maturity_stage    TEXT NOT NULL DEFAULT 'traditional',
+  score             REAL NOT NULL DEFAULT 0,
+  nist_controls     JSONB,
+  uco_controls      JSONB,
+  evidence_artifacts JSONB,
+  is_attested       BOOLEAN NOT NULL DEFAULT FALSE,
+  attestation_note  TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_zta_function_scores_assessment ON org_zta_function_scores (zta_assessment_id);
+
+CREATE TABLE IF NOT EXISTS org_zta_evidence_artifacts (
+  id                SERIAL PRIMARY KEY,
+  org_id            INTEGER NOT NULL,
+  zta_assessment_id INTEGER NOT NULL,
+  pillar            TEXT NOT NULL,
+  function_key      TEXT NOT NULL,
+  integration_name  TEXT NOT NULL,
+  artifact_type     TEXT NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'fail',
+  evidence_source   TEXT NOT NULL DEFAULT 'automated',
+  confidence        REAL NOT NULL DEFAULT 1.0,
+  raw_data          JSONB,
+  uco_control_id    TEXT,
+  nist_controls     JSONB,
+  last_synced_at    TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_zta_evidence_assessment ON org_zta_evidence_artifacts (zta_assessment_id);
+
+CREATE TABLE IF NOT EXISTS org_zta_gap_findings (
+  id                        SERIAL PRIMARY KEY,
+  org_id                    INTEGER NOT NULL,
+  zta_assessment_id         INTEGER NOT NULL,
+  pillar                    TEXT NOT NULL,
+  function_key              TEXT NOT NULL,
+  current_stage             TEXT NOT NULL DEFAULT 'traditional',
+  target_stage              TEXT NOT NULL DEFAULT 'initial',
+  gap_title                 TEXT NOT NULL,
+  gap_description           TEXT,
+  severity                  TEXT NOT NULL DEFAULT 'high',
+  failing_nist_controls     JSONB,
+  failing_uco_controls      JSONB,
+  causes_dependency_violation BOOLEAN NOT NULL DEFAULT FALSE,
+  status                    TEXT NOT NULL DEFAULT 'open',
+  resolved_at               TIMESTAMPTZ,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_zta_gap_findings_assessment ON org_zta_gap_findings (zta_assessment_id);
+
+CREATE TABLE IF NOT EXISTS org_zta_remediation_items (
+  id                       SERIAL PRIMARY KEY,
+  org_id                   INTEGER NOT NULL,
+  zta_assessment_id        INTEGER NOT NULL,
+  gap_finding_id           INTEGER,
+  pillar                   TEXT NOT NULL,
+  title                    TEXT NOT NULL,
+  description              TEXT,
+  recommended_integrations JSONB,
+  effort                   TEXT NOT NULL DEFAULT 'medium',
+  estimated_score_impact   REAL NOT NULL DEFAULT 0,
+  priority                 INTEGER NOT NULL DEFAULT 2,
+  status                   TEXT NOT NULL DEFAULT 'open',
+  due_date                 TIMESTAMPTZ,
+  completed_at             TIMESTAMPTZ,
+  assigned_to              TEXT,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_zta_remediation_assessment ON org_zta_remediation_items (zta_assessment_id);
+
+CREATE TABLE IF NOT EXISTS org_zta_score_history (
+  id                SERIAL PRIMARY KEY,
+  org_id            INTEGER NOT NULL,
+  zta_assessment_id INTEGER NOT NULL,
+  snapshot_date     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  overall_score     REAL NOT NULL,
+  pillar_scores     JSONB NOT NULL,
+  maturity_level    TEXT NOT NULL DEFAULT 'traditional',
+  trigger_type      TEXT NOT NULL DEFAULT 'manual',
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_org_zta_score_history_org ON org_zta_score_history (org_id, snapshot_date DESC);
+
+CREATE TABLE IF NOT EXISTS control_crosswalk (
+  id                 SERIAL PRIMARY KEY,
+  uco_control_id     TEXT NOT NULL UNIQUE,
+  title              TEXT NOT NULL,
+  domain             TEXT,
+  nist_800_53        TEXT,
+  cmmc               TEXT,
+  nist_800_171       TEXT,
+  soc2               TEXT,
+  iso_27001          TEXT,
+  fedramp            TEXT,
+  hipaa              TEXT,
+  remediation_steps  TEXT,
+  remediation_notes  TEXT,
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_control_crosswalk_uco ON control_crosswalk (uco_control_id);
+`;
+
 const MIGRATION_SQL_V5 = `
 CREATE TABLE IF NOT EXISTS org_sso_config (
   id             SERIAL PRIMARY KEY,
@@ -1010,6 +1158,7 @@ export class StartupService implements OnApplicationBootstrap {
     await this.runMigrationsV2();
     await this.runMigrationsV4();
     await this.runMigrationsV5();
+    await this.runMigrationsV6();
 
     // Security hardening — these migrations throw on failure and are NOT caught here.
     // A failure propagates up to NestFactory.create() which logs it and exits the process.
@@ -1062,6 +1211,16 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.log('SSO V5 migrations complete');
     } catch (err) {
       this.logger.error('V5 migration failed - continuing', (err as any)?.message ?? String(err));
+    }
+  }
+
+  private async runMigrationsV6() {
+    try {
+      const client6 = await pool.connect();
+      try { await client6.query(MIGRATION_SQL_V6); } finally { client6.release(); }
+      this.logger.log('ZTA V6 migrations complete');
+    } catch (err) {
+      this.logger.error('V6 migration failed - continuing', (err as any)?.message ?? String(err));
     }
   }
 

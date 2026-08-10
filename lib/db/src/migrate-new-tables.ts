@@ -50,61 +50,101 @@ CREATE TABLE IF NOT EXISTS org_custom_controls (id SERIAL PRIMARY KEY, org_id IN
   );
   console.log("Tables in DB:", r.rows.map((x: any) => x.table_name).join(", "));
 
-  -- Item 4: Remediation Tasks table
-  CREATE TABLE IF NOT EXISTS org_remediation_tasks (
-    id SERIAL PRIMARY KEY,
-    org_id INTEGER NOT NULL,
-    uco_control_id TEXT NOT NULL,
-    control_name TEXT,
-    title TEXT NOT NULL,
-    description TEXT,
-    priority TEXT NOT NULL DEFAULT 'medium',
-    status TEXT NOT NULL DEFAULT 'open',
-    assignee_name TEXT,
-    assignee_email TEXT,
-    effort_days INTEGER,
-    due_date TIMESTAMPTZ,
-    started_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    frameworks_benefited TEXT[],
-    action_steps TEXT[],
-    quick_win BOOLEAN NOT NULL DEFAULT FALSE,
-    blocker_reason TEXT,
-    notes TEXT,
-    re_test_requested BOOLEAN NOT NULL DEFAULT FALSE,
-    re_test_at TIMESTAMPTZ,
-    re_test_result TEXT,
-    source TEXT NOT NULL DEFAULT 'manual',
-    created_by TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS org_remediation_tasks (
+      id SERIAL PRIMARY KEY,
+      org_id INTEGER NOT NULL,
+      uco_control_id TEXT NOT NULL,
+      control_name TEXT,
+      title TEXT NOT NULL,
+      description TEXT,
+      priority TEXT NOT NULL DEFAULT 'medium',
+      status TEXT NOT NULL DEFAULT 'open',
+      assignee_name TEXT,
+      assignee_email TEXT,
+      effort_days INTEGER,
+      due_date TIMESTAMPTZ,
+      started_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      frameworks_benefited TEXT[],
+      action_steps TEXT[],
+      quick_win BOOLEAN NOT NULL DEFAULT FALSE,
+      blocker_reason TEXT,
+      notes TEXT,
+      re_test_requested BOOLEAN NOT NULL DEFAULT FALSE,
+      re_test_at TIMESTAMPTZ,
+      re_test_result TEXT,
+      source TEXT NOT NULL DEFAULT 'manual',
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS org_audit_shares (
+      id SERIAL PRIMARY KEY,
+      org_id INTEGER NOT NULL,
+      share_token TEXT NOT NULL UNIQUE,
+      auditor_name TEXT,
+      auditor_email TEXT,
+      auditor_firm TEXT,
+      framework_keys TEXT[],
+      include_evidence BOOLEAN NOT NULL DEFAULT TRUE,
+      include_test_results BOOLEAN NOT NULL DEFAULT TRUE,
+      include_policies BOOLEAN NOT NULL DEFAULT TRUE,
+      include_poam BOOLEAN NOT NULL DEFAULT FALSE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      access_count INTEGER NOT NULL DEFAULT 0,
+      max_accesses INTEGER,
+      last_accessed_at TIMESTAMPTZ,
+      last_accessed_ip TEXT,
+      created_by TEXT NOT NULL,
+      revoked_at TIMESTAMPTZ,
+      revoked_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
-  -- Item 5: Audit Shares table
-  CREATE TABLE IF NOT EXISTS org_audit_shares (
-    id SERIAL PRIMARY KEY,
-    org_id INTEGER NOT NULL,
-    share_token TEXT NOT NULL UNIQUE,
-    auditor_name TEXT,
-    auditor_email TEXT,
-    auditor_firm TEXT,
-    framework_keys TEXT[],
-    include_evidence BOOLEAN NOT NULL DEFAULT TRUE,
-    include_test_results BOOLEAN NOT NULL DEFAULT TRUE,
-    include_policies BOOLEAN NOT NULL DEFAULT TRUE,
-    include_poam BOOLEAN NOT NULL DEFAULT FALSE,
-    expires_at TIMESTAMPTZ NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    access_count INTEGER NOT NULL DEFAULT 0,
-    max_accesses INTEGER,
-    last_accessed_at TIMESTAMPTZ,
-    last_accessed_ip TEXT,
-    created_by TEXT NOT NULL,
-    revoked_at TIMESTAMPTZ,
-    revoked_by TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS control_crosswalk (
+      id SERIAL PRIMARY KEY,
+      uco_control_id TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      domain TEXT,
+      nist_800_53 TEXT,
+      cmmc TEXT,
+      nist_800_171 TEXT,
+      soc2 TEXT,
+      iso_27001 TEXT,
+      fedramp TEXT,
+      hipaa TEXT,
+      remediation_steps TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS scheduler_job_health (
+      job_name TEXT PRIMARY KEY,
+      last_run_at TIMESTAMPTZ,
+      last_success_at TIMESTAMPTZ,
+      consecutive_failures INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS status_subscribers (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      org_id INTEGER,
+      confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+      confirm_token TEXT,
+      unsub_token TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
   await pool.end();
 })().catch((e) => { console.error(e.message); process.exit(1); });

@@ -7,3 +7,5 @@
 - [Integration health status](integration-health.md) — status must be "degraded" (not "connected") when checksPassed < checksRun; credentials validated before storing; verify endpoint at POST /orgs/:orgId/integrations/:key/verify.
 - [SAML group mapping](saml-group-mapping.md) — saml_group_mappings JSONB column on org_sso_config; groups extracted from profile.groups/memberOf/AD claim; highest role wins; never demotes owner/super_admin.
 - [Credential key rotation](credential-key-rotation.md) — reEncryptWithNewKey() in credential-crypto.ts; rotate via POST /api/admin/credentials/rotate-key (supports dryRun); update env var + redeploy after.
+- [SWC decorator test pattern](swc-decorator-test-pattern.md) — NestJS-decorated files crash Node native TS stripper; use spawnSync subprocess with cwd=api-server dir so SWC finds .swcrc.
+- [Rate-limit test isolation](test-suite-rate-limit-isolation.md) — Section 15 static IPs (10.15.10.x) must be flushed from throttle_hits before each run to avoid cross-run contamination.
