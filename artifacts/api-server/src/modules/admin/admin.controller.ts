@@ -12,7 +12,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ClerkAuthGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
-import { db, orgMembersTable, organizationsTable, orgIntegrationsTable } from "@workspace/db";
+import {
+  db,
+  orgMembersTable,
+  organizationsTable,
+  orgIntegrationsTable,
+  orgAuditLogTable,
+} from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { writeAuditLog } from "../../lib/audit-log.js";
 import { listBlocked, clearBlock } from "../../lib/auth-failure-tracker.js";
@@ -22,10 +28,11 @@ import {
   reEncryptConfigWithNewKey,
   rotateCredentialValue,
   getDerivedKeyBuffer,
+  keyFingerprint,
 } from "../../lib/credential-crypto.js";
 
 /** Verify the caller has super_admin in at least one org. Throws 403 otherwise. */
-async function assertSuperAdmin(userId: string): Promise<void> {
+async function assertSuperAdmin(userId: string) {
   const membership = await db.query.orgMembersTable.findFirst({
     where: and(
       eq(orgMembersTable.clerkUserId, userId),
@@ -35,6 +42,7 @@ async function assertSuperAdmin(userId: string): Promise<void> {
   if (!membership) {
     throw new ForbiddenException("Requires super_admin role");
   }
+  return membership;
 }
 
 @Controller("admin")
@@ -150,7 +158,9 @@ export class AdminController {
     @Body() body: { newKeyHex: string; oldKeyHex?: string; dryRun?: boolean },
   ) {
     const rotateLog = new Logger("CredentialRotation");
-    await assertSuperAdmin(userId);
+    const actor = await assertSuperAdmin(userId);
+    const actorEmail =
+      (actor as { email?: string | null }).email ?? undefined;
 
     if (!body.newKeyHex || !/^[0-9a-fA-F]{64}$/.test(body.newKeyHex)) {
       throw new BadRequestException(
@@ -172,6 +182,40 @@ export class AdminController {
       ? Buffer.from(body.oldKeyHex, 'hex')
       : getDerivedKeyBuffer();
 
+    // Non-reversible fingerprints for the compliance trail. Key material is
+    // never logged or persisted anywhere.
+    const oldKeyFingerprint = keyFingerprint(oldKeyBuf);
+    const newKeyFingerprint = keyFingerprint(newKeyBuf);
+    if (oldKeyFingerprint === newKeyFingerprint) {
+      throw new BadRequestException(
+        "newKeyHex resolves to the key material already in use - nothing to rotate",
+      );
+    }
+
+    // A key retired by an earlier rotation must never come back into service.
+    // The WORM audit log is the source of truth, so a forgotten backup copy of
+    // an old key cannot be silently re-adopted by a later operator.
+    const priorRotations = await db.query.orgAuditLogTable.findMany({
+      where: eq(orgAuditLogTable.action, "credential_key.rotated"),
+    });
+    const retiredFingerprints = new Set<string>();
+    for (const entry of priorRotations) {
+      const d = entry.details as { oldKeyFingerprint?: string } | null;
+      if (d?.oldKeyFingerprint) retiredFingerprints.add(d.oldKeyFingerprint);
+    }
+    if (retiredFingerprints.has(newKeyFingerprint)) {
+      throw new BadRequestException(
+        `newKeyHex (${newKeyFingerprint}) was retired by an earlier rotation and ` +
+          "cannot be put back into service. Generate a fresh key with: openssl rand -hex 32",
+      );
+    }
+    if (!body.oldKeyHex && retiredFingerprints.has(oldKeyFingerprint)) {
+      rotateLog.warn(
+        `INTEGRATION_CREDENTIAL_KEY (${oldKeyFingerprint}) was retired by an earlier ` +
+          "rotation - a stale key backup may have been redeployed. Investigate before proceeding.",
+      );
+    }
+
     const CRED_KEYS = [
       "personalAccessToken",
       "apiToken",
@@ -192,6 +236,8 @@ export class AdminController {
       newRefreshToken?: string | null;
       newConfig?: Record<string, unknown> | null;
     };
+
+    const orgIdByRow = new Map<number, number>(rows.map((r) => [r.id, r.orgId]));
 
     const outcomes: RowOutcome[] = [];
 
@@ -308,6 +354,52 @@ export class AdminController {
         rotated++;
       }
     });
+
+    // Immutable compliance trail: one audit row per affected org so tenant
+    // auditors can see exactly when their integration credentials were
+    // re-encrypted, by whom, and between which key fingerprints.
+    const rotatedByOrg = new Map<number, string[]>();
+    for (const outcome of toRotate) {
+      const oid = orgIdByRow.get(outcome.id);
+      if (oid === undefined) continue;
+      const list = rotatedByOrg.get(oid) ?? [];
+      list.push(outcome.integrationKey);
+      rotatedByOrg.set(oid, list);
+    }
+    for (const [oid, integrationKeys] of rotatedByOrg) {
+      await writeAuditLog(
+        oid,
+        "credential_key.rotated",
+        "integration_credentials",
+        null,
+        {
+          oldKeyFingerprint,
+          newKeyFingerprint,
+          integrationKeys,
+          rowsRotated: integrationKeys.length,
+        },
+        userId,
+        actorEmail,
+      );
+    }
+    for (const f of failures) {
+      const oid = orgIdByRow.get(f.id);
+      if (oid === undefined) continue;
+      await writeAuditLog(
+        oid,
+        "credential_key.rotation_failed",
+        "integration_credentials",
+        String(f.id),
+        {
+          oldKeyFingerprint,
+          newKeyFingerprint,
+          integrationKey: f.integrationKey,
+          reason: f.reason,
+        },
+        userId,
+        actorEmail,
+      );
+    }
 
     rotateLog.log(
       `Key rotation complete: ${rotated} rotated, ` +

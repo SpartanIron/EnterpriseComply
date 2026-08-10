@@ -15,7 +15,7 @@
  *                    service layer works before and after migration.
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, createHmac } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, createHmac, createHash } from 'crypto';
 import { Logger } from '@nestjs/common';
 
 const ALGO = 'aes-256-gcm' as const;
@@ -23,6 +23,17 @@ export const ENC_PREFIX = 'enc:v1:';
 const DEV_FALLBACK_KEY = 'dev-only-fallback-credential-key-DO-NOT-USE-OUTSIDE-DEVELOPMENT';
 
 const log = new Logger('CredentialCrypto');
+
+/**
+ * Non-reversible fingerprint of key material, safe to persist in the audit log.
+ * Lets compliance teams prove which key was in use, and lets the rotation
+ * endpoint recognise a key that has already been retired, without ever
+ * writing key material anywhere.
+ */
+export function keyFingerprint(key: Buffer | string): string {
+  const buf = typeof key === 'string' ? Buffer.from(key, 'hex') : key;
+  return 'sha256:' + createHash('sha256').update(buf).digest('hex').slice(0, 16);
+}
 let _cachedKey: Buffer | null = null;
 
 /**
