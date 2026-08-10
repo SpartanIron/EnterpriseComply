@@ -14,6 +14,7 @@ import {
 import { ClerkAuthGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
 import { db, orgMembersTable, organizationsTable, orgIntegrationsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { writeAuditLog } from "../../lib/audit-log.js";
 import { listBlocked, clearBlock } from "../../lib/auth-failure-tracker.js";
 import { listActiveThrottles, resetMagicLinkRateForIp } from "../../lib/magic-link-rate-limiter.js";
 import {
@@ -97,8 +98,30 @@ export class AdminController {
     if (!VALID_PLANS.includes(body.plan)) {
       throw new BadRequestException("plan must be one of: " + VALID_PLANS.join(", "));
     }
-    await db.update(organizationsTable).set({ plan: body.plan }).where(eq(organizationsTable.id, Number(orgId)));
-    return { ok: true, orgId: Number(orgId), plan: body.plan };
+    const numericOrgId = Number(orgId);
+
+    // Capture previous plan for audit log
+    const existing = await db.query.organizationsTable.findFirst({
+      where: eq(organizationsTable.id, numericOrgId),
+    });
+    const previousPlan = existing?.plan ?? "starter";
+
+    await db
+      .update(organizationsTable)
+      .set({ plan: body.plan })
+      .where(eq(organizationsTable.id, numericOrgId));
+
+    // Write audit trail — best-effort, never blocks the response
+    await writeAuditLog(
+      numericOrgId,
+      "plan.changed",
+      "organization",
+      String(numericOrgId),
+      { previousPlan, newPlan: body.plan, changedBy: userId },
+      userId,
+    );
+
+    return { ok: true, orgId: numericOrgId, plan: body.plan };
   }
 
   /**
