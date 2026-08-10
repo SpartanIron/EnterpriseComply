@@ -5,15 +5,21 @@ import { authClient } from "@/lib/auth-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/queryClient";
 import { useRole, ROLE_LABELS } from "@/context/RoleContext";
+import { PLAN_HIERARCHY } from "@/components/PlanGate";
+import type { PlanTier } from "@/components/PlanGate";
 import type { ReactNode } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-// Sections that require a minimum plan tier in addition to the role check.
-// super_admin always bypasses plan gates; other roles see these sections only
-// when the org's plan is in the allowed list.
-const SECTION_PLAN_REQUIRED: Record<string, string[]> = {
-  Federal: ["enterprise", "federal"],
+// Minimum plan tier required to access a section (unlocked).
+// super_admin always bypasses plan gates.
+const SECTION_MIN_PLAN: Record<string, PlanTier> = {
+  Federal: "federal",
+};
+
+// Minimum plan tier required for individual nav items.
+const ITEM_MIN_PLAN: Record<string, PlanTier> = {
+  "/control-crosswalk": "enterprise",
 };
 
 const NAV = [
@@ -216,14 +222,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
           {NAV.map(({ section, items }) => {
             if (!canSeeSection(section)) return null;
-            // Plan gate: certain sections (e.g. Federal) are only available on
-            // higher-tier plans.  super_admin bypasses this check.
-            // While org is loading (undefined), show everything to avoid flash.
-            const requiredPlans = SECTION_PLAN_REQUIRED[section];
-            if (requiredPlans && org !== undefined && !can("super_admin")) {
-              const plan = (org?.plan ?? "").toLowerCase();
-              if (!requiredPlans.includes(plan)) return null;
-            }
+
+            // Determine if the section is plan-locked.
+            // super_admin bypasses; while org is loading show unlocked to avoid flash.
+            const sectionMinPlan = SECTION_MIN_PLAN[section];
+            const isSectionLocked = !!sectionMinPlan
+              && org !== undefined
+              && !can("super_admin")
+              && (PLAN_HIERARCHY[(org?.plan ?? "starter") as PlanTier] ?? 0) < PLAN_HIERARCHY[sectionMinPlan];
+
           const isOpen = openSections.has(section);
             const hasActive = items.some(
               (item) => location === item.path || location.startsWith(item.path + "/"),
@@ -254,19 +261,62 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "inherit" }}>
                     {section}
                   </span>
-                  <svg
-                    className={`h-3 w-3 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                    style={{ color: "inherit" }}
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <div className="flex items-center gap-1">
+                    {isSectionLocked && (
+                      <svg className="h-3 w-3 flex-shrink-0" style={{ color: "rgba(100,116,139,0.5)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                      </svg>
+                    )}
+                    <svg
+                      className={`h-3 w-3 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                      style={{ color: "inherit" }}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </button>
 
                 {isOpen && (
                   <div className="mt-0.5 mb-1.5 space-y-0.5">
                     {items.map(({ path, label, icon: Icon }) => {
                       const active = location === path || location.startsWith(path + "/");
+
+                      // Item is locked if its section is locked, or if it has its own min-plan requirement.
+                      const itemMinPlan = ITEM_MIN_PLAN[path];
+                      const isItemLocked = isSectionLocked || (
+                        !!itemMinPlan
+                        && org !== undefined
+                        && !can("super_admin")
+                        && (PLAN_HIERARCHY[(org?.plan ?? "starter") as PlanTier] ?? 0) < PLAN_HIERARCHY[itemMinPlan]
+                      );
+
+                      if (isItemLocked) {
+                        return (
+                          <button
+                            key={path}
+                            onClick={() => navigate(path)}
+                            title="Upgrade required"
+                            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all"
+                            style={{ background: "transparent", color: "rgba(100,116,139,0.4)" }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)";
+                              (e.currentTarget as HTMLElement).style.color = "rgba(100,116,139,0.55)";
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.background = "transparent";
+                              (e.currentTarget as HTMLElement).style.color = "rgba(100,116,139,0.4)";
+                            }}
+                          >
+                            <Icon active={false} />
+                            <span className="flex-1 text-left truncate">{label}</span>
+                            <svg className="h-3 w-3 flex-shrink-0 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                            </svg>
+                          </button>
+                        );
+                      }
+
                       return (
                         <button
                           key={path}
