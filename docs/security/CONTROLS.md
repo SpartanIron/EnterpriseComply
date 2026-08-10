@@ -115,3 +115,15 @@ personnel and process.
 CMMC Level 2 self-assessment next since the control overlap is high, then
 FedRAMP once a government customer is committed to sponsoring. Do not start
 FedRAMP speculatively.
+
+## Additions from the 2026-08-10 hardening pass
+
+| Control area | Implementation | Evidence |
+| --- | --- | --- |
+| SC-7 boundary protection | Origin-trust middleware: Host allow-list plus optional edge shared secret, replacing Authenticated Origin Pulls which Railway cannot support | test-suite SECTION 38.8-38.11; `GET /api/admin/origin-trust` |
+| SC-18 mobile code | `script-src` nonce-locked, `'unsafe-inline'` removed; exported reports served with `script-src 'none'` | SECTION 38.12-38.20 |
+| SI-10 input validation | XCCDF/SCAP parsing rewritten to linear `indexOf` scanning, removing eight polynomial-backtracking regexes on attacker-supplied uploads; CKL uploads size-capped and DOCTYPE/ENTITY/script rejected before reaching `DOMParser` | CodeQL js/polynomial-redos and js/xss-through-dom |
+| SC-7 / SI-10 SSRF | `createHardenedFetch` now validates every URL through the SSRF guard itself instead of trusting call sites | CodeQL js/request-forgery |
+| CM-2 / SA-15 build integrity | All GitHub Actions pinned to full-length commit SHAs; every workflow and job declares `permissions: contents: read` | CodeQL actions/missing-workflow-permissions |
+| CP-9 backup | Encrypted off-platform `pg_dump` with verified restore path | `scripts/offsite-backup.cjs`; see DR_BCP.md |
+| AC-6 least privilege | Database posture endpoint reports, at high severity, when the application connects as a role that bypasses row-level security, and names the remediation script | SECTION 38.21-38.26; `GET /api/admin/db-security` |

@@ -58,16 +58,78 @@ function mapXccdfStatus(result: XccdfStatus): ParsedFinding["status"] {
   }
 }
 
+/**
+ * Linear, backtracking-free XCCDF tag helpers.
+ *
+ * SCAP/XCCDF documents are attacker-supplied uploads of arbitrary size. Scanning
+ * them with patterns such as `<tag[^>]*>([\s\S]*?)</tag>` is polynomial in the
+ * input length, because the engine retries the ambiguous prefix at every offset
+ * (CodeQL js/polynomial-redos). Everything below uses indexOf only, so each
+ * operation is O(n) with no backtracking.
+ */
+const TAG_NAME_BOUNDARY = new Set([" ", "\t", "\r", "\n", ">", "/"]);
+
+/** Hard cap so a hostile document cannot make us allocate unbounded findings. */
+const MAX_PARSED_BLOCKS = 50000;
+
+interface OpenTag { open: string; start: number; end: number }
+interface TagBlock { open: string; inner: string; whole: string; end: number }
+
+function findOpenTag(xml: string, tag: string, from = 0): OpenTag | null {
+  const needle = "<" + tag;
+  let cursor = from;
+  for (;;) {
+    const i = xml.indexOf(needle, cursor);
+    if (i < 0) return null;
+    const boundary = xml[i + needle.length];
+    if (boundary === undefined || TAG_NAME_BOUNDARY.has(boundary)) {
+      const gt = xml.indexOf(">", i);
+      if (gt < 0) return null;
+      return { open: xml.slice(i, gt + 1), start: i, end: gt + 1 };
+    }
+    cursor = i + needle.length;
+  }
+}
+
+function findBlock(xml: string, tag: string, from = 0): TagBlock | null {
+  const openTag = findOpenTag(xml, tag, from);
+  if (!openTag) return null;
+  const closeIdx = xml.indexOf("</" + tag, openTag.end);
+  if (closeIdx < 0) return null;
+  const closeGt = xml.indexOf(">", closeIdx);
+  const wholeEnd = closeGt < 0 ? xml.length : closeGt + 1;
+  return {
+    open: openTag.open,
+    inner: xml.slice(openTag.end, closeIdx),
+    whole: xml.slice(openTag.start, wholeEnd),
+    end: wholeEnd,
+  };
+}
+
+function findAllBlocks(xml: string, tag: string): string[] {
+  const out: string[] = [];
+  let cursor = 0;
+  while (out.length < MAX_PARSED_BLOCKS) {
+    const block = findBlock(xml, tag, cursor);
+    if (!block) break;
+    out.push(block.whole);
+    cursor = block.end;
+  }
+  return out;
+}
+
 function extractTagValue(xml: string, tag: string): string {
-  const re = new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)<\\/" + tag + ">", "i");
-  const m = xml.match(re);
-  return m ? m[1]!.trim() : "";
+  const block = findBlock(xml, tag);
+  return block ? block.inner.trim() : "";
 }
 
 function extractAttr(tag: string, attr: string): string {
-  const re = new RegExp(attr + "=\"([^\"]*?)\"");
-  const m = tag.match(re);
-  return m ? m[1]! : "";
+  const needle = attr + '="';
+  const at = tag.indexOf(needle);
+  if (at < 0) return "";
+  const start = at + needle.length;
+  const end = tag.indexOf('"', start);
+  return end < 0 ? "" : tag.slice(start, end);
 }
 
 function inferSeverity(vulnId: string): ParsedFinding["severity"] {
@@ -78,22 +140,22 @@ function inferSeverity(vulnId: string): ParsedFinding["severity"] {
 }
 
 export function parseXccdf(xmlContent: string): ParseResult {
-  const testResultMatch = xmlContent.match(/<TestResult[^>]*>([\s\S]*?)<\/TestResult>/i);
-  const testResultBlock = testResultMatch ? testResultMatch[1]! : xmlContent;
+  const testResultMatch = findBlock(xmlContent, "TestResult");
+  const testResultBlock = testResultMatch ? testResultMatch.inner : xmlContent;
 
   const checklistTitle =
     extractTagValue(xmlContent, "title") ||
-    extractAttr(xmlContent.match(/<Benchmark[^>]*>/i)?.[0] ?? "", "id") ||
+    extractAttr(findOpenTag(xmlContent, "Benchmark")?.open ?? "", "id") ||
     "Imported SCAP Benchmark";
 
   const hostname = extractTagValue(testResultBlock, "target") || "unknown-host";
-  const benchmarkId = extractAttr(xmlContent.match(/<Benchmark[^>]*>/i)?.[0] ?? "", "id") || "";
-  const startTime = extractAttr(testResultBlock.match(/<TestResult[^>]*>/i)?.[0] ?? "", "start-time") || new Date().toISOString();
+  const benchmarkId = extractAttr(findOpenTag(xmlContent, "Benchmark")?.open ?? "", "id") || "";
+  const startTime = extractAttr(testResultMatch?.open ?? "", "start-time") || new Date().toISOString();
 
-  const ruleResultBlocks = testResultBlock.match(/<rule-result[\s\S]*?<\/rule-result>/gi) ?? [];
+  const ruleResultBlocks = findAllBlocks(testResultBlock, "rule-result");
 
   const findings: ParsedFinding[] = ruleResultBlocks.map((block) => {
-    const idref = extractAttr(block.match(/<rule-result[^>]*>/i)?.[0] ?? "", "idref");
+    const idref = extractAttr(findOpenTag(block, "rule-result")?.open ?? "", "idref");
     const rawResult = (extractTagValue(block, "result") || "unknown").toLowerCase() as XccdfStatus;
     const title = extractTagValue(block, "title") || idref;
     const description = extractTagValue(block, "description") || "";

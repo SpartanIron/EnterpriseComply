@@ -26,7 +26,16 @@ let _authTokenGetter: AuthTokenGetter | null = null;
  * Pass `null` to clear the base URL.
  */
 export function setBaseUrl(url: string | null): void {
-  _baseUrl = url ? url.replace(/\/+$/, "") : null;
+  if (url === null) {
+    _baseUrl = null;
+    return;
+  }
+  // Trim trailing slashes with a linear scan. `url.replace(/\/+$/, "")` is
+  // polynomial in the input length (CodeQL js/polynomial-redos) and this value
+  // can come from remote configuration.
+  let end = url.length;
+  while (end > 0 && url.charCodeAt(end - 1) === 47) end -= 1;
+  _baseUrl = url.slice(0, end);
 }
 
 /**

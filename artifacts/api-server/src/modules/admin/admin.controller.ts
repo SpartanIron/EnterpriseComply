@@ -33,6 +33,7 @@ import {
   getDerivedKeyBuffer,
   keyFingerprint,
 } from "../../lib/credential-crypto.js";
+import { readOriginTrustPosture } from "../../middleware/origin-trust.middleware.js";
 
 /** Verify the caller has super_admin in at least one org. Throws 403 otherwise. */
 async function assertSuperAdmin(userId: string) {
@@ -487,6 +488,17 @@ export class AdminController {
   }
 
   /** Row counts for the audit trail, used to prove retention on questionnaires. */
+  /**
+   * Which hostnames are actually reaching the origin, and whether anything is
+   * being refused. Read-only. Never returns the edge shared secret - only
+   * whether one is configured.
+   */
+  @Get("origin-trust")
+  async getOriginTrust(@ClerkUserId() userId: string) {
+    await assertSuperAdmin(userId);
+    return readOriginTrustPosture();
+  }
+
   @Get("audit-retention")
   async getAuditRetention(@ClerkUserId() userId: string) {
     await assertSuperAdmin(userId);

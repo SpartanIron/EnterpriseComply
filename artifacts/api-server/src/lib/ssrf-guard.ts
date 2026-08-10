@@ -372,10 +372,16 @@ export function pinnedHttpsRequest(
  */
 export function createHardenedFetch(timeoutMs = 10_000) {
   return async function hardenedFetch(url: string, init?: RequestInit): Promise<Response> {
+    // Validate on every call rather than trusting the caller to have run the guard
+    // first. A single careless call site turns this helper into an SSRF primitive,
+    // which is exactly what CodeQL js/request-forgery flagged here. Re-validating is
+    // cheap next to the network round trip and makes misuse impossible by
+    // construction. Throws SsrfBlockedError for anything non-public or non-HTTPS.
+    const validated = await validatePublicHttpsUrl(url, "hardenedFetch url");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await fetch(url, { ...init, signal: controller.signal, redirect: "error" });
+      return await fetch(validated.toString(), { ...init, signal: controller.signal, redirect: "error" });
     } finally {
       clearTimeout(timer);
     }

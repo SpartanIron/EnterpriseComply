@@ -4718,6 +4718,212 @@ check(
 );
 
 
+
+// ---------------------------------------------------------------------------
+// SECTION 38 - Origin trust, CSP nonce integrity, DB-privilege reporting
+// ---------------------------------------------------------------------------
+section("38. Origin trust, CSP nonce, and database-privilege reporting");
+
+const ot38 = await evReq34(cookieSa28, "/admin/origin-trust", "GET");
+check("38.1 super_admin can read the origin-trust posture", ot38.status, 200);
+check(
+  "38.2 the posture reports an explicit mode",
+  ["off", "report", "enforce"].includes(ot38.body?.mode),
+  true,
+);
+check(
+  "38.3 the trusted-host allow-list is non-empty",
+  Array.isArray(ot38.body?.trustedHosts) && ot38.body.trustedHosts.length > 0,
+  true,
+);
+check(
+  "38.4 the edge shared secret is never echoed back",
+  JSON.stringify(ot38.body ?? {}).includes(
+    process.env.EDGE_SHARED_SECRET || "__no_secret_configured__",
+  ),
+  false,
+);
+check(
+  "38.5 the header the edge must set is published, not the value",
+  ot38.body?.edgeSecretHeader,
+  "x-ec-edge-auth",
+);
+check(
+  "38.6 health probes are exempt so enforcement cannot black-hole a deploy",
+  Array.isArray(ot38.body?.exemptPrefixes) &&
+    ot38.body.exemptPrefixes.includes("/api/healthz"),
+  true,
+);
+const otDenied38 = await evReq34(cookieNsa28, "/admin/origin-trust", "GET");
+check(
+  "38.7 a non-super-admin cannot read the origin-trust posture",
+  otDenied38.status,
+  403,
+);
+
+// Host-header forgery has to be done at the socket level: fetch() refuses to let
+// callers set Host, which is exactly the header the allow-list is built on.
+const { request: rawRequest38 } = await import("node:http");
+const baseUrl38 = new URL(BASE);
+const port38 = baseUrl38.port || "80";
+const apiPrefix38 = baseUrl38.pathname.replace(/\/$/, "");
+
+function rawGet38(hostHeader, path) {
+  return new Promise((resolve, reject) => {
+    const req = rawRequest38(
+      {
+        host: baseUrl38.hostname,
+        port: Number(port38),
+        method: "GET",
+        path,
+        headers: { Host: hostHeader },
+      },
+      (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode,
+            headers: res.headers,
+            text: Buffer.concat(chunks).toString("utf8"),
+          }),
+        );
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+const mode38 = ot38.body?.mode;
+const statusPath38 = apiPrefix38 + "/public/status";
+const honest38 = await rawGet38("localhost:" + port38, statusPath38);
+check("38.8 an approved Host is served normally", honest38.status, 200);
+
+const forged38 = await rawGet38(
+  "enterprisecomply-production.up.railway.app",
+  statusPath38,
+);
+if (mode38 === "enforce") {
+  check(
+    "38.9 the bare Railway origin hostname is refused with 421",
+    forged38.status,
+    421,
+  );
+  check(
+    "38.10 the refusal is labelled so it can be correlated in logs",
+    forged38.headers["x-origin-trust"],
+    "refused",
+  );
+} else if (mode38 === "report") {
+  check("38.9 report mode serves but records the violation", forged38.status, 200);
+  check(
+    "38.10 report mode labels the response for review",
+    forged38.headers["x-origin-trust"],
+    "report-only-violation",
+  );
+} else {
+  check("38.9 origin trust is off in this environment", forged38.status, 200);
+  check(
+    "38.10 origin trust adds no header when off",
+    forged38.headers["x-origin-trust"],
+    undefined,
+  );
+}
+
+const probe38 = await rawGet38("healthcheck.railway.app", apiPrefix38 + "/healthz");
+check(
+  "38.11 the platform health probe survives origin enforcement",
+  probe38.status,
+  200,
+);
+
+function directive38(csp, name) {
+  return (
+    String(csp || "")
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(name)) ?? ""
+  );
+}
+
+const csp38 = honest38.headers["content-security-policy"] ?? "";
+check("38.12 a Content-Security-Policy is set on API responses", csp38.length > 0, true);
+const scriptSrc38 = directive38(csp38, "script-src");
+check(
+  "38.13 script-src no longer allows arbitrary inline script",
+  scriptSrc38.includes("'unsafe-inline'"),
+  false,
+);
+check("38.14 script-src pins a per-request nonce", scriptSrc38.includes("'nonce-"), true);
+const second38 = await rawGet38("localhost:" + port38, statusPath38);
+check(
+  "38.15 the nonce is regenerated on every response",
+  scriptSrc38 !== directive38(second38.headers["content-security-policy"], "script-src"),
+  true,
+);
+check("38.16 object-src stays closed", csp38.includes("object-src 'none'"), true);
+check(
+  "38.17 frame-ancestors stays closed",
+  csp38.includes("frame-ancestors 'none'"),
+  true,
+);
+check("38.18 base-uri stays closed", csp38.includes("base-uri 'none'"), true);
+
+const spa38 = await rawGet38("localhost:" + port38, "/");
+const spaIsHtml38 =
+  spa38.status === 200 && String(spa38.headers["content-type"] ?? "").includes("html");
+if (spaIsHtml38) {
+  const scriptTags38 = (spa38.text.match(/<script/g) ?? []).length;
+  const noncedTags38 = (spa38.text.match(/<script nonce="/g) ?? []).length;
+  check("38.19 the served SPA carries a stamped nonce", noncedTags38 > 0, true);
+  check("38.20 no script tag is left un-nonced", noncedTags38, scriptTags38);
+} else {
+  check("38.19 no SPA bundle in this environment - skipped", true, true);
+  check("38.20 no SPA bundle in this environment - skipped", true, true);
+}
+
+const dbs38 = await evReq34(cookieSa28, "/admin/db-security", "GET");
+check("38.21 super_admin can read the database security posture", dbs38.status, 200);
+check(
+  "38.22 the posture states whether the connection bypasses RLS",
+  typeof dbs38.body?.bypassesRls,
+  "boolean",
+);
+check(
+  "38.23 tenant policy coverage is reported as a percentage",
+  typeof dbs38.body?.tenantPolicyCoveragePct,
+  "number",
+);
+const findings38 = Array.isArray(dbs38.body?.findings)
+  ? dbs38.body.findings.filter(Boolean)
+  : [];
+if (dbs38.body?.bypassesRls === true) {
+  check(
+    "38.24 a privilege-bypassing connection is reported as high severity",
+    findings38.some((f) => f?.severity === "high"),
+    true,
+  );
+  check(
+    "38.25 the finding names the least-privilege remediation script",
+    findings38.some((f) => String(f?.remediation ?? "").includes("provision-app-role")),
+    true,
+  );
+} else {
+  check(
+    "38.24 the connection does not bypass RLS, so no high finding",
+    findings38.some((f) => f?.severity === "high"),
+    false,
+  );
+  check("38.25 least-privilege role already in use - skipped", true, true);
+}
+const dbsDenied38 = await evReq34(cookieNsa28, "/admin/db-security", "GET");
+check(
+  "38.26 a non-super-admin cannot read the database posture",
+  dbsDenied38.status,
+  403,
+);
+
 await cleanup();
 
 const bar = "═".repeat(70);

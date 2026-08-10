@@ -109,3 +109,52 @@ which is the hardest part of any rebuild.
 | No rehearsed restore | RTO figures are estimates, not measurements | Quarterly restore drill into a scratch service, recorded as evidence | High |
 | Sign-in depends on a single email provider | Email outage prevents all authentication | Secondary email provider with automatic failover, or offer SSO to every plan | Medium |
 | `INTEGRATION_CREDENTIAL_KEY` has no documented escrow | Key loss is unrecoverable customer data | Escrow in the password manager with two-person retrieval, documented in the runbook | High |
+
+## Backup independence (off-platform copy)
+
+Railway point-in-time recovery and volume snapshots both live inside the same
+Railway account as production. A compromised, suspended or mis-operated account
+takes every copy with it, which does not satisfy the backup-independence
+expectation behind SOC 2 availability commitments or FedRAMP CP-9.
+
+`scripts/offsite-backup.cjs` produces an encrypted `pg_dump` and stores it under a
+different provider with a different credential (Cloudflare R2 by default, or any
+S3-compatible endpoint).
+
+- Cipher: AES-256-GCM. Key derived with `scrypt` (N=2^15, r=8, p=1) from
+  `BACKUP_ENCRYPTION_PASSPHRASE`, which must be at least 32 characters. Per-file
+  random salt and IV. File layout is `ECBK1 | salt(16) | iv(12) | ciphertext | tag(16)`,
+  so tampering fails authentication rather than silently producing garbage.
+- Upload is a hand-rolled AWS SigV4 `PutObject` — no SDK, so the backup path adds
+  no transitive dependencies to the supply chain.
+- A JSON manifest is written alongside each object recording the SHA-256 of the
+  ciphertext, plaintext and ciphertext sizes, the cipher and the KDF parameters.
+- The script never logs a secret. `--dry-run` prints the plan with the database
+  credential redacted to `user:***@host`.
+
+### Proving a backup is restorable
+
+An unverified backup is a hypothesis. `--verify` decrypts a file and runs
+`pg_restore --list` against it, then fails if the dump contains zero `TABLE DATA`
+entries:
+
+```
+node scripts/offsite-backup.cjs --dry-run
+node scripts/offsite-backup.cjs --local-only --out /tmp/db.enc
+node scripts/offsite-backup.cjs --verify --in /tmp/db.enc
+```
+
+Last executed against the development database on 2026-08-10: dumped and
+re-encrypted 642,906 bytes, decrypted cleanly, and `pg_restore --list` enumerated
+73 `TABLE DATA` entries.
+
+### Still outstanding (requires an operator, not the application)
+
+- Create the R2 bucket and a bucket-scoped API token, and set
+  `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`,
+  `BACKUP_S3_SECRET_ACCESS_KEY` and `BACKUP_ENCRYPTION_PASSPHRASE` in Railway.
+  Credential creation is deliberately not automated.
+- Railway PITR retention is currently about two days of archive window. Extend it.
+- A restore of the production database into a scratch service has not yet been
+  timed, so the RTO figure in this document remains a target rather than an
+  evidenced measurement.

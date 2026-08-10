@@ -5,10 +5,12 @@ import { logger } from "./lib/logger";
 import pinoHttp from "pino-http";
 import helmet from "helmet";
 import { join } from "path";
-import { existsSync } from "fs";
+import { randomBytes } from "crypto";
+import { existsSync, readFileSync } from "fs";
 import express from "express";
 import { validateCredentialKeyMaterial } from "./lib/credential-crypto";
 import { magicLinkRateLimiterMiddleware } from "./lib/magic-link-rate-limiter";
+import { originTrustMiddleware } from "./middleware/origin-trust.middleware.js";
 
 // ── Startup env validation ───────────────────────────────────────────────────────────────────
 // Validates required env vars on startup and refuses to boot if critical ones
@@ -102,12 +104,37 @@ async function bootstrap() {
   }
 
   // ── Security headers ───────────────────────────────────────────────────────────────────
+  // — Origin trust ----------------------------------------------------------
+  // First thing in the chain. A request that arrived at the container without
+  // coming through an approved public hostname should not reach the security
+  // headers, the rate limiter, or any controller. See the middleware for why
+  // Authenticated Origin Pulls are not an option on Railway.
+  app.use(originTrustMiddleware);
+
+  // — Per-request CSP nonce ------------------------------------------------
+  // Must run before helmet, because helmet materialises the CSP header inside its
+  // own middleware. With a nonce available, script-src no longer needs
+  // 'unsafe-inline': the only inline block the SPA ships is the JSON-LD data block
+  // in index.html, and the SPA fallback below stamps it with this value.
+  app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
+    res.locals.cspNonce = randomBytes(16).toString("base64");
+    next();
+  });
+
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
+          // No 'unsafe-inline': inline blocks must carry the per-request nonce.
+          scriptSrc: [
+            "'self'",
+            (_req: unknown, res: unknown) =>
+              `'nonce-${(res as { locals?: { cspNonce?: string } }).locals?.cspNonce ?? ""}'`,
+          ],
+          // style-src keeps 'unsafe-inline' on purpose: React and Tailwind set style
+          // attributes at runtime. Style injection cannot execute script, and script-src
+          // above is nonce-locked, so this is the residual risk we accept and document.
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: [
@@ -183,12 +210,21 @@ async function bootstrap() {
 
   // ── Frontend static files (SPA) ────────────────────────────────────────────────────────
   const frontendDist = join(process.cwd(), "artifacts/c2s-ciop/dist/public");
-  if (existsSync(frontendDist)) {
-    app.use(express.static(frontendDist));
+  if (existsSync(join(frontendDist, "index.html"))) {
+    // index: false so that *every* HTML response goes through the nonce-stamping
+    // handler below. express.static would otherwise serve a raw index.html whose
+    // inline block has no nonce, and CSP would block it.
+    app.use(express.static(frontendDist, { index: false }));
     // Serve index.html for all non-API routes (SPA fallback)
+    const indexHtmlTemplate = readFileSync(join(frontendDist, "index.html"), "utf8");
     const nestApp = app.getHttpAdapter().getInstance();
     nestApp.get(/^(?!\/api).*/, (_req: express.Request, res: express.Response) => {
-      res.sendFile(join(frontendDist, "index.html"));
+      const nonce = (res.locals as { cspNonce?: string }).cspNonce ?? "";
+      // split/join, not a regex: linear and no backtracking. The nonce is base64,
+      // so it cannot break out of the attribute it is placed in.
+      res
+        .type("html")
+        .send(indexHtmlTemplate.split("<script").join(`<script nonce="${nonce}"`));
     });
   }
 

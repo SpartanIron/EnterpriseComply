@@ -65,7 +65,7 @@ export class AssessmentsController {
     const filename = `${(assessment.clientName || "Assessment").replace(/[^a-z0-9]/gi, "-")}-ZT-Report.html`;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline';");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';");
     res.send(html);
   }
 

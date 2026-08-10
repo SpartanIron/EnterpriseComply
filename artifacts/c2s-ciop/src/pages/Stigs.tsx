@@ -31,9 +31,35 @@ const UCO_STIG_MAP: Record<string, string> = {
   "V-": "UCO-AC-001",
 };
 
+/**
+ * CKL files are user uploads. Everything below runs before DOMParser sees the
+ * text: bound the size, and reject DOCTYPE/ENTITY declarations (entity-expansion
+ * DoS) and embedded script markup. The parsed document is only ever read from via
+ * textContent - it is never attached to the live document.
+ */
+const MAX_CKL_BYTES = 20 * 1024 * 1024;
+
+function assertSafeXmlUpload(xmlText: string): void {
+  if (xmlText.length > MAX_CKL_BYTES) {
+    throw new Error("Checklist file is too large to import (20 MB limit).");
+  }
+  const lowered = xmlText.toLowerCase();
+  if (lowered.includes("<!doctype") || lowered.includes("<!entity")) {
+    throw new Error(
+      "Checklist file contains a DOCTYPE or ENTITY declaration and was rejected.",
+    );
+  }
+  if (lowered.includes("<script")) {
+    throw new Error("Checklist file contains script markup and was rejected.");
+  }
+}
 function parseCklXml(xmlText: string): { meta: Record<string, string>; findings: Record<string, unknown>[] } {
+  assertSafeXmlUpload(xmlText);
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, "application/xml");
+  if (doc.querySelector("parsererror")) {
+    throw new Error("Checklist file is not valid XML.");
+  }
 
   const getText = (parent: Element | Document, tag: string) =>
     parent.querySelector(tag)?.textContent?.trim() ?? "";

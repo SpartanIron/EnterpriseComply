@@ -141,3 +141,62 @@ Stated plainly, because a security reviewer will find these anyway:
 - The Cloudflare edge Content-Security-Policy permits `unsafe-inline` and
   `unsafe-eval` for scripts. The origin policy is stricter; the edge policy
   wins.
+
+## Origin trust (edge-to-origin authentication)
+
+Railway assigns every service a public `*.up.railway.app` hostname that resolves
+straight to the container. Traffic sent to that hostname never touches Cloudflare,
+so the WAF, rate limits, bot controls and Under Attack mode are all bypassable by
+anyone who knows it. Cloudflare Authenticated Origin Pulls (mTLS from the edge)
+is the textbook control here, but it cannot be completed on Railway because we do
+not control client-certificate verification at the origin.
+
+The equivalent is therefore enforced in the application, in
+`artifacts/api-server/src/middleware/origin-trust.middleware.ts`, as the very first
+middleware in the chain:
+
+1. **Host allow-list.** The literal `Host` header must match `TRUSTED_HOSTS`
+   (or a host derived from `PUBLIC_APP_URL` / `APP_URL` / `FRONTEND_URL` /
+   `PUBLIC_BASE_URL`). `X-Forwarded-Host` is deliberately ignored because it is
+   attacker-controlled. An allow-list entry without a port matches any port; an
+   entry with a port must match exactly.
+2. **Optional edge shared secret.** When `EDGE_SHARED_SECRET` is set, the request
+   must also carry it in `x-ec-edge-auth`, compared with `timingSafeEqual`. A
+   Cloudflare Transform Rule adds that header at the edge, which proves the
+   request actually transited Cloudflare rather than merely claiming the right
+   `Host`. Transform Rules are a separate quota from custom firewall rules, so
+   this is available on the Free plan.
+
+`ORIGIN_TRUST_MODE` is `off`, `report` or `enforce`. Production defaults to
+`report` so that enabling the control can never black-hole live traffic before the
+observed-host list has been reviewed. `/healthz`, `/health`, `/api/healthz` and
+`/api/health` are always exempt, because the platform health probe does not come
+through Cloudflare and its `Host` is not ours to set — without that exemption,
+enforcement would fail every deploy.
+
+Operational view: `GET /api/admin/origin-trust` (super_admin only) returns the
+current mode, the allow-list, every hostname observed at the origin with request
+and refusal counts, and whether an edge secret is configured. It never returns the
+secret itself.
+
+Coverage: test-suite SECTION 38 forges a `Host` header at the socket level
+(`fetch()` refuses to set `Host`, which is the whole point of the control) and
+asserts a `421 Misdirected Request` for the bare Railway hostname while
+`/api/healthz` still answers `200`.
+
+## Content-Security-Policy
+
+`script-src` no longer contains `'unsafe-inline'`. A per-request nonce is minted in
+`main.ts` before helmet runs, published in the header as `'nonce-<base64>'`, and
+stamped onto every `<script` tag of the served `index.html`. `express.static` is
+configured with `index: false` so that no HTML response can escape the stamping
+step.
+
+`style-src` keeps `'unsafe-inline'` on purpose: React and Tailwind set style
+attributes at runtime. Style injection cannot execute script and `script-src` is
+nonce-locked, so this is a documented residual risk rather than an oversight.
+
+Exported assessment report HTML is served with `default-src 'none'; script-src
+'none'; object-src 'none'; base-uri 'none'; form-action 'none'`. The report is a
+static document containing tenant-supplied text, so it has no reason to be able to
+execute anything.
