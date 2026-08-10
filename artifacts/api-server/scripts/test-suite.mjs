@@ -30,9 +30,14 @@ import {
 } from "../src/lib/credential-crypto.ts";
 import { SCHEDULER_MAINTENANCE_SQL } from "../src/modules/scheduler/cleanup-sql.ts";
 import {
-  recordAndCheckEmail,
-  resetMagicLinkRateForEmail,
-} from "../src/lib/magic-link-rate-limiter.ts";
+  EMAIL_LIMIT,
+  EMAIL_WINDOW_MS,
+  EMAIL_RATE_TABLE_SQL,
+  EMAIL_RATE_UPSERT_SQL,
+  EMAIL_RATE_DELETE_SQL,
+  normaliseRateLimitEmail,
+  isEmailRateBlocked,
+} from "../src/lib/magic-link-rate-sql.ts";
 import pg from "pg";
 
 const { Client } = pg;
@@ -3682,6 +3687,24 @@ check("30.6 a downgrade adds a second audit entry", count306.rows[0].n >= 2, tru
 
 section("SECTION 31 — MAGIC LINK: per-email limit survives IP rotation, restarts and replicas");
 
+
+// These drive the exact statements and the exact decision rule the limiter uses.
+async function recordAndCheckEmail(email) {
+  await db.query(EMAIL_RATE_TABLE_SQL);
+  const { rows } = await db.query(EMAIL_RATE_UPSERT_SQL, [
+    normaliseRateLimitEmail(email),
+    String(Date.now()),
+    String(EMAIL_WINDOW_MS),
+  ]);
+  const row = rows[0];
+  if (!row) return { blocked: false, retryAfterMs: 0 };
+  return isEmailRateBlocked(Number(row.count), Number(row.window_start));
+}
+async function resetMagicLinkRateForEmail(email) {
+  await db.query(EMAIL_RATE_TABLE_SQL);
+  await db.query(EMAIL_RATE_DELETE_SQL, [normaliseRateLimitEmail(email)]);
+}
+
 const rlEmail31 = `rl-${uid()}@test.invalid`;
 await resetMagicLinkRateForEmail(rlEmail31);
 
@@ -3692,6 +3715,7 @@ for (let i = 0; i < 4; i++) attempts31.push(await recordAndCheckEmail(rlEmail31)
 check("31.1 send 1 is allowed", attempts31[0].blocked, false);
 check("31.1 send 2 is allowed", attempts31[1].blocked, false);
 check("31.1 send 3 is allowed", attempts31[2].blocked, false);
+check("31.1 the shared limit is the production value", EMAIL_LIMIT, 3);
 check("31.1 send 4 is blocked no matter which IP it came from", attempts31[3].blocked, true);
 check("31.1 the block reports a retry-after window", attempts31[3].retryAfterMs > 0, true);
 

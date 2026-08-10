@@ -22,14 +22,23 @@
 
 import type { Request, Response, NextFunction } from "express";
 import { getRateLimitPool } from "./pg-pool.js";
+import {
+  EMAIL_LIMIT,
+  EMAIL_WINDOW_MS,
+  EMAIL_RATE_TABLE_SQL,
+  EMAIL_RATE_UPSERT_SQL,
+  EMAIL_RATE_DELETE_SQL,
+  normaliseRateLimitEmail,
+  isEmailRateBlocked,
+} from "./magic-link-rate-sql.js";
+
+export { EMAIL_LIMIT, EMAIL_WINDOW_MS };
 
 const WINDOW_MS   = 60 * 1000;  // 1-minute sliding window
 const MAX_REQUESTS = 5;          // requests allowed per window
 export const RETRY_AFTER_SECONDS = 60; // Retry-After header value
 
 // ── Per-email rate limit constants ────────────────────────────────────────────
-export const EMAIL_LIMIT = 3;                        // max sends per email per window
-export const EMAIL_WINDOW_MS = 10 * 60 * 1000;      // 10-minute window
 
 
 // ── Schema bootstrap ──────────────────────────────────────────────────────────
@@ -47,13 +56,7 @@ async function ensureSchema(): Promise<void> {
       blocked_until BIGINT NOT NULL DEFAULT 0
     );
   `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS email_magic_link_rate (
-      email        TEXT    PRIMARY KEY,
-      count        INTEGER NOT NULL DEFAULT 0,
-      window_start BIGINT  NOT NULL
-    )
-  `);
+  await pool.query(EMAIL_RATE_TABLE_SQL);
   _schemaReady = true;
 }
 
@@ -117,7 +120,7 @@ export async function recordAndCheckEmail(
 ): Promise<{ blocked: boolean; retryAfterMs: number }> {
   await ensureSchema();
   const pool = getRateLimitPool();
-  const key = email.toLowerCase().trim();
+  const key = normaliseRateLimitEmail(email);
   const now = BigInt(Date.now());
   const windowMs = BigInt(EMAIL_WINDOW_MS);
 
@@ -125,31 +128,13 @@ export async function recordAndCheckEmail(
   // so two concurrent requests can never both slip past the limit, and the
   // state is shared by every replica instead of living in one process.
   const { rows } = await pool.query<{ count: number; window_start: string }>(
-    `INSERT INTO email_magic_link_rate (email, count, window_start)
-     VALUES ($1, 1, $2)
-     ON CONFLICT (email) DO UPDATE SET
-       count = CASE
-         WHEN $2 - email_magic_link_rate.window_start > $3 THEN 1
-         ELSE email_magic_link_rate.count + 1
-       END,
-       window_start = CASE
-         WHEN $2 - email_magic_link_rate.window_start > $3 THEN $2
-         ELSE email_magic_link_rate.window_start
-       END
-     RETURNING count, window_start::text AS window_start`,
+    EMAIL_RATE_UPSERT_SQL,
     [key, now, windowMs],
   );
 
   const row = rows[0];
   if (!row) return { blocked: false, retryAfterMs: 0 };
-  if (row.count > EMAIL_LIMIT) {
-    const windowExpiresAt = Number(row.window_start) + EMAIL_WINDOW_MS;
-    return {
-      blocked: true,
-      retryAfterMs: Math.max(0, windowExpiresAt - Date.now()),
-    };
-  }
-  return { blocked: false, retryAfterMs: 0 };
+  return isEmailRateBlocked(row.count, Number(row.window_start));
 }
 
 /** Reset a specific IP — used in automated tests to clear state between runs. */
@@ -163,9 +148,7 @@ export async function resetMagicLinkRateForIp(ip: string): Promise<void> {
 export async function resetMagicLinkRateForEmail(email: string): Promise<void> {
   await ensureSchema();
   const pool = getRateLimitPool();
-  await pool.query("DELETE FROM email_magic_link_rate WHERE email = $1", [
-    email.toLowerCase().trim(),
-  ]);
+  await pool.query(EMAIL_RATE_DELETE_SQL, [normaliseRateLimitEmail(email)]);
 }
 
 export interface MagicLinkThrottleEntry {
