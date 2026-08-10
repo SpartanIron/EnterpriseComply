@@ -35,6 +35,19 @@ interface OrgMember {
 }
 
 // Assignable roles (org admins cannot assign super_admin)
+function roleLabel(role: string | null | undefined): string {
+  if (!role) return "Unassigned";
+  return (
+    ROLE_LABELS[role as AppRole] ??
+    role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
+function roleColor(role: string | null | undefined): string {
+  if (!role) return "bg-slate-100 text-slate-600";
+  return ROLE_COLORS[role as AppRole] ?? "bg-slate-100 text-slate-700";
+}
+
 const ASSIGNABLE_ROLES: AppRole[] = ["org_admin","compliance_manager","analyst","auditor","viewer"];
 
 // Permission summary for each role
@@ -152,7 +165,7 @@ export default function RoleManagement() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-800">Team Members ({members.length})</h3>
-              <span className="text-xs text-slate-400">Your role: <strong className="text-slate-700">{ROLE_LABELS[currentUserRole]}</strong></span>
+              <span className="text-xs text-slate-400">Your role: <strong className="text-slate-700">{roleLabel(currentUserRole)}</strong></span>
             </div>
             {isLoading ? (
               <div className="py-10 text-center text-sm text-slate-400">Loading members…</div>
@@ -177,7 +190,7 @@ export default function RoleManagement() {
                           <div><p className="font-semibold text-slate-900">{m.firstName ? m.firstName + " " + (m.lastName ?? "") : m.email}</p><p className="text-xs text-slate-400">{m.email}</p></div>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5"><span className={"text-xs font-semibold px-2.5 py-1 rounded-full " + ROLE_COLORS[m.role]}>{ROLE_LABELS[m.role]}</span></td>
+                      <td className="px-5 py-3.5"><span className={"text-xs font-semibold px-2.5 py-1 rounded-full " + roleColor(m.role)}>{roleLabel(m.role)}</span></td>
                       <td className="px-5 py-3.5 text-xs text-slate-400">{new Date(m.joinedAt).toLocaleDateString()}</td>
                       <td className="px-5 py-3.5">
                         {m.role !== "super_admin" && (
