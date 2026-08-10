@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install && BASE_PATH=/ pnpm --filter @workspace/c2s-ciop run build && pnpm --filter @workspace/api-server run build"
+buildCommand = "node scripts/verify-toolchain.cjs && BASE_PATH=/ pnpm --filter @workspace/c2s-ciop run build && pnpm --filter @workspace/api-server run build"
 
 [deploy]
 # Migrations run once per deployment, not once per container start. Previously

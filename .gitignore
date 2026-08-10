@@ -69,5 +69,4 @@ id_ed25519
 service-account*.json
 gcp-credentials*.json
 aws-credentials*
-.npmrc
 secrets/

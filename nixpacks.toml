@@ -2,4 +2,13 @@
 nixPkgs = ["nodejs_22", "nodePackages.pnpm"]
 
 [phases.install]
-cmds = ["pnpm install --no-frozen-lockfile"]
+# corepack activates the exact pnpm from package.json#packageManager so Railway
+# resolves the same graph as CI and the dev workspace. It is best-effort: if it
+# cannot write its shims we fall back to the nixpkgs pnpm, and --frozen-lockfile
+# still guarantees the tree matches the lockfile CI tested.
+cmds = [
+  "corepack enable --install-directory /usr/local/bin || true",
+  "corepack prepare --activate || true",
+  "pnpm --version",
+  "pnpm install --frozen-lockfile"
+]
