@@ -118,6 +118,13 @@ async function bootstrap() {
           ],
           fontSrc: ["'self'", "data:"],
           objectSrc: ["'none'"],
+          // Stops an injected <base> tag from re-pointing every relative URL,
+          // and stops an injected form from posting credentials off-origin.
+          baseUri: ["'none'"],
+          formAction: ["'self'"],
+          // Modern equivalent of X-Frame-Options: DENY. Kept alongside the
+          // header because CSP wins where both are understood.
+          frameAncestors: ["'none'"],
           frameSrc: ["'none'"],
           upgradeInsecureRequests: [],
         },

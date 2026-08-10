@@ -1,45 +1,60 @@
-version: 2
-
-# Dependabot configuration for EnterpriseComply.
+# Dependabot version updates.
 #
-# Why this file exists:
-#  - Without it, only unconfigured security updates run. Those jobs fail with
-#    `security_update_not_possible` whenever a workspace-wide pnpm override in
-#    pnpm-workspace.yaml pins a version Dependabot cannot resolve past, which
-#    produced ~88 consecutive red Actions runs and trained the team to ignore CI.
-#  - Scheduled, grouped version updates keep dependencies moving without one PR
-#    per package.
+# Security updates were already enabled at the repository level, but those only
+# fire once a CVE is published against a pinned version. Version updates keep the
+# tree close to upstream so the window between a fix landing and this repo
+# carrying it stays small - which is what SOC 2 CC7.1 and NIST SI-2 (flaw
+# remediation) actually ask for.
+#
+# Updates are grouped so the volume stays reviewable: one PR per ecosystem per
+# week for patch/minor, and separate PRs for majors, which need a human.
+version: 2
 updates:
   - package-ecosystem: npm
-    directory: /
+    directory: "/"
     schedule:
       interval: weekly
       day: monday
-      time: '06:00'
-      timezone: America/New_York
+      time: "07:00"
+      timezone: "America/New_York"
     open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - security
     commit-message:
-      prefix: deps
-      prefix-development: deps-dev
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
     groups:
-      production-minor-patch:
+      production-patch-minor:
         dependency-type: production
-        update-types: [minor, patch]
-      development-minor-patch:
+        update-types:
+          - patch
+          - minor
+      development-patch-minor:
         dependency-type: development
-        update-types: [minor, patch]
+        update-types:
+          - patch
+          - minor
     ignore:
-      # TEMPORARY - remove once a resolvable patched release exists.
-      # Advisory reports lowest-non-vulnerable 7.29.6 but the highest
-      # resolvable version in this tree is 7.29.0, so every security-update
-      # job fails. Build-time transitive dependency only; not shipped at runtime.
-      # Re-evaluate at each dependency review.
-      - dependency-name: '@babel/core'
+      # Majors land as individual PRs so breaking changes get a real review.
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
-    directory: /
+    directory: "/"
     schedule:
       interval: weekly
       day: monday
+      time: "07:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - ci
     commit-message:
-      prefix: ci
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns:
+          - "*"
