@@ -2,6 +2,50 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { db, orgRisksTable, orgControlResultsTable, ucoControlsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
+/**
+ * SECURITY - OWASP A03:2021 (Injection).
+ * The compliance-calendar and sub-processor statements below used to be built
+ * with raw string concatenation and hand-rolled quote doubling. Several fields
+ * (event_type, due_date, recurrence, framework_key, status) were concatenated
+ * with no escaping at all, so any authenticated tenant user could break out of
+ * the literal and run arbitrary SQL - including reading or destroying other
+ * tenants' rows. Every statement is now bound through Drizzle's parameterising
+ * tagged template, and enum-like columns are allow-listed rather than escaped.
+ */
+const CALENDAR_EVENT_TYPES = new Set([
+  "review", "audit", "assessment", "training", "renewal",
+  "report", "meeting", "deadline", "certification", "attestation",
+]);
+const CALENDAR_RECURRENCES = new Set([
+  "none", "monthly", "quarterly", "semiannual", "annual", "biennial", "triennial",
+]);
+const CALENDAR_STATUSES = new Set([
+  "upcoming", "in_progress", "complete", "overdue", "cancelled",
+]);
+
+function calText(value: unknown, max: number): string {
+  if (value === null || value === undefined) return "";
+  const raw = typeof value === "string" ? value : String(value);
+  return raw.replace(/\u0000/g, "").slice(0, max);
+}
+
+function calEnum(value: unknown, allowed: Set<string>, fallback: string): string {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return allowed.has(raw) ? raw : fallback;
+}
+
+function calDate(value: unknown): string {
+  if (typeof value !== "string" && !(value instanceof Date)) return new Date().toISOString();
+  const parsed = new Date(value as string | Date);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
+function calId(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(n) && n > 0 && n <= Number.MAX_SAFE_INTEGER ? n : null;
+}
+
+
 const CONTROL_RISK_SUGGESTIONS: Record<string, { title: string; description: string; category: string; threat: string; asset: string; likelihood: number; impact: number; treatment: string }> = {
   "UCO-AI-001": { title: "Account Takeover via Compromised Credentials", description: "Without MFA, a single compromised password grants full account access to critical systems.", category: "technical", threat: "Credential phishing and brute force attacks", asset: "User accounts and identity systems", likelihood: 4, impact: 5, treatment: "mitigate" },
   "UCO-AI-002": { title: "Privilege Escalation via Over-Provisioned Admin Accounts", description: "Uncontrolled privileged accounts increase blast radius from compromise or insider threat.", category: "technical", threat: "Insider threat and compromised admin accounts", asset: "Administrative access to all systems", likelihood: 3, impact: 5, treatment: "mitigate" },
@@ -196,52 +240,95 @@ export class RisksService {
     return { created: created.length, risks: created };
   }
   async getComplianceCalendar(orgId: number) {
+    const org = calId(orgId);
+    if (org === null) return { events: [], total: 0, overdue: 0 };
     try {
       const { sql } = await import("drizzle-orm");
-      const events = await db.execute(sql.raw(
-        "SELECT * FROM org_compliance_calendar WHERE org_id = " + orgId + " ORDER BY due_date ASC LIMIT 100"
-      ));
-      const rows = (events.rows ?? events) as any[];
-      const overdue = rows.filter((e: any) => new Date(e.due_date) < new Date() && e.status === 'upcoming').length;
+      const events = await db.execute(
+        sql`SELECT * FROM org_compliance_calendar WHERE org_id = ${org} ORDER BY due_date ASC LIMIT 100`,
+      );
+      const rows = ((events as any).rows ?? events) as any[];
+      const now = new Date();
+      const overdue = rows.filter(
+        (e: any) => new Date(e.due_date) < now && e.status === "upcoming",
+      ).length;
       return { events: rows, total: rows.length, overdue };
-    } catch { return { events: [], total: 0, overdue: 0 }; }
+    } catch {
+      return { events: [], total: 0, overdue: 0 };
+    }
   }
 
   async createCalendarEvent(orgId: number, data: any) {
+    const org = calId(orgId);
+    if (org === null) return { event: null, error: "invalid organization" };
+    const body = (data ?? {}) as Record<string, unknown>;
+    const title = calText(body.title, 300).trim();
+    if (!title) return { event: null, error: "title is required" };
     try {
       const { sql } = await import("drizzle-orm");
-      const result = await db.execute(sql.raw(
-        "INSERT INTO org_compliance_calendar (org_id, title, description, event_type, due_date, recurrence, framework_key, assigned_to, status) VALUES (" +
-        orgId + ", '" + (data.title||'').replace(/'/g,"''") + "', '" + (data.description||'').replace(/'/g,"''") + "', '" +
-        (data.event_type||'review') + "', '" + (data.due_date||new Date().toISOString()) + "', '" +
-        (data.recurrence||'annual') + "', '" + (data.framework_key||'') + "', '" +
-        (data.assigned_to||'').replace(/'/g,"''") + "', 'upcoming') RETURNING *"
-      ));
-      return { event: ((result.rows ?? result) as any[])[0] };
-    } catch (err) { return { event: null, error: String(err) }; }
+      const result = await db.execute(
+        sql`INSERT INTO org_compliance_calendar
+              (org_id, title, description, event_type, due_date, recurrence, framework_key, assigned_to, status)
+            VALUES (
+              ${org},
+              ${title},
+              ${calText(body.description, 4000)},
+              ${calEnum(body.event_type, CALENDAR_EVENT_TYPES, "review")},
+              ${calDate(body.due_date)},
+              ${calEnum(body.recurrence, CALENDAR_RECURRENCES, "annual")},
+              ${calText(body.framework_key, 64)},
+              ${calText(body.assigned_to, 320)},
+              'upcoming'
+            )
+            RETURNING *`,
+      );
+      const rows = ((result as any).rows ?? result) as any[];
+      return { event: rows[0] ?? null };
+    } catch {
+      return { event: null, error: "unable to create calendar event" };
+    }
   }
 
   async updateCalendarEvent(orgId: number, eventId: number, data: any) {
+    const org = calId(orgId);
+    const id = calId(eventId);
+    if (org === null || id === null) return { success: false, error: "invalid identifier" };
+    const body = (data ?? {}) as Record<string, unknown>;
     try {
       const { sql } = await import("drizzle-orm");
-      const sets: string[] = [];
-      if (data.status) sets.push("status = '" + data.status + "'");
-      if (data.title) sets.push("title = '" + data.title.replace(/'/g,"''") + "'");
-      if (data.assigned_to) sets.push("assigned_to = '" + data.assigned_to.replace(/'/g,"''") + "'");
-      if (data.status === 'completed') sets.push("completed_at = NOW()");
-      sets.push("updated_at = NOW()");
-      await db.execute(sql.raw("UPDATE org_compliance_calendar SET " + sets.join(", ") + " WHERE id = " + eventId + " AND org_id = " + orgId));
+      const sets: any[] = [];
+      let status: string | null = null;
+      if (body.status !== undefined) {
+        status = calEnum(body.status, CALENDAR_STATUSES, "upcoming");
+        sets.push(sql`status = ${status}`);
+      }
+      if (body.title !== undefined) sets.push(sql`title = ${calText(body.title, 300)}`);
+      if (body.assigned_to !== undefined) {
+        sets.push(sql`assigned_to = ${calText(body.assigned_to, 320)}`);
+      }
+      if (status === "complete") sets.push(sql`completed_at = NOW()`);
+      sets.push(sql`updated_at = NOW()`);
+      await db.execute(
+        sql`UPDATE org_compliance_calendar SET ${sql.join(sets, sql`, `)} WHERE id = ${id} AND org_id = ${org}`,
+      );
       return { success: true };
-    } catch (err) { return { success: false, error: String(err) }; }
+    } catch {
+      return { success: false, error: "unable to update calendar event" };
+    }
   }
 
   async getSubProcessors(orgId: number) {
+    const org = calId(orgId);
+    if (org === null) return { subProcessors: [], total: 0 };
     try {
       const { sql } = await import("drizzle-orm");
-      const result = await db.execute(sql.raw("SELECT * FROM org_sub_processors WHERE org_id = " + orgId + " ORDER BY name ASC"));
-      const rows = (result.rows ?? result) as any[];
+      const result = await db.execute(
+        sql`SELECT * FROM org_sub_processors WHERE org_id = ${org} ORDER BY name ASC`,
+      );
+      const rows = ((result as any).rows ?? result) as any[];
       return { subProcessors: rows, total: rows.length };
-    } catch { return { subProcessors: [], total: 0 }; }
+    } catch {
+      return { subProcessors: [], total: 0 };
+    }
   }
-
 }

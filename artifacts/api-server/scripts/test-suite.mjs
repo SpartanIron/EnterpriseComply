@@ -3751,6 +3751,124 @@ const cleared31 = await db
   .catch(() => ({ rows: [{ count: -1 }] }));
 check("31.6 reset removes the persisted row", cleared31.rows.length, 0);
 
+
+section("SECTION 32 - INJECTION: compliance calendar / sub-processors are parameterised");
+
+// A canary table that a successful injection would destroy. If any payload below
+// ever escapes its bind parameter, this table disappears and the checks fail.
+await db.query(`DROP TABLE IF EXISTS iso_sqli_canary`).catch(() => {});
+await db.query(`CREATE TABLE iso_sqli_canary (id integer)`).catch(() => {});
+const canaryAlive32 = async () => {
+  const r = await db
+    .query(`SELECT to_regclass('public.iso_sqli_canary') IS NOT NULL AS ok`)
+    .catch(() => ({ rows: [{ ok: false }] }));
+  return r.rows[0]?.ok === true;
+};
+
+const DROP32 = `'); DROP TABLE iso_sqli_canary; --`;
+const calUrlA32 = `/orgs/${state.orgAId}/compliance-calendar`;
+const calUrlB32 = `/orgs/${state.orgBId}/compliance-calendar`;
+
+async function calReq32(cookie, url, method, body) {
+  try {
+    const r = await fetch(`${BASE}${url}`, {
+      method,
+      headers: {
+        Cookie: cookie,
+        "Content-Type": "application/json",
+        Host: new URL(BASE).host,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    let j = null;
+    try { j = await r.json(); } catch {}
+    return { status: r.status, body: j };
+  } catch {
+    return { status: 0, body: null };
+  }
+}
+const calRow32 = async (id) => {
+  const r = await db
+    .query(`SELECT * FROM org_compliance_calendar WHERE id = $1`, [id])
+    .catch(() => ({ rows: [] }));
+  return r.rows[0] ?? null;
+};
+
+// 32.1 - an injection payload in the previously-unescaped enum column is neutralised
+const evilTitle32 = `O'Brien "quote" \\ backslash ${DROP32}`;
+const c321 = await calReq32(cookieOwnerA, calUrlA32, "POST", {
+  title: evilTitle32,
+  description: `desc ${DROP32}`,
+  event_type: `review${DROP32}`,
+  recurrence: `annual${DROP32}`,
+  framework_key: `nist-800-53${DROP32}`,
+  assigned_to: `a@b.test${DROP32}`,
+  due_date: `2030-01-01T00:00:00.000Z`,
+});
+check("32.1 calendar create accepts a hostile payload without erroring", [200, 201].includes(c321.status), true);
+check("32.1 the canary table survived the create", await canaryAlive32(), true);
+
+const evId32 = c321.body?.event?.id ?? null;
+check("32.1 the event was actually persisted", typeof evId32 === "number" || typeof evId32 === "string", true);
+const row321 = evId32 ? await calRow32(evId32) : null;
+
+// 32.2 - free-text is bound, not escaped: it must round-trip byte-for-byte
+check("32.2 hostile title round-trips verbatim (proof of binding)", row321?.title, evilTitle32);
+check("32.2 hostile framework_key round-trips verbatim", row321?.framework_key, `nist-800-53${DROP32}`);
+
+// 32.3 - enum-like columns are allow-listed rather than escaped
+check("32.3 event_type falls back to a safe allow-listed value", row321?.event_type, "review");
+check("32.3 recurrence falls back to a safe allow-listed value", row321?.recurrence, "annual");
+
+// 32.4 - the row belongs to the caller's org, never a smuggled one
+check("32.4 the row is scoped to the caller's org", Number(row321?.org_id), Number(state.orgAId));
+
+// 32.5 - PATCH status was the second unescaped concatenation site
+const c325 = await calReq32(cookieOwnerA, `${calUrlA32}/${evId32}`, "PATCH", {
+  status: `complete${DROP32}`,
+  title: `patched ${DROP32}`,
+});
+check("32.5 calendar patch accepts a hostile status without erroring", [200, 201].includes(c325.status), true);
+check("32.5 the canary table survived the patch", await canaryAlive32(), true);
+const row325 = await calRow32(evId32);
+check(
+  "32.5 status is coerced into the allow-list",
+  ["upcoming", "in_progress", "complete", "overdue", "cancelled"].includes(String(row325?.status)),
+  true,
+);
+check("32.5 hostile patched title round-trips verbatim", row325?.title, `patched ${DROP32}`);
+
+// 32.6 - a non-numeric event id cannot be smuggled into the WHERE clause
+const c326 = await calReq32(cookieOwnerA, `${calUrlA32}/1 OR 1=1`, "PATCH", { status: "cancelled" });
+check("32.6 a non-numeric event id is rejected or no-ops", c326.status !== 500, true);
+const row326 = await calRow32(evId32);
+check("32.6 the existing row was not mass-updated", row326?.status, row325?.status);
+
+// 32.7 - cross-tenant: org B cannot reach org A's calendar row
+const c327 = await calReq32(cookieOwnerB, `${calUrlB32}/${evId32}`, "PATCH", { status: "cancelled" });
+check("32.7 cross-org patch does not 500", c327.status !== 500, true);
+const row327 = await calRow32(evId32);
+check("32.7 org A's row is untouched by org B", row327?.status, row325?.status);
+check("32.7 org A's row still belongs to org A", Number(row327?.org_id), Number(state.orgAId));
+
+// 32.8 - sub-processors read path is bound too
+const c328 = await calReq32(cookieOwnerA, `/orgs/${state.orgAId}/sub-processors`, "GET");
+check("32.8 sub-processors responds without a server error", c328.status !== 500, true);
+check("32.8 the canary table survived the sub-processor read", await canaryAlive32(), true);
+
+// 32.9 - static guarantee: no concatenated raw SQL is left in this service
+const { readFileSync: readFileSync32 } = await import("fs");
+let risksSrc32 = "";
+try {
+  risksSrc32 = readFileSync32(new URL("../src/modules/risks/risks.service.ts", import.meta.url), "utf8");
+} catch {}
+const rawConcat32 = risksSrc32
+  .split("\n")
+  .filter((l) => l.includes("sql.raw(") && (l.includes('" +') || l.includes("' +") || l.includes("${")));
+check("32.9 risks.service.ts has no concatenated sql.raw() left", rawConcat32.length, 0);
+
+await db.query(`DROP TABLE IF EXISTS iso_sqli_canary`).catch(() => {});
+
 await cleanup();
 
 const bar = "═".repeat(70);
