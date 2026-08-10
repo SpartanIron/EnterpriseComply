@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { db } from '@workspace/db';
 import { sql } from 'drizzle-orm';
 import { runWormLedgerMigration } from '../../migrations/worm-evidence-ledger.migration';
@@ -26,11 +26,69 @@ export interface LedgerVerificationResult {
  * Provides chain integrity verification for auditors and automated monitoring.
  */
 @Injectable()
-export class WormLedgerService implements OnModuleInit {
+export class WormLedgerService implements OnApplicationBootstrap {
   private readonly logger = new Logger(WormLedgerService.name);
   private lastPosture: DbSecurityPosture | null = null;
 
-  async onModuleInit() {
+  /**
+   * Waits for StartupService to have created the schema.
+   *
+   * These are DDL migrations against tables that StartupService creates on
+   * first boot, so they cannot run in onModuleInit - that fires before
+   * StartupService's onApplicationBootstrap and, on a brand new database,
+   * every ALTER TABLE and CREATE TRIGGER fails silently. The result is a
+   * database with no WORM triggers, no RLS policies and no retention columns,
+   * while the Drizzle schema still expects those columns - which turns every
+   * org-scoped query into a 500. That is exactly what happened in CI.
+   *
+   * Using onApplicationBootstrap plus an explicit readiness poll makes the
+   * ordering explicit instead of depending on module registration order.
+   */
+  private async waitForSchema(timeoutMs = 60_000): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const r = await db.execute(sql`
+          SELECT to_regclass('public.org_evidence') AS ev,
+                 to_regclass('public.organizations') AS orgs,
+                 to_regclass('public.org_audit_log') AS audit
+        `);
+        const row = (r.rows as any[])[0] ?? {};
+        if (row.ev && row.orgs && row.audit) return true;
+      } catch {
+        /* database not reachable yet */
+      }
+      await new Promise((res) => setTimeout(res, 500));
+    }
+    return false;
+  }
+
+  async onApplicationBootstrap() {
+    await this.runIntegrityMigrations();
+  }
+
+  /**
+   * Installs (or re-installs) every database-layer integrity control.
+   *
+   * Idempotent and safe to call repeatedly. It is called once at bootstrap
+   * and again from main.ts immediately before the server starts listening,
+   * because some services create their own tables in their bootstrap hooks
+   * (status_subscribers is one) and a table that appears after the sweep
+   * would otherwise sit there with no tenant policy on it. Running the sweep
+   * last closes that window deterministically rather than hoping module
+   * registration order stays stable.
+   */
+  async runIntegrityMigrations(): Promise<void> {
+    const ready = await this.waitForSchema();
+    if (!ready) {
+      this.logger.error(
+        'Database schema was not ready in time; WORM triggers and tenant RLS ' +
+          'were NOT installed. The platform is running without database-layer ' +
+          'immutability - investigate before accepting production traffic.',
+      );
+      return;
+    }
+
     // Database integrity controls are installed on every boot and are
     // idempotent, so a restart can never silently leave the platform without
     // its WORM triggers or its tenant RLS policies.

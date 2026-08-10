@@ -70,6 +70,18 @@ export class StatusSubscribersService {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    // status_subscribers is created lazily, on the first subscription, so it
+    // can come into existence long after the boot-time tenant RLS sweep has
+    // run. Whoever creates a table carrying org_id owns protecting it, so the
+    // isolation policy is installed right here instead of being left to a
+    // later sweep that may never see the table.
+    await pool.query("ALTER TABLE status_subscribers ENABLE ROW LEVEL SECURITY");
+    await pool.query("DROP POLICY IF EXISTS tenant_isolation ON status_subscribers");
+    await pool.query(
+      "CREATE POLICY tenant_isolation ON status_subscribers " +
+        "USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::int) " +
+        "WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::int)",
+    );
   }
 
   async subscribe(email: string, orgId?: number): Promise<{ ok: boolean }> {

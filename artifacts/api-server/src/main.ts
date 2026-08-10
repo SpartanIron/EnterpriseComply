@@ -193,6 +193,23 @@ async function bootstrap() {
   }
 
   const port = Number(process.env.PORT) || 8080;
+  // Final database-integrity sweep. app.init() has already run every
+  // bootstrap hook, so any table a service created for itself now exists and
+  // will pick up its tenant RLS policy before the first request is served.
+  try {
+    await app.init();
+    const { WormLedgerService } = await import(
+      "./modules/evidence/worm-ledger.service.js"
+    );
+    await app
+      .get(WormLedgerService, { strict: false })
+      .runIntegrityMigrations();
+  } catch (err) {
+    logger.error(
+      "Final integrity sweep failed: " + ((err as any)?.message ?? String(err)),
+    );
+  }
+
   await app.listen(port);
   logger.info({ port }, "API server listening");
 }
