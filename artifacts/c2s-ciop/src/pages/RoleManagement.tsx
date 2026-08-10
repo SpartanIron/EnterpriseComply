@@ -173,7 +173,7 @@ export default function RoleManagement() {
                     <tr key={m.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{(m.firstName?.[0] ?? m.email[0]).toUpperCase()}</div>
+                          <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{((m.firstName?.[0] ?? m.email?.[0]) ?? "?").toUpperCase()}</div>
                           <div><p className="font-semibold text-slate-900">{m.firstName ? m.firstName + " " + (m.lastName ?? "") : m.email}</p><p className="text-xs text-slate-400">{m.email}</p></div>
                         </div>
                       </td>

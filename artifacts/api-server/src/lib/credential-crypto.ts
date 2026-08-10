@@ -140,7 +140,7 @@ export function decryptCredential(cipherStr: string | null | undefined): string 
   const key = getDerivedKey();
 
   try {
-    const decipher = createDecipheriv(ALGO, key, Buffer.from(ivHex, 'hex'));
+    const decipher = createDecipheriv(ALGO, key, Buffer.from(ivHex, 'hex'), { authTagLength: 16 });
     decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
     const decrypted = Buffer.concat([
       decipher.update(Buffer.from(ctHex, 'hex')),
@@ -220,7 +220,7 @@ export function decryptCredentialWithKey(
 
   const [ivHex, ctHex, tagHex] = parts;
   try {
-    const decipher = createDecipheriv(ALGO, keyBuf, Buffer.from(ivHex, 'hex'));
+    const decipher = createDecipheriv(ALGO, keyBuf, Buffer.from(ivHex, 'hex'), { authTagLength: 16 });
     decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
     const decrypted = Buffer.concat([
       decipher.update(Buffer.from(ctHex, 'hex')),

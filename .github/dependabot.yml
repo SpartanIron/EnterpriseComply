@@ -1,0 +1,45 @@
+version: 2
+
+# Dependabot configuration for EnterpriseComply.
+#
+# Why this file exists:
+#  - Without it, only unconfigured security updates run. Those jobs fail with
+#    `security_update_not_possible` whenever a workspace-wide pnpm override in
+#    pnpm-workspace.yaml pins a version Dependabot cannot resolve past, which
+#    produced ~88 consecutive red Actions runs and trained the team to ignore CI.
+#  - Scheduled, grouped version updates keep dependencies moving without one PR
+#    per package.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+    groups:
+      production-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+      development-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # TEMPORARY - remove once a resolvable patched release exists.
+      # Advisory reports lowest-non-vulnerable 7.29.6 but the highest
+      # resolvable version in this tree is 7.29.0, so every security-update
+      # job fails. Build-time transitive dependency only; not shipped at runtime.
+      # Re-evaluate at each dependency review.
+      - dependency-name: '@babel/core'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
