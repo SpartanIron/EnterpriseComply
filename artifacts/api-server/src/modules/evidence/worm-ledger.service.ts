@@ -1,7 +1,8 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { db } from '@workspace/db';
 import { sql } from 'drizzle-orm';
 import { runWormLedgerMigration } from '../../migrations/worm-evidence-ledger.migration';
+import { runTenantRlsMigration, runEvidenceRetentionMigration, readDbSecurityPosture, type DbSecurityPosture } from '../../migrations/tenant-rls.migration';
 
 export interface LedgerVerificationResult {
   orgId: number;
@@ -26,9 +27,80 @@ export interface LedgerVerificationResult {
  */
 @Injectable()
 export class WormLedgerService implements OnModuleInit {
+  private readonly logger = new Logger(WormLedgerService.name);
+  private lastPosture: DbSecurityPosture | null = null;
+
   async onModuleInit() {
-    // Install WORM triggers and ledger chain on startup
-    await runWormLedgerMigration(db);
+    // Database integrity controls are installed on every boot and are
+    // idempotent, so a restart can never silently leave the platform without
+    // its WORM triggers or its tenant RLS policies.
+    try {
+      // Retention columns must exist before the WORM trigger starts rejecting
+      // DELETEs, otherwise evidence removal has nowhere to go.
+      await runEvidenceRetentionMigration(db);
+    } catch (err) {
+      this.logger.error(
+        'Evidence retention migration failed: ' + ((err as any)?.message ?? String(err)),
+      );
+    }
+    try {
+      await runWormLedgerMigration(db);
+    } catch (err) {
+      this.logger.error(
+        'WORM ledger migration failed: ' + ((err as any)?.message ?? String(err)),
+      );
+    }
+    try {
+      const rls = await runTenantRlsMigration(db);
+      this.logger.log(
+        'Tenant RLS: ' + rls.policiesCreated + '/' + rls.discovered + ' policies installed' +
+          (rls.errors.length ? ' (' + rls.errors.length + ' errors)' : ''),
+      );
+      if (rls.errors.length) this.logger.warn('Tenant RLS errors: ' + rls.errors.join('; '));
+    } catch (err) {
+      this.logger.error(
+        'Tenant RLS migration failed: ' + ((err as any)?.message ?? String(err)),
+      );
+    }
+    try {
+      this.lastPosture = await readDbSecurityPosture(db);
+      if (this.lastPosture.bypassesRls) {
+        this.logger.warn(
+          'DB role "' + this.lastPosture.role + '" bypasses RLS. Tenant isolation is ' +
+            'currently enforced at the application layer only. Run ' +
+            'scripts/provision-app-role.cjs and cut DATABASE_URL over to the ' +
+            'least-privilege role to activate database-layer enforcement.',
+        );
+      }
+    } catch { /* posture is advisory only */ }
+  }
+
+  /** Live database security posture (roles, RLS coverage, WORM triggers). */
+  async getSecurityPosture(): Promise<DbSecurityPosture> {
+    this.lastPosture = await readDbSecurityPosture(db);
+    return this.lastPosture;
+  }
+
+  /** Confirms the WORM triggers survived the last restart. */
+  async getWormStatus() {
+    const rows = await db.execute(sql`
+      SELECT trigger_name, event_object_table, event_manipulation
+        FROM information_schema.triggers
+       WHERE trigger_schema = 'public'
+         AND trigger_name IN ('evidence_worm_enforce', 'evidence_ledger_append', 'audit_log_worm')
+    `);
+    const names = new Set(
+      (rows.rows as Array<{ trigger_name: string }>).map((r) => r.trigger_name),
+    );
+    const required = ['evidence_worm_enforce', 'audit_log_worm'];
+    const missing = required.filter((n) => !names.has(n));
+    return {
+      installed: Array.from(names).sort(),
+      required,
+      missing,
+      healthy: missing.length === 0,
+      checkedAt: new Date().toISOString(),
+    };
   }
 
   /**

@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable } from "@nestjs/common";
 import { createHash } from "crypto";
 import { db, orgEvidenceTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { writeAuditLog } from "../../lib/audit-log.js";
 
 /**
@@ -69,7 +69,12 @@ function computeEvidenceHash(fields: {
 export class EvidenceService {
   async getEvidence(orgId: number) {
     const evidence = await db.query.orgEvidenceTable.findMany({
-      where: eq(orgEvidenceTable.orgId, orgId),
+      // Retired artefacts stay in the table for the auditor but are not part
+      // of the live compliance posture.
+      where: and(
+        eq(orgEvidenceTable.orgId, orgId),
+        isNull(orgEvidenceTable.deletedAt),
+      ),
       orderBy: (t, { desc }) => [desc(t.collectedAt)],
     });
     const now = new Date();
@@ -154,22 +159,54 @@ export class EvidenceService {
     return { ...row, contentHash };
   }
 
-  async deleteEvidence(orgId: number, evidenceId: number, clerkUserId?: string) {
+  async deleteEvidence(
+    orgId: number,
+    evidenceId: number,
+    clerkUserId?: string,
+    reason?: string,
+  ) {
     // Snapshot before removal: a compliance artefact must never be able to
     // disappear without leaving a durable record in the append-only audit log.
     const existing = await db.query.orgEvidenceTable.findFirst({
       where: and(eq(orgEvidenceTable.orgId, orgId), eq(orgEvidenceTable.id, evidenceId)),
     });
 
+    if (!existing) {
+      return { success: false, reason: "not_found" as const };
+    }
+
+    // A record under legal hold cannot be retired at all.
+    if (existing.legalHold) {
+      await writeAuditLog(
+        orgId,
+        "evidence.delete_blocked_legal_hold",
+        "evidence",
+        String(evidenceId),
+        { title: existing.title, reason: "legal_hold" },
+        clerkUserId,
+      );
+      throw new ForbiddenException(
+        "This evidence record is under legal hold and cannot be removed.",
+      );
+    }
+
+    // Evidence is WORM at the database layer: enforce_evidence_worm() rejects
+    // DELETE. Retirement is a retention state change, so the artefact and its
+    // ledger entry survive for the full audit window.
     await db
-      .delete(orgEvidenceTable)
+      .update(orgEvidenceTable)
+      .set({
+        deletedAt: new Date(),
+        deletedBy: clerkUserId ?? null,
+        deletionReason: reason ?? "removed_by_user",
+      })
       .where(and(eq(orgEvidenceTable.orgId, orgId), eq(orgEvidenceTable.id, evidenceId)));
 
     if (existing) {
       const meta = existing.metadata as Record<string, unknown> | null;
       await writeAuditLog(
         orgId,
-        "evidence.deleted",
+        "evidence.retired",
         "evidence",
         String(evidenceId),
         {
@@ -183,7 +220,7 @@ export class EvidenceService {
       );
     }
 
-    return { success: true };
+    return { success: true, retired: true, hardDeleted: false };
   }
 
   /**

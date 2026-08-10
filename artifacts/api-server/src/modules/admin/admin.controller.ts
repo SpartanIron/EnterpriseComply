@@ -19,7 +19,8 @@ import {
   orgIntegrationsTable,
   orgAuditLogTable,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { readDbSecurityPosture } from "../../migrations/tenant-rls.migration.js";
 import { writeAuditLog } from "../../lib/audit-log.js";
 import { listBlocked, clearBlock } from "../../lib/auth-failure-tracker.js";
 import { listActiveThrottles, resetMagicLinkRateForIp } from "../../lib/magic-link-rate-limiter.js";
@@ -427,4 +428,89 @@ export class AdminController {
           : `${failures.length} row(s) could not be decrypted with the old key — check failureDetails. Do NOT update the env var until all rows are rotated.`),
     };
   }
+
+  /**
+   * Live database security posture for the super-admin console and for
+   * security questionnaires: connected role, whether RLS is actually being
+   * enforced, tenant policy coverage, WORM triggers, TLS and server version.
+   *
+   * Read-only. Returns no credentials and no connection strings.
+   */
+  @Get("db-security")
+  async getDbSecurity(@ClerkUserId() userId: string) {
+    await assertSuperAdmin(userId);
+    const posture = await readDbSecurityPosture(db);
+    const coverage =
+      posture.tenantTables === 0
+        ? 0
+        : Math.round((posture.tablesWithPolicy / posture.tenantTables) * 100);
+    return {
+      ...posture,
+      tenantPolicyCoveragePct: coverage,
+      findings: [
+        posture.bypassesRls
+          ? {
+              severity: "high",
+              control: "AC-3 / SC-4",
+              finding:
+                "The application connects as a role that bypasses row level security. " +
+                "Tenant isolation is enforced by the application layer only.",
+              remediation:
+                "Run scripts/provision-app-role.cjs, then point DATABASE_URL at the " +
+                "least-privilege role and redeploy.",
+            }
+          : null,
+        posture.tablesMissingPolicy.length
+          ? {
+              severity: "medium",
+              control: "AC-3",
+              finding:
+                posture.tablesMissingPolicy.length +
+                " tenant table(s) have no tenant_isolation policy.",
+              remediation: "Restart the API; the RLS migration installs them idempotently.",
+            }
+          : null,
+        !posture.sslInUse
+          ? {
+              severity: "medium",
+              control: "SC-8",
+              finding: "The database server does not report TLS enabled.",
+              remediation: "Enable TLS on the Postgres service and require sslmode=require.",
+            }
+          : null,
+      ].filter(Boolean),
+    };
+  }
+
+  /** Row counts for the audit trail, used to prove retention on questionnaires. */
+  @Get("audit-retention")
+  async getAuditRetention(@ClerkUserId() userId: string) {
+    await assertSuperAdmin(userId);
+    const rows = await db.execute(sql`
+      SELECT COUNT(*)::int AS total,
+             MIN(created_at) AS oldest,
+             MAX(created_at) AS newest,
+             COUNT(DISTINCT org_id)::int AS orgs
+        FROM org_audit_log
+    `);
+    const r = (rows.rows as any[])[0] ?? {};
+    const oldest = r.oldest ? new Date(r.oldest) : null;
+    const retainedDays = oldest
+      ? Math.floor((Date.now() - oldest.getTime()) / 86400000)
+      : 0;
+    return {
+      totalEntries: r.total ?? 0,
+      organizations: r.orgs ?? 0,
+      oldestEntry: oldest ? oldest.toISOString() : null,
+      newestEntry: r.newest ? new Date(r.newest).toISOString() : null,
+      retainedDays,
+      // FedRAMP AU-11 / CMMC AU.L2-3.3.1
+      requiredDays: 365,
+      onlineRequiredDays: 90,
+      meetsOnlineRequirement: retainedDays >= 90 || (r.total ?? 0) === 0,
+      immutable: true,
+      immutabilityMechanism: "PostgreSQL trigger audit_log_worm (UPDATE/DELETE denied)",
+    };
+  }
+
 }

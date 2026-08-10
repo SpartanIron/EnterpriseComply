@@ -69,6 +69,15 @@ export const orgEvidenceTable = pgTable("org_evidence", {
   uploadedBy: text("uploaded_by"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // --- Retention / legal hold -------------------------------------------
+  // Evidence is Write-Once-Read-Many at the database layer: the
+  // evidence_worm_enforce trigger rejects DELETE outright. Removal is a
+  // retention state change, never a destructive operation, so an auditor can
+  // always reconstruct what was collected and when it was retired.
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deletedBy: text("deleted_by"),
+  deletionReason: text("deletion_reason"),
+  legalHold: boolean("legal_hold").notNull().default(false),
 });
 
 export const insertOrgEvidenceSchema = createInsertSchema(orgEvidenceTable).omit({ id: true, createdAt: true });

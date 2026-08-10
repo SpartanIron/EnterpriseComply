@@ -211,17 +211,29 @@ export class SystemHealthService implements OnApplicationBootstrap, OnApplicatio
     // Insert a sentinel row, read it back, delete it — full write/read/delete cycle
     const t0 = Date.now();
     try {
-      // Use org_evidence with a sentinel org_id=0 that we own and clean up immediately
-      await db.execute(sql.raw(`
-        WITH probe AS (
-          INSERT INTO org_evidence (org_id, title, description, type, source, collected_at)
-          VALUES (0, '_health_probe', '_health_probe', 'auto', 'health_check', NOW())
-          RETURNING id
-        )
-        DELETE FROM org_evidence WHERE id IN (SELECT id FROM probe)
+      // org_evidence is WORM: the evidence_worm_enforce trigger rejects DELETE,
+      // so the probe must not write-and-clean-up there. We exercise the read
+      // path and assert that the immutability trigger is still installed,
+      // which is the property the vault actually needs to be healthy.
+      const probe = await db.execute(sql.raw(`
+        SELECT
+          (SELECT COUNT(*) FROM org_evidence) AS rows,
+          (SELECT COUNT(*) FROM information_schema.triggers
+             WHERE trigger_schema = 'public'
+               AND trigger_name = 'evidence_worm_enforce') AS worm
       `));
+      const wormInstalled = Number((probe.rows?.[0] as any)?.worm ?? 0) > 0;
       const latencyMs = Date.now() - t0;
-      return { component: "evidence_vault", status: latencyMs < 1000 ? "healthy" : "degraded", latencyMs };
+      return {
+        component: "evidence_vault",
+        status: !wormInstalled
+          ? "degraded"
+          : latencyMs < 1000
+            ? "healthy"
+            : "degraded",
+        latencyMs,
+        ...(wormInstalled ? {} : { error: "WORM immutability trigger missing" }),
+      };
     } catch (err) {
       return { component: "evidence_vault", status: "down", latencyMs: Date.now() - t0, error: String((err as Error).message) };
     }

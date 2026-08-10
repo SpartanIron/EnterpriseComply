@@ -142,8 +142,12 @@ export async function runWormLedgerMigration(db: any) {
   `);
 
   await db.execute(sql`
+    -- AFTER INSERT, not BEFORE: evidence_ledger.evidence_id carries a
+    -- foreign key to org_evidence(id), so the evidence row has to exist
+    -- before the chain entry can reference it. As a BEFORE trigger this
+    -- made every single evidence write fail with a FK violation.
     CREATE TRIGGER evidence_ledger_append
-    BEFORE INSERT ON org_evidence
+    AFTER INSERT ON org_evidence
     FOR EACH ROW
     EXECUTE FUNCTION append_to_evidence_ledger()
   `);

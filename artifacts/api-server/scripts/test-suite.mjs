@@ -4057,12 +4057,22 @@ check(
 //        durable snapshot behind, not just vanish.
 const e345 = await evReq34(cookieOwnerA, `${evUrlA34}/${id343}`, "DELETE");
 check("34.5 evidence delete succeeds", [200, 201, 204].includes(e345.status), true);
-check("34.5 the evidence row is gone", await evRow34(id343), null);
-const audit345 = await auditFor34("evidence.deleted", id343);
-check("34.5 deletion writes an audit entry", audit345 !== null, true);
-check("34.5 the deletion snapshot keeps the title", (audit345?.details ?? {}).title, "SSP snapshot");
+const retired345 = await evRow34(id343);
 check(
-  "34.5 the deletion snapshot keeps the content hash",
+  "34.5 the evidence row survives deletion (WORM)",
+  retired345 !== null && retired345 !== undefined,
+  true,
+);
+check(
+  "34.5 the evidence row is marked retired",
+  retired345?.deleted_at != null,
+  true,
+);
+const audit345 = await auditFor34("evidence.retired", id343);
+check("34.5 retirement writes an audit entry", audit345 !== null, true);
+check("34.5 the retirement snapshot keeps the title", (audit345?.details ?? {}).title, "SSP snapshot");
+check(
+  "34.5 the retirement snapshot keeps the content hash",
   typeof (audit345?.details ?? {}).contentHash === "string",
   true,
 );
@@ -4074,7 +4084,7 @@ try {
 } catch (err) {
   worm346 = "blocked";
 }
-check("34.6 the deletion audit record cannot itself be deleted", worm346, "blocked");
+check("34.6 the retirement audit record cannot itself be deleted", worm346, "blocked");
 
 // 34.7 - org B cannot delete org A's evidence
 const e347 = await evReq34(cookieOwnerB, `/orgs/${state.orgBId}/evidence/${id341}`, "DELETE");
@@ -4083,8 +4093,300 @@ check("34.7 org A's evidence survives an org B delete", (await evRow34(id341)) !
 
 // cleanup the fixtures this section created
 for (const id of [id341, id342]) {
-  if (id) await db.query(`DELETE FROM org_evidence WHERE id = $1`, [id]).catch(() => {});
+  if (id)
+    await db
+      .query(`UPDATE org_evidence SET deleted_at = NOW() WHERE id = $1`, [id])
+      .catch(() => {});
 }
+
+section("SECTION 35 - DATABASE: RLS coverage, least privilege, and WORM immutability");
+
+// ---- 35.1 the connected role, reported honestly -------------------------
+const roleRow35 = (
+  await db.query(
+    `SELECT current_user AS role, rolsuper, rolbypassrls
+       FROM pg_roles WHERE rolname = current_user`,
+  )
+).rows[0];
+check(
+  "35.1 the database role is discoverable for the posture report",
+  typeof roleRow35?.role === "string" && roleRow35.role.length > 0,
+  true,
+);
+
+// ---- 35.2 every tenant table carries RLS --------------------------------
+const tenantTables35 = (
+  await db.query(
+    `SELECT c.table_name
+       FROM information_schema.columns c
+       JOIN pg_class pc ON pc.relname = c.table_name
+       JOIN pg_namespace pn ON pn.oid = pc.relnamespace AND pn.nspname = 'public'
+      WHERE c.table_schema = 'public' AND c.column_name = 'org_id'
+        AND c.data_type = 'integer' AND pc.relkind = 'r'`,
+  )
+).rows.map((r) => r.table_name);
+
+const rlsOn35 = new Set(
+  (
+    await db.query(
+      `SELECT c.relname FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity`,
+    )
+  ).rows.map((r) => r.relname),
+);
+const missingRls35 = tenantTables35.filter((t) => !rlsOn35.has(t));
+check(
+  `35.2 every org-scoped table has row level security enabled (${tenantTables35.length} tables)`,
+  missingRls35.length === 0 ? "none-missing" : missingRls35.join(","),
+  "none-missing",
+);
+
+// ---- 35.3 ...and an actual tenant policy attached ------------------------
+const policied35 = new Set(
+  (
+    await db.query(
+      `SELECT tablename FROM pg_policies
+        WHERE schemaname = 'public' AND policyname = 'tenant_isolation'`,
+    )
+  ).rows.map((r) => r.tablename),
+);
+const missingPolicy35 = tenantTables35.filter((t) => !policied35.has(t));
+check(
+  "35.3 every org-scoped table has a tenant_isolation policy",
+  missingPolicy35.length === 0 ? "none-missing" : missingPolicy35.join(","),
+  "none-missing",
+);
+
+// ---- 35.4 organizations must not be a latent deny-all -------------------
+const orgRls35 = (
+  await db.query(
+    `SELECT c.relrowsecurity AS rls,
+            (SELECT COUNT(*)::int FROM pg_policies
+              WHERE schemaname='public' AND tablename='organizations') AS policies
+       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='public' AND c.relname='organizations'`,
+  )
+).rows[0];
+check(
+  "35.4 organizations has RLS enabled AND at least one policy (no deny-all trap)",
+  orgRls35?.rls === true && Number(orgRls35?.policies) > 0,
+  true,
+);
+
+// ---- 35.5 the policy is bound to the request-scoped GUC ------------------
+const pred35 = (
+  await db.query(
+    `SELECT qual FROM pg_policies
+      WHERE schemaname='public' AND policyname='tenant_isolation'
+      LIMIT 1`,
+  )
+).rows[0]?.qual;
+check(
+  "35.5 the tenant policy binds to app.current_org_id, not a constant",
+  typeof pred35 === "string" && pred35.includes("app.current_org_id"),
+  true,
+);
+
+// ---- 35.6 WORM triggers survive an API restart --------------------------
+const trg35 = new Set(
+  (
+    await db.query(
+      `SELECT DISTINCT trigger_name FROM information_schema.triggers
+        WHERE trigger_schema = 'public'`,
+    )
+  ).rows.map((r) => r.trigger_name),
+);
+check("35.6 audit log WORM trigger is installed", trg35.has("audit_log_worm"), true);
+check(
+  "35.7 evidence WORM trigger is installed",
+  trg35.has("evidence_worm_enforce"),
+  true,
+);
+check(
+  "35.8 evidence ledger append trigger is installed",
+  trg35.has("evidence_ledger_append"),
+  true,
+);
+
+const ledgerObjs35 = (
+  await db.query(
+    `SELECT to_regclass('public.evidence_ledger') AS tbl,
+            (SELECT COUNT(*)::int FROM pg_proc
+              WHERE proname = 'verify_evidence_chain') AS fn`,
+  )
+).rows[0];
+check(
+  "35.9 the hash-chain ledger table and verify function exist",
+  ledgerObjs35?.tbl !== null && Number(ledgerObjs35?.fn) > 0,
+  true,
+);
+
+// ---- 35.10 the audit log is genuinely append-only ------------------------
+const auditProbe35 = (
+  await db.query(
+    `INSERT INTO org_audit_log (org_id, action, resource, resource_id, details)
+     VALUES ($1, 'test.worm_probe', 'test', 'sec35', '{}'::jsonb)
+     RETURNING id`,
+    [state.orgAId],
+  )
+).rows[0];
+let auditUpd35 = "no-error";
+try {
+  await db.query(`UPDATE org_audit_log SET action = 'tampered' WHERE id = $1`, [
+    auditProbe35.id,
+  ]);
+} catch {
+  auditUpd35 = "blocked";
+}
+check("35.10 an audit row cannot be UPDATEd", auditUpd35, "blocked");
+
+let auditDel35 = "no-error";
+try {
+  await db.query(`DELETE FROM org_audit_log WHERE id = $1`, [auditProbe35.id]);
+} catch {
+  auditDel35 = "blocked";
+}
+check("35.11 an audit row cannot be DELETEd", auditDel35, "blocked");
+
+// ---- 35.12 evidence is write-once at the database layer ------------------
+const ev35 = (
+  await db.query(
+    `INSERT INTO org_evidence (org_id, uco_control_id, title, description, type, source, collected_at)
+     VALUES ($1, 'UCO-SEC-35', 'sec35 probe', 'original description', 'manual', 'sec35', NOW())
+     RETURNING id`,
+    [state.orgAId],
+  )
+).rows[0];
+
+let evUpd35 = "no-error";
+try {
+  await db.query(`UPDATE org_evidence SET description = 'rewritten' WHERE id = $1`, [
+    ev35.id,
+  ]);
+} catch {
+  evUpd35 = "blocked";
+}
+check("35.12 evidence content fields cannot be rewritten", evUpd35, "blocked");
+
+let evDel35 = "no-error";
+try {
+  await db.query(`DELETE FROM org_evidence WHERE id = $1`, [ev35.id]);
+} catch {
+  evDel35 = "blocked";
+}
+check("35.13 an evidence row cannot be hard-deleted", evDel35, "blocked");
+
+// retention state IS allowed to change - that is how removal works now
+let evRetire35 = "error";
+try {
+  await db.query(
+    `UPDATE org_evidence SET deleted_at = NOW(), deletion_reason = 'sec35' WHERE id = $1`,
+    [ev35.id],
+  );
+  evRetire35 = "ok";
+} catch {
+  evRetire35 = "error";
+}
+check("35.14 evidence can be retired (soft delete) without violating WORM", evRetire35, "ok");
+
+// ---- 35.15 the ledger recorded the write --------------------------------
+const led35 = (
+  await db.query(`SELECT COUNT(*)::int AS n FROM evidence_ledger WHERE evidence_id = $1`, [
+    ev35.id,
+  ])
+).rows[0];
+check("35.15 the write was appended to the tamper-evident ledger", Number(led35?.n) > 0, true);
+
+// ---- 35.16 retired evidence disappears from the API but not the DB ------
+const listAfter35 = await evReq34(cookieOwnerA, `/orgs/${state.orgAId}/evidence`, "GET");
+const listBody35 = Array.isArray(listAfter35.body?.evidence)
+  ? listAfter35.body.evidence
+  : [];
+check(
+  "35.16 retired evidence is hidden from the live evidence list",
+  listBody35.some((e) => Number(e.id) === Number(ev35.id)),
+  false,
+);
+const stillThere35 = (
+  await db.query(`SELECT COUNT(*)::int AS n FROM org_evidence WHERE id = $1`, [ev35.id])
+).rows[0];
+check(
+  "35.17 ...but the row is still on disk for the auditor",
+  Number(stillThere35?.n),
+  1,
+);
+
+// ---- 35.18 the API's delete endpoint no longer destroys data ------------
+const ev35b = (
+  await db.query(
+    `INSERT INTO org_evidence (org_id, uco_control_id, title, description, type, source, collected_at)
+     VALUES ($1, 'UCO-SEC-35', 'sec35 api delete', 'desc', 'manual', 'sec35', NOW())
+     RETURNING id`,
+    [state.orgAId],
+  )
+).rows[0];
+const del35 = await evReq34(
+  cookieOwnerA,
+  `/orgs/${state.orgAId}/evidence/${ev35b.id}`,
+  "DELETE",
+);
+check("35.18 DELETE /evidence/:id still succeeds for an authorised user", del35.status, 200);
+const survived35 = (
+  await db.query(
+    `SELECT deleted_at IS NOT NULL AS retired FROM org_evidence WHERE id = $1`,
+    [ev35b.id],
+  )
+).rows[0];
+check(
+  "35.19 the API delete retired the record instead of destroying it",
+  survived35?.retired,
+  true,
+);
+
+// ---- 35.20 legal hold beats deletion ------------------------------------
+const ev35c = (
+  await db.query(
+    `INSERT INTO org_evidence (org_id, uco_control_id, title, description, type, source, collected_at, legal_hold)
+     VALUES ($1, 'UCO-SEC-35', 'sec35 hold', 'desc', 'manual', 'sec35', NOW(), TRUE)
+     RETURNING id`,
+    [state.orgAId],
+  )
+).rows[0];
+const holdDel35 = await evReq34(
+  cookieOwnerA,
+  `/orgs/${state.orgAId}/evidence/${ev35c.id}`,
+  "DELETE",
+);
+check("35.20 evidence under legal hold cannot be retired", holdDel35.status, 403);
+const heldStill35 = (
+  await db.query(
+    `SELECT deleted_at IS NULL AS active FROM org_evidence WHERE id = $1`,
+    [ev35c.id],
+  )
+).rows[0];
+check("35.21 the held record is still active", heldStill35?.active, true);
+
+// ---- 35.22 cross-tenant reads of the ledger ------------------------------
+const ledgerB35 = await evReq34(
+  cookieOwnerB,
+  `/orgs/${state.orgAId}/evidence/ledger/export`,
+  "GET",
+);
+check(
+  "35.22 org B cannot export org A's evidence ledger",
+  ledgerB35.status !== 200 && ledgerB35.status !== 500,
+  true,
+);
+
+// ---- 35.23 database transport security -----------------------------------
+const ssl35 = (await db.query(`SELECT current_setting('ssl', true) AS ssl`)).rows[0];
+check(
+  "35.23 database TLS setting is readable for the posture report",
+  ssl35 !== undefined,
+  true,
+);
+
 
 await cleanup();
 
