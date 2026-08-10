@@ -9,6 +9,9 @@
  * public repls and therefore misses the private workspaces that constitute
  * the customer's production infrastructure.
  */
+// SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
+import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
+
 
 export interface ReplitCheckResult {
   ucoControlId: string;

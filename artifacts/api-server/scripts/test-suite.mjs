@@ -3869,6 +3869,117 @@ check("32.9 risks.service.ts has no concatenated sql.raw() left", rawConcat32.le
 
 await db.query(`DROP TABLE IF EXISTS iso_sqli_canary`).catch(() => {});
 
+
+section("SECTION 33 - SSRF: tenant-controlled outbound URLs are guarded");
+
+const { readFileSync: readFileSync33, readdirSync: readdirSync33 } = await import("fs");
+const providerDir33 = new URL("../src/modules/integrations/providers/", import.meta.url);
+
+const providerFiles33 = (() => {
+  try {
+    return readdirSync33(providerDir33).filter((f) => f.endsWith(".ts")).sort();
+  } catch {
+    return [];
+  }
+})();
+check("33.1 provider directory is readable", providerFiles33.length > 0, true);
+
+// 33.2 - every provider that makes outbound calls must route through the guard.
+// This is the invariant that silently regressed: the guard existed but only one
+// of the connectors actually used it.
+const unguarded33 = [];
+for (const file of providerFiles33) {
+  let src = "";
+  try {
+    src = readFileSync33(new URL(file, providerDir33), "utf8");
+  } catch {
+    continue;
+  }
+  if (!/\bfetch\s*\(/.test(src)) continue;
+  if (src.includes("guarded-fetch") || src.includes("ssrf-guard")) continue;
+  unguarded33.push(file);
+}
+check(
+  `33.2 no provider calls raw fetch (${providerFiles33.length} scanned)`,
+  unguarded33.length === 0 ? "none" : unguarded33.join(", "),
+  "none",
+);
+
+// 33.3 - no connector may smuggle an unguarded HTTP client in as a bypass
+const smuggled33 = [];
+for (const file of providerFiles33) {
+  let src = "";
+  try {
+    src = readFileSync33(new URL(file, providerDir33), "utf8");
+  } catch {
+    continue;
+  }
+  if (/from\s+["'](axios|node-fetch|got|request|superagent|undici)["']/.test(src)) {
+    smuggled33.push(file);
+  }
+}
+check("33.3 no provider imports an unguarded HTTP client", smuggled33.length, 0);
+
+// 33.4 - the guarded client must actually use validation + DNS pinning
+let guardedSrc33 = "";
+try {
+  guardedSrc33 = readFileSync33(new URL("../src/lib/guarded-fetch.ts", import.meta.url), "utf8");
+} catch {}
+check("33.4 guarded-fetch validates and resolves the target", guardedSrc33.includes("validateAndResolvePublicHttpsUrl"), true);
+check("33.4 guarded-fetch connects via the pinned client", guardedSrc33.includes("pinnedHttpsRequest"), true);
+
+// 33.5 - behavioural: the blocklist really rejects internal targets.
+// Loaded through the same loader the server uses; both specifiers are tried so
+// the check is resilient to resolver differences between local and CI.
+let ssrf33 = null;
+for (const spec of ["../src/lib/ssrf-guard.ts", "../src/lib/ssrf-guard.js"]) {
+  if (ssrf33) break;
+  try {
+    ssrf33 = await import(new URL(spec, import.meta.url).href);
+  } catch {}
+}
+check("33.5 the ssrf guard module loads", ssrf33 !== null, true);
+
+if (ssrf33) {
+  const blockedTargets33 = [
+    "https://169.254.169.254/latest/meta-data/",   // AWS / GCP / Azure instance metadata
+    "https://metadata.google.internal/",           // GCP metadata by name
+    "https://127.0.0.1/api/admin",                 // loopback - the API talking to itself
+    "https://localhost/api/admin",
+    "https://10.0.0.5/",                           // RFC1918
+    "https://172.16.4.4/",
+    "https://192.168.1.1/",
+    "https://[::1]/",                              // IPv6 loopback
+    "https://0.0.0.0/",
+    "http://example.com/",                         // plaintext must be refused outright
+  ];
+  const leaked33 = [];
+  for (const target of blockedTargets33) {
+    try {
+      await ssrf33.validateAndResolvePublicHttpsUrl(target, "test");
+      leaked33.push(target);
+    } catch {
+      // rejected - this is the expected outcome
+    }
+  }
+  check(
+    "33.5 every internal / plaintext target is rejected",
+    leaked33.length === 0 ? "none" : leaked33.join(", "),
+    "none",
+  );
+
+  check("33.6 loopback IPv4 is in the block list", ssrf33.isBlockedIPv4("127.0.0.1"), true);
+  check("33.6 link-local metadata IPv4 is in the block list", ssrf33.isBlockedIPv4("169.254.169.254"), true);
+  check("33.6 RFC1918 10/8 is in the block list", ssrf33.isBlockedIPv4("10.1.2.3"), true);
+  check("33.6 RFC1918 172.16/12 is in the block list", ssrf33.isBlockedIPv4("172.20.0.1"), true);
+  check("33.6 RFC1918 192.168/16 is in the block list", ssrf33.isBlockedIPv4("192.168.0.10"), true);
+  check("33.6 carrier-grade NAT 100.64/10 is in the block list", ssrf33.isBlockedIPv4("100.64.0.1"), true);
+  check("33.6 a public address is not blocked", ssrf33.isBlockedIPv4("93.184.216.34"), false);
+  check("33.7 IPv6 loopback is in the block list", ssrf33.isBlockedIPv6("::1"), true);
+  check("33.7 IPv6 unique-local is in the block list", ssrf33.isBlockedIPv6("fd00::1"), true);
+  check("33.7 IPv6 link-local is in the block list", ssrf33.isBlockedIPv6("fe80::1"), true);
+}
+
 await cleanup();
 
 const bar = "═".repeat(70);

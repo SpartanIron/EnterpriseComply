@@ -3,6 +3,9 @@ import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 import { createHmac } from 'crypto';
 
+// SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
+import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
+
 interface DuoConfig { integrationKey: string; secretKey: string; apiHostname: string; }
 
 @Injectable()

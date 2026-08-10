@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 
+// SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
+import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
+
 interface WorkdayConfig { tenantUrl: string; clientId: string; clientSecret: string; refreshToken: string; }
 
 @Injectable()

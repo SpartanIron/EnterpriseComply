@@ -1,3 +1,6 @@
+// SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
+import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
+
 export interface CloudflareCheckResult {
   ucoControlId: string;
   status: "passing" | "failing" | "warning";
