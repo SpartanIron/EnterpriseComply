@@ -111,6 +111,26 @@ async function bootstrap() {
   // Authenticated Origin Pulls are not an option on Railway.
   app.use(originTrustMiddleware);
 
+  // — Third-party origins the auth flow depends on -----------------------
+  // Clerk serves the sign-in UI and Turnstile serves the bot challenge. These
+  // values mirror the Cloudflare edge response-header rule that currently
+  // overrides this policy, so that origin and edge can converge on one source of
+  // truth and the edge rule can then be retired.
+  const CLERK_ORIGINS = [
+    "https://clerk.colorcodesolutions.com",
+    "https://*.clerk.accounts.dev",
+  ];
+  const CLERK_SOCKETS = [
+    "wss://clerk.colorcodesolutions.com",
+    "wss://*.clerk.accounts.dev",
+  ];
+  const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
+  // Escape hatch. If a third-party bundle turns out to need eval() once the edge
+  // CSP is retired, set CSP_ALLOW_UNSAFE_EVAL=true as a stopgap rather than
+  // shipping a code change during an incident. Off by default, and it is a
+  // finding whenever it is on.
+  const cspAllowUnsafeEval = process.env.CSP_ALLOW_UNSAFE_EVAL === "true";
+
   // — Per-request CSP nonce ------------------------------------------------
   // Must run before helmet, because helmet materialises the CSP header inside its
   // own middleware. With a nonce available, script-src no longer needs
@@ -131,28 +151,34 @@ async function bootstrap() {
             "'self'",
             (_req: unknown, res: unknown) =>
               `'nonce-${(res as { locals?: { cspNonce?: string } }).locals?.cspNonce ?? ""}'`,
+              ...CLERK_ORIGINS,
+              TURNSTILE_ORIGIN,
+              ...(cspAllowUnsafeEval ? ["'unsafe-eval'"] : []),
           ],
           // style-src keeps 'unsafe-inline' on purpose: React and Tailwind set style
           // attributes at runtime. Style injection cannot execute script, and script-src
           // above is nonce-locked, so this is the residual risk we accept and document.
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "https:"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          imgSrc: ["'self'", "data:", "blob:", "https:"],
           connectSrc: [
             "'self'",
             "https://*.colorcodesolutions.com",
             "https://app.enterprisecomply.com",
             "https://grc.colorcodesolutions.com",
+          ...CLERK_ORIGINS,
+          ...CLERK_SOCKETS,
           ],
-          fontSrc: ["'self'", "data:"],
+          fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
           objectSrc: ["'none'"],
           // Stops an injected <base> tag from re-pointing every relative URL,
           // and stops an injected form from posting credentials off-origin.
           baseUri: ["'none'"],
-          formAction: ["'self'"],
+          formAction: ["'self'", ...CLERK_ORIGINS],
           // Modern equivalent of X-Frame-Options: DENY. Kept alongside the
           // header because CSP wins where both are understood.
           frameAncestors: ["'none'"],
-          frameSrc: ["'none'"],
+          frameSrc: ["'self'", ...CLERK_ORIGINS, TURNSTILE_ORIGIN],
+        workerSrc: ["'self'", "blob:"],
           upgradeInsecureRequests: [],
         },
       },
