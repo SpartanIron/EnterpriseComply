@@ -35,6 +35,18 @@ interface OrgMember {
   lastActive?: string;
 }
 
+interface OrgInvite {
+  id: number;
+  email: string;
+  role: AppRole;
+  status: string;
+  expiresAt: string;
+  invitedByEmail?: string;
+  lastSentAt: string;
+  resendCount: number;
+  createdAt: string;
+}
+
 // Assignable roles (org admins cannot assign super_admin)
 function roleLabel(role: string | null | undefined): string {
   if (!role) return "Unassigned";
@@ -116,10 +128,44 @@ export default function RoleManagement() {
       }),
     onSuccess: () => {
       toast("Invitation sent to " + inviteEmail);
+      qc.invalidateQueries({ queryKey: ["org-invites"] });
       setInviteEmail("");
       setInviteRole("analyst");
     },
     onError: (err: unknown) => toast(err instanceof Error ? err.message : "Failed to send invite", "#dc2626"),
+  });
+  // Pending invitations — GET /orgs/:orgId/invites returns every invite; only the
+  // pending ones still carry a link that works, and there is at most one per address.
+  const { data: invitesData } = useQuery<{ invites: OrgInvite[] }>({
+    queryKey: ["org-invites", orgId],
+    queryFn: () => apiFetch(`/orgs/${orgId}/invites`),
+    enabled: !!orgId,
+    staleTime: 15000,
+  });
+
+  const pendingInvites: OrgInvite[] = (invitesData?.invites ?? []).filter(
+    (inv) => inv.status === "pending",
+  );
+
+  // Resending rotates the token server-side, so the older email stops working.
+  const resendInviteMutation = useMutation({
+    mutationFn: (inviteId: number) =>
+      apiFetch(`/orgs/${orgId}/invites/${inviteId}/resend`, { method: "POST", body: "{}" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-invites"] });
+      toast("Invitation resent — only the newest link works now", "#16a34a");
+    },
+    onError: (err: unknown) => toast(err instanceof Error ? err.message : "Failed to resend invitation", "#dc2626"),
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: (inviteId: number) =>
+      apiFetch(`/orgs/${orgId}/invites/${inviteId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-invites"] });
+      toast("Invitation revoked", "#16a34a");
+    },
+    onError: (err: unknown) => toast(err instanceof Error ? err.message : "Failed to revoke invitation", "#dc2626"),
   });
 
   if (!can("admin")) {
@@ -162,6 +208,42 @@ export default function RoleManagement() {
               </button>
             </div>
           </div>
+          {/* Pending invitations — the only links that still work */}
+          {pendingInvites.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100">
+                <h3 className="text-sm font-bold text-slate-800">Pending Invitations ({pendingInvites.length})</h3>
+                <p className="text-xs text-slate-400 mt-1">Only the newest link sent to an address works. Inviting or resending the same address invalidates the previous link.</p>
+              </div>
+              <table className="w-full">
+                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="text-left px-5 py-2.5 font-semibold">Email</th>
+                    <th className="text-left px-5 py-2.5 font-semibold">Role</th>
+                    <th className="text-left px-5 py-2.5 font-semibold">Last sent</th>
+                    <th className="text-left px-5 py-2.5 font-semibold">Expires</th>
+                    <th className="text-left px-5 py-2.5 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingInvites.map((inv) => (
+                    <tr key={inv.id} className="border-t border-slate-100 text-sm">
+                      <td className="px-5 py-3 text-slate-800">{inv.email}</td>
+                      <td className="px-5 py-3">
+                        <span className={"px-2 py-0.5 rounded-full text-xs font-semibold " + roleColor(inv.role)}>{roleLabel(inv.role)}</span>
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">{new Date(inv.lastSentAt).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-slate-500">{new Date(inv.expiresAt).toLocaleDateString()}</td>
+                      <td className="px-5 py-3 whitespace-nowrap">
+                        <button onClick={() => resendInviteMutation.mutate(inv.id)} disabled={resendInviteMutation.isPending} className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50 mr-4">Resend</button>
+                        <button onClick={() => revokeInviteMutation.mutate(inv.id)} disabled={revokeInviteMutation.isPending} className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50">Revoke</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Members table */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
