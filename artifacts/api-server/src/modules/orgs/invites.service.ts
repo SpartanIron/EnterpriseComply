@@ -312,7 +312,18 @@ export class InvitesService {
       throw new ConflictException("This invitation has already been used.");
     }
     if (invite.status !== "pending") {
-      throw new ForbiddenException("This invitation is no longer valid.");
+      const newer = await db.query.orgInvitesTable.findFirst({
+        where: and(
+          eq(orgInvitesTable.orgId, orgId),
+          eq(orgInvitesTable.status, "pending"),
+          sql`lower(${orgInvitesTable.email}) = ${invite.email.toLowerCase()}`,
+        ),
+      });
+      throw new ForbiddenException(
+        newer
+          ? "A newer invitation was sent to this address. Open the most recent invitation email and use the link in it."
+          : "This invitation is no longer valid.",
+      );
     }
     if (new Date(invite.expiresAt).getTime() < Date.now()) {
       throw new ForbiddenException("This invitation has expired.");
