@@ -233,3 +233,25 @@ export async function sendPostureScoreChangeEmail(opts: {
     html: wrap(`<h2>Compliance Posture Change</h2><p>Hi ${name},</p><div class="${opts.delta >= 0 ? "success-box" : "alert-box"}">Your compliance score for <strong>${opts.orgName || "your organization"}</strong> has <strong>${direction} by ${Math.abs(opts.delta)} points</strong>.<br/><strong>${opts.previousScore}%</strong> &rarr; <strong>${opts.currentScore}%</strong></div>${controlList}<a href="${BASE_URL}/dashboard" class="btn">View Dashboard &rarr;</a><a href="${BASE_URL}/controls" class="btn" style="margin-left:8px;">Review Controls &rarr;</a>`),
   });
 }
+
+// ── Team member invite ───────────────────────────────────────
+// The link is the only place the plaintext token ever appears; the database
+// stores nothing but its SHA-256 hash. orgId travels with it so the accept
+// endpoint can scope its lookup to a single tenant. Control: NIST AC-2.
+export async function sendTeamInviteEmail(opts: {
+  to: string; orgName?: string; inviterEmail?: string;
+  roleLabel: string; token: string; orgId: number; expiresAt: Date;
+}): Promise<void> {
+  const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const org = esc(opts.orgName || "your team");
+  const inviter = opts.inviterEmail ? esc(opts.inviterEmail) : null;
+  const expires = opts.expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const acceptUrl = `${BASE_URL}/accept-invite?org=${opts.orgId}&token=${encodeURIComponent(opts.token)}`;
+  await send({
+    to: opts.to,
+    subject: `You have been invited to join ${opts.orgName || "EnterpriseComply"}`,
+    tags: { type: "team_invite", orgId: String(opts.orgId) },
+    text: `You have been invited to join ${opts.orgName || "EnterpriseComply"} as ${opts.roleLabel}. Accept: ${acceptUrl} (expires ${expires})`,
+    html: wrap(`<h2>You have been invited</h2><p>Hello,</p><p>${inviter ? `<strong>${inviter}</strong> has invited you` : "You have been invited"} to join <strong>${org}</strong> on EnterpriseComply.</p><div class="warn-box"><strong>Your role:</strong> ${esc(opts.roleLabel)}<br/><strong>Invitation expires:</strong> ${expires}</div><p>Accept the invitation to set up your access. This link works once, and only for this email address.</p><a href="${acceptUrl}" class="btn">Accept invitation &rarr;</a><p style="font-size:12px;color:#6b7280;margin-top:16px;">If you were not expecting this invitation you can ignore this email — no account is created until you accept.</p>`),
+  });
+}

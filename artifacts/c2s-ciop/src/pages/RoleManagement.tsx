@@ -104,7 +104,7 @@ export default function RoleManagement() {
       toast("Role updated successfully", "#16a34a");
       setEditingMember(null);
     },
-    onError: () => toast("Failed to update role", "#dc2626"),
+    onError: (err: unknown) => toast(err instanceof Error ? err.message : "Failed to update role", "#dc2626"),
   });
 
   // Invite mutation — P0-12: same fix; errors now propagate to onError.
@@ -119,7 +119,7 @@ export default function RoleManagement() {
       setInviteEmail("");
       setInviteRole("analyst");
     },
-    onError: () => toast("Failed to send invite", "#dc2626"),
+    onError: (err: unknown) => toast(err instanceof Error ? err.message : "Failed to send invite", "#dc2626"),
   });
 
   if (!can("admin")) {
