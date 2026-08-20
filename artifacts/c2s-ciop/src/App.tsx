@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { authClient } from "./lib/auth-client";
 import AppShell from "./components/layout/AppShell";
 import Landing from "./pages/Landing";
+import AcceptInvite from "./pages/AcceptInvite";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
@@ -150,6 +151,8 @@ function AppRoutes() {
         <Route path="/trust" component={PublicTrustCenter} />
         <Route path="/trust/:slug" component={OrgTrustCenter} />
         <Route path="/landing" component={Landing} />
+        {/* Invitation links land here. Public on purpose — the invitee has no account yet. */}
+        <Route path="/accept-invite" component={AcceptInvite} />
         <Route path="/demo" component={() => (
           <div>
             <div className="fixed top-0 left-0 right-0 z-50 bg-blue-600 px-4 py-2 flex items-center justify-between text-white text-sm">
