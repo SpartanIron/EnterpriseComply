@@ -5,6 +5,7 @@ import { seedColorComply } from "@workspace/db/seed";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { encryptCredential, isEncryptedCredential, encryptConfigCredentials, validateCredentialKeyMaterial } from "../lib/credential-crypto";
+import { runOrgInvitesMigration } from "../migrations/org-invites.migration";
 
 /**
  * Load a policy template file by key. Returns the full markdown content, or
@@ -1159,6 +1160,10 @@ export class StartupService implements OnApplicationBootstrap {
     await this.runMigrationsV4();
     await this.runMigrationsV5();
     await this.runMigrationsV6();
+    // org_invites has to exist before runTenantRlsMigration() runs its discovery
+    // pass, otherwise the table sits outside tenant isolation until the next boot.
+    // runAuditLogWormMigration() below is what triggers that pass.
+    await this.runInvitesMigration();
 
     // Security hardening — these migrations throw on failure and are NOT caught here.
     // A failure propagates up to NestFactory.create() which logs it and exits the process.
@@ -1221,6 +1226,15 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.log('ZTA V6 migrations complete');
     } catch (err) {
       this.logger.error('V6 migration failed - continuing', (err as any)?.message ?? String(err));
+    }
+  }
+
+  private async runInvitesMigration() {
+    try {
+      await runOrgInvitesMigration(db);
+      this.logger.log('Team invites migration complete');
+    } catch (err) {
+      this.logger.error('org_invites migration failed - continuing', (err as any)?.message ?? String(err));
     }
   }
 
