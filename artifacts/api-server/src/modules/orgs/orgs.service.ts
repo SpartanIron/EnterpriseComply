@@ -177,6 +177,23 @@ return { org };
         "[orgs] backfilled blank org member email from auth store",
       );
     }
+
+    // Who holds an authenticator. One query joined to org_members rather than one
+    // lookup per member: the Security tab needs this for every row, and N+1 on a
+    // members list is how a settings page starts timing out for exactly the customers
+    // who have the most members. Scoped by org_id, so it reads nothing it should not.
+    const enrolled = new Set<string>();
+    const enrolledRows: any = await db.execute(sql`
+      SELECT t."userId" AS user_id
+      FROM two_factor t
+      JOIN org_members m ON m.clerk_user_id = t."userId"
+      WHERE m.org_id = ${orgId}
+    `);
+    const enrolledList = Array.isArray(enrolledRows)
+      ? enrolledRows
+      : (enrolledRows?.rows ?? []);
+    for (const row of enrolledList) enrolled.add(String(row.user_id));
+
     return {
       members: members.map((m) => ({
         id: String(m.id),
@@ -186,6 +203,7 @@ return { org };
         lastName: m.lastName ?? undefined,
         role: m.role,
         joinedAt: m.createdAt,
+        mfaEnrolled: enrolled.has(m.clerkUserId),
       })),
     };
   }
