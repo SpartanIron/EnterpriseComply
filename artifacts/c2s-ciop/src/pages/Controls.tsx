@@ -247,7 +247,14 @@ export default function Controls() {
   });
   const orgId = orgData?.org?.id;
 
-  const { data, isLoading } = useQuery<{ controls: any[] }>({
+  interface ControlsSummary {
+    source: string;
+    counts: { passing: number; warning: number; failing: number; notTested: number; assessed: number; total: number };
+    degraded: boolean;
+    note: string;
+  }
+
+  const { data, isLoading } = useQuery<{ controls: any[]; summary?: ControlsSummary }>({
     queryKey: ["org-controls", orgId],
     queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/controls`), { credentials: "include" })).json(),
     enabled: !!orgId,
@@ -295,6 +302,7 @@ export default function Controls() {
 
   const filtered = filter === "all" ? controls
     : filter === "passing" ? controls.filter(c => c.result?.status === "passing")
+    : filter === "warning" ? controls.filter(c => c.result?.status === "warning")
     : filter === "failing" ? controls.filter(c => c.result?.status === "failing")
     : controls.filter(c => c.result?.status === "not_tested" || !c.result?.status);
 
@@ -303,17 +311,34 @@ export default function Controls() {
     return acc;
   }, {});
 
-  const stats = {
-    passing: controls.filter(c => c.result?.status === "passing").length,
-    failing: controls.filter(c => c.result?.status === "failing").length,
-    notTested: controls.filter(c => !c.result?.status || c.result?.status === "not_tested").length,
-  };
-  const total = controls.length;
+  // Counts come from the server, which takes them from the posture single
+  // source of truth. This page used to tally them here with three buckets, so a
+  // control whose status was "warning" sat in the list, in no header figure, and
+  // could not be filtered for. The local tally below is a fallback for a
+  // response that predates the summary field, and it counts four statuses.
+  const summary = data?.summary;
+  const localTally = (status: string) =>
+    controls.filter(c => (c.result?.status ?? "not_tested") === status).length;
+  const stats = summary
+    ? {
+        passing: summary.counts.passing,
+        warning: summary.counts.warning,
+        failing: summary.counts.failing,
+        notTested: summary.counts.notTested,
+      }
+    : {
+        passing: localTally("passing"),
+        warning: localTally("warning"),
+        failing: localTally("failing"),
+        notTested: localTally("not_tested"),
+      };
+  const total = summary ? summary.counts.total : controls.length;
   const passRate = total > 0 ? Math.round((stats.passing / total) * 100) : 0;
 
   const FILTERS: [string, string, number][] = [
     ["all", "All controls", total],
     ["passing", "Passing", stats.passing],
+    ["warning", "Warning", stats.warning],
     ["failing", "Failing", stats.failing],
     ["not_tested", "Not Tested", stats.notTested],
   ];
@@ -346,6 +371,20 @@ export default function Controls() {
       ),
       iconBg: stats.passing > 0 ? "bg-green-50 text-green-600" : "bg-slate-50 text-slate-400",
       badge: stats.passing > 0 ? { label: `${passRate}%`, cls: "bg-green-50 text-green-700 ring-1 ring-green-200" } : null,
+    },
+    {
+      label: "Warning",
+      value: stats.warning,
+      sub: stats.warning > 0 ? "assessed, not clean" : "none in warning",
+      valueColor: stats.warning > 0 ? "text-amber-700" : "text-slate-400",
+      topBar: stats.warning > 0 ? "bg-amber-400" : "bg-slate-200",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+      ),
+      iconBg: stats.warning > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-400",
+      badge: stats.warning > 0 ? { label: "Not counted as passing", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" } : null,
     },
     {
       label: "Failing",
