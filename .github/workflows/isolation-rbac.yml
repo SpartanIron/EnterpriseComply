@@ -81,6 +81,24 @@ jobs:
       - name: Verify plan provisioning parser and idempotency
         run: node --import @swc-node/register/esm-register artifacts/api-server/scripts/plan-provisioning.test.mjs
 
+      # -- Platform administrators (bootstrap + elevation rules) --------------
+      # Pure unit test. Guards the properties that make env-var bootstrapping of
+      # platform staff safe rather than dangerous: the variable is authoritative
+      # so dropping an address revokes the grant, an address with no account
+      # grants nothing, a live elevation dies with the grant that allowed it,
+      # and no elevation can outlive the hard one-hour ceiling.
+      - name: Verify platform admin bootstrap and elevation rules
+        run: node --import @swc-node/register/esm-register artifacts/api-server/scripts/platform-admin.test.mjs
+
+      # -- Frontend production build ------------------------------------------
+      # The api-server tests below never import the React app, so a broken
+      # frontend import graph used to pass CI and only fail later inside the
+      # Railway image build, after the commit was already on main. This runs the
+      # same Vite production build Railway runs, so that class of breakage is
+      # caught on the pull request instead of in the deploy.
+      - name: Build frontend (same build Railway runs)
+        run: BASE_PATH=/ pnpm --filter @workspace/c2s-ciop run build
+
       # ── Start API server in the background ────────────────────────────────
       # Uses swc-node so TypeScript is transpiled on the fly; no build step needed.
       # StartupService runs migrations and seeds tables on first boot.

@@ -113,6 +113,30 @@ check("the minimum is stated once", MIN_REASON_LENGTH, 12);
 console.log("\nBootstrap reconciliation");
 
 /**
+ * Pull the first bound value out of a drizzle sql template.
+ *
+ * This is fiddlier than it looks, and getting it wrong is what made the first
+ * run of this suite lie. drizzle does not wrap every interpolated value: a
+ * plain string is pushed into queryChunks as a bare string, while other values
+ * arrive as a Param object carrying a .value. Reading .value unconditionally
+ * therefore yields undefined for exactly the case this suite exercises, every
+ * user lookup misses, and reconcile looks like it grants nothing and revokes
+ * everything. Unwrap until a primitive falls out, and skip StringChunks, whose
+ * .value is the array of literal fragments.
+ */
+function firstStringParam(chunks) {
+  for (const chunk of chunks) {
+    if (Array.isArray(chunk?.value)) continue;
+    let value = chunk;
+    while (value !== null && typeof value === "object" && "value" in value) {
+      value = value.value;
+    }
+    if (typeof value === "string" || typeof value === "number") return String(value);
+  }
+  return undefined;
+}
+
+/**
  * Fake database. Routes on the leading SQL keyword rather than parsing, and
  * records which statements were issued so revocation can be asserted.
  */
@@ -134,8 +158,9 @@ function fakeDb({ admins = [], users = [] } = {}) {
         return { rows: admins.map((a) => ({ user_id: a.userId, email: a.email })) };
       }
       if (text.startsWith("SELECT id, email FROM")) {
-        // The parameter is the email; find it from the Param chunk.
-        const param = chunks.find((c) => !Array.isArray(c?.value))?.value;
+        // The parameter is the email. See firstStringParam for why this is not
+        // simply a .value read.
+        const param = firstStringParam(chunks);
         const hit = users.find((u) => u.email === String(param));
         return { rows: hit ? [{ id: hit.id, email: hit.email }] : [] };
       }
