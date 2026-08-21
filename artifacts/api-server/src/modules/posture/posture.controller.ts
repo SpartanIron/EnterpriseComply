@@ -1,7 +1,13 @@
 import { Controller, Get, UseGuards } from "@nestjs/common";
 import { OrgContextGuard, OrgContext } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
-import { computePosture, diffPosture } from "../../lib/posture";
+import {
+  catalogInconsistencies,
+  computePosture,
+  coverageWarnings,
+  diffPosture,
+  legacyArithmeticNotes,
+} from "../../lib/posture";
 import { getPostureDriftReport, recordPostureDrift } from "../../lib/posture-drift";
 
 interface OrgCtx {
@@ -37,7 +43,16 @@ export class PostureController {
     // means the drift report fills up from real traffic.
     recordPostureDrift(posture);
 
-    return { posture };
+    return {
+      posture,
+      // Two facts a reader needs beside these numbers or the numbers get
+      // misread. Neither is drift and neither is a defect: coverage says how
+      // much of each published control set the mappings actually reach, and
+      // the catalog note says where a framework label and its control content
+      // name different revisions.
+      coverageWarnings: coverageWarnings(posture),
+      catalogInconsistencies: catalogInconsistencies(posture),
+    };
   }
 
   @Get("orgs/:orgId/posture/drift")
@@ -70,6 +85,42 @@ export class PostureController {
           coveragePercent: posture.coveragePercent,
         },
         legacyDashboard: posture.legacyDashboard,
+      },
+
+      /**
+       * Thirteen headline items became zero. Nine of them were defects and
+       * were fixed. The other four were never defects, so they are reported
+       * here rather than counted as fixes or buried inside a zero:
+       *
+       *   legacyArithmeticNotes   what the dashboard would still be computing
+       *                           if it were doing its own arithmetic. Nothing
+       *                           serves it after the cutover, so a permanent
+       *                           difference is a historical fact.
+       *   coverageWarnings        the mappings reach part of each published
+       *                           control set. A data limitation, not a fault,
+       *                           and shipping code will not take it to zero.
+       *   catalogInconsistencies  a framework whose label and control content
+       *                           name different revisions. Reconciling them is
+       *                           a control-content decision, so it is
+       *                           surfaced rather than guessed.
+       *
+       * divergenceCount is the only one of the four groups a healthy system
+       * has to hold at zero.
+       */
+      separatelyReported: {
+        headline: {
+          divergenceCount: divergences.length,
+          historicalHeadlineCount: 13,
+          defectsRemediated: 9,
+          nonDefectItems: 4,
+          note:
+            "A divergence count of zero does not mean thirteen defects were " +
+            "fixed. Nine were defects. The other four are retired legacy " +
+            "arithmetic and data-coverage facts, reported in the groups below.",
+        },
+        legacyArithmeticNotes: legacyArithmeticNotes(posture),
+        coverageWarnings: coverageWarnings(posture),
+        catalogInconsistencies: catalogInconsistencies(posture),
       },
     };
   }
