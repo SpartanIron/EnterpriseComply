@@ -304,3 +304,56 @@ export function policyDocumentDownloadHeaders(doc: {
     "Cache-Control": "private, no-store",
   };
 }
+
+/**
+ * The fields of a stored document that may be serialised to a browser.
+ *
+ * contentBase64 is not among them, and that is the whole point of the list. A
+ * policy list, a policy detail view and a search result all want to say "there
+ * is a 240 KB PDF here, uploaded on Tuesday" and none of them want to ship the
+ * PDF inside a JSON array. Bytes travel by exactly one route - the download
+ * endpoint, which sets the attachment headers above - so that a change to how
+ * documents are served cannot miss a second path that also happened to emit them.
+ *
+ * Same shape of reasoning as CREDENTIAL_CONFIG_KEYS in integration-redaction.ts,
+ * for the same reason: the rule belongs somewhere both the callers and the CI
+ * guard can reach.
+ */
+export const POLICY_DOCUMENT_SUMMARY_FIELDS = [
+  "id",
+  "orgId",
+  "policyId",
+  "version",
+  "filename",
+  "mimeType",
+  "sizeBytes",
+  "sha256",
+  "status",
+  "uploadedBy",
+  "uploadedByEmail",
+  "note",
+  "supersededAt",
+  "createdAt",
+] as const;
+
+export interface PolicyDocumentSummary extends Record<string, unknown> {
+  id: number;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string;
+}
+
+/**
+ * Reduce a stored row to the fields above. Allow-list, not delete-the-bad-one:
+ * a column added to org_policy_documents later is absent from responses until
+ * someone deliberately adds it here, rather than present until someone
+ * remembers to remove it.
+ */
+export function summarisePolicyDocument(row: Record<string, unknown>): PolicyDocumentSummary {
+  const out: Record<string, unknown> = {};
+  for (const field of POLICY_DOCUMENT_SUMMARY_FIELDS) {
+    if (field in row) out[field] = row[field];
+  }
+  return out as PolicyDocumentSummary;
+}
