@@ -236,6 +236,24 @@ jobs:
         working-directory: artifacts/api-server
         run: node --import @swc-node/register/esm-register scripts/posture-surfaces.test.ts
 
+      # ── Phase 1c: FISMA as a pass-through, and the FIPS 199 tag ──────────
+      #
+      # FISMA was deferred out of Phase 1 with a guard asserting it stayed out.
+      # It has now shipped, so what is guarded is the shape: no mapping rows under
+      # a fisma key, an identical control set to 800-53, a response that names
+      # what it borrowed, and an uncategorised system reporting itself as such
+      # rather than defaulting to low.
+      - name: FISMA pass-through and FIPS 199 guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/fisma-pass-through.test.ts
+
+      # The rollback for the FIPS 199 column, exercised rather than asserted.
+      # Dry run only: it must report the column and change nothing without
+      # --confirm.
+      - name: FIPS 199 rollback dry run
+        working-directory: artifacts/api-server
+        run: node scripts/rollback-fisma-fips199.cjs --dry-run
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()

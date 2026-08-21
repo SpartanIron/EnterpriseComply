@@ -1,12 +1,17 @@
 import {
   db,
+  organizationsTable,
   ucoControlsTable,
   orgControlResultsTable,
   orgFrameworksTable,
   ucoFrameworkMappingsTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
-import { NIST_800_171_R2_REQUIREMENT_COUNT } from "./framework-mappings";
+import {
+  NIST_800_171_R2_REQUIREMENT_COUNT,
+  passThroughFor,
+  resolveMappingSource,
+} from "./framework-mappings";
 
 /**
  * Phase 1 - the single source of truth for compliance posture.
@@ -101,6 +106,12 @@ export interface FrameworkPosture {
   /** mappedControlCount / declaredControlCount. Below 100 means partial. */
   coveragePercent: number;
   partialCoverage: boolean;
+  /** The framework whose mapping rows were actually read. */
+  mappingSourceKey: string;
+  /** Set when this framework borrows another framework's control set. */
+  passThroughOf: string | null;
+  passThroughBasis: string | null;
+  passThroughCaveat: string | null;
   counts: PostureCounts;
   /** passing / declaredControlCount - the honest answer to "how compliant". */
   scorePercent: number;
@@ -125,10 +136,20 @@ export interface LegacyDashboardPosture {
   overallScore: number;
 }
 
+export interface Fips199Categorisation {
+  /** low, moderate, high, or null when nobody has categorised the system. */
+  impactLevel: string | null;
+  /** Where the value came from, so nobody mistakes a default for a decision. */
+  source: string;
+  note: string;
+}
+
 export interface Posture {
   schema: string;
   orgId: number;
   computedAt: string;
+  /** Recorded FIPS 199 impact level, or an explicit statement that there is none. */
+  fips199: Fips199Categorisation;
   counts: PostureCounts;
   /** assessed / total. How much of the control set has been looked at. */
   coveragePercent: number;
@@ -175,7 +196,7 @@ export function normaliseStatus(raw: unknown): { status: PostureStatus; recognis
 }
 
 export async function computePosture(orgId: number): Promise<Posture> {
-  const [ucoControls, results, orgFrameworks, mappings] = await Promise.all([
+  const [ucoControls, results, orgFrameworks, mappings, org] = await Promise.all([
     db.query.ucoControlsTable.findMany(),
     db.query.orgControlResultsTable.findMany({
       where: eq(orgControlResultsTable.orgId, orgId),
@@ -184,7 +205,24 @@ export async function computePosture(orgId: number): Promise<Posture> {
       where: eq(orgFrameworksTable.orgId, orgId),
     }),
     db.query.ucoFrameworkMappingsTable.findMany(),
+    db.query.organizationsTable.findFirst({ where: eq(organizationsTable.id, orgId) }),
   ]);
+
+  // FIPS 199 categorisation. Recorded, never inferred: the impact level decides
+  // which 800-53 baseline applies, and picking one on an organisation's behalf
+  // would be inventing the scope of its own assessment. Null is reported as
+  // "not categorised" rather than silently treated as low.
+  const impactLevel = (org as { fips199Impact?: string | null } | undefined)?.fips199Impact ?? null;
+  const fips199: Fips199Categorisation = {
+    impactLevel,
+    source: impactLevel ? "recorded on the organisation" : "not set",
+    note: impactLevel
+      ? "FIPS 199 impact level is recorded. It is not yet used to select an " +
+        "800-53 baseline, so framework coverage is unchanged by it."
+      : "No FIPS 199 impact level has been recorded. FISMA scoping depends on " +
+        "it, so any FISMA figure below is the full 800-53 pass-through rather " +
+        "than a baseline-filtered set.",
+  };
 
   const knownControlIds = new Set(ucoControls.map((control) => control.controlId));
 
@@ -242,7 +280,15 @@ export async function computePosture(orgId: number): Promise<Posture> {
     .map((framework) => {
       // A mapping to an objective that no longer exists must not inflate
       // coverage, so the mapped set is intersected with the live control set.
-      const mapped = [...(mappedByFramework.get(framework.frameworkKey) ?? new Set<string>())]
+      // A pass-through framework reads another framework's mappings. Nothing is
+      // duplicated in the table: the alias is resolved here, once, and reported
+      // on the result so no consumer can mistake it for a separate assessment.
+      const passThrough = passThroughFor(framework.frameworkKey);
+      const mappingSourceKey = resolveMappingSource(framework.frameworkKey);
+
+      // A mapping to an objective that no longer exists must not inflate
+      // coverage, so the mapped set is intersected with the live control set.
+      const mapped = [...(mappedByFramework.get(mappingSourceKey) ?? new Set<string>())]
         .filter((controlId) => knownControlIds.has(controlId));
 
       const frameworkCounts = tally(mapped);
@@ -260,6 +306,10 @@ export async function computePosture(orgId: number): Promise<Posture> {
         scorePercent: percent(frameworkCounts.passing, declared > 0 ? declared : mapped.length),
         mappedScorePercent: percent(frameworkCounts.passing, mapped.length),
         assessedScorePercent: percent(frameworkCounts.passing, frameworkCounts.assessed),
+        mappingSourceKey,
+        passThroughOf: passThrough ? passThrough.source : null,
+        passThroughBasis: passThrough ? passThrough.basis : null,
+        passThroughCaveat: passThrough ? passThrough.caveat : null,
         stored: {
           complianceScore: Number(framework.complianceScore ?? 0),
           passingControls: Number(framework.passingControls ?? 0),
@@ -281,6 +331,7 @@ export async function computePosture(orgId: number): Promise<Posture> {
     schema: POSTURE_SCHEMA_VERSION,
     orgId,
     computedAt: new Date().toISOString(),
+    fips199,
     counts,
     coveragePercent: percent(counts.assessed, counts.total),
     scorePercent: percent(counts.passing, counts.total),
