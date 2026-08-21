@@ -13,6 +13,28 @@ export function apiUrl(path: string) {
   return `/api${path}`;
 }
 
+/**
+ * Error that carries the machine-readable code, not only the sentence.
+ *
+ * Extends Error, so every existing call site that reads err.message keeps working
+ * unchanged. The code is needed because some failures are not failures: an
+ * invitation link belonging to somebody who is already a member should produce a
+ * "sign in" button rather than a red banner, and the code the API already sends is
+ * the only honest way to tell those cases apart. Matching on message text would
+ * break the first time somebody reworded a sentence.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string | null,
+    public readonly status: number,
+    public readonly body: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 /** Structured error thrown when a 402 plan-gated endpoint is hit. */
 export class PlanRequiredError extends Error {
   constructor(
@@ -51,8 +73,13 @@ export async function apiFetch(path: string, options?: RequestInit) {
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(error.message ?? error.error ?? "Request failed");
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new ApiError(
+      body.message ?? body.error ?? "Request failed",
+      typeof body.error === "string" ? body.error : null,
+      res.status,
+      body,
+    );
   }
   return res.json();
 }
