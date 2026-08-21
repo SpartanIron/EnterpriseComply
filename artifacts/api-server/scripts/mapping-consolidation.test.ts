@@ -415,11 +415,17 @@ async function main() {
       "no longer deferred and the completion record must stop saying it is.",
   );
 
+  // The FISMA pass-through shipped in Phase 1c, so this guard no longer asserts
+  // that it is absent. Its own assertions live in scripts/fisma-pass-through.test.ts;
+  // what is checked here is only that it did not arrive as a re-authored control
+  // set, which is the thing this phase existed to prevent.
   check(
-    "the FISMA pass-through is still deferred",
-    !/fisma/i.test(catalogSource),
-    "A FISMA entry exists in the catalog. If it shipped it needs its FIPS 199 " +
-      "impact tag and its two residual checks, and this guard needs updating.",
+    "FISMA arrived as a pass-through, not as a second control set",
+    catalogSource.includes('key: "fisma"') &&
+      !/frameworkKey: "fisma"/.test(catalogSource),
+    "FISMA must borrow the 800-53 mappings through FRAMEWORK_PASS_THROUGHS. " +
+      "Mapping rows written under a fisma key would be a second source of truth " +
+      "for the same requirements.",
   );
 
   if (failures > 0) {
