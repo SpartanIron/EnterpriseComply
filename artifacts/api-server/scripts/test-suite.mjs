@@ -5091,8 +5091,18 @@ section("40. Integration lifecycle: disconnect, reconnect, and honest verify");
     /checks\.checksRun > 0 && checks\.checksPassed === 0/.test(svc) && /ok: false,/.test(svc), true);
   check("40.6 a degraded sync persists the reason",
     svc.includes("lastSyncError: syncError"), true);
+  // Phase 1c moved the rule to lib/integration-redaction.ts, because the
+  // monitoring endpoint was reading the same table and spreading the rows raw.
+  // Asserting on the integrations service alone could not see that, so this now
+  // checks the rule where it lives and both endpoints that have to apply it.
+  const redact = read("artifacts/api-server/src/lib/integration-redaction.ts");
+  const mon = read("artifacts/api-server/src/modules/monitoring/monitoring.service.ts");
   check("40.7 credential material is not serialised to the browser",
-    svc.includes("redactConnectionCredentials(conn)") && svc.includes("config: safeConfig,"), true);
+    svc.includes("redactConnectionCredentials(conn)") &&
+    redact.includes("config: safeConfig,") &&
+    redact.includes("accessToken: null,") &&
+    mon.includes("redactConnectionCredentials(") &&
+    !/\.\.\.i,/.test(mon), true);
   check("40.8 a connector whose checks all fail never reports connected",
     (svc.match(/syncResult\.checksPassed < syncResult\.checksRun \? "degraded" : "connected"/g) || []).length >= 3, true);
   check("40.9 connected cards expose reconnect and disconnect",

@@ -10,6 +10,7 @@ import { runMfaMigration as runMfaSchemaMigration } from "../migrations/mfa.migr
 import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
 import { runPlatformAdminMigration } from "../migrations/platform-admin.migration";
 import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migration";
+import { recordScoreSnapshots as recordScoreSnapshotSweep } from "../lib/score-history";
 import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
 import { syncStoredFrameworkPosture } from "../lib/posture";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
@@ -1206,10 +1207,49 @@ export class StartupService implements OnApplicationBootstrap {
     // the other Phase 1 repairs so the data-integrity work is one block.
     await this.consolidateMappings();
     await this.syncFrameworkPosture();
+    await this.recordScoreSnapshots();
     await this.seedCommonRisks();
     await this.seedSubProcessors();
     await this.seedComplianceCalendar();
     await this.generateNotificationsFromState();
+  }
+
+  /**
+   * Record one compliance-score point per organisation.
+   *
+   * Runs immediately after syncFrameworkPosture() so the denormalised columns
+   * and the recorded point come from the same computation on the same boot.
+   *
+   * The write is idempotent per UTC day, which matters more here than it looks.
+   * This runs on every boot and the platform restarts on every deploy, so a
+   * per-boot insert would have turned the trend chart into a deployment log -
+   * which is close to what the deleted generator did by other means.
+   *
+   * Logged rather than fatal. A missing point is a gap in a chart; refusing to
+   * serve traffic over it would be the wrong trade.
+   */
+  private async recordScoreSnapshots() {
+    try {
+      const orgs = await db.execute(sql`SELECT id FROM organizations`);
+      const rows = (orgs as { rows?: Array<{ id: number }> }).rows ?? (orgs as Array<{ id: number }>);
+      const ids = (Array.isArray(rows) ? rows : []).map((r) => Number(r.id));
+
+      const sweep = await recordScoreSnapshotSweep(ids, (orgId, err) => {
+        this.logger.warn(
+          'SCORE_SNAPSHOT_FAILED org=' + orgId + ' ' + String(err) +
+            '. The trend chart will have no point for today for this org.',
+        );
+      });
+
+      this.logger.log(
+        'Compliance score snapshots: orgs=' + sweep.orgs +
+          ' created=' + sweep.created +
+          ' updated=' + sweep.updated +
+          ' failed=' + sweep.failed,
+      );
+    } catch (err) {
+      this.logger.warn('Compliance score snapshot sweep failed: ' + String(err));
+    }
   }
 
   private async runMigrations() {
