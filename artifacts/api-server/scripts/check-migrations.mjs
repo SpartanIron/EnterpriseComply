@@ -25,6 +25,14 @@ const REPO_ROOT = join(__dir, "../../..");
 // Add new migration sources here as the project evolves.
 const SCAN_TARGETS = [
   join(REPO_ROOT, "artifacts/api-server/src/startup/startup.service.ts"),
+  // New boot migrations are enrolled here as they are written.
+  //
+  // The five files already in src/migrations/ are NOT enrolled yet: between
+  // them they carry five DROP POLICY / DROP TRIGGER / DELETE FROM lines that
+  // predate this scanner and would each need their own approval tag triaged on
+  // its own merits. Back-enrolling them is tracked separately; doing it inside
+  // an unrelated change would mean rubber-stamping SQL nobody reviewed.
+  join(REPO_ROOT, "artifacts/api-server/src/migrations/risk-seed-dedupe.migration.ts"),
 ];
 
 // Pick up any .sql files under lib/db/migrations/ (Drizzle generate output)
