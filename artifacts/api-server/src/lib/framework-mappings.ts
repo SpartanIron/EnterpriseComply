@@ -235,3 +235,49 @@ export async function getResolvedMappings(frameworkKey: string): Promise<Resolve
     };
   });
 }
+
+/**
+ * Frameworks assessed through another framework's control set.
+ *
+ * FISMA does not publish controls. Agencies implement it through NIST SP 800-53,
+ * with the applicable baseline selected by the FIPS 199 categorisation of the
+ * system. So the 800-53 Rev 5 mappings already are the FISMA mappings, and
+ * writing a second set of rows under a second key would create exactly the kind
+ * of duplicate source of truth Phase 1b existed to remove.
+ *
+ * A pass-through therefore stores nothing. It is a declared alias, resolved at
+ * read time, and every consumer that resolves it reports what it did rather than
+ * presenting the result as a separately assessed framework.
+ */
+export interface FrameworkPassThrough {
+  /** The framework whose mappings are used verbatim. */
+  source: string;
+  /** Why reusing them is correct, not convenient. */
+  basis: string;
+  /** What a reader must not conclude from seeing this framework listed. */
+  caveat: string;
+}
+
+export const FRAMEWORK_PASS_THROUGHS: Record<string, FrameworkPassThrough> = {
+  fisma: {
+    source: "nist-800-53",
+    basis:
+      "FISMA is implemented through NIST SP 800-53 Rev 5, with the baseline " +
+      "selected by the system's FIPS 199 impact level. The 800-53 mappings are " +
+      "therefore the FISMA mappings; no separate control set exists to author.",
+    caveat:
+      "FISMA coverage here is exactly the 800-53 coverage and inherits its " +
+      "limits. It is not an independent assessment, and a low, moderate or high " +
+      "baseline has not been applied - the FIPS 199 level is recorded, not used " +
+      "to filter controls.",
+  },
+};
+
+/** The framework key whose mapping rows should be read for a given key. */
+export function resolveMappingSource(frameworkKey: string): string {
+  return FRAMEWORK_PASS_THROUGHS[frameworkKey]?.source ?? frameworkKey;
+}
+
+export function passThroughFor(frameworkKey: string): FrameworkPassThrough | null {
+  return FRAMEWORK_PASS_THROUGHS[frameworkKey] ?? null;
+}
