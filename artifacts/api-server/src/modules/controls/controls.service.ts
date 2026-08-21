@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import {
   db,
   ucoControlsTable,
@@ -7,9 +7,12 @@ import {
   ucoFrameworkMappingsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { syncStoredFrameworkPosture } from "../../lib/posture";
 
 @Injectable()
 export class ControlsService {
+  private readonly logger = new Logger(ControlsService.name);
+
   async getUcoControls() {
     const controls = await db.query.ucoControlsTable.findMany({
       orderBy: (t, { asc }) => [asc(t.domain), asc(t.controlId)],
@@ -82,7 +85,18 @@ export class ControlsService {
       } as any).returning();
     }
 
-    await this.updateFrameworkScores(orgId);
+    // Phase 1b. Was updateFrameworkScores(), which did its own arithmetic over
+    // the mapping table, folded every warning into notTested, and wrapped the
+    // whole body in catch (_) {} so a failure to refresh was invisible. It now
+    // caches what the SSOT computed, and it reports rather than swallows.
+    const sync = await syncStoredFrameworkPosture(orgId);
+    if (sync.failed > 0) {
+      this.logger.warn(
+        "Stored framework posture refresh failed for " + sync.failed +
+          " framework row(s) on org " + orgId +
+          ". The posture endpoint is unaffected; the cached columns are stale.",
+      );
+    }
     return { result };
   }
 
@@ -118,37 +132,5 @@ export class ControlsService {
 
     const impact = Object.values(grouped).sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0));
     return { impact, totalFrameworks: impact.length, activeFrameworks: impact.filter((i) => i.isActive).length };
-  }
-
-  private async updateFrameworkScores(orgId: number) {
-    try {
-      const frameworks = await db.query.orgFrameworksTable.findMany({
-        where: eq(orgFrameworksTable.orgId, orgId),
-      });
-
-      for (const fw of frameworks) {
-        const mappings = await db.query.ucoFrameworkMappingsTable.findMany({
-          where: eq(ucoFrameworkMappingsTable.frameworkKey, fw.frameworkKey),
-        });
-        const ucoIds = [...new Set(mappings.map((m) => m.ucoControlId))];
-        const results = await db.query.orgControlResultsTable.findMany({
-          where: eq(orgControlResultsTable.orgId, orgId),
-        });
-        const resultMap = new Map(results.map((r) => [r.ucoControlId, r.status]));
-        const passing = ucoIds.filter((id) => resultMap.get(id) === "passing").length;
-        const failing = ucoIds.filter((id) => resultMap.get(id) === "failing").length;
-        const score = ucoIds.length > 0 ? Math.round((passing / ucoIds.length) * 100) : 0;
-
-        await db
-          .update(orgFrameworksTable)
-          .set({
-            complianceScore: score,
-            passingControls: passing,
-            failingControls: failing,
-            notTestedControls: ucoIds.length - passing - failing,
-          })
-          .where(and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.id, fw.id)));
-      }
-    } catch (_) {}
   }
 }
