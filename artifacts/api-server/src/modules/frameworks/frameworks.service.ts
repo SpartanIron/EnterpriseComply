@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { db, orgFrameworksTable, ucoFrameworkMappingsTable, orgControlResultsTable, ucoControlsTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
+import { passThroughFor, resolveMappingSource } from "../../lib/framework-mappings";
 
 export const FRAMEWORK_CATALOG = [
   { key: "soc2", name: "SOC 2 Type II", shortName: "SOC 2", category: "commercial", controlCount: 64, description: "AICPA trust services criteria for security, availability, and confidentiality." },
@@ -14,6 +15,11 @@ export const FRAMEWORK_CATALOG = [
   { key: "fedramp", name: "FedRAMP Moderate", shortName: "FedRAMP", category: "federal", controlCount: 325, description: "U.S. federal cloud security authorization program." },
   { key: "cmmc-l2", name: "CMMC Level 2", shortName: "CMMC L2", category: "federal", controlCount: 110, description: "Cybersecurity Maturity Model Certification for DoD contractors." },
   { key: "nist-800-53", name: "NIST SP 800-53 Rev 5", shortName: "NIST 800-53", category: "federal", controlCount: 389, description: "Security and privacy controls for federal information systems." },
+  // FISMA is served as a labelled pass-through of the 800-53 Rev 5 mappings,
+  // declared in FRAMEWORK_PASS_THROUGHS. The control count is 800-53's because
+  // that is literally the set being assessed; re-authoring 389 controls under a
+  // second key would create a second source of truth for the same requirements.
+  { key: "fisma", name: "FISMA (via NIST SP 800-53 Rev 5)", shortName: "FISMA", category: "federal", controlCount: 389, description: "Federal Information Security Modernization Act. Assessed through the NIST SP 800-53 Rev 5 control set, scoped by the system FIPS 199 impact level. Not an independent assessment: coverage equals 800-53 coverage." },
   { key: "cis-controls", name: "CIS Controls v8", shortName: "CIS Controls", category: "best-practice", controlCount: 153, description: "Center for Internet Security prioritized security actions." },
   { key: "nist-csf", name: "NIST CSF 2.0", shortName: "NIST CSF", category: "best-practice", controlCount: 106, description: "NIST Cybersecurity Framework - the most widely adopted voluntary security framework worldwide." },
   { key: "hitrust", name: "HITRUST CSF v11", shortName: "HITRUST", category: "commercial", controlCount: 156, description: "Healthcare industry trust framework covering HIPAA, ISO 27001, and NIST in a single certification." },
@@ -83,8 +89,14 @@ export class FrameworksService {
   }
 
   async getFrameworkControls(orgId: number, key: string) {
+    // A pass-through reads the mappings of the framework it borrows from.
+    // Without this the FISMA detail view would show zero controls, which looks
+    // like a bug and reads like an assessment of nothing.
+    const mappingKey = resolveMappingSource(key);
+    const passThrough = passThroughFor(key);
+
     const mappings = await db.query.ucoFrameworkMappingsTable.findMany({
-      where: eq(ucoFrameworkMappingsTable.frameworkKey, key),
+      where: eq(ucoFrameworkMappingsTable.frameworkKey, mappingKey),
     });
 
     const ucoIds = [...new Set(mappings.map((m) => m.ucoControlId))];
@@ -120,6 +132,10 @@ export class FrameworksService {
       failing,
       notTested: controls.length - passing - failing,
       total: controls.length,
+      mappingSourceKey: mappingKey,
+      passThroughOf: passThrough ? passThrough.source : null,
+      passThroughBasis: passThrough ? passThrough.basis : null,
+      passThroughCaveat: passThrough ? passThrough.caveat : null,
     };
   }
 }
