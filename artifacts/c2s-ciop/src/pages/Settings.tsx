@@ -6,6 +6,7 @@ import { useRole } from "@/context/RoleContext";
 import { authClient } from "@/lib/auth-client";
 import { QRCodeSVG } from "qrcode.react";
 import RoleManagement from "./RoleManagement";
+import MemberMfaAdmin from "@/components/MemberMfaAdmin";
 import PlanGate, {
   PLAN_LABELS,
   PLAN_DESCRIPTIONS,
@@ -194,6 +195,7 @@ function SecurityTab() {
   const mfaEnrolledFromSession = !!user?.twoFactorEnabled;
   const { orgId } = useOrg();
   const qc = useQueryClient();
+  const { can } = useRole();
 
   // Enrolment state comes from the API, not from the session object. The session copy
   // of twoFactorEnabled is cached for minutes at a time, so it lags behind reality
@@ -714,6 +716,13 @@ function SecurityTab() {
           )}
         </div>
       </div>
+
+      {/* Recovery for a member who has lost their authenticator. Placed directly below
+          the policy toggle on purpose: turning enforcement on is what creates the
+          lockout this panel answers, so the two belong next to each other. Hidden from
+          anyone below admin - the API refuses them anyway, but offering a button that
+          always fails is its own kind of bug. */}
+      {can("admin") && <MemberMfaAdmin />}
 
       {/* Audit Log Retention — enterprise+ plan required (P1-07) */}
       <PlanGate requiredPlan="enterprise" featureName="Custom Audit Log Retention">
