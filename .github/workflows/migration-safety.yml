@@ -198,6 +198,17 @@ jobs:
         working-directory: artifacts/api-server
         run: node --import @swc-node/register/esm-register scripts/posture-ssot.test.ts
 
+      # ── Phase 1b: one mapping source, and the cutover ────────────────────
+      #
+      # Asserts the three competing mapping sources have become one, that the
+      # notation bridge holds on the cases that motivated it, and that the SSOT
+      # and the denormalised columns agree. Also fails the build if a local
+      # mapping table or a second copy of the requirement weights reappears in
+      # application code, which is the way this class of bug comes back.
+      - name: Mapping consolidation and cutover guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/mapping-consolidation.test.ts
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()
