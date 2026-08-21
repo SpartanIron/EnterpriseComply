@@ -1,4 +1,6 @@
 import { Logger } from "@nestjs/common";
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
 import type { Posture, PostureDivergence } from "./posture";
 import { diffPosture } from "./posture";
 
@@ -41,6 +43,17 @@ export const POSTURE_DRIFT_LOG_KEY = "POSTURE_DRIFT";
 const RING_CAPACITY = 50;
 const LOG_COOLDOWN_MS = 60_000;
 
+/**
+ * How often a clean observation is written to the durable ledger. Drift is
+ * always written; clean state is sampled.
+ *
+ * Without this the ledger would take one row per dashboard poll and measure
+ * traffic rather than posture. With it, the ledger's observation count is a
+ * heartbeat count, and the in-memory report remains the place to look for
+ * per-process request volume. Both are reported, each labelled.
+ */
+const CLEAN_HEARTBEAT_MS = 15 * 60_000;
+
 export interface PostureDriftSample {
   at: string;
   orgId: number;
@@ -67,6 +80,7 @@ interface OrgDriftState {
   lastSeenAt: string | null;
   lastCleanAt: string | null;
   lastLoggedAtMs: number;
+  lastPersistedCleanAtMs: number;
   ring: PostureDriftSample[];
 }
 
@@ -82,6 +96,7 @@ function stateFor(orgId: number): OrgDriftState {
       lastSeenAt: null,
       lastCleanAt: null,
       lastLoggedAtMs: 0,
+      lastPersistedCleanAtMs: 0,
       ring: [],
     };
     stateByOrg.set(orgId, state);
@@ -105,8 +120,19 @@ export function recordPostureDrift(posture: Posture): PostureDivergence[] {
 
     if (divergences.length === 0) {
       state.lastCleanAt = nowIso;
+      // Clean state is sampled rather than recorded per request. See
+      // CLEAN_HEARTBEAT_MS: a row per poll would measure traffic.
+      if (now.getTime() - state.lastPersistedCleanAtMs >= CLEAN_HEARTBEAT_MS) {
+        state.lastPersistedCleanAtMs = now.getTime();
+        void persistObservation(posture, divergences);
+      }
       return divergences;
     }
+
+    // Drift is always written. This is the row that has to survive a restart,
+    // because a restart is when a computation is most likely to start
+    // disagreeing with the one it replaced.
+    void persistObservation(posture, divergences);
 
     state.observationsWithDrift += 1;
     if (!state.firstSeenAt) state.firstSeenAt = nowIso;
@@ -144,6 +170,136 @@ export function recordPostureDrift(posture: Posture): PostureDivergence[] {
       (err as { message?: string })?.message ?? String(err),
     );
     return [];
+  }
+}
+
+/**
+ * Write one observation to the durable ledger.
+ *
+ * Fire and forget, and it swallows its own failures for the same reason the rest
+ * of this module does: shadow-mode instrumentation that can break the request it
+ * observes is worse than no instrumentation. A failure here loses a row, not a
+ * response.
+ *
+ * Raw SQL rather than a drizzle table object, deliberately: the ledger is
+ * written by the observer and read by one endpoint, and keeping it out of the
+ * shared schema means a table that only exists for diagnostics cannot be
+ * accidentally joined into a tenant query.
+ */
+async function persistObservation(
+  posture: Posture,
+  divergences: PostureDivergence[],
+): Promise<void> {
+  try {
+    await db.execute(sql`
+      INSERT INTO posture_drift_observations
+        (org_id, schema, divergence_count, divergences, unrecognised_statuses, orphaned_results)
+      VALUES (
+        ${posture.orgId},
+        ${posture.schema},
+        ${divergences.length},
+        ${JSON.stringify(divergences)}::jsonb,
+        ${JSON.stringify(posture.unrecognisedStatuses)}::jsonb,
+        ${posture.orphanedResults}
+      )
+    `);
+  } catch (err) {
+    logger.warn(
+      "POSTURE_DRIFT_LEDGER_WRITE_FAILED " +
+        ((err as { message?: string })?.message ?? String(err)) +
+        ". The observation was logged and held in memory but not persisted.",
+    );
+  }
+}
+
+export interface PersistedDriftLedger {
+  source: "posture_drift_observations";
+  available: boolean;
+  /** Rows in the ledger for this org. Heartbeats plus every drift observation. */
+  observations: number;
+  observationsWithDrift: number;
+  firstObservedAt: string | null;
+  lastObservedAt: string | null;
+  lastDriftAt: string | null;
+  recent: Array<{
+    at: string;
+    divergenceCount: number;
+    divergences: PostureDivergence[];
+  }>;
+  note: string;
+}
+
+/**
+ * Read the durable ledger. Separate from getPostureDriftReport because the two
+ * answer different questions: that one is what this process has seen since it
+ * started, this one is what has ever been seen.
+ */
+export async function getPersistedDriftLedger(orgId: number): Promise<PersistedDriftLedger> {
+  const empty: PersistedDriftLedger = {
+    source: "posture_drift_observations",
+    available: false,
+    observations: 0,
+    observationsWithDrift: 0,
+    firstObservedAt: null,
+    lastObservedAt: null,
+    lastDriftAt: null,
+    recent: [],
+    note:
+      "The durable ledger could not be read. The in-memory report above still " +
+      "covers this process, but nothing here survives a restart.",
+  };
+
+  try {
+    const summary: any = await db.execute(sql`
+      SELECT
+        count(*)::int AS observations,
+        count(*) FILTER (WHERE divergence_count > 0)::int AS with_drift,
+        min(observed_at) AS first_observed_at,
+        max(observed_at) AS last_observed_at,
+        max(observed_at) FILTER (WHERE divergence_count > 0) AS last_drift_at
+      FROM posture_drift_observations
+      WHERE org_id = ${orgId}
+    `);
+    const rows = (summary?.rows ?? summary) as Array<Record<string, unknown>>;
+    const row = Array.isArray(rows) ? rows[0] : undefined;
+    if (!row) return empty;
+
+    const recentResult: any = await db.execute(sql`
+      SELECT observed_at, divergence_count, divergences
+      FROM posture_drift_observations
+      WHERE org_id = ${orgId} AND divergence_count > 0
+      ORDER BY observed_at DESC
+      LIMIT 20
+    `);
+    const recentRows = (recentResult?.rows ?? recentResult) as Array<Record<string, unknown>>;
+
+    const iso = (value: unknown): string | null =>
+      value ? new Date(value as string).toISOString() : null;
+
+    return {
+      source: "posture_drift_observations",
+      available: true,
+      observations: Number(row.observations ?? 0),
+      observationsWithDrift: Number(row.with_drift ?? 0),
+      firstObservedAt: iso(row.first_observed_at),
+      lastObservedAt: iso(row.last_observed_at),
+      lastDriftAt: iso(row.last_drift_at),
+      recent: (Array.isArray(recentRows) ? recentRows : []).map((r) => ({
+        at: new Date(r.observed_at as string).toISOString(),
+        divergenceCount: Number(r.divergence_count ?? 0),
+        divergences: (r.divergences ?? []) as PostureDivergence[],
+      })),
+      note:
+        "Every observation with drift is recorded. Clean observations are " +
+        "sampled at most once per fifteen minutes per organisation, so the " +
+        "observation count is a heartbeat count rather than a request count.",
+    };
+  } catch (err) {
+    logger.warn(
+      "POSTURE_DRIFT_LEDGER_READ_FAILED " +
+        ((err as { message?: string })?.message ?? String(err)),
+    );
+    return empty;
   }
 }
 
