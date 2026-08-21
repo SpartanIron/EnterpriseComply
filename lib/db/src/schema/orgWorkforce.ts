@@ -63,6 +63,15 @@ export const orgPoliciesTable = pgTable("org_policies", {
   status: text("status").notNull().default("draft"),
   version: text("version").notNull().default("1.0"),
   content: text("content"),
+  // How this policy came to exist. "template" was generated from the platform
+  // catalogue, "authored" was written in the app, "uploaded" is a document the
+  // organisation already had. Nullable because rows predate the column; the
+  // migration backfills them and the read path treats null the same way it
+  // behaved before the column existed.
+  sourceType: text("source_type"),
+  // Points at the live row in org_policy_documents. Null for policies that are
+  // Markdown in the content column rather than a file.
+  currentDocumentId: integer("current_document_id"),
   requiresAcknowledgment: boolean("requires_acknowledgment").notNull().default(true),
   reviewCycleDays: integer("review_cycle_days").notNull().default(365),
   lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }),
@@ -88,3 +97,41 @@ export const orgPolicyAcknowledgmentsTable = pgTable("org_policy_acknowledgments
 export const insertOrgPolicyAckSchema = createInsertSchema(orgPolicyAcknowledgmentsTable).omit({ id: true });
 export type InsertOrgPolicyAck = z.infer<typeof insertOrgPolicyAckSchema>;
 export type OrgPolicyAck = typeof orgPolicyAcknowledgmentsTable.$inferSelect;
+
+/**
+ * A customer-uploaded policy file.
+ *
+ * org_policies holds what the platform knows about a policy - its category,
+ * its review cycle, who has acknowledged it. This table holds the artefact an
+ * auditor actually asks for, for organisations whose policies were written
+ * long before they bought a GRC tool.
+ *
+ * Versions are rows, not overwrites. status "current" is the live one and
+ * "superseded" is history, kept because an audit asks what the policy said on
+ * the date of an incident, not what it says today. A partial unique index in
+ * policy-documents.migration.ts enforces one current row per policy.
+ *
+ * contentBase64 is the bytes. sha256 is over the decoded bytes, not the base64,
+ * so it can be compared against a hash taken anywhere else.
+ */
+export const orgPolicyDocumentsTable = pgTable("org_policy_documents", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  policyId: integer("policy_id"),
+  version: integer("version").notNull().default(1),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  sha256: text("sha256").notNull(),
+  contentBase64: text("content_base64").notNull(),
+  status: text("status").notNull().default("current"),
+  uploadedBy: text("uploaded_by"),
+  uploadedByEmail: text("uploaded_by_email"),
+  note: text("note"),
+  supersededAt: timestamp("superseded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertOrgPolicyDocumentSchema = createInsertSchema(orgPolicyDocumentsTable).omit({ id: true });
+export type InsertOrgPolicyDocument = z.infer<typeof insertOrgPolicyDocumentSchema>;
+export type OrgPolicyDocument = typeof orgPolicyDocumentsTable.$inferSelect;

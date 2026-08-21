@@ -259,6 +259,29 @@ jobs:
         working-directory: artifacts/api-server
         run: node scripts/rollback-posture-drift-ledger.cjs --dry-run
 
+      # ── Customer-uploaded policy documents ───────────────────────────────
+      #
+      # The upload endpoint takes attacker-controlled bytes from a browser and
+      # serves them back. The guard re-runs the cases that decide whether that
+      # is safe rather than inspecting the code: markdown carrying a script tag
+      # and an SVG are refused, a .pdf whose bytes are a ZIP is refused, the
+      # served Content-Type comes from the bytes and not from the client, and
+      # nothing but the download route can emit contentBase64.
+      #
+      # It also asserts the partial unique index exists by trying to insert a
+      # second current version, because an index that failed to create looks
+      # exactly like one that did until two people upload at the same moment.
+      - name: Policy document upload guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/policy-upload.test.ts
+
+      # The rollback for the policy document store, exercised rather than
+      # asserted. Dry run only: it must report the document count and the stored
+      # byte total, and destroy nothing without --confirm.
+      - name: Policy document rollback dry run
+        working-directory: artifacts/api-server
+        run: node scripts/rollback-policy-documents.cjs --dry-run
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()

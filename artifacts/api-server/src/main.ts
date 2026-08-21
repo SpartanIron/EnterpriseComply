@@ -194,6 +194,32 @@ async function bootstrap() {
     }),
   );
 
+  // ── Body size: one exception, scoped to one route ─────────────────────────────
+  //
+  // The global JSON limit stays at the framework default (100 KB). Raising it
+  // everywhere to accommodate one upload endpoint would hand every other route
+  // in the API a hundredfold larger memory target for free, which is a denial
+  // of service primitive granted by accident.
+  //
+  // So the larger parser is mounted on exactly the path that needs it. A policy
+  // document is capped at MAX_DOCUMENT_BYTES (10 MB); base64 adds a third, and
+  // the JSON envelope around it adds a little more, so 16 MB is the ceiling that
+  // lets a valid maximum-size upload through and rejects anything past it at the
+  // parser rather than after it has been buffered and validated.
+  //
+  // Path-matched rather than regex-matched on purpose: express.json() only runs
+  // when the method is POST and the URL is the upload route, so a GET or a
+  // neighbouring policies route is unaffected.
+  const POLICY_UPLOAD_PATH = /^\/api\/orgs\/\d+\/policies\/documents\/?$/;
+  const largeJson = express.json({ limit: "16mb" });
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.method === "POST" && POLICY_UPLOAD_PATH.test(req.path)) {
+      largeJson(req, res, next);
+      return;
+    }
+    next();
+  });
+
   // ── Request logging ───────────────────────────────────────────────────────────────────
   app.use(
     pinoHttp({

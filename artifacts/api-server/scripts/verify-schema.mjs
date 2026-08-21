@@ -32,6 +32,7 @@ const EXPECTED_TABLES = [
   "org_integrations",
   "org_policies",
   "org_policy_acknowledgments",
+  "org_policy_documents",
   "org_risks",
   "org_people",
   "org_vendors",

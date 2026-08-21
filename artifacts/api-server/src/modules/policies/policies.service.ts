@@ -1,5 +1,17 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { db, orgPoliciesTable, orgPolicyAcknowledgmentsTable, orgPeopleTable } from "@workspace/db";
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from "@nestjs/common";
+import {
+  db,
+  orgPoliciesTable,
+  orgPolicyAcknowledgmentsTable,
+  orgPolicyDocumentsTable,
+  orgPeopleTable,
+} from "@workspace/db";
+import {
+  validatePolicyDocumentUpload,
+  summarisePolicyDocument,
+  ALLOWED_DOCUMENT_TYPES,
+  MAX_DOCUMENT_BYTES,
+} from "../../lib/policy-upload.js";
 import { eq, and, sql } from "drizzle-orm";
 import { writeAuditLog } from "../../lib/audit-log.js";
 
@@ -416,12 +428,34 @@ export class PoliciesService {
       }),
     );
     const ackMap = new Map(ackCounts.map((a) => [a.policyId, a.count]));
+
+    // One query for the whole org rather than one per policy. The list view is
+    // the page a compliance manager leaves open, and the N+1 above for
+    // acknowledgements is already more round trips than this page deserves.
+    const documents = await db.query.orgPolicyDocumentsTable.findMany({
+      where: eq(orgPolicyDocumentsTable.orgId, orgId),
+      orderBy: (t, { desc }) => [desc(t.version)],
+    });
+    const currentDoc = new Map<number, Record<string, unknown>>();
+    const docCount = new Map<number, number>();
+    for (const d of documents) {
+      if (d.policyId == null) continue;
+      docCount.set(d.policyId, (docCount.get(d.policyId) ?? 0) + 1);
+      if (d.status === "current") currentDoc.set(d.policyId, summarisePolicyDocument(d as any));
+    }
+
     return {
       policies: policies.map((p) => ({
         ...p,
         acknowledgedCount: ackMap.get(p.id) ?? 0,
         lastReviewedAt: (p as any).last_reviewed_at ?? null,
         version: (p as any).version ?? "1.0",
+        // Null for rows written before the column existed. Reported as null
+        // rather than guessed at, so the UI can say "not recorded" instead of
+        // asserting something the database never stored.
+        sourceType: (p as any).sourceType ?? null,
+        currentDocument: currentDoc.get(p.id) ?? null,
+        documentCount: docCount.get(p.id) ?? 0,
       })),
     };
   }
@@ -555,6 +589,213 @@ export class PoliciesService {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+  }
+
+  // ── Customer-uploaded policy documents ──────────────────────────────────────
+  //
+  // The gap this closes: until now a policy in this platform could only be
+  // Markdown the platform itself generated from its own template catalogue. An
+  // organisation that had already written its policies - which is every
+  // organisation that has been audited once - had nowhere to put them, so the
+  // Policies page described the templates on offer rather than the policies the
+  // organisation actually operates under. An auditor asks for the second one.
+
+  /** What the client is allowed to send, published so the UI does not hardcode it. */
+  getUploadConstraints() {
+    return {
+      maxBytes: MAX_DOCUMENT_BYTES,
+      maxLabel: Math.floor(MAX_DOCUMENT_BYTES / (1024 * 1024)) + " MB",
+      accepted: ALLOWED_DOCUMENT_TYPES.map((t) => ({
+        extension: t.extension,
+        mimeType: t.mimeType,
+        label: t.label,
+      })),
+      // Stated rather than implied. A customer uploading a signed policy is
+      // entitled to know the platform is not scanning it.
+      malwareScanning: false,
+      note:
+        "Files are validated by extension and by their leading bytes, stored encrypted at rest with the rest of the database, " +
+        "and only ever served back as downloads. They are not scanned for malware.",
+    };
+  }
+
+  /**
+   * Store an uploaded document, either against an existing policy or as a new one.
+   *
+   * Versions are added, never overwritten, and the previous current version is
+   * marked superseded in the same transaction. An audit asks what a policy said
+   * on the date of an incident; a table that only holds the latest revision
+   * cannot answer that.
+   */
+  async uploadPolicyDocument(
+    orgId: number,
+    body: Record<string, unknown>,
+    actor: { userId?: string; email?: string },
+  ) {
+    const validated = validatePolicyDocumentUpload({
+      filename: String(body.filename ?? ""),
+      contentBase64: String(body.contentBase64 ?? ""),
+    });
+    if (!validated.ok) {
+      // The reason code travels with the message so the UI can be specific about
+      // what to fix rather than saying "upload failed".
+      throw new BadRequestException({ error: validated.reason, message: validated.message });
+    }
+
+    let policyId = body.policyId == null ? null : Number(body.policyId);
+    let policy: Record<string, unknown> | undefined;
+
+    if (policyId != null) {
+      if (!Number.isFinite(policyId)) throw new BadRequestException("policyId must be a number");
+      // Scoped by org as well as id. An id from another tenant must read as
+      // absent, not as forbidden, so the endpoint does not confirm it exists.
+      policy = await db.query.orgPoliciesTable.findFirst({
+        where: and(eq(orgPoliciesTable.id, policyId), eq(orgPoliciesTable.orgId, orgId)),
+      }) as any;
+      if (!policy) throw new NotFoundException("Policy not found");
+    } else {
+      const title = String(body.title ?? "").trim() || validated.filename.replace(/\.[^.]+$/, "");
+      const [created] = await db
+        .insert(orgPoliciesTable)
+        .values({
+          orgId,
+          title,
+          description: (body.description as string) ?? null,
+          category: (body.category as string) ?? "general",
+          // Draft, not published. Uploading a file is not the same act as
+          // adopting it, and the platform must not decide that on the
+          // customer's behalf - acknowledgement records depend on the
+          // difference.
+          status: "draft",
+          sourceType: "uploaded",
+          content: null,
+          requiresAcknowledgment: body.requiresAcknowledgment === false ? false : true,
+        } as any)
+        .returning();
+      policy = created as any;
+      policyId = (created as any).id;
+    }
+
+    const existingVersions = await db.query.orgPolicyDocumentsTable.findMany({
+      where: and(
+        eq(orgPolicyDocumentsTable.orgId, orgId),
+        eq(orgPolicyDocumentsTable.policyId, policyId as number),
+      ),
+    });
+    const nextVersion =
+      existingVersions.reduce((max, d) => Math.max(max, Number(d.version) || 0), 0) + 1;
+
+    // Supersede before inserting. The partial unique index in the migration
+    // allows exactly one current row per policy, so doing this the other way
+    // round would make a legitimate second upload fail on a constraint.
+    const now = new Date();
+    await db
+      .update(orgPolicyDocumentsTable)
+      .set({ status: "superseded", supersededAt: now })
+      .where(
+        and(
+          eq(orgPolicyDocumentsTable.orgId, orgId),
+          eq(orgPolicyDocumentsTable.policyId, policyId as number),
+          eq(orgPolicyDocumentsTable.status, "current"),
+        ),
+      );
+
+    let inserted: any;
+    try {
+      const rows = await db
+        .insert(orgPolicyDocumentsTable)
+        .values({
+          orgId,
+          policyId: policyId as number,
+          version: nextVersion,
+          filename: validated.filename,
+          mimeType: validated.mimeType,
+          sizeBytes: validated.sizeBytes,
+          sha256: validated.sha256,
+          contentBase64: validated.contentBase64,
+          status: "current",
+          uploadedBy: actor.userId ?? null,
+          uploadedByEmail: actor.email ?? null,
+          note: (body.note as string) ?? null,
+        } as any)
+        .returning();
+      inserted = rows[0];
+    } catch (err) {
+      // The unique index firing here means another upload for the same policy
+      // won the race. Say that, rather than surfacing a Postgres constraint name.
+      throw new ConflictException(
+        "Another version of this policy was uploaded at the same time. Reload and try again.",
+      );
+    }
+
+    await db
+      .update(orgPoliciesTable)
+      .set({
+        sourceType: "uploaded",
+        currentDocumentId: inserted.id,
+        updatedAt: now,
+      } as any)
+      .where(and(eq(orgPoliciesTable.id, policyId as number), eq(orgPoliciesTable.orgId, orgId)));
+
+    // The hash and the size go in the audit log; the bytes never do. An audit
+    // log that carried document contents would be a second, less guarded copy
+    // of every policy in the tenant.
+    await writeAuditLog(orgId, "policy.document.uploaded", "policy", String(policyId), {
+      documentId: inserted.id,
+      filename: validated.filename,
+      mimeType: validated.mimeType,
+      sizeBytes: validated.sizeBytes,
+      sha256: validated.sha256,
+      version: nextVersion,
+      supersededPrevious: existingVersions.some((d) => d.status === "current"),
+      uploadedByEmail: actor.email ?? null,
+    });
+
+    return { document: summarisePolicyDocument(inserted), policy: { ...(policy as any), currentDocumentId: inserted.id } };
+  }
+
+  /** Version history for one policy. Metadata only - see summarisePolicyDocument. */
+  async listPolicyDocuments(orgId: number, policyId: number) {
+    const rows = await db.query.orgPolicyDocumentsTable.findMany({
+      where: and(
+        eq(orgPolicyDocumentsTable.orgId, orgId),
+        eq(orgPolicyDocumentsTable.policyId, policyId),
+      ),
+      orderBy: (t, { desc }) => [desc(t.version)],
+    });
+    return { documents: rows.map((r) => summarisePolicyDocument(r as any)) };
+  }
+
+  /**
+   * Fetch the bytes for a download.
+   *
+   * Every lookup is keyed on org_id as well as document id. This is the one
+   * place in the feature where tenant data leaves as raw bytes, so the tenancy
+   * predicate is on the query rather than on a check afterwards - there is no
+   * ordering in which the wrong tenant's row is loaded and then discarded.
+   */
+  async getPolicyDocumentBytes(orgId: number, documentId: number, actor: { email?: string }) {
+    const row = await db.query.orgPolicyDocumentsTable.findFirst({
+      where: and(
+        eq(orgPolicyDocumentsTable.id, documentId),
+        eq(orgPolicyDocumentsTable.orgId, orgId),
+      ),
+    });
+    if (!row) throw new NotFoundException("Document not found");
+
+    await writeAuditLog(orgId, "policy.document.downloaded", "policy_document", String(documentId), {
+      filename: row.filename,
+      sha256: row.sha256,
+      version: row.version,
+      downloadedByEmail: actor.email ?? null,
+    });
+
+    return {
+      filename: row.filename,
+      mimeType: row.mimeType,
+      sizeBytes: row.sizeBytes,
+      buffer: Buffer.from(row.contentBase64, "base64"),
+    };
   }
 
 }
