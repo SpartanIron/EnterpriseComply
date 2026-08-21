@@ -13,6 +13,7 @@ import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migra
 import { recordScoreSnapshots as recordScoreSnapshotSweep } from "../lib/score-history";
 import { runFismaFips199Migration } from "../migrations/fisma-fips199.migration";
 import { runPostureDriftLedgerMigration } from "../migrations/posture-drift-ledger.migration";
+import { runRlsCoverageMigration } from "../migrations/rls-coverage.migration";
 import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
 import { syncStoredFrameworkPosture } from "../lib/posture";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
@@ -1210,6 +1211,7 @@ export class StartupService implements OnApplicationBootstrap {
     await this.consolidateMappings();
     await this.runFipsImpactMigration();
     await this.runDriftLedgerMigration();
+    await this.runRlsCoverage();
     await this.syncFrameworkPosture();
     await this.recordScoreSnapshots();
     await this.seedCommonRisks();
@@ -1289,6 +1291,48 @@ export class StartupService implements OnApplicationBootstrap {
         'DRIFT_LEDGER_MISSING ' + String(err) +
           '. Drift will be logged and held in memory but not persisted.',
       );
+    }
+  }
+
+  /**
+   * Phase 2 step 1. Enables row level security and creates a tenant policy on
+   * every table carrying org_id.
+   *
+   * Changes no behaviour: the service connects as the role that owns the tables,
+   * and an owner bypasses RLS unless the table is forced. Nothing here forces
+   * anything. See docs/phase2/STRIDE-tenant-isolation.md for why the order
+   * matters - forcing before a per-request tenant binding exists would make
+   * every query return zero rows.
+   *
+   * Logged, not fatal, and the coverage numbers are logged every boot so the
+   * gap between policies existing and policies applying stays visible.
+   */
+  private async runRlsCoverage() {
+    try {
+      const result = await runRlsCoverageMigration(db);
+      this.logger.log(
+        'RLS coverage: tenantTables=' + result.tenantTables +
+          ' rlsEnabled=' + result.rlsEnabled +
+          ' policiesCreated=' + result.policiesCreated +
+          ' policiesAlreadyPresent=' + result.policiesAlreadyPresent +
+          ' forced=' + result.forced,
+      );
+
+      if (result.forced < result.tenantTables) {
+        this.logger.warn(
+          'RLS_NOT_ENFORCED ' + (result.tenantTables - result.forced) +
+            ' tenant table(s) have a policy that does not yet apply, because the ' +
+            'connection owns them and the tables are not forced. Isolation is ' +
+            'still enforced in application code. See ' +
+            'docs/phase2/STRIDE-tenant-isolation.md for the rollout order.',
+        );
+      }
+
+      if (result.failed.length > 0) {
+        this.logger.warn('RLS_COVERAGE_INCOMPLETE ' + result.failed.join('; '));
+      }
+    } catch (err) {
+      this.logger.warn('RLS coverage pass failed: ' + String(err));
     }
   }
 
