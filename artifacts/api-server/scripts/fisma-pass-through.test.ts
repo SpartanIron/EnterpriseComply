@@ -19,6 +19,7 @@ import {
   db,
   organizationsTable,
   orgFrameworksTable,
+  ucoControlsTable,
   ucoFrameworkMappingsTable,
 } from "@workspace/db";
 import { and, asc, eq } from "drizzle-orm";
@@ -30,6 +31,9 @@ import {
 import { computePosture } from "../src/lib/posture";
 import { FRAMEWORK_CATALOG, FrameworksService } from "../src/modules/frameworks/frameworks.service";
 
+const SOURCE = "nist-800-53";
+const FIXTURE_MAPPING = "AC-1";
+
 let failures = 0;
 
 function check(name: string, condition: boolean, detail: string) {
@@ -39,6 +43,46 @@ function check(name: string, condition: boolean, detail: string) {
     failures += 1;
     console.error("  FAIL  " + name + "\n        " + detail);
   }
+}
+
+/**
+ * A pass-through can only be shown to resolve if the framework it borrows from
+ * has mappings to borrow. The blank CI database seeds the control catalog but no
+ * 800-53 mapping rows, so the first run of this guard reported 0 === 0 and
+ * called it agreement. One row is created if the table has none for 800-53.
+ */
+async function ensureSourceMapping(): Promise<void> {
+  const existing = await db
+    .select()
+    .from(ucoFrameworkMappingsTable)
+    .where(eq(ucoFrameworkMappingsTable.frameworkKey, SOURCE));
+  if (existing.length > 0) return;
+
+  const [control] = await db.select().from(ucoControlsTable).limit(1);
+  if (!control) return;
+
+  await db.insert(ucoFrameworkMappingsTable).values({
+    ucoControlId: control.controlId,
+    frameworkKey: SOURCE,
+    frameworkControlId: FIXTURE_MAPPING,
+    frameworkControlName: "Policy and Procedures (guard fixture)",
+  });
+}
+
+/** The org must hold both keys, or there is nothing to compare. */
+async function ensureOrgFrameworks(service: FrameworksService, orgId: number): Promise<string[]> {
+  const existing = await db
+    .select()
+    .from(orgFrameworksTable)
+    .where(eq(orgFrameworksTable.orgId, orgId));
+  const have = new Set(existing.map((f) => f.frameworkKey));
+  const added: string[] = [];
+
+  for (const key of [SOURCE, "fisma"]) {
+    if (!have.has(key)) added.push(key);
+  }
+  if (added.length > 0) await service.addFrameworks(orgId, added);
+  return added;
 }
 
 async function main() {
@@ -95,9 +139,18 @@ async function main() {
     process.exit(1);
   }
 
-  const source = await service.getFrameworkControls(org.id, "nist-800-53");
+  await ensureSourceMapping();
+  const addedKeys = await ensureOrgFrameworks(service, org.id);
+
+  const source = await service.getFrameworkControls(org.id, SOURCE);
   const viaFisma = await service.getFrameworkControls(org.id, "fisma");
 
+  check(
+    "the framework being borrowed from has mappings to borrow",
+    source.total > 0,
+    "800-53 has no mappings even after the fixture, so nothing below can " +
+      "distinguish a resolved alias from an unresolved one.",
+  );
   check(
     "the FISMA view returns the same control set as 800-53",
     viaFisma.total === source.total && viaFisma.total > 0,
@@ -125,7 +178,8 @@ async function main() {
   check(
     "an uncategorised system says so rather than defaulting to low",
     before.fips199.impactLevel === null
-      ? before.fips199.source === "not set" && /not been recorded/i.test(before.fips199.note)
+      ? before.fips199.source === "not set" &&
+        /no fips 199 impact level has been recorded/i.test(before.fips199.note)
       : ["low", "moderate", "high"].includes(before.fips199.impactLevel),
     "fips199=" + JSON.stringify(before.fips199) +
       ". Defaulting an uncategorised system to low would invent the scope of its " +
@@ -158,16 +212,6 @@ async function main() {
     .set({ fips199Impact: before.fips199.impactLevel })
     .where(eq(organizationsTable.id, org.id));
 
-  const existing = await db
-    .select()
-    .from(orgFrameworksTable)
-    .where(eq(orgFrameworksTable.orgId, org.id));
-  const hadFisma = existing.some((f) => f.frameworkKey === "fisma");
-
-  if (!hadFisma) {
-    await service.addFrameworks(org.id, ["fisma"]);
-  }
-
   const withFisma = await computePosture(org.id);
   const fismaPosture = withFisma.frameworks.find((f) => f.frameworkKey === "fisma");
   const source53 = withFisma.frameworks.find((f) => f.frameworkKey === "nist-800-53");
@@ -193,14 +237,12 @@ async function main() {
     "passThroughOf=" + String(fismaPosture?.passThroughOf),
   );
 
-  if (!hadFisma) {
-    // Only the row this guard added, identified by both columns. Never a blanket
-    // delete of the org's frameworks.
+  // Only the rows this guard added, each identified by both columns. Never a
+  // blanket delete of the organisation's frameworks.
+  for (const key of addedKeys) {
     await db
       .delete(orgFrameworksTable)
-      .where(
-        and(eq(orgFrameworksTable.orgId, org.id), eq(orgFrameworksTable.frameworkKey, "fisma")),
-      );
+      .where(and(eq(orgFrameworksTable.orgId, org.id), eq(orgFrameworksTable.frameworkKey, key)));
   }
 
   const rollback = readFileSync(
