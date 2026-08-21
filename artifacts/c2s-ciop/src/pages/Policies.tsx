@@ -30,6 +30,9 @@ export default function Policies() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  // null closed; { policy: null } means "upload a policy that does not exist yet";
+  // { policy } means "add a new version of this one".
+  const [uploadTarget, setUploadTarget] = useState<{ policy: any | null } | null>(null);
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -205,12 +208,23 @@ export default function Policies() {
         title="Policies"
         subtitle="Manage your security policies, track acknowledgments, and maintain review cycles"
         actions={
+          <div className="flex items-center gap-2">
+          <button
+            onClick={() => setUploadTarget({ policy: null })}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+            </svg>
+            Upload policy
+          </button>
           <PrimaryButton onClick={() => setShowCreate(true)}>
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Add Policy
           </PrimaryButton>
+          </div>
         }
       />
 
@@ -332,6 +346,33 @@ export default function Policies() {
                           <button onClick={() => setViewPolicy(p)} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors text-left">
                             {p.title}
                           </button>
+                          {p.currentDocument && (
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <a
+                                href={apiUrl(`/orgs/${orgId}/policy-documents/${p.currentDocument.id}/download`)}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                                title={`${p.currentDocument.filename} - sha256 ${String(p.currentDocument.sha256).slice(0, 16)}...`}
+                              >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 18v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+                                </svg>
+                                {p.currentDocument.filename}
+                              </a>
+                              <span className="text-[11px] text-slate-400">
+                                v{p.currentDocument.version} &middot; {formatBytes(p.currentDocument.sizeBytes)}
+                                {p.documentCount > 1 && ` \u00b7 ${p.documentCount} versions`}
+                              </span>
+                              <button
+                                onClick={() => setUploadTarget({ policy: p })}
+                                className="text-[11px] font-medium text-slate-500 hover:text-slate-700 underline decoration-dotted"
+                              >
+                                Replace
+                              </button>
+                            </div>
+                          )}
+                          {!p.currentDocument && p.sourceType === "uploaded" && (
+                            <p className="text-[11px] text-amber-600 mt-0.5">Marked as uploaded but no file is stored</p>
+                          )}
                           {p.status === "published" && p.acknowledgedCount !== undefined && (
                             <button onClick={() => setAckModal(p)} className="text-xs text-blue-600 hover:underline mt-0.5 block">
                               {p.acknowledgedCount ?? 0} acknowledgment{(p.acknowledgedCount ?? 0) !== 1 ? "s" : ""}
@@ -724,6 +765,217 @@ export default function Policies() {
           </div>
         </div>
       )}
+    </div>
+      {/* ═════ UPLOAD POLICY DOCUMENT ═════ */}
+      {uploadTarget && orgId && (
+        <UploadPolicyModal
+          orgId={orgId}
+          policy={uploadTarget.policy}
+          onClose={() => setUploadTarget(null)}
+          onUploaded={() => {
+            setUploadTarget(null);
+            qc.invalidateQueries({ queryKey: ["org-policies", orgId] });
+          }}
+        />
+      )}
+
+  );
+}
+
+/** 1.2 MB rather than 1258291 bytes. Compliance managers read the first one. */
+function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0 B";
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + " KB";
+  return (n / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+interface UploadConstraints {
+  maxBytes: number;
+  maxLabel: string;
+  accepted: { extension: string; mimeType: string; label: string }[];
+  malwareScanning: boolean;
+  note: string;
+}
+
+/**
+ * Upload a policy document, either as a new policy or as a new version of one.
+ *
+ * The accepted formats and the size ceiling are fetched rather than hardcoded.
+ * A client-side copy of a server-side rule is a copy that goes stale, and the
+ * failure mode is the worst kind: the browser cheerfully accepts a file the API
+ * will reject, so the customer only learns after the upload.
+ *
+ * The file is read as base64 in the browser and posted as JSON. The platform has
+ * no object store and no multipart handling anywhere else, and introducing both
+ * to ship one endpoint would add a second upload path to review rather than one.
+ */
+function UploadPolicyModal({
+  orgId,
+  policy,
+  onClose,
+  onUploaded,
+}: {
+  orgId: number;
+  policy: any | null;
+  onClose: () => void;
+  onUploaded: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("general");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const { data: constraints } = useQuery<UploadConstraints>({
+    queryKey: ["policy-upload-constraints", orgId],
+    queryFn: async () =>
+      (await fetch(apiUrl(`/orgs/${orgId}/policies/upload-constraints`), { credentials: "include" })).json(),
+  });
+
+  const accept = constraints ? constraints.accepted.map((a) => "." + a.extension).join(",") : undefined;
+
+  const submit = async () => {
+    if (!file) return;
+    setError(null);
+
+    // Checked here as well as on the server. This one exists to save the
+    // customer a 14 MB round trip, not to enforce anything - the server does
+    // not trust it and neither should this code.
+    if (constraints && file.size > constraints.maxBytes) {
+      setError("That file is " + formatBytes(file.size) + ". The limit is " + constraints.maxLabel + ".");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const contentBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("The file could not be read."));
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          // readAsDataURL gives "data:<mime>;base64,<payload>". Only the payload
+          // is sent: the mime type in that prefix is the browser's guess and the
+          // server derives its own from the bytes.
+          const comma = result.indexOf(",");
+          resolve(comma >= 0 ? result.slice(comma + 1) : result);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch(apiUrl(`/orgs/${orgId}/policies/documents`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentBase64,
+          policyId: policy ? policy.id : undefined,
+          title: policy ? undefined : title,
+          category: policy ? undefined : category,
+          note: note || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        // The API sends a reason code and a sentence. The sentence is shown
+        // because it names the specific thing to fix; a generic "upload failed"
+        // would make a magic-number mismatch indistinguishable from a size limit.
+        setError((body && (body.message || body.error)) || "Upload failed (" + res.status + ").");
+        return;
+      }
+      onUploaded();
+    } catch (err) {
+      setError((err as Error).message || "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <h3 className="font-bold text-slate-900 mb-1">
+          {policy ? "Upload a new version" : "Upload a policy"}
+        </h3>
+        <p className="text-sm text-slate-500 mb-5">
+          {policy
+            ? "The current document for “" + policy.title + "” is kept as a superseded version, not replaced."
+            : "Add a policy your organisation already wrote. It is stored as a draft until you publish it."}
+        </p>
+
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Document</label>
+        <input
+          type="file"
+          accept={accept}
+          onChange={(e) => {
+            setFile(e.target.files && e.target.files[0] ? e.target.files[0] : null);
+            setError(null);
+          }}
+          className="block w-full text-sm text-slate-600 mb-1 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+        />
+        {constraints && (
+          <p className="text-[11px] text-slate-400 mb-4">
+            {constraints.accepted.map((a) => a.label).join(", ")} &middot; up to {constraints.maxLabel}
+          </p>
+        )}
+
+        {!policy && (
+          <>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Title</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={file ? file.name.replace(/.[^.]+$/, "") : "Information Security Policy"}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm mb-4"
+            />
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+            <input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm mb-4"
+            />
+          </>
+        )}
+
+        <label className="block text-xs font-semibold text-slate-600 mb-1">
+          Note <span className="font-normal text-slate-400">(optional, recorded with this version)</span>
+        </label>
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={policy ? "Annual review, approved by the board" : ""}
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm mb-4"
+        />
+
+        {constraints && !constraints.malwareScanning && (
+          <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2.5 mb-4">
+            {constraints.note}
+          </p>
+        )}
+
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5 mb-4">{error}</p>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={!file || busy}
+            className="flex-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {busy ? "Uploading..." : policy ? "Upload new version" : "Upload policy"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
