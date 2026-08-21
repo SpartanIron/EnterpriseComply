@@ -765,7 +765,6 @@ export default function Policies() {
           </div>
         </div>
       )}
-    </div>
       {/* ═════ UPLOAD POLICY DOCUMENT ═════ */}
       {uploadTarget && orgId && (
         <UploadPolicyModal
@@ -778,6 +777,7 @@ export default function Policies() {
           }}
         />
       )}
+    </div>
 
   );
 }
