@@ -2561,6 +2561,15 @@ async function runMagicLinkCleanup(cutoffMs) {
     );
   }
 
+  // The super_admin org_members row above is now LEGACY and is deliberately ignored
+  // by the gate. Real platform access lives in platform_admins, keyed to the user
+  // rather than to a tenant, and a grant on its own is still not access.
+  await db.query(
+    `INSERT INTO platform_admins (user_id, email, granted_by, note)
+     VALUES ($1, $2, 'test-suite', 'section 17') ON CONFLICT (user_id) DO NOTHING`,
+    [userSa, `sa-17-${slug17}@test.invalid`],
+  );
+
   const cookieSa  = cookieHdr(tokSa);
   const cookieNsa = cookieHdr(tokNsa);
   const testIp17  = "10.17.0.1";
@@ -2600,6 +2609,39 @@ async function runMagicLinkCleanup(cutoffMs) {
   });
   check("17.2 non-super_admin: DELETE /admin/magic-link-rate/:ip returns 403", nsaDel.status, 403);
 
+  // ── 17.2b A platform admin with NO elevation is still refused ────────────
+  // This is the whole point of break-glass: being on the list is not access.
+  const saNoElev = await fetch(`${BASE}/admin/rate-limits`, {
+    headers: { Cookie: cookieSa, Host: HOST },
+  });
+  check("17.2b platform admin without an elevation returns 403", saNoElev.status, 403);
+  const saNoElevBody = await saNoElev.json().catch(() => ({}));
+  check(
+    "17.2b the refusal distinguishes itself from not-staff",
+    saNoElevBody?.error ?? saNoElevBody?.message?.error,
+    "elevation_required",
+  );
+
+  // ── 17.2c An EXPIRED elevation is not an elevation ───────────────────────
+  await db.query(
+    `INSERT INTO platform_elevations (user_id, reason, expires_at)
+     VALUES ($1, 'expired fixture for section 17', NOW() - INTERVAL '1 minute')`,
+    [userSa],
+  );
+  const saExpired = await fetch(`${BASE}/admin/rate-limits`, {
+    headers: { Cookie: cookieSa, Host: HOST },
+  });
+  check("17.2c an expired elevation still returns 403", saExpired.status, 403);
+
+  // Now open a live elevation. Production requires a reason and an authenticator
+  // code through POST /platform/elevate; the row is written directly here so this
+  // section tests the GATE rather than re-testing TOTP.
+  await db.query(
+    `INSERT INTO platform_elevations (user_id, reason, expires_at)
+     VALUES ($1, 'section 17 exercises the admin endpoints', NOW() + INTERVAL '1 hour')`,
+    [userSa],
+  );
+
   // ── 17.3 Super_admin can read rate limits and see the seeded IP ──────────
   const saGet = await fetch(`${BASE}/admin/rate-limits`, {
     headers: { Cookie: cookieSa, Host: HOST },
@@ -2637,6 +2679,8 @@ async function runMagicLinkCleanup(cutoffMs) {
   // ── Cleanup ───────────────────────────────────────────────────────────────
   await db.query(`DELETE FROM ip_magic_link_rate WHERE ip = $1`, [testIp17]).catch(() => {});
   await db.query(`DELETE FROM org_members WHERE clerk_user_id = ANY($1::text[])`, [[userSa, userNsa]]).catch(() => {});
+  await db.query(`DELETE FROM platform_elevations WHERE user_id = ANY($1::text[])`, [[userSa]]).catch(() => {});
+  await db.query(`DELETE FROM platform_admins WHERE user_id = ANY($1::text[])`, [[userSa]]).catch(() => {});
   await db.query(`DELETE FROM session WHERE id = ANY($1::text[])`, [[sessSa, sessNsa]]).catch(() => {});
   await db.query(`DELETE FROM "user" WHERE id = ANY($1::text[])`, [[userSa, userNsa]]).catch(() => {});
   await db.query(`DELETE FROM organizations WHERE id = $1`, [org17Id]).catch(() => {});
@@ -3488,6 +3532,19 @@ for (const [userId, role, email] of [
     [org28Id, userId, role, email],
   );
 }
+
+// Same as section 17: the super_admin membership above is legacy, so grant real
+// platform access and open a live elevation for the sections below.
+await db.query(
+  `INSERT INTO platform_admins (user_id, email, granted_by, note)
+   VALUES ($1, $2, 'test-suite', 'section 28') ON CONFLICT (user_id) DO NOTHING`,
+  [userSa28, `sa-28-${slug28}@test.invalid`],
+);
+await db.query(
+  `INSERT INTO platform_elevations (user_id, reason, expires_at)
+   VALUES ($1, 'section 28 exercises credential rotation and plan changes', NOW() + INTERVAL '1 hour')`,
+  [userSa28],
+);
 
 const cookieSa28  = cookieHdr(tokSa28);
 const cookieNsa28 = cookieHdr(tokNsa28);
