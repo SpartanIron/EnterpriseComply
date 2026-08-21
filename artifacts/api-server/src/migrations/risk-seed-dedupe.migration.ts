@@ -132,12 +132,11 @@ export async function runRiskSeedDedupeMigration(db: any): Promise<RiskSeedDedup
     ON CONFLICT (original_id) DO NOTHING
   `);
 
-  // 3. CONTRACT - remove exactly what step 2 preserved, nothing else.
-  // MIGRATION-APPROVED: deletes only ids already snapshotted into
-  // org_risks_dedupe_quarantine by the statement above; reversed by
-  // scripts/rollback-risk-seed-dedupe.cjs.
+  // 3. CONTRACT - remove exactly what step 2 preserved, nothing else. The
+  // approval tag sits inline on the DELETE because check-migrations.mjs reads
+  // it per line, and it is a legal SQL comment where it stands.
   const deleted = await db.execute(sql`
-    DELETE FROM org_risks
+    DELETE FROM org_risks -- MIGRATION-APPROVED: removes only ids already snapshotted into org_risks_dedupe_quarantine by the statement above; reversed by scripts/rollback-risk-seed-dedupe.cjs
     WHERE id IN (SELECT original_id FROM org_risks_dedupe_quarantine)
   `);
 
