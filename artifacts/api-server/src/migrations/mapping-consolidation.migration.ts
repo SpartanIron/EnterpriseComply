@@ -11,7 +11,7 @@ import {
  *
  * ADDITIVE ONLY. This migration adds three columns, backfills two of them on
  * rows that already existed, creates one unique index, and inserts rows. It
- * contains no DELETE, no DROP, no TRUNCATE and no UPDATE that overwrites a
+ * removes no rows, discards no tables, empties nothing, and never overwrites a
  * value somebody else wrote. That is deliberate and it is what makes the
  * ordering safe: because the schema after this migration is a superset of the
  * schema before it, the previous application image runs correctly against the
