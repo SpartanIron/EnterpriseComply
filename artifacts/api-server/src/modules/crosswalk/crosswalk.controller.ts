@@ -7,9 +7,10 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
-import { ClerkAuthGuard, OrgContextGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
-import { db, controlCrosswalkTable, ucoControlsTable } from "@workspace/db";
+import { ClerkAuthGuard, OrgContextGuard, ClerkUserId, OrgContext } from "../../guards/clerk-auth.guard";
+import { db, controlCrosswalkTable, ucoControlsTable, orgControlResultsTable } from "@workspace/db";
 import { getResolvedMappings } from "../../lib/framework-mappings";
+import { normaliseStatus } from "../../lib/posture";
 import { eq } from "drizzle-orm";
 import { assertPlatformAccess } from "../../lib/platform-admin";
 
@@ -150,7 +151,7 @@ export class CrosswalkController {
    */
   @Get("crosswalk/controls")
   @UseGuards(OrgContextGuard)
-  async listCrosswalkControls() {
+  async listCrosswalkControls(@OrgContext() ctx: { orgId: number }) {
     const DERIVED_FRAMEWORKS: Array<{ column: string; frameworkKey: string }> = [
       { column: "nist80053", frameworkKey: "nist-800-53" },
       { column: "cmmc", frameworkKey: "cmmc-l2" },
@@ -161,9 +162,12 @@ export class CrosswalkController {
       { column: "hipaa", frameworkKey: "hipaa" },
     ];
 
-    const [ucoControls, overrides, ...mappingSets] = await Promise.all([
+    const [ucoControls, overrides, results, ...mappingSets] = await Promise.all([
       db.select().from(ucoControlsTable),
       db.select().from(controlCrosswalkTable),
+      db.query.orgControlResultsTable.findMany({
+        where: eq(orgControlResultsTable.orgId, ctx.orgId),
+      }),
       ...DERIVED_FRAMEWORKS.map((f) => getResolvedMappings(f.frameworkKey)),
     ]);
 
@@ -183,6 +187,25 @@ export class CrosswalkController {
         }
       }
     });
+
+    // Phase 1b. A crosswalk row without an assessment status is a reference
+    // table, not a compliance view: the reader still has to go somewhere else to
+    // learn whether the objective is actually met. Statuses come through the same
+    // normaliser the posture SSOT uses, then map onto this endpoint's published
+    // vocabulary - a warning is a partial, an objective with no result row is
+    // unknown rather than silently passing.
+    const statusByObjective = new Map<string, string>();
+    for (const result of results as Array<{ ucoControlId: string; status?: unknown }>) {
+      const normalised = normaliseStatus(result.status).status;
+      statusByObjective.set(
+        result.ucoControlId,
+        normalised === "warning"
+          ? "partial"
+          : normalised === "not_tested"
+            ? "unknown"
+            : normalised,
+      );
+    }
 
     const overrideByObjective = new Map(
       overrides.map((row: Record<string, unknown>) => [String(row.ucoControlId), row]),
@@ -206,6 +229,7 @@ export class CrosswalkController {
 
         return {
           ucoControlId: controlId,
+          status: statusByObjective.get(controlId) ?? "unknown",
           title: (override?.title as string) ?? String(control.name),
           domain: (override?.domain as string) ?? String(control.domain),
           nist80053: (override?.nist80053 as string) ?? derived.nist80053,
