@@ -49,6 +49,26 @@ function readSource(relative: string): string {
 }
 
 /**
+ * Strip comments before searching for code.
+ *
+ * The two assertions below look for the deleted generator's arithmetic, and its
+ * replacement documents that arithmetic in a module comment so the next reader
+ * knows what was removed and why. The first CI run failed on exactly that:
+ * prose describing a deleted defect is not the defect. Comments are removed so
+ * the search sees code.
+ *
+ * Naive by intent. It does not try to protect string literals containing
+ * comment markers, and it is only ever pointed at these two files.
+ */
+function codeOnly(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .map((line) => line.replace(/\/\/.*$/, ""))
+    .join("\n");
+}
+
+/**
  * A connected integration carrying credential material has to exist or the
  * redaction assertions pass by having nothing to redact. On a blank CI database
  * org 1 has no integrations at all, which is exactly how a guard like this
@@ -147,7 +167,7 @@ async function main() {
   check(
     "the monitoring service no longer spreads integration rows raw",
     (() => {
-      const source = readSource("src/modules/monitoring/monitoring.service.ts");
+      const source = codeOnly(readSource("src/modules/monitoring/monitoring.service.ts"));
       return source.includes("redactConnectionCredentials(") && !/\.\.\.i,/.test(source);
     })(),
     "getMonitoringJobs must not spread an org_integrations row into its " +
@@ -155,8 +175,8 @@ async function main() {
   );
 
   // ── 3. The trend is recorded, not generated ──────────────────────────────
-  const serviceSource = readSource("src/modules/score-history/score-history.service.ts");
-  const libSource = readSource("src/lib/score-history.ts");
+  const serviceSource = codeOnly(readSource("src/modules/score-history/score-history.service.ts"));
+  const libSource = codeOnly(readSource("src/lib/score-history.ts"));
 
   check(
     "no random number generator is involved in the trend",
