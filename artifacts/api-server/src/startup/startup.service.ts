@@ -11,6 +11,7 @@ import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
 import { runPlatformAdminMigration } from "../migrations/platform-admin.migration";
 import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migration";
 import { recordScoreSnapshots as recordScoreSnapshotSweep } from "../lib/score-history";
+import { runFismaFips199Migration } from "../migrations/fisma-fips199.migration";
 import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
 import { syncStoredFrameworkPosture } from "../lib/posture";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
@@ -1206,6 +1207,7 @@ export class StartupService implements OnApplicationBootstrap {
     // because it reconciles against them rather than creating them. Placed with
     // the other Phase 1 repairs so the data-integrity work is one block.
     await this.consolidateMappings();
+    await this.runFipsImpactMigration();
     await this.syncFrameworkPosture();
     await this.recordScoreSnapshots();
     await this.seedCommonRisks();
@@ -1249,6 +1251,25 @@ export class StartupService implements OnApplicationBootstrap {
       );
     } catch (err) {
       this.logger.warn('Compliance score snapshot sweep failed: ' + String(err));
+    }
+  }
+
+  /**
+   * One additive nullable column on organizations. Idempotent, so it runs on
+   * every boot, and non-fatal: an organisation without a recorded FIPS 199
+   * impact level reads as "not categorised", which is exactly what the posture
+   * reports when the column is missing too. Refusing to serve traffic over a
+   * missing optional column would be the wrong trade.
+   */
+  private async runFipsImpactMigration() {
+    try {
+      await runFismaFips199Migration(db);
+      this.logger.log('FIPS 199 impact column present.');
+    } catch (err) {
+      this.logger.warn(
+        'FIPS199_COLUMN_MISSING ' + String(err) +
+          '. FISMA scoping will report "not categorised" until this succeeds.',
+      );
     }
   }
 
