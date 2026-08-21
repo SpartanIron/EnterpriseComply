@@ -8,6 +8,7 @@ import {
   orgAuditLogTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { redactConnectionCredentials } from "../../lib/integration-redaction.js";
 
 @Injectable()
 export class MonitoringService {
@@ -44,10 +45,16 @@ export class MonitoringService {
     const integrations = await db.query.orgIntegrationsTable.findMany({
       where: eq(orgIntegrationsTable.orgId, orgId),
     });
+    // Every row here comes out of org_integrations, which holds AES-256-GCM
+    // ciphertext in accessToken, refreshToken and parts of config. Spreading
+    // the row put all of it into a response the browser reads. The integrations
+    // endpoint has redacted those fields since it was written; this one never
+    // did, so one table was serialised two different ways and the safe version
+    // was not the one the dashboard called.
     const enriched = integrations
       .filter((i) => i.status === "connected")
       .map((i) => ({
-        ...i,
+        ...redactConnectionCredentials(i as unknown as Record<string, unknown>),
         job: jobs.find((j) => j.integrationKey === i.integrationKey) ?? null,
       }));
     return { monitoringJobs: enriched };
