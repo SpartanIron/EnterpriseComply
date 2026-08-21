@@ -6,7 +6,14 @@ import { useRole } from "@/context/RoleContext";
 import { authClient } from "@/lib/auth-client";
 import { QRCodeSVG } from "qrcode.react";
 import RoleManagement from "./RoleManagement";
-import PlanGate from "@/components/PlanGate";
+import PlanGate, {
+  PLAN_LABELS,
+  PLAN_DESCRIPTIONS,
+  PLAN_HIERARCHY,
+  type PlanTier,
+} from "@/components/PlanGate";
+
+const PLAN_BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 interface MfaStatus {
   enrolled: boolean;
@@ -59,6 +66,14 @@ export default function Settings() {
   });
 
   const org = orgData?.org;
+
+  // Tier shown in the Plan panel. Falls back to starter for the same reason
+  // PlanGate does: an org row that predates the column reads as the free tier
+  // rather than accidentally unlocking everything.
+  const currentPlan = ((org?.plan as PlanTier) ?? "starter") as PlanTier;
+  const lockedTiers = (Object.keys(PLAN_HIERARCHY) as PlanTier[])
+    .filter((tier) => PLAN_HIERARCHY[tier] > (PLAN_HIERARCHY[currentPlan] ?? 0))
+    .sort((a, b) => PLAN_HIERARCHY[a] - PLAN_HIERARCHY[b]);
   const [form, setForm] = useState<any>(null);
   const [saved, setSaved] = useState(false);
 
@@ -117,13 +132,43 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* Plan. Both the label and the copy come from the shared vocabulary in
+              PlanGate, so this panel cannot claim a tier includes something the
+              guards actually withhold. The previous copy asserted that every tier
+              included "all frameworks, integrations, and core features" while the
+              Federal and Enterprise sections sat behind padlocks. */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
             <div className="px-5 py-3.5 border-b border-slate-100"><h2 className="text-sm font-bold text-slate-800">Plan</h2></div>
             <div className="p-5">
-              <div className="flex items-center justify-between">
-                <div><p className="font-semibold text-slate-900 capitalize">{org?.plan ?? "Starter"} Plan</p><p className="text-sm text-slate-500 mt-0.5">All frameworks, integrations, and core features included.</p></div>
-                <span className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full">Current plan</span>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-slate-900">{PLAN_LABELS[currentPlan]} Plan</p>
+                  <p className="text-sm text-slate-500 mt-0.5">{PLAN_DESCRIPTIONS[currentPlan]}</p>
+                </div>
+                <span className="shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full">Current plan</span>
               </div>
+              {lockedTiers.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <p className="text-sm text-slate-600">
+                    Not included on {PLAN_LABELS[currentPlan]}:{" "}
+                    {lockedTiers.map((tier) => PLAN_LABELS[tier]).join(", ")}.
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {lockedTiers.map((tier) => (
+                      <li key={tier} className="text-sm text-slate-500">
+                        <span className="font-medium text-slate-700">{PLAN_LABELS[tier]}</span>{" "}
+                        {PLAN_DESCRIPTIONS[tier]}
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href={`${PLAN_BASE_PATH}/pricing`}
+                    className="inline-block mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    Compare plans
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
