@@ -22,7 +22,14 @@ import {
   normaliseScoringId,
   padScoringId,
 } from "../src/lib/framework-mappings";
-import { computePosture, diffPosture, syncStoredFrameworkPosture } from "../src/lib/posture";
+import {
+  catalogInconsistencies,
+  computePosture,
+  coverageWarnings,
+  diffPosture,
+  legacyArithmeticNotes,
+  syncStoredFrameworkPosture,
+} from "../src/lib/posture";
 
 const FRAMEWORK = "nist-800-171";
 
@@ -176,6 +183,195 @@ async function main() {
       JSON.stringify(counts) + " has an assessed figure that is not the sum of the assessed buckets.",
     );
   }
+
+  // ── The four separately reported items ──────────────────────────────────
+  //
+  // A divergence count of zero is only honest if the groups that can never be
+  // zero stay visible. Both of these functions existed, were exported, and
+  // nothing called them, which for a consumer is the same as absent. So this
+  // asserts they are wired into a response rather than merely available.
+  const controllerSource = readFileSync(
+    join(process.cwd(), "src/modules/posture/posture.controller.ts"),
+    "utf-8",
+  );
+
+  for (const group of [
+    "legacyArithmeticNotes(posture)",
+    "coverageWarnings(posture)",
+    "catalogInconsistencies(posture)",
+  ]) {
+    check(
+      "the drift response calls " + group,
+      controllerSource.includes(group),
+      group + " is exported but nothing serves it, so that group is invisible.",
+    );
+  }
+
+  check(
+    "the response says a zero divergence count is not thirteen defects fixed",
+    controllerSource.includes("separatelyReported") &&
+      /defectsRemediated:\s*9/.test(controllerSource) &&
+      /nonDefectItems:\s*4/.test(controllerSource),
+    "separatelyReported must state that nine of the thirteen headline items " +
+      "were defects and four were not, in the payload and not only in a report.",
+  );
+
+  check(
+    "the posture response carries the coverage limitation",
+    /return \{\s*posture,/.test(controllerSource) &&
+      controllerSource.includes("coverageWarnings: coverageWarnings(posture)"),
+    "GET /orgs/:orgId/posture must report coverage, or a thin mapping reads as " +
+      "poor compliance.",
+  );
+
+  const livePosture = await computePosture(1);
+
+  check(
+    "coverage is reported as partial rather than as a complete assessment",
+    coverageWarnings(livePosture).length > 0 &&
+      livePosture.frameworks.some((framework) => framework.partialCoverage),
+    "No framework is reported as partially covered, which claims the mappings " +
+      "reach every published control. They do not.",
+  );
+
+  check(
+    "the retired legacy arithmetic is still computed and still out of the count",
+    Array.isArray(legacyArithmeticNotes(livePosture)) &&
+      livePosture.legacyDashboard !== undefined &&
+      diffPosture(livePosture).length === 0,
+    "The legacy dashboard difference belongs in its own group: permanent, " +
+      "unserved, not a fault. It must not sit inside the number that has to be " +
+      "zero, and it must not disappear either.",
+  );
+
+  // ── The two control-content defects: surfaced, not corrected ────────────
+  //
+  // Pinned deliberately. Correcting either is a decision about what the
+  // product claims to assess, not a refactor, so a commit that changes the
+  // answer should change this guard too and say why.
+  const catalogSource = readFileSync(
+    join(process.cwd(), "src/modules/frameworks/frameworks.service.ts"),
+    "utf-8",
+  );
+  const postureSource = readFileSync(
+    join(process.cwd(), "src/lib/posture.ts"),
+    "utf-8",
+  );
+
+  check(
+    "the catalog still labels 800-171 Rev 3 over a control count of 110",
+    catalogSource.includes('name: "NIST SP 800-171 Rev 3"') &&
+      /key: "nist-800-171"[^}]*controlCount: 110/.test(catalogSource),
+    "The catalog entry changed. If the label or the count was corrected on " +
+      "authority, update this guard in the same commit.",
+  );
+
+  check(
+    "the scored revision is recorded as Rev 2, which is what disagrees with it",
+    /"nist-800-171":\s*\{\s*revision: "Rev 2"/.test(postureSource),
+    "posture.ts must record which revision the scoring set belongs to, or the " +
+      "inconsistency cannot be reported from data.",
+  );
+
+  const nistPosture = livePosture.frameworks.find(
+    (framework) => framework.frameworkKey === FRAMEWORK,
+  );
+
+  if (nistPosture) {
+    const nistFinding = catalogInconsistencies(livePosture).find(
+      (finding) => finding.frameworkKey === FRAMEWORK,
+    );
+
+    check(
+      "the 800-171 revision inconsistency reaches the API",
+      nistFinding !== undefined &&
+        nistFinding.declaredRevision === "Rev 3" &&
+        nistFinding.declaredControlCount === 110 &&
+        nistFinding.scoringRevision === "Rev 2",
+      "Expected a finding recording a Rev 3 label over the Rev 2 count of 110, " +
+        "got " + JSON.stringify(nistFinding ?? null) + ".",
+    );
+  } else {
+    console.log(
+      "  note  org 1 has no 800-171 framework row; the catalog assertions above " +
+        "still cover the inconsistency.",
+    );
+  }
+
+  check(
+    "the SPRS floor and ceiling are unchanged",
+    /const SPRS_FLOOR = -203;/.test(sprsSource) &&
+      /const SPRS_CEILING = 110;/.test(sprsSource),
+    "The score model moved. It was left alone on purpose: making 110 reachable " +
+      "is a methodology decision, not a refactor.",
+  );
+
+  check(
+    "scoringBasis reports the advertised maximum and the reachable one",
+    /advertisedMaximum:\s*SPRS_CEILING/.test(sprsSource) &&
+      sprsSource.includes("reachableMaximum") &&
+      sprsSource.includes("totalWeight"),
+    "A consumer must not be able to read 110 as achievable.",
+  );
+
+  check(
+    "the reachable maximum is 49, which is the number the API reports",
+    -203 + NIST_800_171_R2_TOTAL_WEIGHT === 49,
+    "Floor plus total weight is " + (-203 + NIST_800_171_R2_TOTAL_WEIGHT) +
+      ", so the surfaced defect needs restating.",
+  );
+
+  // ── The score basis, so 20 to 3 cannot read as a collapse ───────────────
+  const dashboardSource = readFileSync(
+    join(process.cwd(), "src/modules/orgs/orgs.service.ts"),
+    "utf-8",
+  );
+
+  for (const field of [
+    "scoreBasis:",
+    "previousDenominator:",
+    "objectivesAssessed:",
+    "assessedScorePercent:",
+    "coveragePercent:",
+  ]) {
+    check(
+      "the dashboard response explains its score basis: " + field,
+      dashboardSource.includes(field),
+      "scoreBasis must name both denominators, or the drop from 20 to 3 reads " +
+        "as a regression instead of a changed question.",
+    );
+  }
+
+  check(
+    "the dashboard reads the SSOT rather than counting rows again",
+    dashboardSource.includes("computePosture(orgId)") &&
+      dashboardSource.includes("posture.counts.notTested"),
+    "The dashboard must take its counts from the SSOT.",
+  );
+
+  // ── Deferred work is still deferred, and still honestly labelled ────────
+  //
+  // Two items were left out of this phase on purpose. Whichever commit ships
+  // one of them should update this guard, because until then the completion
+  // record says they are outstanding and that has to stay true.
+  const driftSource = readFileSync(
+    join(process.cwd(), "src/lib/posture-drift.ts"),
+    "utf-8",
+  );
+
+  check(
+    "the drift ledger is still process memory, not a persisted table",
+    !driftSource.includes("@workspace/db"),
+    "posture-drift.ts now touches the database, so drift-ledger persistence is " +
+      "no longer deferred and the completion record must stop saying it is.",
+  );
+
+  check(
+    "the FISMA pass-through is still deferred",
+    !/fisma/i.test(catalogSource),
+    "A FISMA entry exists in the catalog. If it shipped it needs its FIPS 199 " +
+      "impact tag and its two residual checks, and this guard needs updating.",
+  );
 
   if (failures > 0) {
     console.error("\n" + failures + " check(s) failed.");
