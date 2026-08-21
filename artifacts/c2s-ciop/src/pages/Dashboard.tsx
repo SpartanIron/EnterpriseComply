@@ -540,8 +540,18 @@ export default function Dashboard() {
   );
 }
 
+interface ScoreHistoryBasis {
+  points: number;
+  earliest: string | null;
+  latest: string | null;
+  synthetic: boolean;
+  metric: string;
+  storedCounts: string;
+  note: string;
+}
+
 function ScoreTrendChart({ orgId }: { orgId: number | undefined }) {
-  const { data, isLoading } = useQuery<{ history: any[] }>({
+  const { data, isLoading } = useQuery<{ history: any[]; basis?: ScoreHistoryBasis }>({
     queryKey: ["score-history", orgId],
     queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/score-history`), { credentials: "include" })).json(),
     enabled: !!orgId,
@@ -560,9 +570,35 @@ function ScoreTrendChart({ orgId }: { orgId: number | undefined }) {
     return <div className="h-52 bg-white border border-slate-200 rounded-xl shadow-sm animate-pulse" />;
   }
 
+  const basis = data?.basis;
+
+  // Was: return null. The panel disappeared, which read as a rendering bug
+  // rather than as an absence of data. It disappeared rarely, because until
+  // this release the API generated a curve whenever the table was empty, so
+  // this branch was close to unreachable and the chart was almost always
+  // showing invented numbers.
   if (chartData.length === 0) {
-    return null;
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h2 className="text-sm font-bold text-slate-900">Compliance Score Trend</h2>
+          <p className="text-xs text-slate-400 mt-0.5">No recorded history yet</p>
+        </div>
+        <div className="px-5 py-6 text-xs text-slate-500 leading-relaxed">
+          {basis?.note ??
+            "No score has been recorded for this organisation yet. A point is written once per day, so a trend appears from the second day of use."}
+          <p className="mt-2 text-slate-400">
+            An empty panel means there is no history, not a score of zero.
+          </p>
+        </div>
+      </div>
+    );
   }
+
+  const windowLabel =
+    chartData.length > 1
+      ? "Recorded " + chartData[0].date + " to " + chartData[chartData.length - 1].date
+      : "One recorded point";
 
   const latest = chartData[chartData.length - 1]?.score ?? 0;
   const earliest = chartData[0]?.score ?? 0;
@@ -573,7 +609,7 @@ function ScoreTrendChart({ orgId }: { orgId: number | undefined }) {
       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-slate-900">Compliance Score Trend</h2>
-          <p className="text-xs text-slate-400 mt-0.5">90-day history</p>
+          <p className="text-xs text-slate-400 mt-0.5">{windowLabel}</p>
         </div>
         <div className="flex items-center gap-3">
           {delta !== 0 && (
@@ -583,7 +619,7 @@ function ScoreTrendChart({ orgId }: { orgId: number | undefined }) {
               ) : (
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
               )}
-              {Math.abs(delta)}pts over 90d
+              {Math.abs(delta)}pts recorded
             </span>
           )}
           <a href="/gap-analysis" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
