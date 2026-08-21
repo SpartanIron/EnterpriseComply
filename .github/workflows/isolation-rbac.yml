@@ -66,6 +66,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # -- TOTP vectors (RFC 6238) -------------------------------------------
+      # Pure unit test: no database and no API server needed, so it runs first.
+      # A broken TOTP implementation fails here in seconds instead of surfacing
+      # later as authenticator codes that are always rejected.
+      - name: Verify TOTP against RFC 6238 vectors
+        run: node --import @swc-node/register/esm-register artifacts/api-server/scripts/totp-vectors.test.mjs
+
       # ── Start API server in the background ────────────────────────────────
       # Uses swc-node so TypeScript is transpiled on the fly; no build step needed.
       # StartupService runs migrations and seeds tables on first boot.
