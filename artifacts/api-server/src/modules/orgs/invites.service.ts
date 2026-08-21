@@ -24,6 +24,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { ROLE_HIERARCHY } from "../../guards/roles.guard";
 import { writeAuditLog } from "../../lib/audit-log.js";
+import { classifyInvite } from "../../lib/invite-outcome";
 import { sendTeamInviteEmail } from "../../lib/email";
 import { logger } from "../../lib/logger";
 import { getRateLimitPool } from "../../lib/pg-pool";
@@ -307,26 +308,61 @@ export class InvitesService {
         eq(orgInvitesTable.tokenHash, this.hash(token)),
       ),
     });
-    if (!invite) throw new NotFoundException("This invitation link is not valid.");
-    if (invite.status === "accepted") {
-      throw new ConflictException("This invitation has already been used.");
-    }
-    if (invite.status !== "pending") {
-      const newer = await db.query.orgInvitesTable.findFirst({
-        where: and(
-          eq(orgInvitesTable.orgId, orgId),
-          eq(orgInvitesTable.status, "pending"),
-          sql`lower(${orgInvitesTable.email}) = ${invite.email.toLowerCase()}`,
-        ),
+
+    // Anything that is not a live pending invitation is handed to classifyInvite,
+    // which decides which of six situations this actually is. The membership lookup
+    // runs first because it is the fact that outranks the rest: somebody already on
+    // the team should be told to sign in, not sent to ask for a replacement link they
+    // do not need. That loop - stale link, ask for a new one, click the new one,
+    // already a member, stale link again - is what one flat "no longer valid" message
+    // used to produce, and it is the dead end reported from production.
+    if (
+      !invite ||
+      invite.status !== "pending" ||
+      new Date(invite.expiresAt).getTime() < Date.now()
+    ) {
+      const email = invite ? invite.email.toLowerCase() : null;
+
+      const member = email
+        ? await db.query.orgMembersTable.findFirst({
+            where: and(
+              eq(orgMembersTable.orgId, orgId),
+              sql`lower(${orgMembersTable.email}) = ${email}`,
+            ),
+          })
+        : null;
+
+      // Only worth asking when this link itself is dead but unredeemed. If it was
+      // already accepted, pointing at a newer email would be actively misleading.
+      const newer =
+        email && invite && invite.status !== "accepted"
+          ? await db.query.orgInvitesTable.findFirst({
+              where: and(
+                eq(orgInvitesTable.orgId, orgId),
+                eq(orgInvitesTable.status, "pending"),
+                sql`lower(${orgInvitesTable.email}) = ${email}`,
+              ),
+            })
+          : null;
+
+      const outcome = classifyInvite({
+        status: invite ? invite.status : null,
+        expiresAt: invite ? invite.expiresAt : null,
+        hasNewerPending: !!newer,
+        alreadyMember: !!member,
       });
-      throw new ForbiddenException(
-        newer
-          ? "A newer invitation was sent to this address. Open the most recent invitation email and use the link in it."
-          : "This invitation is no longer valid.",
+
+      // Logged at info, not warn. Most of these are ordinary user behaviour -
+      // clicking an old email - and burying a genuine signal under that noise is how
+      // useful logs stop being read.
+      logger.info(
+        { orgId, outcome: outcome.error, inviteId: invite ? invite.id : null },
+        "[invites] redemption refused",
       );
-    }
-    if (new Date(invite.expiresAt).getTime() < Date.now()) {
-      throw new ForbiddenException("This invitation has expired.");
+
+      if (outcome.status === 404) throw new NotFoundException(outcome);
+      if (outcome.status === 409) throw new ConflictException(outcome);
+      throw new ForbiddenException(outcome);
     }
 
     const pool = getRateLimitPool();
