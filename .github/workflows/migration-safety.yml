@@ -56,7 +56,7 @@ jobs:
   fresh-db-test:
     name: Fresh-database migration test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     services:
       postgres:
@@ -126,6 +126,78 @@ jobs:
         # table listed in verify-schema.mjs exists. A missing table means
         # StartupService silently skipped or failed part of the migration.
         run: node artifacts/api-server/scripts/verify-schema.mjs
+
+      # ── Phase 1: the risk seed must be idempotent across boots ───────────────
+      #
+      # seedCommonRisks() used to re-insert twenty rows per org on every single
+      # start, because it read a COUNT(*) into riskCnt and then never looked at
+      # it. Twenty-eight boots produced 560 rows from a 20-row seed.
+      #
+      # A one-boot assertion would have passed on a blank database and caught
+      # none of that, so the invariants are checked across three boots, with the
+      # pre-migration state deliberately manufactured in between: boot 1 sets up
+      # a duplicate group, boot 2 must collapse it and insert nothing, and boot 3
+      # must change nothing at all.
+      - name: Risk seed invariants (boot 1) and manufacture the pre-migration state
+        run: node artifacts/api-server/scripts/risk-seed-invariants.mjs --verify-boot1
+
+      - name: Restart API server (boot 2)
+        run: |
+          kill $API_PID 2>/dev/null || true
+          # pnpm spawns node as a child, so $! alone can leave the port held and
+          # the next boot dies with EADDRINUSE instead of telling us anything.
+          pkill -f "src/main.ts" 2>/dev/null || true
+          sleep 5
+          pnpm --filter @workspace/api-server run dev > /tmp/migration-test-boot2.log 2>&1 &
+          echo "API_PID=$!" >> $GITHUB_ENV
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:8080/api/healthz > /dev/null 2>&1; then
+              echo "Boot 2 healthy after ${i}s."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "=== BOOT 2 NEVER BECAME HEALTHY ===" >&2
+          cat /tmp/migration-test-boot2.log >&2
+          exit 1
+
+      - name: Risk seed invariants (boot 2) - repair collapsed, seeder stood down
+        run: node artifacts/api-server/scripts/risk-seed-invariants.mjs --verify-boot2
+
+      - name: Restart API server (boot 3)
+        run: |
+          kill $API_PID 2>/dev/null || true
+          # pnpm spawns node as a child, so $! alone can leave the port held and
+          # the next boot dies with EADDRINUSE instead of telling us anything.
+          pkill -f "src/main.ts" 2>/dev/null || true
+          sleep 5
+          pnpm --filter @workspace/api-server run dev > /tmp/migration-test-boot3.log 2>&1 &
+          echo "API_PID=$!" >> $GITHUB_ENV
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:8080/api/healthz > /dev/null 2>&1; then
+              echo "Boot 3 healthy after ${i}s."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "=== BOOT 3 NEVER BECAME HEALTHY ===" >&2
+          cat /tmp/migration-test-boot3.log >&2
+          exit 1
+
+      - name: Risk seed invariants (boot 3) - re-running the repair changed nothing
+        run: node artifacts/api-server/scripts/risk-seed-invariants.mjs --verify-boot3
+
+      # ── Phase 1: the posture single source of truth ──────────────────────────
+      #
+      # Rebuilds the exact control set that produced the five-way metric
+      # discrepancy and asserts the SSOT reports it correctly while the legacy
+      # arithmetic still gets it wrong in the diagnosed ways. Fails if anyone
+      # reintroduces derive-by-subtraction or counts result rows instead of
+      # control objectives.
+      - name: Posture SSOT regression guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/posture-ssot.test.ts
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()
