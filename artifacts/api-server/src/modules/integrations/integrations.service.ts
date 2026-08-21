@@ -20,40 +20,17 @@ import { writeAuditLog } from "../../lib/audit-log.js";
 
 // Credential material must never be serialised to a browser - not even as
 // ciphertext. Callers only need to know whether a credential is on file.
-const CREDENTIAL_CONFIG_KEYS = new Set([
-  "apitoken",
-  "apikey",
-  "accesstoken",
-  "refreshtoken",
-  "token",
-  "secret",
-  "clientsecret",
-  "password",
-  "privatekey",
-  "adminkey",
-]);
-
-export function redactConnectionCredentials(
-  conn: Record<string, unknown>,
-): Record<string, unknown> {
-  const rawConfig = (conn.config ?? {}) as Record<string, unknown>;
-  const safeConfig: Record<string, unknown> = {};
-  let configHasCredential = false;
-  for (const [k, v] of Object.entries(rawConfig)) {
-    if (CREDENTIAL_CONFIG_KEYS.has(k.toLowerCase())) {
-      configHasCredential = true;
-      continue;
-    }
-    safeConfig[k] = v;
-  }
-  return {
-    ...conn,
-    accessToken: null,
-    refreshToken: null,
-    config: safeConfig,
-    hasStoredCredentials: Boolean(conn.accessToken) || configHasCredential,
-  };
-}
+//
+// The rule itself now lives in lib/integration-redaction.ts. It moved because
+// monitoring.service.ts read the same rows and spread them into its own
+// response, so the endpoint that redacts and the endpoint that leaked were
+// reading one table through two different sets of rules. Re-exported here
+// because this file used to be its home and callers import it from here.
+export {
+  CREDENTIAL_CONFIG_KEYS,
+  redactConnectionCredentials,
+} from "../../lib/integration-redaction.js";
+import { redactConnectionCredentials } from "../../lib/integration-redaction.js";
 
 export const INTEGRATION_CATALOG = [
   {
