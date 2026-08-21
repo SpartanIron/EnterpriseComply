@@ -23,12 +23,18 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { db, organizationsTable, orgControlResultsTable, ucoControlsTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
-import { computePosture } from "../src/lib/posture";
+import { and, asc, eq } from "drizzle-orm";
+import { computePosture, diffPosture, syncStoredFrameworkPosture } from "../src/lib/posture";
 import { ControlsService } from "../src/modules/controls/controls.service";
 import { OrgsService } from "../src/modules/orgs/orgs.service";
 
-const ORG = 1;
+/**
+ * Preferred organisation id. Resolved against the database rather than assumed,
+ * because a blank CI database is not guaranteed to hold an organisation with
+ * id 1 - the first run of this guard failed on exactly that, having asserted
+ * something about production that is not true of CI.
+ */
+const PREFERRED_ORG = 1;
 
 let failures = 0;
 
@@ -51,7 +57,7 @@ function readSource(relative: string): string {
  * results at all, which is how the bucket went missing without any test
  * noticing.
  */
-async function ensureWarningFixture(): Promise<string | null> {
+async function ensureWarningFixture(ORG: number): Promise<string | null> {
   const existing = await db
     .select()
     .from(orgControlResultsTable)
@@ -92,18 +98,44 @@ async function ensureWarningFixture(): Promise<string | null> {
 async function main() {
   console.log("Phase 1c: posture surfaces guard");
 
-  const warningControlId = await ensureWarningFixture();
+  const orgs = await db.select().from(organizationsTable).orderBy(asc(organizationsTable.id));
+  const org = orgs.find((o) => o.id === PREFERRED_ORG) ?? orgs[0];
+  check(
+    "an organisation exists to assess",
+    org !== undefined,
+    "No rows in organizations, so there is nothing to build a dashboard for.",
+  );
+  if (!org) {
+    console.error("\n1 check(s) failed.");
+    process.exit(1);
+  }
+  const ORG = org.id;
+  console.log("  info  asserting against org " + ORG);
+
+  const warningControlId = await ensureWarningFixture(ORG);
   check(
     "a control in warning exists to be counted",
     warningControlId !== null,
     "No UCO controls in the database, so the warning bucket cannot be measured.",
   );
 
+  // The fixture changed a control status, so the denormalised columns are now
+  // one status behind. Production runs this sync on every patch and at boot;
+  // running it here keeps the guard from leaving drift behind for whichever
+  // step runs next, and asserting on it afterwards proves the fixture was
+  // absorbed rather than merely tolerated.
+  await syncStoredFrameworkPosture(ORG);
+
   const posture = await computePosture(ORG);
   check(
     "the SSOT reports at least one control in warning",
     posture.counts.warning > 0,
     "posture.counts.warning is " + posture.counts.warning + " after the fixture ran.",
+  );
+  check(
+    "the fixture leaves no drift between the SSOT and the stored columns",
+    diffPosture(posture).length === 0,
+    "Divergences: " + JSON.stringify(diffPosture(posture)),
   );
 
   // ── The controls endpoint serves the counts ──────────────────────────────
@@ -140,9 +172,6 @@ async function main() {
   );
 
   // ── The dashboard endpoint agrees with the controls endpoint ─────────────
-  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, ORG));
-  check("org " + ORG + " exists", org !== undefined, "No organisation to build a dashboard for.");
-
   const orgsService = new OrgsService();
   const dashboard = (await orgsService.getDashboard(ORG, org)) as {
     controlSummary?: Record<string, number>;
