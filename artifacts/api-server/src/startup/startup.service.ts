@@ -8,6 +8,8 @@ import { encryptCredential, isEncryptedCredential, encryptConfigCredentials, val
 import { runOrgInvitesMigration } from "../migrations/org-invites.migration";
 import { runMfaMigration as runMfaSchemaMigration } from "../migrations/mfa.migration";
 import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
+import { runPlatformAdminMigration } from "../migrations/platform-admin.migration";
+import { reconcilePlatformAdmins } from "../lib/platform-admin";
 
 /**
  * Load a policy template file by key. Returns the full markdown content, or
@@ -1184,6 +1186,12 @@ export class StartupService implements OnApplicationBootstrap {
     // than a super_admin grant.
     await this.runPlanProvisioning();
 
+    // Platform-staff access. The migration must run before the reconcile, and the
+    // reconcile must run before traffic is served, so a revoked administrator is
+    // never live for even one request after a restart.
+    await this.runPlatformAdminMigration();
+    await this.reconcilePlatformAdmins();
+
     await this.seedIfEmpty();
     await this.seedNewPolicies();
     await this.seedCommonRisks();
@@ -1277,6 +1285,54 @@ export class StartupService implements OnApplicationBootstrap {
       // migrations above, provisioning is not a security guarantee.
       this.logger.error(
         "Plan provisioning failed - continuing",
+        (err as any)?.message ?? String(err),
+      );
+    }
+  }
+
+  private async runPlatformAdminMigration() {
+    try {
+      const { legacyCopied } = await runPlatformAdminMigration(db);
+      this.logger.log("Platform admin schema migration complete");
+      if (legacyCopied > 0) {
+        this.logger.warn(
+          `Copied ${legacyCopied} legacy super_admin membership(s) into platform_admins. ` +
+            "The org_members rows were left in place deliberately - remove them by hand " +
+            "once you have confirmed the new platform access works.",
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        "Platform admin migration failed - continuing",
+        (err as any)?.message ?? String(err),
+      );
+    }
+  }
+
+  private async reconcilePlatformAdmins() {
+    try {
+      const result = await reconcilePlatformAdmins(
+        db,
+        process.env.PLATFORM_ADMIN_EMAILS,
+        this.logger,
+      );
+      const moved = result.granted.length + result.revoked.length;
+      if (moved > 0) {
+        this.logger.warn(
+          `Platform administrators reconciled: ${result.granted.length} granted, ` +
+            `${result.revoked.length} revoked, ${result.unchanged.length} unchanged`,
+        );
+      } else if (result.unchanged.length > 0) {
+        this.logger.log(
+          `Platform administrators verified: ${result.unchanged.length} configured, no change needed`,
+        );
+      }
+    } catch (err) {
+      // Fail open on reconciliation, exactly as with tier provisioning: a stale
+      // grant list is a smaller problem than an API that will not boot. The
+      // elevation gate still stands in front of every privileged endpoint.
+      this.logger.error(
+        "Platform admin reconciliation failed - continuing",
         (err as any)?.message ?? String(err),
       );
     }
