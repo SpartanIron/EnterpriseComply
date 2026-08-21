@@ -13,6 +13,7 @@ import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migra
 import { recordScoreSnapshots as recordScoreSnapshotSweep } from "../lib/score-history";
 import { runFismaFips199Migration } from "../migrations/fisma-fips199.migration";
 import { runPostureDriftLedgerMigration } from "../migrations/posture-drift-ledger.migration";
+import { runPolicyDocumentsMigration } from "../migrations/policy-documents.migration";
 import { runRlsCoverageMigration } from "../migrations/rls-coverage.migration";
 import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
 import { syncStoredFrameworkPosture } from "../lib/posture";
@@ -1211,6 +1212,7 @@ export class StartupService implements OnApplicationBootstrap {
     await this.consolidateMappings();
     await this.runFipsImpactMigration();
     await this.runDriftLedgerMigration();
+    await this.runPolicyDocumentsMigration();
     await this.runRlsCoverage();
     await this.syncFrameworkPosture();
     await this.recordScoreSnapshots();
@@ -1282,6 +1284,21 @@ export class StartupService implements OnApplicationBootstrap {
    * table the observer logs a write failure and the in-memory report continues,
    * which is the behaviour that existed before this table did.
    */
+  /**
+   * Customer-uploaded policy documents. Additive and idempotent.
+   *
+   * Fatal on failure, unlike the drift ledger next to it, and the difference is
+   * deliberate. A missing drift table costs a chart. A missing
+   * org_policy_documents table means the upload endpoint accepts a document,
+   * fails to store it, and the customer believes their signed policy is in the
+   * platform when it is not. Refusing to serve traffic is the better of those
+   * two outcomes, so this throws and the process exits with a visible error.
+   */
+  private async runPolicyDocumentsMigration() {
+    await runPolicyDocumentsMigration(db);
+    this.logger.log('Policy document store present.');
+  }
+
   private async runDriftLedgerMigration() {
     try {
       await runPostureDriftLedgerMigration(db);
