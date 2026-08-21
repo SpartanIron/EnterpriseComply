@@ -6,6 +6,7 @@ import {
   ucoFrameworkMappingsTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { NIST_800_171_R2_REQUIREMENT_COUNT } from "./framework-mappings";
 
 /**
  * Phase 1 - the single source of truth for compliance posture.
@@ -506,6 +507,86 @@ export function coverageWarnings(posture: Posture): CoverageWarning[] {
         " published controls are mapped, so this framework is partially assessed " +
         "and should not be presented as fully scored.",
     }));
+}
+
+export interface CatalogInconsistency {
+  frameworkKey: string;
+  catalogName: string;
+  declaredRevision: string | null;
+  declaredControlCount: number;
+  scoringRevision: string;
+  scoringRequirementCount: number;
+  note: string;
+}
+
+/**
+ * Which revision of a framework this platform actually scores against, taken
+ * from the weighted requirement set rather than from prose. Only frameworks
+ * with a real scoring set belong here.
+ */
+const SCORED_FRAMEWORK_REVISIONS: Record<
+  string,
+  { revision: string; requirementCount: number }
+> = {
+  "nist-800-171": {
+    revision: "Rev 2",
+    requirementCount: NIST_800_171_R2_REQUIREMENT_COUNT,
+  },
+};
+
+/**
+ * Places where the framework catalog's own label disagrees with the control
+ * data underneath it.
+ *
+ * There is exactly one today, and it is reported rather than corrected on
+ * purpose. The catalog calls nist-800-171 "NIST SP 800-171 Rev 3" and then
+ * declares 110 controls, and 110 is the size of the Rev 2 weighted requirement
+ * set this platform scores against. Rev 3 is a different requirement list, so
+ * either the label is wrong or the content is, and choosing which is a
+ * control-content decision about what the product claims to assess rather than
+ * a refactor. Guessing would put an unverified compliance claim in front of a
+ * customer, so the disagreement is surfaced through the API and left to
+ * whoever owns that decision.
+ */
+export function catalogInconsistencies(posture: Posture): CatalogInconsistency[] {
+  const findings: CatalogInconsistency[] = [];
+
+  for (const framework of posture.frameworks) {
+    const scoring = SCORED_FRAMEWORK_REVISIONS[framework.frameworkKey];
+    if (!scoring) continue;
+
+    const match = /\bRev(?:ision)?\.?\s*(\d+)\b/i.exec(framework.name);
+    const declaredRevision = match ? "Rev " + match[1] : null;
+
+    // Both halves have to be true for this to be the known inconsistency: a
+    // label naming one revision, over a control count that is exactly the
+    // scored revision's. If either stops holding, the finding disappears
+    // instead of asserting something the data no longer supports.
+    const revisionDisagrees =
+      declaredRevision !== null && declaredRevision !== scoring.revision;
+    const countMatchesScoringSet =
+      framework.declaredControlCount === scoring.requirementCount;
+
+    if (!revisionDisagrees || !countMatchesScoringSet) continue;
+
+    findings.push({
+      frameworkKey: framework.frameworkKey,
+      catalogName: framework.name,
+      declaredRevision,
+      declaredControlCount: framework.declaredControlCount,
+      scoringRevision: scoring.revision,
+      scoringRequirementCount: scoring.requirementCount,
+      note:
+        "The catalog labels this framework " + declaredRevision + " but declares " +
+        framework.declaredControlCount + " controls, which is the size of the " +
+        scoring.revision + " weighted requirement set this platform scores " +
+        "against. The label and the content describe different revisions. " +
+        "Reconciling them is a control-content decision, so it is reported " +
+        "here rather than changed.",
+    });
+  }
+
+  return findings;
 }
 
 /**
