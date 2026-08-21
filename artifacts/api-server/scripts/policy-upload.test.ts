@@ -35,6 +35,7 @@ import {
   summarisePolicyDocument,
   validatePolicyDocumentUpload,
 } from "../src/lib/policy-upload";
+import { PoliciesService } from "../src/modules/policies/policies.service";
 
 let failures = 0;
 
@@ -219,12 +220,17 @@ async function main() {
   // The service is the only caller allowed to touch the raw column, and only in
   // the insert and the download decode. This catches a row spread into a body.
   const serviceSource = codeOnly(readSource("src/modules/policies/policies.service.ts"));
-  const rawColumnUses = (serviceSource.match(/contentBase64/g) || []).length;
+  // Counting occurrences of the column name was the first version of this check
+  // and it was wrong: the insert, the request body and the download decode are
+  // three legitimate mentions and the threshold turned into a guess. What
+  // actually matters is that a stored row is read in exactly one place, so that
+  // is what is asserted. The behaviour is measured further down by calling the
+  // service and inspecting what it returns.
+  const rowReads = (serviceSource.match(/row\.contentBase64/g) || []).length;
   check(
-    "the service touches contentBase64 only where it must",
-    rawColumnUses <= 3,
-    "Found " + rawColumnUses + " references. Expected the insert, the download decode and nothing else. " +
-      "A row spread into a response body is how this leaks.",
+    "a stored document row is read in exactly one place",
+    rowReads === 1,
+    "Found " + rowReads + " reads of row.contentBase64. Only the download path may read the bytes.",
   );
   check(
     "the policy list is built through summarisePolicyDocument",
@@ -240,7 +246,19 @@ async function main() {
   );
 
   // -- 6. The larger body limit is scoped, not global -------------------------
-  const mainSource = codeOnly(readSource("src/main.ts"));
+  // Read raw, deliberately not through codeOnly(). The first CI run failed here
+  // with both assertions reporting the code as absent while it was plainly in
+  // the file. The cause: main.ts lists "https://*.clerk.accounts.dev" in the
+  // CSP allow-list, and the "//*" in that URL opens what the block-comment
+  // regex reads as a comment. It then closes on the ".*/" inside the SPA
+  // fallback route regex near the end of the file, deleting 6,895 of 13,476
+  // characters - including everything this step is looking for.
+  //
+  // Stripping comments is the right thing to do when searching for arithmetic
+  // that is also described in prose. It is the wrong thing to do here: neither
+  // string below can appear in a comment by accident, so the raw file is both
+  // safe and correct to search.
+  const mainSource = readSource("src/main.ts");
   const limitMatches = mainSource.match(/limit:\s*"\d+mb"/g) || [];
   check(
     "only one raised body limit exists",
@@ -316,6 +334,38 @@ async function main() {
     } catch {
       secondCurrentRejected = true;
     }
+    // What the source checks above are a proxy for: ask the service what it
+    // would send a browser, and look for the bytes in it. The fixture content is
+    // short, so its base64 is a specific string to search for rather than a
+    // field name that could be renamed.
+    const service = new PoliciesService();
+
+    const listed = await service.listPolicyDocuments(orgId, policy.id);
+    const listedJson = JSON.stringify(listed);
+    check(
+      "listPolicyDocuments returns the metadata",
+      listedJson.includes(stored.sha256),
+      "The document was not in the response at all, so the leak check below would " +
+        "have passed for the wrong reason.",
+    );
+    check(
+      "listPolicyDocuments emits no bytes",
+      !listedJson.includes("contentBase64") && !listedJson.includes(stored.contentBase64),
+      "Document bytes reached a JSON response.",
+    );
+
+    const listedPolicies = JSON.stringify(await service.getOrgPolicies(orgId));
+    check(
+      "the policy list reports the current document",
+      listedPolicies.includes(stored.sha256),
+      "getOrgPolicies did not surface the document, so the leak check below is vacuous.",
+    );
+    check(
+      "the policy list emits no bytes",
+      !listedPolicies.includes("contentBase64") && !listedPolicies.includes(stored.contentBase64),
+      "Document bytes reached the policy list response.",
+    );
+
     check(
       "the database refuses a second current version of one policy",
       secondCurrentRejected,
