@@ -27,14 +27,14 @@ export const PLAN_HIERARCHY: Record<PlanTier, number> = {
   federal: 3,
 };
 
-const PLAN_LABELS: Record<PlanTier, string> = {
+export const PLAN_LABELS: Record<PlanTier, string> = {
   starter: "Essentials",
   professional: "Professional",
   enterprise: "Enterprise",
   federal: "Federal",
 };
 
-const PLAN_DESCRIPTIONS: Record<PlanTier, string> = {
+export const PLAN_DESCRIPTIONS: Record<PlanTier, string> = {
   starter: "Core compliance automation for growing teams.",
   professional: "Multi-framework, auditor portal, and advanced risk management.",
   enterprise: "SSO/SAML, custom data retention, and large-scale deployment.",
