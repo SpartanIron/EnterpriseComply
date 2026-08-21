@@ -57,6 +57,28 @@ function readSource(relative: string): string {
  * results at all, which is how the bucket went missing without any test
  * noticing.
  */
+/**
+ * The fresh-database CI job runs migrations and seeds the control catalog, but
+ * it creates no organisation - the second CI run of this guard proved it, having
+ * failed on an empty organizations table after the first failed on assuming
+ * id 1. Everything below needs an organisation to assess, so one is created if
+ * the database has none. On any database that already has organisations this is
+ * a no-op and org 1 is preferred.
+ */
+async function resolveOrCreateOrg() {
+  const existing = await db.select().from(organizationsTable).orderBy(asc(organizationsTable.id));
+  const preferred = existing.find((o) => o.id === PREFERRED_ORG) ?? existing[0];
+  if (preferred) return preferred;
+
+  await db.insert(organizationsTable).values({
+    name: "Posture guard fixture",
+    slug: "posture-guard-fixture",
+  });
+
+  const created = await db.select().from(organizationsTable).orderBy(asc(organizationsTable.id));
+  return created[0];
+}
+
 async function ensureWarningFixture(ORG: number): Promise<string | null> {
   const existing = await db
     .select()
@@ -98,12 +120,11 @@ async function ensureWarningFixture(ORG: number): Promise<string | null> {
 async function main() {
   console.log("Phase 1c: posture surfaces guard");
 
-  const orgs = await db.select().from(organizationsTable).orderBy(asc(organizationsTable.id));
-  const org = orgs.find((o) => o.id === PREFERRED_ORG) ?? orgs[0];
+  const org = await resolveOrCreateOrg();
   check(
     "an organisation exists to assess",
     org !== undefined,
-    "No rows in organizations, so there is nothing to build a dashboard for.",
+    "organizations is empty and the fixture could not create a row.",
   );
   if (!org) {
     console.error("\n1 check(s) failed.");
