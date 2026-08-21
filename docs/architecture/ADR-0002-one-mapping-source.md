@@ -59,8 +59,13 @@ or the weights of a compliance score is a control-content decision and does not
 belong inside a refactor.
 
 **The Rev 3 declared control count.** The catalog says Rev 3 and declares 110
-controls, which is Rev 2's count. Surfaced as a coverage warning, not silently
-adjusted, for the same reason.
+controls, which is Rev 2's count. That is reported by
+`catalogInconsistencies`, a group of its own rather than a coverage warning,
+because thin mappings and a mislabelled catalog are different problems with
+different owners. The finding is derived: it reads the revision out of the
+catalog label, compares it with the revision of the weighted set actually
+scored, and disappears on its own if either side changes. Which of the two is
+wrong is a control-content decision, so it is surfaced and left.
 
 ## What changed about the drift metric, and why that is not moving the goalposts
 
@@ -71,8 +76,17 @@ rather than a fault. A metric that includes them is red forever and therefore
 ignored.
 
 So `diffPosture` now returns only SSOT-versus-stored-column disagreement, which
-must be zero, and the other two groups are reported separately as
-`legacyArithmeticNotes` and `coverageWarnings`. The headline number got smaller
+must be zero, and the other three groups are reported separately as
+`legacyArithmeticNotes`, `coverageWarnings` and `catalogInconsistencies`.
+
+Reported means served, not merely computable. `GET /orgs/:orgId/posture/drift`
+carries all four groups under `separatelyReported`, alongside a `headline` block
+that states in the payload itself that a divergence count of zero is nine
+defects fixed plus four items that were never defects. `GET /orgs/:orgId/posture`
+carries `coverageWarnings` and `catalogInconsistencies` for ordinary callers, so
+a small score cannot be read as poor compliance when it partly means thin
+mappings. The first cut of this phase exported the two functions and called
+neither, which for a consumer is indistinguishable from not having them. The headline number got smaller
 because its definition got narrower, and that is stated here explicitly so nobody
 later reads "drift went from 13 to 0" as thirteen bugs fixed. Nine were.
 
