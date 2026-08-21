@@ -33,6 +33,7 @@ const SCAN_TARGETS = [
   // its own merits. Back-enrolling them is tracked separately; doing it inside
   // an unrelated change would mean rubber-stamping SQL nobody reviewed.
   join(REPO_ROOT, "artifacts/api-server/src/migrations/risk-seed-dedupe.migration.ts"),
+  join(REPO_ROOT, "artifacts/api-server/src/migrations/mapping-consolidation.migration.ts"),
 ];
 
 // Pick up any .sql files under lib/db/migrations/ (Drizzle generate output)
