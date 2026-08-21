@@ -1,8 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { decryptCredential, encryptCredential } from "../../lib/credential-crypto";
 import { writeAuditLog } from "../../lib/audit-log.js";
+import { checkAdminMfaReset } from "../../lib/mfa-admin-reset";
 import { logger } from "../../lib/logger";
 import {
   BACKUP_CODE_COUNT,
@@ -360,5 +361,118 @@ export class MfaService {
       issued: backupCodes.length,
     });
     return { backupCodes };
+  }
+
+  /**
+   * Clear another member authenticator app on their behalf.
+   *
+   * The lockout this exists for is specific: once an org turns MFA enforcement on,
+   * disable() above refuses to remove an authenticator, so a member whose phone is
+   * gone and whose backup codes are spent has no route back in. The only remaining
+   * alternative is a hand-edited row in two_factor, with no reason recorded and no
+   * trace of who did it - which is precisely the class of change this product exists
+   * to make unnecessary.
+   *
+   * Every rule about who may do this to whom lives in lib/mfa-admin-reset.ts as pure
+   * functions, so it is unit tested and written down in one place. What is left here
+   * is only the effect: forget the secret, forget any half-finished enrolment, and
+   * drop the step-up stamp from the target sessions, so a session that was already
+   * trusted cannot keep coasting on a factor that no longer exists.
+   */
+  async adminReset(
+    orgId: number,
+    actor: { userId: string; role: string | null | undefined; email?: string | null },
+    targetMemberId: number,
+    confirmEmail: unknown,
+    mfaEnforced: boolean,
+  ) {
+    const target = firstRow(
+      await db.execute(sql`
+        SELECT clerk_user_id AS user_id, email, role
+        FROM org_members
+        WHERE id = ${targetMemberId} AND org_id = ${orgId}
+        LIMIT 1
+      `),
+    );
+    const targetUserId = target ? String(target.user_id) : "";
+    const targetEmail = target ? String(target.email ?? "") : "";
+
+    const denial = checkAdminMfaReset({
+      actorUserId: actor.userId,
+      actorRole: actor.role,
+      actorEnrolled: !!(await this.record(actor.userId)),
+      targetUserId,
+      targetRole: target ? String(target.role ?? "") : null,
+      targetEmail,
+      targetEnrolled: targetUserId ? !!(await this.record(targetUserId)) : false,
+      targetInOrg: !!target,
+      confirmEmail,
+    });
+
+    if (denial) {
+      // A refused attempt is worth recording. Repeated failures on this endpoint are
+      // a signal, and a silent 403 would leave nothing for anybody to notice.
+      await this.auditAs(orgId, "security.mfa_admin_reset_denied", actor.userId, targetUserId, {
+        reason: denial.error,
+        targetMemberId,
+      });
+      if (denial.status === 404) throw new NotFoundException(denial);
+      if (denial.status === 400) throw new BadRequestException(denial);
+      throw new ForbiddenException(denial);
+    }
+
+    await db.execute(sql`DELETE FROM two_factor WHERE "userId" = ${targetUserId}`);
+    await db.execute(sql`DELETE FROM mfa_enrollment WHERE user_id = ${targetUserId}`);
+    await db.execute(sql`UPDATE "user" SET "twoFactorEnabled" = FALSE WHERE id = ${targetUserId}`);
+    await db.execute(sql`UPDATE session SET mfa_verified_at = NULL WHERE "userId" = ${targetUserId}`);
+
+    await this.auditAs(orgId, "security.mfa_admin_reset", actor.userId, targetUserId, {
+      targetMemberId,
+      targetEmail,
+      actorEmail: actor.email ?? null,
+      mfaEnforced,
+    });
+    logger.warn(
+      { orgId, actor: actor.userId, target: targetUserId },
+      "[mfa] authenticator app reset by an administrator",
+    );
+
+    return {
+      reset: true,
+      email: targetEmail,
+      // With enforcement on, the next org-scoped request that member makes is refused
+      // until they enrol again. That is the point: the reset restores a route back in,
+      // it does not hand out an exemption.
+      mustReenroll: mfaEnforced,
+    };
+  }
+
+  /**
+   * Audit write for an action one person takes against another.
+   *
+   * this.audit() above records the subject as the actor, which is right for
+   * self-service and wrong here. An audit trail that names the person something was
+   * done to as the author of the change is worse than no trail at all.
+   */
+  private async auditAs(
+    orgId: number | null,
+    action: string,
+    actorUserId: string,
+    targetUserId: string,
+    details: unknown,
+  ) {
+    if (orgId == null) return;
+    try {
+      await writeAuditLog(
+        orgId,
+        action,
+        "user",
+        targetUserId || actorUserId,
+        details,
+        actorUserId,
+      );
+    } catch (err) {
+      logger.warn({ err, action }, "[mfa] audit write failed");
+    }
   }
 }
