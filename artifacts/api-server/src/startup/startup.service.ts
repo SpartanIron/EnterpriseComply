@@ -11,6 +11,7 @@ import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
 import { runPlatformAdminMigration } from "../migrations/platform-admin.migration";
 import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migration";
 import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
+import { syncStoredFrameworkPosture } from "../lib/posture";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
 
 /**
@@ -1204,6 +1205,7 @@ export class StartupService implements OnApplicationBootstrap {
     // because it reconciles against them rather than creating them. Placed with
     // the other Phase 1 repairs so the data-integrity work is one block.
     await this.consolidateMappings();
+    await this.syncFrameworkPosture();
     await this.seedCommonRisks();
     await this.seedSubProcessors();
     await this.seedComplianceCalendar();
@@ -1771,6 +1773,55 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
    * the weighted set scores as permanently unmet and would otherwise be
    * invisible - the number would simply be wrong and nobody would be told.
    */
+  /**
+   * Refresh the denormalised posture columns on org_frameworks for every
+   * organisation.
+   *
+   * These columns are read by pages that do not compute, and until Phase 1b the
+   * only thing that ever wrote them was a control-result patch. On the measured
+   * organisation nobody had patched a control since the rows were created, so
+   * every one of them still said zero passing, zero failing and a compliance
+   * score of zero - and the Frameworks page dutifully showed that.
+   *
+   * Running it at boot is what lets the drift count actually reach zero rather
+   * than waiting for somebody to happen to edit a control. It is a cache refresh,
+   * so it is idempotent and it is never fatal: the posture endpoint does not read
+   * these columns and stays correct regardless.
+   */
+  private async syncFrameworkPosture() {
+    try {
+      const orgs = await db.execute(sql`SELECT id FROM organizations`);
+      const rows = (orgs as { rows?: Array<{ id: number }> }).rows ?? (orgs as Array<{ id: number }>);
+
+      let updated = 0;
+      let failed = 0;
+
+      for (const row of Array.isArray(rows) ? rows : []) {
+        const result = await syncStoredFrameworkPosture(Number(row.id));
+        updated += result.updated;
+        failed += result.failed;
+      }
+
+      this.logger.log(
+        'Framework posture cache refreshed: orgs=' + (Array.isArray(rows) ? rows.length : 0) +
+          ' rowsUpdated=' + updated +
+          ' rowsFailed=' + failed,
+      );
+
+      if (failed > 0) {
+        this.logger.warn(
+          'POSTURE_CACHE_STALE ' + failed + ' framework row(s) could not be refreshed. ' +
+            'Pages reading the stored columns will show stale numbers until the next boot ' +
+            'or control patch; /orgs/:orgId/posture is unaffected.',
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        'Framework posture cache refresh failed: ' +
+          (error instanceof Error ? error.message : String(error)),
+      );
+    }
+  }
   private async consolidateMappings() {
     try {
       const result = await runMappingConsolidationMigration(db);
