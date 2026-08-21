@@ -13,6 +13,7 @@ import { HealthModule } from "./modules/health/health.module";
 import { OrgsModule } from "./modules/orgs/orgs.module";
 import { FrameworksModule } from "./modules/frameworks/frameworks.module";
 import { ControlsModule } from "./modules/controls/controls.module";
+import { PostureModule } from "./modules/posture/posture.module";
 import { IntegrationsModule } from "./modules/integrations/integrations.module";
 import { EvidenceModule } from "./modules/evidence/evidence.module";
 import { PoamModule } from "./modules/poam/poam.module";
@@ -78,6 +79,7 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
     OrgsModule,
     FrameworksModule,
     ControlsModule,
+    PostureModule,
     IntegrationsModule,
     EvidenceModule,
     PoamModule,
