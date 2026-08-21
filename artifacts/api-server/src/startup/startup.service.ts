@@ -9,6 +9,7 @@ import { runOrgInvitesMigration } from "../migrations/org-invites.migration";
 import { runMfaMigration as runMfaSchemaMigration } from "../migrations/mfa.migration";
 import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
 import { runPlatformAdminMigration } from "../migrations/platform-admin.migration";
+import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migration";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
 
 /**
@@ -1194,6 +1195,10 @@ export class StartupService implements OnApplicationBootstrap {
 
     await this.seedIfEmpty();
     await this.seedNewPolicies();
+    // The repair has to precede the seed. It is what writes the markers the
+    // fixed seeder now checks, so running it afterwards would let one more
+    // round of duplicates in before the guard could ever see them.
+    await this.repairRiskSeed();
     await this.seedCommonRisks();
     await this.seedSubProcessors();
     await this.seedComplianceCalendar();
@@ -1733,6 +1738,39 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
     }
   }
 
+  /**
+   * Collapses the duplicate rows the old seed left behind and adds the
+   * uniqueness it always assumed it had. See
+   * migrations/risk-seed-dedupe.migration.ts for the full ordering.
+   *
+   * Logged rather than fatal. If the repair fails, the guard in
+   * seedCommonRisks() below still stops the table growing, so refusing to
+   * serve traffic would cost more than it protects. The count of groups it
+   * could not collapse is logged either way, so a partial outcome is visible
+   * instead of assumed.
+   */
+  private async repairRiskSeed() {
+    try {
+      const result = await runRiskSeedDedupeMigration(db);
+      this.logger.log(
+        'Risk seed repair: quarantined=' + result.quarantined +
+          ' deleted=' + result.deleted +
+          ' reviewDatesBackfilled=' + result.reviewDatesBackfilled +
+          ' uniqueIndex=' + result.uniqueIndexPresent +
+          ' remainingDuplicateGroups=' + result.remainingDuplicateGroups +
+          ' seedMarkers=' + result.seedMarkersInserted,
+      );
+      if (result.remainingDuplicateGroups > 0) {
+        this.logger.warn(
+          'Risk seed repair left ' + result.remainingDuplicateGroups +
+            ' duplicate group(s); uniqueness is NOT enforced until they are resolved',
+        );
+      }
+    } catch (err) {
+      this.logger.error('Risk seed repair failed', (err as any)?.message ?? String(err));
+    }
+  }
+
   private async seedCommonRisks() {
     try {
       const orgs = await db.execute(sql.raw('SELECT id FROM organizations LIMIT 200'));
@@ -1740,7 +1778,17 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
       for (const org of orgRows) {
         const riskCountCheck = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM org_risks WHERE org_id = ' + org.id));
         const riskCnt = parseInt(((riskCountCheck.rows ?? riskCountCheck) as Array<Record<string, string>>)[0]?.cnt ?? '0');
-        // startup seeding logged as batch summary below
+        // The line that was missing. seedSubProcessors() and
+        // seedComplianceCalendar() both close their identical count check with
+        // exactly this, and its absence here is the whole reason org 1 reached
+        // 560 rows from a 20-row seed.
+        //
+        // The marker table is consulted as well as the count, because a count
+        // alone means an org that deliberately deleted every seeded risk gets
+        // them all back on the next restart.
+        const seedMarker = await db.execute(sql.raw('SELECT 1 FROM org_risks_seeded WHERE org_id = ' + org.id));
+        const alreadySeeded = ((seedMarker.rows ?? seedMarker) as unknown[]).length > 0;
+        if (alreadySeeded || riskCnt > 0) continue;
         type RiskSeed = { title: string; description: string; category: string; likelihood: number; impact: number; treatment: string; treatment_plan: string; owner_name: string; related_control_id?: string };
         const risks: RiskSeed[] = [
           { title: 'Inadequate MFA enforcement', description: 'Admin accounts lack mandatory multi-factor authentication exposing systems to credential-based attacks.', category: 'access_control', likelihood: 4, impact: 5, treatment: 'mitigate', treatment_plan: 'Enable MFA for all privileged accounts. Enforce via conditional access policy. Target: 30 days.', owner_name: 'CISO', related_control_id: 'UCO-AI-001' },
@@ -1771,7 +1819,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
           const rs = rl * ri;
           try {
             await db.execute(sql.raw(
-              "INSERT INTO org_risks (org_id, title, description, category, likelihood, impact, inherent_score, treatment, treatment_plan, residual_likelihood, residual_impact, residual_score, owner_name, status, related_control_id, created_at, updated_at) VALUES (" +
+              "INSERT INTO org_risks (org_id, title, description, category, likelihood, impact, inherent_score, treatment, treatment_plan, residual_likelihood, residual_impact, residual_score, owner_name, status, related_control_id, review_date, created_at, updated_at) VALUES (" +
               org.id + ", " +
               "'" + risk.title.replace(/'/g, "''") + "', " +
               "'" + risk.description.replace(/'/g, "''") + "', " +
@@ -1781,11 +1829,24 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
               "'" + risk.treatment_plan.replace(/'/g, "''") + "', " +
               rl + ", " + ri + ", " + rs + ", " +
               "'" + risk.owner_name.replace(/'/g, "''") + "', " +
-              "'open', '" + (risk.related_control_id || '') + "', NOW(), NOW())"
+              "'open', '" + (risk.related_control_id || '') + "', NOW() + INTERVAL '90 days', NOW(), NOW()) " +
+              // Belt and braces with the unique index the repair adds: if the
+              // guard above is ever bypassed, the database still refuses a
+              // second copy instead of accepting it silently.
+              "ON CONFLICT DO NOTHING"
             ));
-          } catch (_e) { /* skip duplicates */ }
+          } catch (e) {
+            // ON CONFLICT handles the duplicate case, so anything reaching here
+            // is a different problem and saying so beats the old comment, which
+            // claimed to skip duplicates that the schema never rejected.
+            this.logger.warn(
+              'Risk seed insert failed for "' + risk.title + '": ' + ((e as any)?.message ?? String(e)),
+            );
+          }
         }
-        // risks seeded - count check above prevents re-seeding
+        // Marker written after the inserts, so a crash part way through leaves
+        // the org unmarked and the next boot finishes the job.
+        await db.execute(sql.raw('INSERT INTO org_risks_seeded (org_id) VALUES (' + org.id + ') ON CONFLICT (org_id) DO NOTHING'));
         // startup seeding logged as batch summary below
       }
     } catch (err) {
