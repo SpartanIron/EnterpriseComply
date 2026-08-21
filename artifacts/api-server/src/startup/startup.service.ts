@@ -7,6 +7,7 @@ import { join } from "path";
 import { encryptCredential, isEncryptedCredential, encryptConfigCredentials, validateCredentialKeyMaterial } from "../lib/credential-crypto";
 import { runOrgInvitesMigration } from "../migrations/org-invites.migration";
 import { runMfaMigration as runMfaSchemaMigration } from "../migrations/mfa.migration";
+import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
 
 /**
  * Load a policy template file by key. Returns the full markdown content, or
@@ -1176,6 +1177,13 @@ export class StartupService implements OnApplicationBootstrap {
     await this.runAuditLogWormMigration();
     await this.runCredentialEncryptionMigration();
 
+
+    // Tier provisioning runs after the schema exists and before anything reads a
+    // plan. It is not a security operation: it can set organizations.plan and
+    // nothing else. See org-plan.provisioning.ts for why this is config rather
+    // than a super_admin grant.
+    await this.runPlanProvisioning();
+
     await this.seedIfEmpty();
     await this.seedNewPolicies();
     await this.seedCommonRisks();
@@ -1246,6 +1254,31 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.log('MFA schema migration complete');
     } catch (err) {
       this.logger.error('MFA migration failed - continuing', (err as any)?.message ?? String(err));
+    }
+  }
+
+  private async runPlanProvisioning() {
+    try {
+      const result = await applyPlanProvisioning(
+        db,
+        process.env.ORG_PLAN_PROVISIONING,
+        this.logger,
+      );
+      if (result.changed.length > 0) {
+        this.logger.log(`Plan provisioning applied: ${result.changed.join("; ")}`);
+      } else if (result.unchanged.length > 0) {
+        this.logger.log(
+          `Plan provisioning verified ${result.unchanged.length} organisation(s), no change needed`,
+        );
+      }
+    } catch (err) {
+      // Being on the wrong tier is a much smaller problem than being offline, so
+      // this never propagates. Unlike the WORM and credential-encryption
+      // migrations above, provisioning is not a security guarantee.
+      this.logger.error(
+        "Plan provisioning failed - continuing",
+        (err as any)?.message ?? String(err),
+      );
     }
   }
 
