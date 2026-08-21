@@ -102,9 +102,26 @@ return { org };
 
 async updateOrg(orgId: number, body: Record<string, unknown>) {
 const allowed = ["name", "industry", "size", "website"] as const;
+// FIPS 199 is validated rather than passed through, because a typo here becomes
+// the recorded categorisation of a federal system. Only the three levels the
+// standard defines are accepted, plus null to clear it.
+const FIPS_199_LEVELS = new Set(["low", "moderate", "high"]);
 const updates: Record<string, unknown> = {};
 for (const key of allowed) {
 if (body[key] !== undefined) updates[key] = body[key];
+}
+
+if (body.fips199Impact !== undefined) {
+const raw = body.fips199Impact;
+if (raw === null || raw === "") {
+updates.fips199Impact = null;
+} else if (typeof raw === "string" && FIPS_199_LEVELS.has(raw.toLowerCase())) {
+updates.fips199Impact = raw.toLowerCase();
+} else {
+throw new ConflictException(
+"fips199Impact must be low, moderate or high, or null to clear it.",
+);
+}
 }
 const [org] = await db.update(organizationsTable)
 .set(updates as any)
@@ -297,6 +314,15 @@ total: legacyTotal,
 return {
 org,
 overallScore: posture ? posture.scorePercent : legacyTotal > 0 ? Math.round((legacyPassing / legacyTotal) * 100) : 0,
+// FISMA scoping depends on this. Reported even when unset, because "nobody has
+// categorised this system" is information rather than an absence of it.
+fips199: posture
+? posture.fips199
+: {
+impactLevel: null,
+source: "unavailable",
+note: "Posture computation failed, so the recorded FIPS 199 level could not be read.",
+},
 frameworks,
 controlSummary,
 connectedIntegrations: connected.length,
