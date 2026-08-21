@@ -209,6 +209,20 @@ jobs:
         working-directory: artifacts/api-server
         run: node --import @swc-node/register/esm-register scripts/mapping-consolidation.test.ts
 
+      # ── Phase 1c: the credential boundary and the trend ──────────────────
+      #
+      # Two live measurements, both taken against production before this phase:
+      # the monitoring endpoint returned integration credentials as ciphertext,
+      # and the score-history endpoint generated a ninety-day curve whose latest
+      # point read 22 while the posture SSOT read 3.
+      #
+      # The guard self-tests its own leak detector before trusting it, and
+      # creates a connected integration holding credential material so the
+      # redaction assertions are not passing on an empty set.
+      - name: API exposure and trend integrity guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/api-exposure.test.ts
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()
