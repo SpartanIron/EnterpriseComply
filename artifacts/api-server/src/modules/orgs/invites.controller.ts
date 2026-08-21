@@ -19,6 +19,7 @@ import { Throttle } from "@nestjs/throttler";
 import { ClerkUserId, OrgContext, OrgContextGuard } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
 import { InvitesService, type InviteActor } from "./invites.service";
+import { MfaService } from "../mfa/mfa.service";
 
 interface OrgCtx {
   orgId: number;
@@ -41,7 +42,10 @@ function actorOf(ctx: OrgCtx, userId: string): InviteActor {
 
 @Controller("orgs")
 export class InvitesController {
-  constructor(private readonly invites: InvitesService) {}
+  constructor(
+    private readonly invites: InvitesService,
+    private readonly mfa: MfaService,
+  ) {}
 
   @Get(":orgId/invites")
   @UseGuards(OrgContextGuard, RequireRole("admin"))
@@ -109,6 +113,40 @@ export class InvitesController {
       memberId,
       (body?.role ?? "").trim(),
       actorOf(ctx, userId),
+    );
+  }
+
+  /**
+   * Reset a member authenticator app.
+   *
+   * OrgContextGuard is doing more work here than it looks. It binds :orgId to the
+   * caller own organisation, and it is also the guard that enforces the step-up
+   * second factor - so by the time this method body runs, the caller has already
+   * presented a code in this session. MfaService.adminReset() then applies the
+   * rules that are specific to this action: the caller must hold an authenticator
+   * of their own, cannot reset their own, cannot reset an owner unless they are an
+   * owner, and must retype the target address to confirm.
+   *
+   * Throttled harder than the role change next to it. There is no legitimate reason
+   * to reset five authenticators a minute, and a brute-force of the confirmation
+   * field should die quickly.
+   */
+  @Post(":orgId/members/:memberId/mfa-reset")
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  resetMemberMfa(
+    @OrgContext() ctx: OrgCtx,
+    @ClerkUserId() userId: string,
+    @Param("memberId", ParseIntPipe) memberId: number,
+    @Body() body: { confirmEmail?: string },
+  ) {
+    const actor = actorOf(ctx, userId);
+    return this.mfa.adminReset(
+      ctx.orgId,
+      { userId, role: actor.role, email: actor.email ?? null },
+      memberId,
+      body?.confirmEmail,
+      !!(ctx.org as Record<string, unknown> | undefined)?.mfaEnforced,
     );
   }
 }

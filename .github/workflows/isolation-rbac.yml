@@ -90,6 +90,31 @@ jobs:
       - name: Verify platform admin bootstrap and elevation rules
         run: node --import @swc-node/register/esm-register artifacts/api-server/scripts/platform-admin.test.mjs
 
+      # -- Invitation outcomes + administrator MFA reset rules ----------------
+      # Pure unit test. Two decision tables that used to be implicit: what a failed
+      # invitation redemption actually means, and who may clear another member
+      # authenticator. The first one shipped a real dead end - an address already on
+      # the team was told its link was invalid and to ask for a replacement, which
+      # on redemption returned it to the same screen. The second governs a
+      # destructive security action, so its refusals are pinned rather than trusted.
+      - name: Verify invitation outcomes and administrator reset rules
+        run: node --import @swc-node/register/esm-register artifacts/api-server/scripts/mfa-reset-and-invites.test.mjs
+
+      # -- Route registration guard -------------------------------------------
+      # Three commits in this repository have silently failed to land, and one of
+      # them was the single app.module.ts line that registers PlatformModule. The
+      # symptom was quiet and confusing: every /api/admin/* endpoint answered 403
+      # elevation_required while the endpoint that grants an elevation returned 404,
+      # so the gate could be satisfied by nobody. No unit test notices a missing
+      # import, so it is asserted directly and cheaply.
+      - name: Verify the platform elevation routes are registered
+        run: |
+          test -f artifacts/api-server/src/modules/platform/platform.controller.ts
+          test -f artifacts/api-server/src/modules/platform/platform.module.ts
+          grep -q "modules/platform/platform.module" artifacts/api-server/src/app.module.ts
+          grep -q "^    PlatformModule," artifacts/api-server/src/app.module.ts
+          grep -q "mfa-reset" artifacts/api-server/src/modules/orgs/invites.controller.ts
+
       # -- Frontend production build ------------------------------------------
       # The api-server tests below never import the React app, so a broken
       # frontend import graph used to pass CI and only fail later inside the
