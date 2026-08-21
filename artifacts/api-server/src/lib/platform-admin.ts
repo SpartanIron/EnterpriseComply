@@ -60,6 +60,22 @@ export async function isPlatformAdmin(userId: string): Promise<boolean> {
 }
 
 /**
+ * The email recorded for a platform administrator, or null.
+ *
+ * Read from platform_admins rather than from the tenant membership that used to
+ * carry it, so audit writes keep an actor email now that platform staff are no
+ * longer org members.
+ */
+export async function platformAdminEmail(userId: string): Promise<string | null> {
+  if (!userId) return null;
+  const rows = rowsOf(
+    await db.execute(sql`SELECT email FROM platform_admins WHERE user_id = ${userId} LIMIT 1`),
+  );
+  const email = rows[0]?.email;
+  return email ? String(email) : null;
+}
+
+/**
  * The live elevation for a user, or null.
  *
  * Expiry is evaluated in SQL against NOW() rather than in JavaScript against
