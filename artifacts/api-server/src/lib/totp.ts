@@ -12,7 +12,7 @@
  * Defaults are the ones every mainstream authenticator app assumes when the otpauth
  * URI omits them: HMAC-SHA1, a 30 second period, 6 digits.
  */
-import { createHmac, createHash, randomBytes, timingSafeEqual } from "crypto";
+import { createHmac, createHash, randomBytes, randomInt, timingSafeEqual } from "crypto";
 
 /** RFC 4648 section 6 alphabet. Padding is not emitted; authenticator apps do not want it. */
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -136,19 +136,20 @@ export function buildOtpauthUri(params: { secret: string; accountName: string; i
 
 /**
  * Backup codes. Ambiguous glyphs (I, O, 0, 1) are left out so a code read off a screen
- * and typed by hand does not fail for cosmetic reasons. The alphabet is 32 symbols and
- * 256 divides by 32 exactly, so the modulo below introduces no bias.
+ * and typed by hand does not fail for cosmetic reasons. randomInt draws uniformly by
+ * rejection sampling, so there is no modulo bias to reason about and static analysis
+ * does not have to take our word for it.
  */
 const BACKUP_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const BACKUP_CODE_COUNT = 10;
+export const BACKUP_CODE_LENGTH = 10;
 
 export function generateBackupCodes(count: number = BACKUP_CODE_COUNT): string[] {
   const codes: string[] = [];
   for (let i = 0; i < count; i++) {
-    const bytes = randomBytes(10);
     let raw = "";
-    for (let j = 0; j < bytes.length; j++) {
-      raw += BACKUP_CODE_ALPHABET[bytes[j] % BACKUP_CODE_ALPHABET.length];
+    for (let j = 0; j < BACKUP_CODE_LENGTH; j++) {
+      raw += BACKUP_CODE_ALPHABET[randomInt(BACKUP_CODE_ALPHABET.length)];
     }
     codes.push(raw.slice(0, 5) + "-" + raw.slice(5));
   }
