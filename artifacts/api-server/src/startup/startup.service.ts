@@ -10,6 +10,7 @@ import { runMfaMigration as runMfaSchemaMigration } from "../migrations/mfa.migr
 import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
 import { runPlatformAdminMigration } from "../migrations/platform-admin.migration";
 import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migration";
+import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
 
 /**
@@ -1199,6 +1200,10 @@ export class StartupService implements OnApplicationBootstrap {
     // fixed seeder now checks, so running it afterwards would let one more
     // round of duplicates in before the guard could ever see them.
     await this.repairRiskSeed();
+    // Phase 1b. Runs after seedIfEmpty() has put the catalog mappings in place,
+    // because it reconciles against them rather than creating them. Placed with
+    // the other Phase 1 repairs so the data-integrity work is one block.
+    await this.consolidateMappings();
     await this.seedCommonRisks();
     await this.seedSubProcessors();
     await this.seedComplianceCalendar();
@@ -1749,6 +1754,61 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
    * could not collapse is logged either way, so a partial outcome is visible
    * instead of assumed.
    */
+  /**
+   * Folds the hardcoded objective-to-requirement map into
+   * uco_framework_mappings and backfills the scoring identifiers that let the
+   * DoD methodology join against Rev 3 notation. See
+   * migrations/mapping-consolidation.migration.ts for the ordering and for why
+   * presence is keyed on the normalised identifier.
+   *
+   * Logged rather than fatal, with one exception. A failure here leaves the
+   * table as it was, and the readers all fall back to normalising the framework
+   * identifier at read time, so posture stays computable and refusing to serve
+   * traffic would cost more than it protects.
+   *
+   * The exception is unresolvable scoring identifiers. Those are logged at
+   * error, not warn, because a mapping row whose identifier does not land in
+   * the weighted set scores as permanently unmet and would otherwise be
+   * invisible - the number would simply be wrong and nobody would be told.
+   */
+  private async consolidateMappings() {
+    try {
+      const result = await runMappingConsolidationMigration(db);
+
+      this.logger.log(
+        'Mapping consolidation: scoringIdsBackfilled=' + result.scoringIdsBackfilled +
+          ' revisionsBackfilled=' + result.revisionsBackfilled +
+          ' relocatedRowsInserted=' + result.relocatedRowsInserted +
+          ' rowsForFramework=' + result.rowsForFramework +
+          ' objectivesForFramework=' + result.objectivesForFramework +
+          ' uniqueIndex=' + result.uniqueIndexPresent +
+          ' duplicateTriples=' + result.duplicateTriples,
+      );
+
+      if (result.duplicateTriples > 0) {
+        this.logger.warn(
+          'Mapping consolidation left ' + result.duplicateTriples +
+            ' duplicate mapping triple(s) in place, so the unique index was not ' +
+            'created. The relocation still ran; the table is not yet protected ' +
+            'against a future duplicate.',
+        );
+      }
+
+      if (result.unresolvableScoringIds.length > 0) {
+        this.logger.error(
+          'MAPPING_UNRESOLVABLE ' + result.unresolvableScoringIds.length +
+            ' mapping row(s) carry a requirement identifier that does not resolve ' +
+            'into the scoring set, so they can never be scored as met: ' +
+            result.unresolvableScoringIds.join(", "),
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        'Mapping consolidation failed, leaving the table as it was: ' +
+          (error instanceof Error ? error.message : String(error)),
+      );
+    }
+  }
   private async repairRiskSeed() {
     try {
       const result = await runRiskSeedDedupeMigration(db);
