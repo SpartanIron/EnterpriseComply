@@ -73,6 +73,14 @@ jobs:
       - name: Verify TOTP against RFC 6238 vectors
         run: node --import @swc-node/register/esm-register artifacts/api-server/scripts/totp-vectors.test.mjs
 
+      # -- Plan provisioning (parser + idempotency) ---------------------------
+      # Also a pure unit test. Guards the property that matters most here: an org
+      # already on its configured tier must not be written to, so a restart loop
+      # cannot churn the audit log, and a typo in ORG_PLAN_PROVISIONING must be
+      # skipped loudly rather than provisioning the wrong tier.
+      - name: Verify plan provisioning parser and idempotency
+        run: node --import @swc-node/register/esm-register artifacts/api-server/scripts/plan-provisioning.test.mjs
+
       # ── Start API server in the background ────────────────────────────────
       # Uses swc-node so TypeScript is transpiled on the fly; no build step needed.
       # StartupService runs migrations and seeds tables on first boot.
