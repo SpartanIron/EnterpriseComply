@@ -19,6 +19,8 @@ import { writeAuditLog } from "../../lib/audit-log.js";
 import { sendWelcomeEmail } from "../../lib/email";
 import { logger } from "../../lib/logger";
 import { getRateLimitPool } from "../../lib/pg-pool";
+import { computePosture } from "../../lib/posture";
+import { recordPostureDrift } from "../../lib/posture-drift";
 
 @Injectable()
 export class OrgsService {
@@ -242,7 +244,7 @@ return { org };
   }
 
 async getDashboard(orgId: number, org: typeof organizationsTable.$inferSelect) {
-const [frameworks, controls, integrations, policies, people] = await Promise.all([
+const [frameworks, controls, integrations, policies, people, shadowPosture] = await Promise.all([
 db.query.orgFrameworksTable.findMany({
 where: and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.active, true)),
 }),
@@ -250,6 +252,17 @@ db.query.orgControlResultsTable.findMany({ where: eq(orgControlResultsTable.orgI
 db.query.orgIntegrationsTable.findMany({ where: eq(orgIntegrationsTable.orgId, orgId) }),
 db.query.orgPoliciesTable.findMany({ where: eq(orgPoliciesTable.orgId, orgId) }),
 db.query.orgPeopleTable.findMany({ where: eq(orgPeopleTable.orgId, orgId) }),
+// Phase 1 shadow mode. The SSOT is computed alongside the legacy arithmetic
+// below and the two are compared, but nothing in this response depends on it
+// yet. Its reads are deliberately its own rather than derived from the rows
+// fetched here: the point is to show the new computation reaches the same
+// answer independently, which it cannot demonstrate by sharing intermediate
+// state with the thing it is checking. Rejection resolves to null, because an
+// observation must never be able to take the dashboard down.
+computePosture(orgId).catch((err) => {
+logger.error({ err, orgId }, "[orgs] posture shadow computation failed");
+return null;
+}),
 ]);
 
 const connected = integrations.filter((i) => i.status === "connected");
@@ -257,6 +270,9 @@ const passing = controls.filter((c) => c.status === "passing").length;
 const failing = controls.filter((c) => c.status === "failing").length;
 const total = controls.length;
 const overallScore = total > 0 ? Math.round((passing / total) * 100) : 0;
+
+// Records the comparison and returns the divergences. Never throws.
+const postureDivergences = shadowPosture ? recordPostureDrift(shadowPosture) : [];
 
 return {
 org,
@@ -267,6 +283,21 @@ connectedIntegrations: connected.length,
 policiesCount: policies.length,
 peopleCount: people.length,
 recentActivity: [],
+// Additive and advisory. controlSummary and overallScore above are byte for
+// byte what they were, so no existing consumer changes behaviour; this field
+// exists so that cutting over is a deletion rather than a rewrite. Only the
+// totals are carried, not the per-framework array - GET /orgs/:orgId/posture
+// is the place to go for the full object.
+posture: shadowPosture
+? {
+shadowMode: true,
+schema: shadowPosture.schema,
+counts: shadowPosture.counts,
+scorePercent: shadowPosture.scorePercent,
+coveragePercent: shadowPosture.coveragePercent,
+divergenceCount: postureDivergences.length,
+}
+: null,
 };
 }
 
