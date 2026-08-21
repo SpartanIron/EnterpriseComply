@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Logger,
   Param,
@@ -15,12 +14,11 @@ import {
 import { ClerkAuthGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
 import {
   db,
-  orgMembersTable,
   organizationsTable,
   orgIntegrationsTable,
   orgAuditLogTable,
 } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { readDbSecurityPosture } from "../../migrations/tenant-rls.migration.js";
 import { SECURITY_RULES, SecurityMonitorService } from "./security-monitor.service";
 import { writeAuditLog } from "../../lib/audit-log.js";
@@ -34,19 +32,20 @@ import {
   keyFingerprint,
 } from "../../lib/credential-crypto.js";
 import { readOriginTrustPosture } from "../../middleware/origin-trust.middleware.js";
+import { assertPlatformAccess, platformAdminEmail } from "../../lib/platform-admin.js";
 
-/** Verify the caller has super_admin in at least one org. Throws 403 otherwise. */
-async function assertSuperAdmin(userId: string) {
-  const membership = await db.query.orgMembersTable.findFirst({
-    where: and(
-      eq(orgMembersTable.clerkUserId, userId),
-      eq(orgMembersTable.role, "super_admin"),
-    ),
-  });
-  if (!membership) {
-    throw new ForbiddenException("Requires super_admin role");
-  }
-  return membership;
+/**
+ * Every privileged endpoint in this controller goes through the one shared gate in
+ * lib/platform-admin.ts. This wrapper exists only to carry the actor email that
+ * two of the audit writes below want, so the gate stays the single authority on
+ * whether access is allowed.
+ *
+ * `operation` is recorded against the caller's elevation, so the access log says
+ * what was actually done rather than merely that somebody was elevated.
+ */
+async function assertPlatformOperation(userId: string, operation: string, orgId?: number) {
+  await assertPlatformAccess(userId, operation, orgId ?? null);
+  return { email: await platformAdminEmail(userId) };
 }
 
 @Controller("admin")
@@ -61,7 +60,7 @@ export class AdminController {
    */
   @Get("rate-limits")
   async listRateLimits(@ClerkUserId() userId: string) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "ratelimits.read");
     const [blocked, magicLinkThrottles] = await Promise.all([
       listBlocked(),
       listActiveThrottles(),
@@ -78,7 +77,7 @@ export class AdminController {
     @ClerkUserId() userId: string,
     @Param("ip") ip: string,
   ) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "ratelimits.clear");
     await clearBlock(ip);
     return { ok: true, ip };
   }
@@ -92,7 +91,7 @@ export class AdminController {
     @ClerkUserId() userId: string,
     @Param("ip") ip: string,
   ) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "ratelimits.magiclink.reset");
     await resetMagicLinkRateForIp(ip);
     return { ok: true, ip };
   }
@@ -107,7 +106,7 @@ export class AdminController {
     @Param("orgId") orgId: string,
     @Body() body: { plan: string },
   ) {
-    const planActor = await assertSuperAdmin(userId);
+    const planActor = await assertPlatformOperation(userId, "orgs.plan.change", Number(orgId));
     const VALID_PLANS = ["starter", "professional", "enterprise", "federal"];
     if (!VALID_PLANS.includes(body.plan)) {
       throw new BadRequestException("plan must be one of: " + VALID_PLANS.join(", "));
@@ -165,7 +164,7 @@ export class AdminController {
     @Body() body: { newKeyHex: string; oldKeyHex?: string; dryRun?: boolean },
   ) {
     const rotateLog = new Logger("CredentialRotation");
-    const actor = await assertSuperAdmin(userId);
+    const actor = await assertPlatformOperation(userId, "credentials.rotate_key");
     const actorEmail =
       (actor as { email?: string | null }).email ?? undefined;
 
@@ -443,7 +442,7 @@ export class AdminController {
    */
   @Get("db-security")
   async getDbSecurity(@ClerkUserId() userId: string) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "dbsecurity.read");
     const posture = await readDbSecurityPosture(db);
     const coverage =
       posture.tenantTables === 0
@@ -495,13 +494,13 @@ export class AdminController {
    */
   @Get("origin-trust")
   async getOriginTrust(@ClerkUserId() userId: string) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "origintrust.read");
     return readOriginTrustPosture();
   }
 
   @Get("audit-retention")
   async getAuditRetention(@ClerkUserId() userId: string) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "auditretention.read");
     const rows = await db.execute(sql`
       SELECT COUNT(*)::int AS total,
              MIN(created_at) AS oldest,
@@ -542,7 +541,7 @@ export class AdminController {
     @Query("hours") hours?: string,
     @Query("limit") limit?: string,
   ) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "securityevents.read");
     const windowHours = Math.min(Math.max(parseInt(hours ?? "24", 10) || 24, 1), 720);
     const max = Math.min(Math.max(parseInt(limit ?? "200", 10) || 200, 1), 1000);
 
@@ -584,7 +583,7 @@ export class AdminController {
    */
   @Post("security-events/sweep")
   async runSecuritySweep(@ClerkUserId() userId: string) {
-    await assertSuperAdmin(userId);
+    await assertPlatformOperation(userId, "securityevents.sweep");
     const result = await this.securityMonitor.sweep();
     return { ...result, ranAt: new Date().toISOString() };
   }
