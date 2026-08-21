@@ -408,11 +408,30 @@ async function main() {
     "utf-8",
   );
 
+  // Persisted in Phase 1c, so this guard stops asserting the absence and starts
+  // asserting the shape. Two things matter: the write exists, and clean
+  // observations are sampled rather than written per request. A ledger that
+  // inserts on every dashboard poll measures traffic and would quietly become a
+  // write-amplification problem nobody attributes to drift detection.
   check(
-    "the drift ledger is still process memory, not a persisted table",
-    !driftSource.includes("@workspace/db"),
-    "posture-drift.ts now touches the database, so drift-ledger persistence is " +
-      "no longer deferred and the completion record must stop saying it is.",
+    "the drift ledger is persisted, not process memory",
+    driftSource.includes("posture_drift_observations") &&
+      driftSource.includes("persistObservation"),
+    "posture-drift.ts must write observations to the ledger. If persistence was " +
+      "reverted, say so in the completion record rather than leaving this green.",
+  );
+  check(
+    "clean observations are sampled rather than written per request",
+    driftSource.includes("CLEAN_HEARTBEAT_MS"),
+    "Without a heartbeat interval the ledger takes one row per poll and " +
+      "measures traffic instead of posture.",
+  );
+  check(
+    "the in-process report and the durable ledger are both still reported",
+    driftSource.includes("getPostureDriftReport") &&
+      driftSource.includes("getPersistedDriftLedger"),
+    "They answer different questions: since this process started, versus ever. " +
+      "Dropping either one overstates the other.",
   );
 
   // The FISMA pass-through shipped in Phase 1c, so this guard no longer asserts
