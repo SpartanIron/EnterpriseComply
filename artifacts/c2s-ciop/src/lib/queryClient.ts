@@ -38,6 +38,18 @@ export async function apiFetch(path: string, options?: RequestInit) {
     throw new PlanRequiredError(body.requiredPlan ?? "professional", body.currentPlan ?? "starter");
   }
 
+  if (res.status === 403) {
+    // Step-up required: the session is authenticated but has not presented a code since
+    // the user enrolled an authenticator app. Broadcast it so the challenge overlay can
+    // appear over whatever page the user is on, instead of every call site having to
+    // know that MFA exists. Cloned so the generic handler below can still read the body.
+    const body = await res.clone().json().catch(() => ({}) as any);
+    if (body?.error === "mfa_challenge_required") {
+      window.dispatchEvent(new CustomEvent("ec:mfa-challenge"));
+      throw new Error(body.message ?? "Enter the code from your authenticator app to continue.");
+    }
+  }
+
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(error.message ?? error.error ?? "Request failed");
