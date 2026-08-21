@@ -342,6 +342,47 @@ divergenceCount: postureDivergences.length,
 };
 }
 
+  /**
+   * Multi-factor policy + real enrolment coverage for the organisation.
+   *
+   * Coverage is computed from the better-auth two_factor table rather than a
+   * cached counter, so it cannot drift away from reality.
+   */
+  async getMfaPolicy(orgId: number) {
+    const org = await db.query.organizationsTable.findFirst({
+      where: eq(organizationsTable.id, orgId),
+    });
+    if (!org) throw new NotFoundException({ error: "no_org" });
+
+    const rows = await db.execute(sql`
+      SELECT
+        COUNT(*)::int AS members,
+        COUNT(t."userId")::int AS enrolled
+      FROM org_members m
+      LEFT JOIN two_factor t ON t."userId" = m.clerk_user_id
+      WHERE m.org_id = ${orgId}
+    `);
+    const r = (rows.rows as any[])[0] ?? { members: 0, enrolled: 0 };
+    const enforcedAt = (org as any).mfaEnforcedAt
+      ? new Date((org as any).mfaEnforcedAt)
+      : null;
+    const graceDays = (org as any).mfaGraceDays ?? 14;
+
+    return {
+      enforced: org.mfaEnforced === true,
+      enforcedAt: enforcedAt ? enforcedAt.toISOString() : null,
+      graceDays,
+      graceEndsAt: enforcedAt
+        ? new Date(enforcedAt.getTime() + graceDays * 86400000).toISOString()
+        : null,
+      members: r.members ?? 0,
+      enrolled: r.enrolled ?? 0,
+      coveragePct:
+        (r.members ?? 0) === 0 ? 0 : Math.round(((r.enrolled ?? 0) / r.members) * 100),
+      control: "NIST IA-2(1) / CMMC IA.L2-3.5.3 / SOC 2 CC6.1",
+    };
+  }
+
   async setMfaPolicy(
     orgId: number,
     actorId: string,
