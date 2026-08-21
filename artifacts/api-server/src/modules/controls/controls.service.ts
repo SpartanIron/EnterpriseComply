@@ -7,7 +7,7 @@ import {
   ucoFrameworkMappingsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { syncStoredFrameworkPosture } from "../../lib/posture";
+import { computePosture, syncStoredFrameworkPosture } from "../../lib/posture";
 
 @Injectable()
 export class ControlsService {
@@ -21,12 +21,23 @@ export class ControlsService {
   }
 
   async getOrgControls(orgId: number) {
-    const [controls, results] = await Promise.all([
+    const [controls, results, posture] = await Promise.all([
       db.query.ucoControlsTable.findMany({
         orderBy: (t, { asc }) => [asc(t.domain), asc(t.controlId)],
       }),
       db.query.orgControlResultsTable.findMany({
         where: eq(orgControlResultsTable.orgId, orgId),
+      }),
+      // The page used to tally these counts itself, in the browser, and its
+      // tally had no warning bucket - so five controls existed in the list,
+      // were absent from every header figure, and could not be filtered for.
+      // Serving the SSOT counts means the page renders a number rather than
+      // deciding one.
+      computePosture(orgId).catch((err) => {
+        this.logger.error(
+          "[controls] posture computation failed, summary will be degraded: " + String(err),
+        );
+        return null;
       }),
     ]);
 
@@ -36,7 +47,36 @@ export class ControlsService {
       result: resultMap.get(c.controlId) ?? { status: "not_tested", ucoControlId: c.controlId },
     }));
 
-    return { controls: enriched };
+    // Fallback only, reached when computePosture threw. It counts the same four
+    // statuses rather than three, so even the degraded path cannot lose the
+    // warning bucket again.
+    const degraded = posture === null;
+    const tally = (status: string) =>
+      enriched.filter((c) => (c.result?.status ?? "not_tested") === status).length;
+
+    const counts = posture
+      ? posture.counts
+      : {
+          passing: tally("passing"),
+          warning: tally("warning"),
+          failing: tally("failing"),
+          notTested: tally("not_tested"),
+          assessed: tally("passing") + tally("warning") + tally("failing"),
+          total: enriched.length,
+        };
+
+    return {
+      controls: enriched,
+      summary: {
+        source: degraded ? "controls-endpoint-fallback" : "posture-ssot",
+        counts,
+        degraded,
+        note:
+          "passing + warning + failing + notTested equals total. Warning is a " +
+          "status in its own right, not a shade of passing and not a shade of " +
+          "not-tested.",
+      },
+    };
   }
 
   async patchControlResult(
