@@ -223,6 +223,19 @@ jobs:
         working-directory: artifacts/api-server
         run: node --import @swc-node/register/esm-register scripts/api-exposure.test.ts
 
+      # ── Phase 1c: the surfaces that render posture ──────────────────
+      #
+      # Four statuses, a scoreBasis block, two coverage warnings and a catalog
+      # inconsistency were all being served and none of them rendered. This
+      # asserts the API carries them and that the pages read them, because a
+      # number nobody renders is the same as a number nobody has.
+      #
+      # Creates a control in warning first: a blank database has none, which is
+      # how the bucket went missing with every test green.
+      - name: Posture surfaces guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/posture-surfaces.test.ts
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()
