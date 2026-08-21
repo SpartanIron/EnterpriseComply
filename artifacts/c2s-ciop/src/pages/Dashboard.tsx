@@ -106,7 +106,10 @@ export default function Dashboard() {
 
   const org = dashData?.org;
   const frameworks: any[] = dashData?.frameworks ?? [];
-  const cs = dashData?.controlSummary ?? { passing: 0, failing: 0, notTested: 0, total: 0 };
+  const cs = dashData?.controlSummary ?? { passing: 0, warning: 0, failing: 0, notTested: 0, assessed: 0, total: 0 };
+  // Served by the API since the Phase 1 cutover and rendered by nobody, which is
+  // how a score can fall from 20 to 3 on screen with no explanation of why.
+  const scoreBasis = dashData?.scoreBasis;
   const overall = dashData?.overallScore ?? 0;
   const connectedIntegrations = dashData?.connectedIntegrations ?? 0;
 
@@ -309,7 +312,7 @@ export default function Dashboard() {
       <div className="p-6 space-y-6">
 
         {/* KPI row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {/* P0-18: KpiCard totals use cs.total = org_control_results count (assigned/tested
                controls for this org), not the full UCO catalog (71 controls). Labels say
                "Assigned" to distinguish from the catalog count shown on the Frameworks page. */}
@@ -321,6 +324,17 @@ export default function Dashboard() {
             icon={
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="Warning (Assigned)"
+            value={cs.warning}
+            total={cs.total}
+            color={cs.warning > 0 ? "amber" : "neutral"}
+            icon={
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               </svg>
             }
           />
@@ -496,7 +510,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-{/* Compliance Score Trend */}
+        <ScoreBasisPanel orgId={orgId} basis={scoreBasis} />
+
+        {/* Compliance Score Trend */}
         <ScoreTrendChart orgId={orgId} />
 
         {/* Framework Compliance */}
@@ -548,6 +564,132 @@ interface ScoreHistoryBasis {
   metric: string;
   storedCounts: string;
   note: string;
+}
+
+interface ScoreBasis {
+  source: string;
+  schema: string;
+  denominator: string;
+  previousDenominator?: string;
+  objectivesTotal: number;
+  objectivesAssessed: number;
+  assessedScorePercent: number;
+  coveragePercent: number;
+  note: string;
+  degraded: boolean;
+}
+
+interface CoverageWarning {
+  frameworkKey: string;
+  name: string;
+  mappedControlCount: number;
+  declaredControlCount: number;
+  coveragePercent: number;
+  note: string;
+}
+
+interface CatalogInconsistency {
+  frameworkKey: string;
+  catalogName: string;
+  declaredRevision: string;
+  declaredControlCount: number;
+  scoringRevision: string;
+  scoringRequirementCount: number;
+  note: string;
+}
+
+/**
+ * What the headline number means, and what it does not cover.
+ *
+ * All three of these have been in the API since the posture cutover and none of
+ * them were rendered. The result was a dashboard reporting 3 where it used to
+ * report 20 with nothing on screen to say the question had changed rather than
+ * the posture, and two known data limitations an assessor would raise on the
+ * first morning being visible only to somebody reading JSON.
+ */
+function ScoreBasisPanel({ orgId, basis }: { orgId: number | undefined; basis: ScoreBasis | undefined }) {
+  const { data } = useQuery<{ coverageWarnings?: CoverageWarning[]; catalogInconsistencies?: CatalogInconsistency[] }>({
+    queryKey: ["posture-findings", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/posture`), { credentials: "include" })).json(),
+    enabled: !!orgId,
+  });
+
+  const coverage = data?.coverageWarnings ?? [];
+  const catalog = data?.catalogInconsistencies ?? [];
+
+  if (!basis && coverage.length === 0 && catalog.length === 0) return null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100">
+        <h2 className="text-sm font-bold text-slate-900">How this score is calculated</h2>
+        <p className="text-xs text-slate-400 mt-0.5">Read this before quoting the number to anybody</p>
+      </div>
+
+      {basis && (
+        <div className="px-5 py-4 border-b border-slate-100 space-y-2">
+          <p className="text-xs text-slate-600 leading-relaxed">{basis.note}</p>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs">
+            <div className="flex justify-between gap-3">
+              <dt className="text-slate-400">Denominator</dt>
+              <dd className="text-slate-700 text-right">{basis.denominator}</dd>
+            </div>
+            {basis.previousDenominator && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-400">Previously</dt>
+                <dd className="text-slate-700 text-right">{basis.previousDenominator}</dd>
+              </div>
+            )}
+            <div className="flex justify-between gap-3">
+              <dt className="text-slate-400">Objectives assessed</dt>
+              <dd className="text-slate-700">{basis.objectivesAssessed} of {basis.objectivesTotal}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-slate-400">Score across assessed only</dt>
+              <dd className="text-slate-700">{basis.assessedScorePercent}%</dd>
+            </div>
+          </dl>
+          {basis.degraded && (
+            <p className="text-xs text-red-600">
+              These figures came from the fallback path, not the single source of truth. Treat them as stale.
+            </p>
+          )}
+        </div>
+      )}
+
+      {coverage.length > 0 && (
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h3 className="text-xs font-bold text-slate-700 mb-2">Partial framework coverage</h3>
+          <ul className="space-y-2">
+            {coverage.map((c) => (
+              <li key={c.frameworkKey} className="text-xs text-slate-600 leading-relaxed">
+                <span className="font-semibold text-slate-800">{c.name}</span>
+                <span className="text-slate-400"> — {c.mappedControlCount} of {c.declaredControlCount} mapped ({c.coveragePercent}%)</span>
+                <br />
+                {c.note}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {catalog.length > 0 && (
+        <div className="px-5 py-4">
+          <h3 className="text-xs font-bold text-amber-700 mb-2">Open control-content question</h3>
+          <ul className="space-y-2">
+            {catalog.map((c) => (
+              <li key={c.frameworkKey} className="text-xs text-slate-600 leading-relaxed">
+                <span className="font-semibold text-slate-800">{c.catalogName}</span>
+                <span className="text-slate-400"> — labelled {c.declaredRevision}, scored against {c.scoringRevision}</span>
+                <br />
+                {c.note}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ScoreTrendChart({ orgId }: { orgId: number | undefined }) {
@@ -674,13 +816,15 @@ function ScoreTrendChart({ orgId }: { orgId: number | undefined }) {
 }
 
 function KpiCard({ label, value, total, color, icon }: {
-  label: string; value: number; total: number; color: "green" | "red" | "neutral"; icon: React.ReactNode;
+  label: string; value: number; total: number; color: "green" | "amber" | "red" | "neutral"; icon: React.ReactNode;
 }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-  const iconBg = color === "green" ? "bg-green-50 text-green-600" : color === "red" ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400";
-  const valueColor = color === "green" ? "text-green-700" : color === "red" ? "text-red-600" : "text-slate-800";
-  const barColor = color === "green" ? "bg-green-500" : color === "red" ? "bg-red-500" : "bg-slate-300";
-  const topBar = color === "green" ? "bg-green-500" : color === "red" ? "bg-red-500" : "bg-slate-300";
+  // Amber exists because "warning" is a status of its own. Rendering it in
+  // green or red would be a judgement the data does not support.
+  const iconBg = color === "green" ? "bg-green-50 text-green-600" : color === "amber" ? "bg-amber-50 text-amber-600" : color === "red" ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400";
+  const valueColor = color === "green" ? "text-green-700" : color === "amber" ? "text-amber-700" : color === "red" ? "text-red-600" : "text-slate-800";
+  const barColor = color === "green" ? "bg-green-500" : color === "amber" ? "bg-amber-400" : color === "red" ? "bg-red-500" : "bg-slate-300";
+  const topBar = color === "green" ? "bg-green-500" : color === "amber" ? "bg-amber-400" : color === "red" ? "bg-red-500" : "bg-slate-300";
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
