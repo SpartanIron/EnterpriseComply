@@ -72,6 +72,17 @@ export default function Dashboard() {
     queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/dashboard`), { credentials: "include" })).json(),
     enabled: !!orgId,
   });
+  // The break-glass check below needs real data. It used to be hardcoded to false,
+  // which made phase0AllDone unreachable and pinned the red "Emergency actions"
+  // banner to every tenant's dashboard permanently, however many admins existed.
+  const { data: membersData } = useQuery<{ members: any[] }>({
+    queryKey: ["members", orgId],
+    queryFn: async () => (await fetch(apiUrl(`/orgs/${orgId}/members`), { credentials: "include" })).json(),
+    enabled: !!orgId,
+  });
+  const adminCount = (membersData?.members ?? []).filter(
+    (m: any) => m?.role === "owner" || m?.role === "admin",
+  ).length;
 
   useEffect(() => {
     if (!orgLoading && orgData?.org == null) navigate("/onboarding");
@@ -142,10 +153,10 @@ export default function Dashboard() {
       id: "second-admin",
       label: "Create a second admin account (break-glass)",
       desc: "CMMC AC.2.006 | FedRAMP AC-2 | SOC 2 CC6.2",
-      done: false,
+      done: adminCount >= 2,
       urgency: "emergency",
       href: "/settings",
-      doneNote: "At least 2 admin accounts exist",
+      doneNote: `${adminCount} accounts can administer this org`,
       pendingNote: "Single admin = single point of failure if account is compromised or locked",
     },
     {

@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-const LAST_UPDATED = "June 2025";
+const LAST_UPDATED = "August 2026";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -21,9 +21,9 @@ const SECURITY_CONTROLS = [
   },
   {
     title: "Multi-tenant data isolation",
-    desc: "Every customer's data is logically isolated by a unique organization ID. Every database query, API call, and session is scoped to a single tenant. Cross-tenant access is architecturally prevented at the data layer.",
+    desc: "Every customer's data is scoped to a unique organization ID. Every API request resolves the caller's organization on the server, and every query is filtered to it. Isolation is enforced today in the application layer; database row-level security is being rolled out, and this page will be updated when it is in force.",
     icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10",
-    badge: "Row-level",
+    badge: "App-layer",
   },
   {
     title: "Passwordless authentication",
@@ -182,7 +182,7 @@ const CERTIFICATIONS = [
 const STAT_BADGES = [
   { value: "AES-256", label: "Encryption standard" },
   { value: "TLS 1.2+", label: "All traffic in transit" },
-  { value: "99.9%", label: "Uptime SLA" },
+  { value: "99.9%", label: "Uptime SLA target (Federal plan)" },
   { value: "PITR", label: "Database backup type" },
 ];
 

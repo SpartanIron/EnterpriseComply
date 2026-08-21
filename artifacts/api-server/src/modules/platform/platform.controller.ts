@@ -1,6 +1,6 @@
 // platform.controller.ts — the break-glass surface for platform staff
 //
-// Nothing here grants standing power. Being listed in PLATFORM_SUPER_ADMIN_EMAILS
+// Nothing here grants standing power. Being listed in PLATFORM_ADMIN_EMAILS
 // puts a row in platform_admins, and that row on its own opens no door: every
 // privileged endpoint in the product calls assertPlatformAccess(), which also
 // demands a live, time-boxed elevation. These four routes are how such an
