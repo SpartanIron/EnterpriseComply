@@ -12,8 +12,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { db, ucoFrameworkMappingsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, orgFrameworksTable, ucoFrameworkMappingsTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import {
   NIST_800_171_R2_REQUIREMENT_COUNT,
   NIST_800_171_R2_TOTAL_WEIGHT,
@@ -154,6 +154,55 @@ async function main() {
   //
   // This is the exit criterion, re-measured rather than eyeballed. Thirteen
   // items diverged in shadow mode; nine of them were these columns.
+  // ── The fixture the exit criterion needs ────────────────────────────────
+  //
+  // On a blank database org 1 has no org_frameworks rows at all, and with no
+  // rows the stored-column assertion below has nothing to compare and passes
+  // by being empty. A guard that passes because it measured nothing is the
+  // exact failure mode this phase exists to retire, so the row is created here
+  // and created wrong on purpose: zeroed stored columns, which is the state the
+  // measured organisation was actually found in.
+  //
+  // Only on an otherwise empty set. A real database has these rows already, so
+  // this writes nothing outside CI.
+  const existingFrameworks = await db
+    .select()
+    .from(orgFrameworksTable)
+    .where(eq(orgFrameworksTable.orgId, 1));
+
+  if (existingFrameworks.length === 0) {
+    // Mirrors the catalog entry, including the label and the count that
+    // disagree with each other, so the inconsistency is exercised rather than
+    // invented.
+    await db.insert(orgFrameworksTable).values({
+      orgId: 1,
+      frameworkKey: FRAMEWORK,
+      name: "NIST SP 800-171 Rev 3",
+      shortName: "NIST 800-171",
+      category: "federal",
+      active: true,
+      complianceScore: 0,
+      totalControls: 110,
+      passingControls: 0,
+      failingControls: 0,
+      notTestedControls: 0,
+    });
+
+    console.log("  setup created a zeroed org_frameworks row for org 1/" + FRAMEWORK);
+  }
+
+  const frameworkRows = await db
+    .select()
+    .from(orgFrameworksTable)
+    .where(and(eq(orgFrameworksTable.orgId, 1), eq(orgFrameworksTable.frameworkKey, FRAMEWORK)));
+
+  check(
+    "org 1 has a framework to measure, so the assertions below are not empty",
+    frameworkRows.length > 0,
+    "No org_frameworks row for " + FRAMEWORK + ", so every stored-column and " +
+      "coverage assertion in this file would pass without measuring anything.",
+  );
+
   const orgIds = [1];
 
   for (const orgId of orgIds) {
