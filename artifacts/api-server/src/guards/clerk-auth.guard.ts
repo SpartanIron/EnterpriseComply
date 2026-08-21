@@ -9,6 +9,7 @@ import {
   createParamDecorator,
 } from "@nestjs/common";
 import { auth } from "../lib/better-auth";
+import { MFA_SESSION_TTL_MS, readMfaSessionState } from "../modules/mfa/mfa.service";
 import { db, orgMembersTable, organizationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -28,6 +29,9 @@ async function getSessionUserId(req: any): Promise<string | null> {
       }
     }
     const session = await auth.api.getSession({ headers });
+    // Stash the session id. MFA step-up state lives on the session row, so the gate
+    // needs to know which session is asking, not just which user.
+    req.sessionId = (session as any)?.session?.id ?? null;
     return session?.user?.id ?? null;
   } catch {
     return null;
@@ -75,6 +79,7 @@ export class OrgContextGuard implements CanActivate {
     }
 
     await assertMfaPolicySatisfied(req, org, userId);
+    await assertMfaSessionVerified(req, userId);
 
     return true;
   }
@@ -139,6 +144,46 @@ export async function assertMfaPolicySatisfied(
       "Enroll an authenticator app to continue.",
     enrollmentPath: "/settings/security",
     graceEndedAt: graceEnds ? graceEnds.toISOString() : null,
+  });
+}
+
+/**
+ * Kept reachable even when a session has not passed its challenge, so the app shell can
+ * load far enough to show the prompt. Deliberately shorter than the enrolment list:
+ * /dashboard carries real compliance data, so it waits for the code.
+ */
+const MFA_CHALLENGE_EXEMPT_SUFFIXES = ["/me", "/me/role", "/mfa-policy"];
+
+/**
+ * Step-up second factor (NIST IA-2(1), CMMC IA.L2-3.5.3).
+ *
+ * A magic link on its own is one factor. Once a user has finished enrolling an
+ * authenticator app, org-scoped requests additionally require that this particular
+ * session has presented a code.
+ *
+ * Driven by data rather than configuration on purpose. readMfaSessionState() returns
+ * null for anyone who has not enrolled, so until somebody completes setup this behaves
+ * exactly as it did before the feature existed. Shipping it does not change anything
+ * for anyone; opting in does.
+ *
+ * /api/mfa/* never reaches here, because those routes are mounted on ClerkAuthGuard
+ * rather than OrgContextGuard. That is what leaves a route open for a user whose phone
+ * is lost to spend a backup code and get back in.
+ */
+export async function assertMfaSessionVerified(req: any, userId: string): Promise<void> {
+  const path: string = String(req?.originalUrl ?? req?.url ?? "").split("?")[0];
+  if (MFA_CHALLENGE_EXEMPT_SUFFIXES.some((suffix) => path.endsWith(suffix))) return;
+
+  const state = await readMfaSessionState(userId, req?.sessionId ?? null);
+  if (!state) return;
+
+  const verifiedAt = state.verifiedAt;
+  if (verifiedAt !== null && Date.now() - verifiedAt.getTime() < MFA_SESSION_TTL_MS) return;
+
+  throw new ForbiddenException({
+    error: "mfa_challenge_required",
+    message: "Enter the code from your authenticator app to continue.",
+    challengePath: "/api/mfa/verify",
   });
 }
 

@@ -8,6 +8,25 @@ import { QRCodeSVG } from "qrcode.react";
 import RoleManagement from "./RoleManagement";
 import PlanGate from "@/components/PlanGate";
 
+interface MfaStatus {
+  enrolled: boolean;
+  enrolledAt: string | null;
+  backupCodesTotal: number;
+  backupCodesRemaining: number;
+  setupExpiresAt: string | null;
+}
+
+interface MfaPolicy {
+  enforced: boolean;
+  enforcedAt: string | null;
+  graceDays: number;
+  graceEndsAt: string | null;
+  members: number;
+  enrolled: number;
+  coveragePct: number;
+  control: string;
+}
+
 function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -127,9 +146,40 @@ export default function Settings() {
 function SecurityTab() {
   const session = authClient.useSession();
   const user = session.data?.user as any;
-  const twoFactorEnabled = !!user?.twoFactorEnabled;
+  const mfaEnrolledFromSession = !!user?.twoFactorEnabled;
   const { orgId } = useOrg();
   const qc = useQueryClient();
+
+  // Enrolment state comes from the API, not from the session object. The session copy
+  // of twoFactorEnabled is cached for minutes at a time, so it lags behind reality
+  // right after somebody enrols or removes their authenticator app.
+  const mfaStatus = useQuery<MfaStatus>({
+    queryKey: ["mfa", "status"],
+    queryFn: () => apiFetch("/mfa/status"),
+  });
+
+  // The org policy has its own endpoint. The general org PATCH whitelists only
+  // name/industry/size/website, so the old toggle dropped mfaEnforced on the floor
+  // and still reported success.
+  const mfaPolicy = useQuery<MfaPolicy>({
+    queryKey: ["mfa", "policy", orgId],
+    queryFn: () => apiFetch(`/orgs/${orgId}/mfa-policy`),
+    enabled: !!orgId,
+  });
+
+  const mfaPolicyMutation = useMutation({
+    mutationFn: (enforced: boolean) =>
+      apiFetch(`/orgs/${orgId}/mfa-policy`, {
+        method: "PATCH",
+        body: JSON.stringify({ enforced }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfa", "policy", orgId] });
+      qc.invalidateQueries({ queryKey: ["orgs", "me"] });
+      setSecSaved(true);
+      setTimeout(() => setSecSaved(false), 2500);
+    },
+  });
 
   const { data: orgData } = useQuery<{ org: any }>({
     queryKey: ["orgs", "me"],
@@ -137,19 +187,11 @@ function SecurityTab() {
   });
   const org = orgData?.org;
 
+  const twoFactorEnabled = mfaStatus.data ? mfaStatus.data.enrolled : mfaEnrolledFromSession;
+  const mfaEnforcedNow = mfaPolicy.data ? mfaPolicy.data.enforced : !!(org as any)?.mfaEnforced;
+
   const [secSaved, setSecSaved] = useState(false);
   const [retentionSaved, setRetentionSaved] = useState(false);
-
-  // MFA enforcement — uses the general org PATCH (name/industry/size/website + mfaEnforced)
-  const securityMutation = useMutation({
-    mutationFn: (patch: Record<string, unknown>) =>
-      apiFetch(`/orgs/${orgId}`, { method: "PATCH", body: JSON.stringify(patch) }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orgs", "me"] });
-      setSecSaved(true);
-      setTimeout(() => setSecSaved(false), 2500);
-    },
-  });
 
   // Audit log retention — dedicated enterprise-gated endpoint (P1-07).
   // PATCH /orgs/:orgId/audit-retention requires enterprise+ plan.
@@ -173,6 +215,7 @@ function SecurityTab() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [codesCopied, setCodesCopied] = useState(false);
 
   // ── SSO / SAML form state ────────────────────────────────────────────────────
   const [ssoProvider,       setSsoProvider]       = useState("");
@@ -266,21 +309,13 @@ function SecurityTab() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/two-factor/get-totp-uri", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: "" }),
-      });
-      const data = await res.json();
-      if (data.totpURI) {
-        setTotpUri(data.totpURI);
-        setSetupStep("scanning");
-      } else if (data.error || !res.ok) {
-        setError("Unable to generate authenticator code. Try signing out and back in first.");
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
+      const data = await apiFetch("/mfa/totp/start", { method: "POST" });
+      setTotpUri(data.otpauthUri);
+      setBackupCodes([]);
+      setCodesCopied(false);
+      setSetupStep("scanning");
+    } catch (err: any) {
+      setError(err?.message || "Could not start setup. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -290,16 +325,19 @@ function SecurityTab() {
     setError("");
     setLoading(true);
     try {
-      const result = await authClient.twoFactor.verifyTotp({ code: verifyCode });
-      if ((result as any)?.error) {
-        setError("Invalid code. Check your authenticator app and try again.");
-      } else {
-        await session.refetch();
-        setSetupStep("done");
-        setVerifyCode("");
-      }
-    } catch {
-      setError("Invalid code. Please try again.");
+      const data = await apiFetch("/mfa/totp/confirm", {
+        method: "POST",
+        body: JSON.stringify({ code: verifyCode }),
+      });
+      setBackupCodes(Array.isArray(data?.backupCodes) ? data.backupCodes : []);
+      setVerifyCode("");
+      setTotpUri("");
+      setSetupStep("done");
+      await mfaStatus.refetch();
+      await session.refetch();
+      qc.invalidateQueries({ queryKey: ["mfa", "policy", orgId] });
+    } catch (err: any) {
+      setError(err?.message || "That code did not match. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -309,16 +347,18 @@ function SecurityTab() {
     setError("");
     setLoading(true);
     try {
-      const result = await (authClient.twoFactor as any).disable({ totpCode: disableCode });
-      if (result?.error) {
-        setError("Invalid code. Check your authenticator app and try again.");
-      } else {
-        await session.refetch();
-        setSetupStep("idle");
-        setDisableCode("");
-      }
-    } catch {
-      setError("Invalid code. Please try again.");
+      await apiFetch("/mfa/totp/disable", {
+        method: "POST",
+        body: JSON.stringify({ code: disableCode }),
+      });
+      setDisableCode("");
+      setBackupCodes([]);
+      setSetupStep("idle");
+      await mfaStatus.refetch();
+      await session.refetch();
+      qc.invalidateQueries({ queryKey: ["mfa", "policy", orgId] });
+    } catch (err: any) {
+      setError(err?.message || "That code is not valid, so nothing was changed.");
     } finally {
       setLoading(false);
     }
@@ -496,6 +536,29 @@ function SecurityTab() {
               <p className="text-sm font-semibold text-green-800">Authenticator app enabled successfully! Your account is now protected.</p>
             </div>
           )}
+
+          {/* Backup codes. Shown once, immediately after enrolment. */}
+          {backupCodes.length > 0 && (
+            <div className="mt-4 p-4 border border-amber-200 bg-amber-50 rounded-lg">
+              <p className="text-sm font-bold text-amber-900">Save your backup codes now</p>
+              <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                These are shown once and never again. Each one works a single time, in place of a code from your app. Keep them somewhere you can reach without your phone, because they are how you get back in if you lose it.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {backupCodes.map((c) => (
+                  <code key={c} className="text-xs font-mono bg-white border border-amber-200 rounded px-2 py-1.5 text-slate-800 text-center">
+                    {c}
+                  </code>
+                ))}
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(backupCodes.join("\n")); setCodesCopied(true); }}
+                className="mt-3 px-3 py-1.5 text-xs font-semibold text-amber-900 border border-amber-300 rounded-lg hover:bg-amber-100 transition-colors"
+              >
+                {codesCopied ? "Copied" : "Copy all"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -575,21 +638,27 @@ function SecurityTab() {
               <p className="text-xs text-slate-500 leading-relaxed">
                 When enabled, any member who has not set up an authenticator app will be blocked from accessing the platform until they do. Applies to all roles.
               </p>
-              {org?.mfaEnforced && (
+              {mfaEnforcedNow && (
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-green-700 font-semibold">
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   Enforcement active - all members must have MFA
                 </div>
               )}
+              {mfaPolicy.data && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Coverage: {mfaPolicy.data.enrolled} of {mfaPolicy.data.members} members enrolled ({mfaPolicy.data.coveragePct}%)
+                  {mfaPolicy.data.graceEndsAt ? ` - enrolment deadline ${new Date(mfaPolicy.data.graceEndsAt).toLocaleDateString()}` : ""}
+                </p>
+              )}
             </div>
             <button
-              onClick={() => securityMutation.mutate({ mfaEnforced: !org?.mfaEnforced })}
-              disabled={securityMutation.isPending || !orgId}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${org?.mfaEnforced ? "bg-blue-600" : "bg-slate-200"}`}
+              onClick={() => mfaPolicyMutation.mutate(!mfaEnforcedNow)}
+              disabled={mfaPolicyMutation.isPending || !orgId}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${mfaEnforcedNow ? "bg-blue-600" : "bg-slate-200"}`}
               role="switch"
-              aria-checked={!!org?.mfaEnforced}
+              aria-checked={!!mfaEnforcedNow}
             >
-              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${org?.mfaEnforced ? "translate-x-5" : "translate-x-0"}`} />
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${mfaEnforcedNow ? "translate-x-5" : "translate-x-0"}`} />
             </button>
           </div>
           {secSaved && (

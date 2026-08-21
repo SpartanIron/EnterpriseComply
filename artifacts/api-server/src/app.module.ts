@@ -7,6 +7,7 @@ import { RateLimitGuard } from "./guards/rate-limit.guard";
 import { AuditInterceptor } from "./interceptors/audit.interceptor";
 import { SecurityExceptionFilter } from "./interceptors/security-exception.filter";
 import { AuthModule } from "./modules/auth/auth.module";
+import { MfaModule } from "./modules/mfa/mfa.module";
 import { StartupModule } from "./startup/startup.module";
 import { HealthModule } from "./modules/health/health.module";
 import { OrgsModule } from "./modules/orgs/orgs.module";
@@ -70,6 +71,7 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
       ],
     }),
     AuthModule,
+    MfaModule,
     StartupModule,
     HealthModule,
     OrgsModule,

@@ -1,6 +1,7 @@
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
+import MfaChallenge from "@/components/MfaChallenge";
 import { useEffect, type ReactNode } from "react";
 import { authClient } from "./lib/auth-client";
 import AppShell from "./components/layout/AppShell";
@@ -226,6 +227,9 @@ export default function App() {
       <WouterRouter base={BASE_PATH}>
         <AppRoutes />
       </WouterRouter>
+      {/* Listens for the step-up event apiFetch broadcasts, so the prompt can appear
+          over any page without every page having to know about MFA. */}
+      <MfaChallenge />
     </QueryClientProvider>
   );
 }

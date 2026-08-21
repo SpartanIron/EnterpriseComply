@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { encryptCredential, isEncryptedCredential, encryptConfigCredentials, validateCredentialKeyMaterial } from "../lib/credential-crypto";
 import { runOrgInvitesMigration } from "../migrations/org-invites.migration";
+import { runMfaMigration as runMfaSchemaMigration } from "../migrations/mfa.migration";
 
 /**
  * Load a policy template file by key. Returns the full markdown content, or
@@ -1164,6 +1165,7 @@ export class StartupService implements OnApplicationBootstrap {
     // pass, otherwise the table sits outside tenant isolation until the next boot.
     // runAuditLogWormMigration() below is what triggers that pass.
     await this.runInvitesMigration();
+      await this.runMfaMigration();
 
     // Security hardening — these migrations throw on failure and are NOT caught here.
     // A failure propagates up to NestFactory.create() which logs it and exits the process.
@@ -1235,6 +1237,15 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.log('Team invites migration complete');
     } catch (err) {
       this.logger.error('org_invites migration failed - continuing', (err as any)?.message ?? String(err));
+    }
+  }
+
+  private async runMfaMigration() {
+    try {
+      await runMfaSchemaMigration(db);
+      this.logger.log('MFA schema migration complete');
+    } catch (err) {
+      this.logger.error('MFA migration failed - continuing', (err as any)?.message ?? String(err));
     }
   }
 
