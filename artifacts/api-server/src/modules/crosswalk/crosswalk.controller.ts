@@ -2,35 +2,22 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   Put,
   UseGuards,
 } from "@nestjs/common";
 import { ClerkAuthGuard, OrgContextGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
-import { db, controlCrosswalkTable, orgMembersTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
-
-/** Verify the caller has super_admin in at least one org. Throws 403 otherwise. */
-async function assertSuperAdmin(userId: string): Promise<void> {
-  const membership = await db.query.orgMembersTable.findFirst({
-    where: and(
-      eq(orgMembersTable.clerkUserId, userId),
-      eq(orgMembersTable.role, "super_admin"),
-    ),
-  });
-  if (!membership) {
-    throw new ForbiddenException("Requires super_admin role");
-  }
-}
+import { db, controlCrosswalkTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { assertPlatformAccess } from "../../lib/platform-admin";
 
 /**
  * GET /api/admin/crosswalk
- * Returns all control_crosswalk rows. Super-admin only.
+ * Returns all control_crosswalk rows. Platform administrators only, and only while elevated.
  *
  * PUT /api/admin/crosswalk/:ucoControlId
- * Updates a single row. Super-admin only.
+ * Updates a single row. Platform administrators only, and only while elevated.
  *
  * GET /api/crosswalk/controls
  * Returns all rows for authenticated org members (falls back to [] if empty).
@@ -39,19 +26,19 @@ async function assertSuperAdmin(userId: string): Promise<void> {
 export class CrosswalkController {
   /**
    * GET /api/admin/crosswalk
-   * Super-admin: list all crosswalk mappings from DB.
+   * Platform administrators: list all crosswalk mappings from DB.
    */
   @Get("admin/crosswalk")
   @UseGuards(ClerkAuthGuard)
   async listCrosswalkAdmin(@ClerkUserId() userId: string) {
-    await assertSuperAdmin(userId);
+    await assertPlatformAccess(userId, "crosswalk.read");
     const rows = await db.select().from(controlCrosswalkTable);
     return { crosswalk: rows };
   }
 
   /**
    * PUT /api/admin/crosswalk/:ucoControlId
-   * Super-admin: upsert a single crosswalk row.
+   * Platform administrators: upsert a single crosswalk row.
    */
   @Put("admin/crosswalk/:ucoControlId")
   @UseGuards(ClerkAuthGuard)
@@ -71,7 +58,7 @@ export class CrosswalkController {
       remediationSteps?: string;
     },
   ) {
-    await assertSuperAdmin(userId);
+    await assertPlatformAccess(userId, "crosswalk.write");
     if (!ucoControlId) {
       throw new BadRequestException("ucoControlId is required");
     }

@@ -9,8 +9,9 @@ import { useRole } from "@/context/RoleContext";
 // ADMIN_EMAILS removed — it was a hardcoded allow-list that could be bypassed by
 // any user who saw the source code; auth now uses the session role from the DB.
 //
-// Real data: GET /api/orgs/admin — requires super_admin role in org_members.
-// Only users with that DB role in any org can view this panel.
+// Real data: GET /api/orgs/admin. Access is decided by GET /api/platform/me:
+// a row in platform_admins plus a live, time-boxed elevation. The tenant role is
+// deliberately not consulted, because platform staff are not org members.
 
 interface BlockedIp {
   ip: string;
@@ -85,8 +86,127 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "crosswalk", label: "Crosswalk Mappings" },
 ];
 
+
+interface PlatformMe {
+  isPlatformAdmin: boolean;
+  elevation: {
+    id: number;
+    reason: string;
+    requestedAt: string;
+    expiresAt: string;
+  } | null;
+  maxElevationMs?: number;
+  minReasonLength?: number;
+}
+
+/**
+ * Break-glass prompt.
+ *
+ * Deliberately not a silent auto-elevate. The reason box and the authenticator
+ * code are the control: they make privileged access a decision somebody made and
+ * recorded, rather than an ambient property of being on a list.
+ */
+function ElevationPrompt({ onElevated }: { onElevated: () => void }) {
+  const [reason, setReason] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/platform/elevate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason, code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.message ?? "Elevation was refused.");
+        return;
+      }
+      onElevated();
+    } catch {
+      setError("Elevation could not be requested. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="max-w-lg mx-auto py-16">
+      <div className="bg-white rounded-xl border border-amber-300 shadow-sm">
+        <div className="px-5 py-3.5 border-b border-amber-200 bg-amber-50 rounded-t-xl">
+          <h2 className="text-sm font-bold text-amber-900">Break-glass access required</h2>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-slate-600">
+            Platform access is not standing. Give a reason and a code from your
+            authenticator app to open a one-hour elevation. Both are written to the
+            audit log, and every action you take while elevated is recorded.
+          </p>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="elevation-reason">
+              Reason
+            </label>
+            <textarea
+              id="elevation-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. investigating ticket 4471, customer reports missing evidence"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="elevation-code">
+              Authenticator code
+            </label>
+            <input
+              id="elevation-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/[^0-9A-Za-z-]/g, ""))}
+              inputMode="text"
+              autoComplete="one-time-code"
+              placeholder="000000 or a backup code"
+              className="w-40 rounded-lg border border-slate-300 px-3 py-2 text-sm tracking-widest"
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy || reason.trim().length < 12 || code.trim().length < 6}
+            className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold disabled:opacity-50"
+          >
+            {busy ? "Opening..." : "Open a one-hour elevation"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdmin() {
-  const { role, can } = useRole();
+  const { role } = useRole();
+  // Platform status comes from the API, never from the tenant role. Polled on a
+  // short interval so an elevation that expires while the panel is open takes the
+  // UI back to the break-glass prompt instead of leaving a dead screen.
+  const {
+    data: platform,
+    isLoading: platformLoading,
+    refetch: refetchPlatform,
+  } = useQuery<PlatformMe>({
+    queryKey: ["platform-me"],
+    queryFn: async () => (await apiFetch("/api/platform/me")).json(),
+    refetchInterval: 60_000,
+  });
+
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("tenants");
   const [search, setSearch] = useState("");
@@ -126,18 +246,39 @@ export default function SuperAdmin() {
     return () => clearInterval(id);
   }, []);
 
-  // Access control: must have super_admin role (verified server-side at the API level too)
-  if (!can("super_admin")) {
+  // Access control. Platform staff are no longer org members, so the tenant role
+  // can no longer answer this question - it is asked of the API instead, and the
+  // API is authoritative regardless of what this component renders.
+  //
+  // Two distinct states, because they need two different answers: not staff at
+  // all, or staff without a live elevation.
+  if (platformLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!platform?.isPlatformAdmin) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="h-14 w-14 rounded-full bg-red-100 flex items-center justify-center mb-4">
           <svg className="h-7 w-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
         </div>
-        <h3 className="text-base font-bold text-slate-900">Super Admin Access Required</h3>
-        <p className="text-sm text-slate-500 mt-1 max-w-xs">Only platform super admins can access the Owner Control Panel. Your current role: <strong>{role}</strong>.</p>
+        <h3 className="text-base font-bold text-slate-900">Platform Administrator Access Required</h3>
+        <p className="text-sm text-slate-500 mt-1 max-w-sm">
+          The Owner Control Panel is restricted to platform administrators. This is
+          separate from your role in this organisation, which is <strong>{role}</strong>.
+        </p>
       </div>
     );
   }
+
+  if (!platform.elevation) {
+    return <ElevationPrompt onElevated={() => refetchPlatform()} />;
+  }
+
 
   const unblockMutation = useMutation({
     mutationFn: (ip: string) =>
@@ -270,7 +411,7 @@ export default function SuperAdmin() {
           {isLoading ? (
             <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-sm text-slate-400">Loading tenants…</div>
           ) : isError ? (
-            <div className="bg-white rounded-xl border border-red-200 p-12 text-center text-sm text-red-500">Failed to load tenants. Confirm your session has super_admin role.</div>
+            <div className="bg-white rounded-xl border border-red-200 p-12 text-center text-sm text-red-500">Failed to load tenants. Confirm your elevation is still live.</div>
           ) : orgs.length === 0 ? (
             <EmptyState title="No tenants found" body="No organizations are registered in the database yet." />
           ) : (
