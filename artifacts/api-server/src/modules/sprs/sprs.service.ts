@@ -1,99 +1,155 @@
 import { Injectable } from "@nestjs/common";
-import { db, orgControlResultsTable, ucoFrameworkMappingsTable } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { db, orgControlResultsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import {
+  NIST_800_171_R2_REQUIREMENT_COUNT,
+  NIST_800_171_R2_TOTAL_WEIGHT,
+  NIST_800_171_R2_WEIGHTS,
+  getResolvedMappings,
+} from "../../lib/framework-mappings";
+import { normaliseStatus } from "../../lib/posture";
 
-const NIST_800_171_WEIGHTS: Record<string, number> = {
-  "3.1.1": 5, "3.1.2": 5, "3.1.3": 3, "3.1.4": 3, "3.1.5": 3, "3.1.6": 1, "3.1.7": 3, "3.1.8": 1,
-  "3.1.9": 1, "3.1.10": 1, "3.1.11": 1, "3.1.12": 3, "3.1.13": 3, "3.1.14": 3, "3.1.15": 1, "3.1.16": 1,
-  "3.1.17": 1, "3.1.18": 1, "3.1.19": 1, "3.1.20": 1, "3.1.21": 1, "3.1.22": 1,
-  "3.2.1": 5, "3.2.2": 5, "3.2.3": 1,
-  "3.3.1": 5, "3.3.2": 5, "3.3.3": 1, "3.3.4": 1, "3.3.5": 1, "3.3.6": 1, "3.3.7": 1, "3.3.8": 1, "3.3.9": 1,
-  "3.4.1": 3, "3.4.2": 3, "3.4.3": 1, "3.4.4": 1, "3.4.5": 1, "3.4.6": 3, "3.4.7": 3, "3.4.8": 1, "3.4.9": 1,
-  "3.5.1": 5, "3.5.2": 5, "3.5.3": 5, "3.5.4": 1, "3.5.5": 1, "3.5.6": 1, "3.5.7": 1, "3.5.8": 1, "3.5.9": 1, "3.5.10": 1, "3.5.11": 1,
-  "3.6.1": 5, "3.6.2": 3, "3.6.3": 1,
-  "3.7.1": 5, "3.7.2": 5, "3.7.3": 1, "3.7.4": 1, "3.7.5": 1, "3.7.6": 1,
-  "3.8.1": 1, "3.8.2": 1, "3.8.3": 1, "3.8.4": 1, "3.8.5": 1, "3.8.6": 1, "3.8.7": 1, "3.8.8": 1, "3.8.9": 1,
-  "3.9.1": 3, "3.9.2": 5,
-  "3.10.1": 5, "3.10.2": 3, "3.10.3": 1, "3.10.4": 1, "3.10.5": 1, "3.10.6": 1,
-  "3.11.1": 5, "3.11.2": 3, "3.11.3": 3,
-  "3.12.1": 5, "3.12.2": 3, "3.12.3": 3, "3.12.4": 1,
-  "3.13.1": 5, "3.13.2": 3, "3.13.3": 1, "3.13.4": 1, "3.13.5": 3, "3.13.6": 3, "3.13.7": 1, "3.13.8": 5, "3.13.9": 1, "3.13.10": 1, "3.13.11": 5, "3.13.12": 1, "3.13.13": 1, "3.13.14": 1, "3.13.15": 1, "3.13.16": 1,
-  "3.14.1": 5, "3.14.2": 5, "3.14.3": 5, "3.14.4": 3, "3.14.5": 3, "3.14.6": 5, "3.14.7": 5,
-};
+/**
+ * SPRS scoring for SP 800-171, under the DoD Assessment Methodology.
+ *
+ * WHAT CHANGED IN PHASE 1B
+ *
+ * This service used to carry its own 24-entry UCO_TO_NIST_MAP and its own copy
+ * of the 110 requirement weights. That map was the second of three answers to
+ * "which requirements does this objective satisfy" and it disagreed with the
+ * uco_framework_mappings table, which knew about 10 objectives where this file
+ * knew about 24. Both numbers were shown to the same user on the same day.
+ *
+ * Both are gone. Mappings now come from getResolvedMappings, which reads the
+ * one table, and the weights live in lib/framework-mappings.ts so the scorer,
+ * the migration and the CI guard share one copy.
+ *
+ * THREE BEHAVIOURAL CHANGES, EACH DELIBERATE
+ *
+ * 1. Coverage. The table now holds the union of what both sources knew, 25
+ *    objectives rather than 24, because the catalog knew about UCO-RM-001 and
+ *    the hardcoded map did not. Any requirement that objective maps to now
+ *    participates in the score, so the score can move on deploy. That is the
+ *    coverage gap closing, not a scoring change.
+ *
+ * 2. Warning is not met. The old code assigned "met" on passing and "not_met"
+ *    on failing and left everything else at "not_reviewed", so a warning - a
+ *    control somebody has assessed and found partially implemented - was
+ *    reported as never reviewed. The DoD methodology has no partial credit: a
+ *    requirement is met or it is not. Warning therefore counts as not met.
+ *    This moves counts, not the score, because the score only ever adds for
+ *    met.
+ *
+ * 3. Worst status wins. Several objectives can map to one requirement. The old
+ *    loop let whichever mapping it happened to visit last decide, so the same
+ *    data could score differently depending on row order. Now a single failing
+ *    or warning objective is enough to leave the requirement not met, which is
+ *    both deterministic and the conservative reading an assessor would take.
+ *
+ * A DEFECT THIS PHASE DOES NOT TOUCH, ON PURPOSE
+ *
+ * The score starts at the floor and adds the weight of every met requirement.
+ * The weights in this product sum to 252, so a perfect assessment reaches
+ * -203 + 252, which is 49, and then gets clamped at a ceiling of 110 it can
+ * never reach. The published methodology works the other way round: begin at
+ * 110 and subtract the weight of everything not met.
+ *
+ * Fixing that is a change to a compliance score's formula and it does not
+ * belong inside a mapping consolidation, so it is surfaced rather than
+ * silently corrected: see the scoringBasis block on the response, which
+ * reports the reachable maximum next to the advertised one. Deciding what the
+ * weights should be is a control-content decision, not an inference to make
+ * from inside a refactor.
+ */
 
-const TOTAL_MAX_SCORE = Object.values(NIST_800_171_WEIGHTS).reduce((a, b) => a + b, 0);
+const FRAMEWORK = "nist-800-171";
+const SPRS_FLOOR = -203;
+const SPRS_CEILING = 110;
 
-const UCO_TO_NIST_MAP: Record<string, string[]> = {
-  "UCO-AI-001": ["3.5.3", "3.5.4"],
-  "UCO-AI-002": ["3.5.1", "3.5.2"],
-  "UCO-AI-003": ["3.5.7", "3.5.8", "3.5.9"],
-  "UCO-AI-004": ["3.5.5", "3.5.6"],
-  "UCO-AC-001": ["3.1.1", "3.1.2"],
-  "UCO-AC-002": ["3.1.5", "3.1.6"],
-  "UCO-AC-003": ["3.1.3", "3.1.4"],
-  "UCO-AC-004": ["3.1.12", "3.1.13"],
-  "UCO-AC-005": ["3.9.1", "3.9.2"],
-  "UCO-CM-001": ["3.4.1", "3.4.2"],
-  "UCO-CM-002": ["3.4.6", "3.4.7"],
-  "UCO-CM-003": ["3.4.3", "3.4.4"],
-  "UCO-DP-001": ["3.13.1", "3.13.2"],
-  "UCO-DP-002": ["3.13.8", "3.13.11"],
-  "UCO-DP-003": ["3.13.16"],
-  "UCO-AL-001": ["3.3.1", "3.3.2"],
-  "UCO-AL-002": ["3.3.3", "3.3.4"],
-  "UCO-VM-001": ["3.14.1", "3.14.2"],
-  "UCO-VM-002": ["3.14.3", "3.14.4", "3.14.5"],
-  "UCO-IR-001": ["3.6.1", "3.6.2"],
-  "UCO-IR-002": ["3.6.3"],
-  "UCO-ST-001": ["3.2.1", "3.2.2"],
-  "UCO-CP-001": ["3.7.1", "3.7.2"],
-  "UCO-CP-002": ["3.7.4", "3.7.5"],
-};
+type RequirementStatus = "met" | "not_met" | "not_reviewed";
 
 @Injectable()
 export class SprsService {
   async calculate(orgId: number) {
-    const controlResults = await db.query.orgControlResultsTable.findMany({
-      where: eq(orgControlResultsTable.orgId, orgId),
-    });
-    const resultMap = new Map(controlResults.map((r) => [r.ucoControlId, r.status]));
+    const [controlResults, mappings] = await Promise.all([
+      db.query.orgControlResultsTable.findMany({
+        where: eq(orgControlResultsTable.orgId, orgId),
+      }),
+      getResolvedMappings(FRAMEWORK),
+    ]);
 
-    const nistScores: Record<string, { weight: number; status: "met" | "not_met" | "not_reviewed" }> = {};
-    for (const [nist, weight] of Object.entries(NIST_800_171_WEIGHTS)) {
-      nistScores[nist] = { weight, status: "not_reviewed" };
+    // One status per objective, through the same normaliser the posture SSOT
+    // uses. Sharing the border means "warning" cannot mean one thing here and
+    // another thing on the dashboard, which is how the five-way discrepancy
+    // started.
+    const statusByObjective = new Map<string, string>();
+    for (const result of controlResults) {
+      statusByObjective.set(
+        result.ucoControlId,
+        normaliseStatus((result as { status?: unknown }).status).status,
+      );
     }
 
-    for (const [ucoId, nistIds] of Object.entries(UCO_TO_NIST_MAP)) {
-      const status = resultMap.get(ucoId);
-      for (const nistId of nistIds) {
-        if (nistScores[nistId]) {
-          if (status === "passing") nistScores[nistId].status = "met";
-          else if (status === "failing") nistScores[nistId].status = "not_met";
-        }
+    const nistScores: Record<string, { weight: number; status: RequirementStatus }> = {};
+    for (const [requirementId, weight] of Object.entries(NIST_800_171_R2_WEIGHTS)) {
+      nistScores[requirementId] = { weight, status: "not_reviewed" };
+    }
+
+    const objectivesMapped = new Set<string>();
+    const requirementsMapped = new Set<string>();
+    const unresolvableMappings: string[] = [];
+
+    for (const mapping of mappings) {
+      const requirement = nistScores[mapping.scoringControlId];
+
+      if (!requirement) {
+        // A mapping row pointing at a requirement this methodology does not
+        // score. Collected and reported rather than dropped, because silently
+        // ignoring it is how a mapping becomes permanently unscoreable without
+        // anybody noticing. CI fails the build on a non-empty list.
+        unresolvableMappings.push(mapping.ucoControlId + ":" + mapping.frameworkControlId);
+        continue;
+      }
+
+      objectivesMapped.add(mapping.ucoControlId);
+      requirementsMapped.add(mapping.scoringControlId);
+
+      const status = statusByObjective.get(mapping.ucoControlId);
+      if (!status || status === "not_tested") continue;
+
+      if (status === "failing" || status === "warning") {
+        // Sticky. Once one mapped objective is short of the requirement, no
+        // other objective can talk it back up to met.
+        requirement.status = "not_met";
+      } else if (status === "passing" && requirement.status !== "not_met") {
+        requirement.status = "met";
       }
     }
 
-    let score = -203;
-    for (const { weight, status } of Object.values(nistScores)) {
-      if (status === "met") score += weight;
-    }
-    score = Math.min(110, score);
+    const requirements = Object.values(nistScores);
 
-    const met = Object.values(nistScores).filter((s) => s.status === "met").length;
-    const notMet = Object.values(nistScores).filter((s) => s.status === "not_met").length;
-    const notReviewed = Object.values(nistScores).filter((s) => s.status === "not_reviewed").length;
-    const totalControls = Object.keys(NIST_800_171_WEIGHTS).length;
+    let score = SPRS_FLOOR;
+    for (const requirement of requirements) {
+      if (requirement.status === "met") score += requirement.weight;
+    }
+    score = Math.min(SPRS_CEILING, score);
+
+    const met = requirements.filter((r) => r.status === "met").length;
+    const notMet = requirements.filter((r) => r.status === "not_met").length;
+    const notReviewed = requirements.filter((r) => r.status === "not_reviewed").length;
+    const totalControls = NIST_800_171_R2_REQUIREMENT_COUNT;
 
     return {
       score,
-      maxScore: 110,
-      minScore: -203,
+      maxScore: SPRS_CEILING,
+      minScore: SPRS_FLOOR,
       met,
       notMet,
       notReviewed,
       totalControls,
       percentComplete: Math.round((met / totalControls) * 100),
-      readinessLevel: score >= 80 ? "high" : score >= 0 ? "medium" : score >= -60 ? "low" : "critical",
+      readinessLevel:
+        score >= 80 ? "high" : score >= 0 ? "medium" : score >= -60 ? "low" : "critical",
       nistScores,
       industryAverage: -12,
       topGaps: Object.entries(nistScores)
@@ -101,6 +157,32 @@ export class SprsService {
         .sort(([, a], [, b]) => b.weight - a.weight)
         .slice(0, 10)
         .map(([nist, s]) => ({ nistId: nist, weight: s.weight })),
+      /**
+       * Everything a reader needs to know what this number is and is not.
+       * Added in Phase 1b because the page previously showed a score with no
+       * statement of which revision it scored, how much of the framework was
+       * mapped at all, or that its advertised maximum is unreachable.
+       */
+      scoringBasis: {
+        methodology: "DoD Assessment Methodology",
+        basedOn: "NIST SP 800-171 Rev 2",
+        requirementCount: totalControls,
+        mappingSource: "uco_framework_mappings",
+        objectivesMapped: objectivesMapped.size,
+        requirementsMapped: requirementsMapped.size,
+        requirementsUnmapped: totalControls - requirementsMapped.size,
+        advertisedMaximum: SPRS_CEILING,
+        reachableMaximum: Math.min(SPRS_CEILING, SPRS_FLOOR + NIST_800_171_R2_TOTAL_WEIGHT),
+        totalWeight: NIST_800_171_R2_TOTAL_WEIGHT,
+        formulaNote:
+          "Score accumulates upward from the floor. The configured weights sum " +
+          "to less than the floor-to-ceiling span, so the advertised maximum of " +
+          "110 is not reachable with the current weight set. Reported rather " +
+          "than adjusted: changing it is a control-content decision.",
+        warningTreatment:
+          "A warning counts as not met. The methodology has no partial credit.",
+        unresolvableMappings,
+      },
     };
   }
 }

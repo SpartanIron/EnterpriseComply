@@ -10,6 +10,8 @@ import { runMfaMigration as runMfaSchemaMigration } from "../migrations/mfa.migr
 import { applyPlanProvisioning } from "../provisioning/org-plan.provisioning";
 import { runPlatformAdminMigration } from "../migrations/platform-admin.migration";
 import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migration";
+import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
+import { syncStoredFrameworkPosture } from "../lib/posture";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
 
 /**
@@ -1199,6 +1201,11 @@ export class StartupService implements OnApplicationBootstrap {
     // fixed seeder now checks, so running it afterwards would let one more
     // round of duplicates in before the guard could ever see them.
     await this.repairRiskSeed();
+    // Phase 1b. Runs after seedIfEmpty() has put the catalog mappings in place,
+    // because it reconciles against them rather than creating them. Placed with
+    // the other Phase 1 repairs so the data-integrity work is one block.
+    await this.consolidateMappings();
+    await this.syncFrameworkPosture();
     await this.seedCommonRisks();
     await this.seedSubProcessors();
     await this.seedComplianceCalendar();
@@ -1749,6 +1756,110 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
    * could not collapse is logged either way, so a partial outcome is visible
    * instead of assumed.
    */
+  /**
+   * Folds the hardcoded objective-to-requirement map into
+   * uco_framework_mappings and backfills the scoring identifiers that let the
+   * DoD methodology join against Rev 3 notation. See
+   * migrations/mapping-consolidation.migration.ts for the ordering and for why
+   * presence is keyed on the normalised identifier.
+   *
+   * Logged rather than fatal, with one exception. A failure here leaves the
+   * table as it was, and the readers all fall back to normalising the framework
+   * identifier at read time, so posture stays computable and refusing to serve
+   * traffic would cost more than it protects.
+   *
+   * The exception is unresolvable scoring identifiers. Those are logged at
+   * error, not warn, because a mapping row whose identifier does not land in
+   * the weighted set scores as permanently unmet and would otherwise be
+   * invisible - the number would simply be wrong and nobody would be told.
+   */
+  /**
+   * Refresh the denormalised posture columns on org_frameworks for every
+   * organisation.
+   *
+   * These columns are read by pages that do not compute, and until Phase 1b the
+   * only thing that ever wrote them was a control-result patch. On the measured
+   * organisation nobody had patched a control since the rows were created, so
+   * every one of them still said zero passing, zero failing and a compliance
+   * score of zero - and the Frameworks page dutifully showed that.
+   *
+   * Running it at boot is what lets the drift count actually reach zero rather
+   * than waiting for somebody to happen to edit a control. It is a cache refresh,
+   * so it is idempotent and it is never fatal: the posture endpoint does not read
+   * these columns and stays correct regardless.
+   */
+  private async syncFrameworkPosture() {
+    try {
+      const orgs = await db.execute(sql`SELECT id FROM organizations`);
+      const rows = (orgs as { rows?: Array<{ id: number }> }).rows ?? (orgs as Array<{ id: number }>);
+
+      let updated = 0;
+      let failed = 0;
+
+      for (const row of Array.isArray(rows) ? rows : []) {
+        const result = await syncStoredFrameworkPosture(Number(row.id));
+        updated += result.updated;
+        failed += result.failed;
+      }
+
+      this.logger.log(
+        'Framework posture cache refreshed: orgs=' + (Array.isArray(rows) ? rows.length : 0) +
+          ' rowsUpdated=' + updated +
+          ' rowsFailed=' + failed,
+      );
+
+      if (failed > 0) {
+        this.logger.warn(
+          'POSTURE_CACHE_STALE ' + failed + ' framework row(s) could not be refreshed. ' +
+            'Pages reading the stored columns will show stale numbers until the next boot ' +
+            'or control patch; /orgs/:orgId/posture is unaffected.',
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        'Framework posture cache refresh failed: ' +
+          (error instanceof Error ? error.message : String(error)),
+      );
+    }
+  }
+  private async consolidateMappings() {
+    try {
+      const result = await runMappingConsolidationMigration(db);
+
+      this.logger.log(
+        'Mapping consolidation: scoringIdsBackfilled=' + result.scoringIdsBackfilled +
+          ' revisionsBackfilled=' + result.revisionsBackfilled +
+          ' relocatedRowsInserted=' + result.relocatedRowsInserted +
+          ' rowsForFramework=' + result.rowsForFramework +
+          ' objectivesForFramework=' + result.objectivesForFramework +
+          ' uniqueIndex=' + result.uniqueIndexPresent +
+          ' duplicateTriples=' + result.duplicateTriples,
+      );
+
+      if (result.duplicateTriples > 0) {
+        this.logger.warn(
+          'Mapping consolidation left ' + result.duplicateTriples +
+            ' duplicate mapping triple(s) in place, so the unique index was not ' +
+            'created. The relocation still ran; the table is not yet protected ' +
+            'against a future duplicate.',
+        );
+      }
+
+      if (result.unresolvableScoringIds.length > 0) {
+        this.logger.error(
+          'MAPPING_UNRESOLVABLE ' + result.unresolvableScoringIds.length +
+            ' mapping row(s) carry a requirement identifier that does not resolve ' +
+            'into the scoring set, so they can never be scored as met: ' +
+            result.unresolvableScoringIds.join(", "),
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        'Mapping consolidation failed, leaving the table as it was: ' +
+          (error instanceof Error ? error.message : String(error)),
+      );
+    }
+  }
   private async repairRiskSeed() {
     try {
       const result = await runRiskSeedDedupeMigration(db);

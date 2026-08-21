@@ -244,7 +244,7 @@ return { org };
   }
 
 async getDashboard(orgId: number, org: typeof organizationsTable.$inferSelect) {
-const [frameworks, controls, integrations, policies, people, shadowPosture] = await Promise.all([
+const [frameworks, controls, integrations, policies, people, posture] = await Promise.all([
 db.query.orgFrameworksTable.findMany({
 where: and(eq(orgFrameworksTable.orgId, orgId), eq(orgFrameworksTable.active, true)),
 }),
@@ -252,52 +252,93 @@ db.query.orgControlResultsTable.findMany({ where: eq(orgControlResultsTable.orgI
 db.query.orgIntegrationsTable.findMany({ where: eq(orgIntegrationsTable.orgId, orgId) }),
 db.query.orgPoliciesTable.findMany({ where: eq(orgPoliciesTable.orgId, orgId) }),
 db.query.orgPeopleTable.findMany({ where: eq(orgPeopleTable.orgId, orgId) }),
-// Phase 1 shadow mode. The SSOT is computed alongside the legacy arithmetic
-// below and the two are compared, but nothing in this response depends on it
-// yet. Its reads are deliberately its own rather than derived from the rows
-// fetched here: the point is to show the new computation reaches the same
-// answer independently, which it cannot demonstrate by sharing intermediate
-// state with the thing it is checking. Rejection resolves to null, because an
-// observation must never be able to take the dashboard down.
+// Phase 1b. No longer shadow: this is the answer. Rejection still resolves to
+// null and the legacy arithmetic below is still computed, so a failure here
+// degrades to the old numbers rather than to an error page. That fallback is
+// the reason the legacy block survives the cutover.
 computePosture(orgId).catch((err) => {
-logger.error({ err, orgId }, "[orgs] posture shadow computation failed");
+logger.error({ err, orgId }, "[orgs] posture computation failed, falling back to legacy counts");
 return null;
 }),
 ]);
 
 const connected = integrations.filter((i) => i.status === "connected");
-const passing = controls.filter((c) => c.status === "passing").length;
-const failing = controls.filter((c) => c.status === "failing").length;
-const total = controls.length;
-const overallScore = total > 0 ? Math.round((passing / total) * 100) : 0;
 
-// Records the comparison and returns the divergences. Never throws.
-const postureDivergences = shadowPosture ? recordPostureDrift(shadowPosture) : [];
+// Fallback only. Reached when computePosture threw, which on the measured org
+// it never has. Kept deliberately rather than deleted: a dashboard that shows
+// slightly wrong numbers during a database hiccup is better than one that shows
+// none, and this is the whole of the old arithmetic in one place where it is
+// obviously the exception rather than the rule.
+const legacyPassing = controls.filter((c) => c.status === "passing").length;
+const legacyFailing = controls.filter((c) => c.status === "failing").length;
+const legacyTotal = controls.length;
+
+// Records the comparison and returns the blocking divergences. Never throws.
+const postureDivergences = posture ? recordPostureDrift(posture) : [];
+
+const controlSummary = posture
+? {
+passing: posture.counts.passing,
+warning: posture.counts.warning,
+failing: posture.counts.failing,
+notTested: posture.counts.notTested,
+assessed: posture.counts.assessed,
+total: posture.counts.total,
+}
+: {
+passing: legacyPassing,
+warning: 0,
+failing: legacyFailing,
+notTested: legacyTotal - legacyPassing - legacyFailing,
+assessed: legacyPassing + legacyFailing,
+total: legacyTotal,
+};
 
 return {
 org,
-overallScore,
+overallScore: posture ? posture.scorePercent : legacyTotal > 0 ? Math.round((legacyPassing / legacyTotal) * 100) : 0,
 frameworks,
-controlSummary: { passing, failing, notTested: total - passing - failing, total },
+controlSummary,
 connectedIntegrations: connected.length,
 policiesCount: policies.length,
 peopleCount: people.length,
 recentActivity: [],
-// Additive and advisory. controlSummary and overallScore above are byte for
-// byte what they were, so no existing consumer changes behaviour; this field
-// exists so that cutting over is a deletion rather than a rewrite. Only the
-// totals are carried, not the per-framework array - GET /orgs/:orgId/posture
-// is the place to go for the full object.
-posture: shadowPosture
+/**
+* Why the two headline numbers moved, in the response, so the UI can say it
+* rather than leaving a reader to conclude their compliance collapsed
+* overnight.
+*
+* On the measured org the score goes 20 to 3 and "not tested" goes 5 to 61.
+* Nothing got worse. The denominator changed from "objectives that happen to
+* have a result row" to "objectives", and five warnings stopped being
+* reported as untested.
+*/
+scoreBasis: posture
 ? {
-shadowMode: true,
-schema: shadowPosture.schema,
-counts: shadowPosture.counts,
-scorePercent: shadowPosture.scorePercent,
-coveragePercent: shadowPosture.coveragePercent,
-divergenceCount: postureDivergences.length,
+source: "posture-ssot",
+schema: posture.schema,
+denominator: "all control objectives",
+previousDenominator: "control objectives with a stored result row",
+objectivesTotal: posture.counts.total,
+objectivesAssessed: posture.counts.assessed,
+assessedScorePercent: posture.assessedScorePercent,
+coveragePercent: posture.coveragePercent,
+note:
+"Score is passing objectives over all objectives. The assessed-only figure " +
+"is reported separately because it is the number this dashboard used to " +
+"show as the overall score.",
+degraded: false,
 }
-: null,
+: {
+source: "legacy-fallback",
+degraded: true,
+note:
+"Posture computation failed for this request, so these counts come from the " +
+"pre-Phase-1 arithmetic and understate the number of untested objectives.",
+},
+postureDrift: {
+divergenceCount: postureDivergences.length,
+},
 };
 }
 

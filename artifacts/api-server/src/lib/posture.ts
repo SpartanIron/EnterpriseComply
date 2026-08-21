@@ -5,7 +5,8 @@ import {
   orgFrameworksTable,
   ucoFrameworkMappingsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { NIST_800_171_R2_REQUIREMENT_COUNT } from "./framework-mappings";
 
 /**
  * Phase 1 - the single source of truth for compliance posture.
@@ -431,22 +432,218 @@ export function diffStoredFrameworkScores(posture: Posture): PostureDivergence[]
       });
     }
 
-    if (framework.partialCoverage) {
-      divergences.push({
-        surface,
-        field: "coveragePercent",
-        legacy: 100,
-        ssot: framework.coveragePercent,
-        delta: framework.coveragePercent - 100,
-        cause: `only ${framework.mappedControlCount} of ${framework.declaredControlCount} published controls are mapped, so no page should present this framework as fully scored`,
-      });
-    }
   }
 
   return divergences;
 }
 
 /** Every divergence the SSOT can currently see, in one call. */
+/**
+ * Phase 1b changed what this number means, and that is worth stating plainly
+ * rather than burying, because the effect is to make the headline count smaller.
+ *
+ * In shadow mode it returned everything that differed: the legacy dashboard
+ * arithmetic, the stale stored framework columns, and every framework whose
+ * mappings do not cover its published control count. Thirteen items on the
+ * measured org. Useful for deciding what to fix, useless as a health signal,
+ * because two of those three groups can never reach zero:
+ *
+ *   - the legacy dashboard arithmetic is computed inside computePosture for
+ *     comparison purposes. Nothing serves it any more after the cutover, so a
+ *     permanent difference there is a historical fact, not a fault.
+ *
+ *   - partial framework coverage means 25 of 110 published requirements are
+ *     mapped. That is true, it matters, and it is not drift. Treating it as
+ *     drift would mean the alert is red forever and therefore ignored.
+ *
+ * So this function now returns only what a healthy system must have at zero:
+ * disagreement between the SSOT and the denormalised columns other code reads.
+ * The other two groups are still reported, by legacyArithmeticNotes and
+ * coverageWarnings, and the drift endpoint surfaces all three separately. The
+ * point of the split is that one of the three is a bug and the other two are
+ * facts, and an alert that cannot tell them apart is not an alert.
+ */
 export function diffPosture(posture: Posture): PostureDivergence[] {
-  return [...diffLegacyDashboard(posture), ...diffStoredFrameworkScores(posture)];
+  return diffStoredFrameworkScores(posture);
+}
+
+/**
+ * Retained for visibility, not for alerting. This is what the dashboard would
+ * have said if it were still doing its own arithmetic, so it stays a tripwire:
+ * if somebody reintroduces per-page counting, the numbers here start moving
+ * again and there is a place to see it.
+ */
+export function legacyArithmeticNotes(posture: Posture): PostureDivergence[] {
+  return diffLegacyDashboard(posture);
+}
+
+export interface CoverageWarning {
+  frameworkKey: string;
+  name: string;
+  mappedControlCount: number;
+  declaredControlCount: number;
+  coveragePercent: number;
+  note: string;
+}
+
+/**
+ * Frameworks the product cannot honestly present as fully scored, because the
+ * mappings reach only part of the published control set. Surfaced so a page can
+ * say so next to the number instead of letting a reader assume a small score
+ * means poor compliance when it partly means thin mappings.
+ */
+export function coverageWarnings(posture: Posture): CoverageWarning[] {
+  return posture.frameworks
+    .filter((framework) => framework.partialCoverage)
+    .map((framework) => ({
+      frameworkKey: framework.frameworkKey,
+      name: framework.name,
+      mappedControlCount: framework.mappedControlCount,
+      declaredControlCount: framework.declaredControlCount,
+      coveragePercent: framework.coveragePercent,
+      note:
+        "Only " + framework.mappedControlCount + " of " +
+        framework.declaredControlCount +
+        " published controls are mapped, so this framework is partially assessed " +
+        "and should not be presented as fully scored.",
+    }));
+}
+
+export interface CatalogInconsistency {
+  frameworkKey: string;
+  catalogName: string;
+  declaredRevision: string | null;
+  declaredControlCount: number;
+  scoringRevision: string;
+  scoringRequirementCount: number;
+  note: string;
+}
+
+/**
+ * Which revision of a framework this platform actually scores against, taken
+ * from the weighted requirement set rather than from prose. Only frameworks
+ * with a real scoring set belong here.
+ */
+const SCORED_FRAMEWORK_REVISIONS: Record<
+  string,
+  { revision: string; requirementCount: number }
+> = {
+  "nist-800-171": {
+    revision: "Rev 2",
+    requirementCount: NIST_800_171_R2_REQUIREMENT_COUNT,
+  },
+};
+
+/**
+ * Places where the framework catalog's own label disagrees with the control
+ * data underneath it.
+ *
+ * There is exactly one today, and it is reported rather than corrected on
+ * purpose. The catalog calls nist-800-171 "NIST SP 800-171 Rev 3" and then
+ * declares 110 controls, and 110 is the size of the Rev 2 weighted requirement
+ * set this platform scores against. Rev 3 is a different requirement list, so
+ * either the label is wrong or the content is, and choosing which is a
+ * control-content decision about what the product claims to assess rather than
+ * a refactor. Guessing would put an unverified compliance claim in front of a
+ * customer, so the disagreement is surfaced through the API and left to
+ * whoever owns that decision.
+ */
+export function catalogInconsistencies(posture: Posture): CatalogInconsistency[] {
+  const findings: CatalogInconsistency[] = [];
+
+  for (const framework of posture.frameworks) {
+    const scoring = SCORED_FRAMEWORK_REVISIONS[framework.frameworkKey];
+    if (!scoring) continue;
+
+    const match = /\bRev(?:ision)?\.?\s*(\d+)\b/i.exec(framework.name);
+    const declaredRevision = match ? "Rev " + match[1] : null;
+
+    // Both halves have to be true for this to be the known inconsistency: a
+    // label naming one revision, over a control count that is exactly the
+    // scored revision's. If either stops holding, the finding disappears
+    // instead of asserting something the data no longer supports.
+    const revisionDisagrees =
+      declaredRevision !== null && declaredRevision !== scoring.revision;
+    const countMatchesScoringSet =
+      framework.declaredControlCount === scoring.requirementCount;
+
+    if (!revisionDisagrees || !countMatchesScoringSet) continue;
+
+    findings.push({
+      frameworkKey: framework.frameworkKey,
+      catalogName: framework.name,
+      declaredRevision,
+      declaredControlCount: framework.declaredControlCount,
+      scoringRevision: scoring.revision,
+      scoringRequirementCount: scoring.requirementCount,
+      note:
+        "The catalog labels this framework " + declaredRevision + " but declares " +
+        framework.declaredControlCount + " controls, which is the size of the " +
+        scoring.revision + " weighted requirement set this platform scores " +
+        "against. The label and the content describe different revisions. " +
+        "Reconciling them is a control-content decision, so it is reported " +
+        "here rather than changed.",
+    });
+  }
+
+  return findings;
+}
+
+/**
+ * Write the SSOT's per-framework numbers into the denormalised columns on
+ * org_frameworks.
+ *
+ * Those columns exist because several pages read them instead of computing, and
+ * they were only ever written by updateFrameworkScores() on a control-result
+ * patch, inside a catch that swallowed its own failure. On the measured org they
+ * were therefore all zero: nobody had patched a control since the rows were
+ * created, so every page reading them was told this organisation has no passing
+ * controls, no failing controls and a compliance score of zero.
+ *
+ * Calling this at boot and after every patch is what makes those columns a cache
+ * of the SSOT rather than an independent and permanently stale opinion. It is
+ * also what lets the drift count reach zero, which is the Phase 1b exit
+ * criterion - before this, the stored columns could only converge by somebody
+ * happening to edit a control.
+ *
+ * Idempotent by construction: it writes computed values, so running it twice
+ * writes the same values twice. Never throws; a failure to refresh a cache must
+ * not take a request or a boot down, and the SSOT remains correct regardless
+ * because it does not read these columns.
+ */
+export async function syncStoredFrameworkPosture(
+  orgId: number,
+): Promise<{ updated: number; failed: number }> {
+  let updated = 0;
+  let failed = 0;
+
+  try {
+    const posture = await computePosture(orgId);
+
+    for (const framework of posture.frameworks) {
+      try {
+        await db
+          .update(orgFrameworksTable)
+          .set({
+            complianceScore: framework.scorePercent,
+            passingControls: framework.counts.passing,
+            failingControls: framework.counts.failing,
+            notTestedControls: framework.counts.notTested,
+          })
+          .where(
+            and(
+              eq(orgFrameworksTable.orgId, orgId),
+              eq(orgFrameworksTable.frameworkKey, framework.frameworkKey),
+            ),
+          );
+        updated += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+  } catch {
+    failed += 1;
+  }
+
+  return { updated, failed };
 }
