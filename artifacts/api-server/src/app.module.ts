@@ -48,6 +48,7 @@ import { EMassModule } from "./modules/emass/emass.module";
 import { PublicStatusModule } from "./modules/public-status/public-status.module";
 import { SsoModule } from "./modules/sso/sso.module";
 import { AdminModule } from "./modules/admin/admin.module";
+import { PlatformModule } from "./modules/platform/platform.module";
 import { CrosswalkModule } from "./modules/crosswalk/crosswalk.module";
 import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
 
@@ -112,6 +113,10 @@ import { IdleTimeoutMiddleware } from "./middlewares/idle-timeout.middleware";
     PublicStatusModule,
     SsoModule,
     AdminModule,
+    // The break-glass elevation routes. Registered here, and the omission of this
+    // one line is what left assertPlatformAccess() unsatisfiable and every
+    // /api/admin/* endpoint answering 403 with no way for anyone to clear it.
+    PlatformModule,
     CrosswalkModule,
   ],
   providers: [
