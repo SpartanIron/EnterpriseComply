@@ -10,6 +10,14 @@ export const organizationsTable = pgTable("organizations", {
   industry: text("industry").notNull().default("technology"),
   size: text("size").notNull().default("11-50"),
   website: text("website"),
+  /**
+   * FIPS 199 impact level for the information this system handles: low,
+   * moderate or high. Null means not categorised, which is the honest default -
+   * categorisation is a decision the organisation makes about its own data and
+   * nothing here should guess it. FISMA scoping depends on this value, so it is
+   * recorded rather than inferred.
+   */
+  fips199Impact: text("fips_199_impact"),
   onboardingComplete: boolean("onboarding_complete").notNull().default(false),
   onboardingStep: integer("onboarding_step").notNull().default(1),
   plan: text("plan").notNull().default("starter"),
