@@ -12,6 +12,7 @@ import { runPlatformAdminMigration } from "../migrations/platform-admin.migratio
 import { runRiskSeedDedupeMigration } from "../migrations/risk-seed-dedupe.migration";
 import { recordScoreSnapshots as recordScoreSnapshotSweep } from "../lib/score-history";
 import { runFismaFips199Migration } from "../migrations/fisma-fips199.migration";
+import { runPostureDriftLedgerMigration } from "../migrations/posture-drift-ledger.migration";
 import { runMappingConsolidationMigration } from "../migrations/mapping-consolidation.migration";
 import { syncStoredFrameworkPosture } from "../lib/posture";
 import { reconcilePlatformAdmins } from "../lib/platform-admin";
@@ -1208,6 +1209,7 @@ export class StartupService implements OnApplicationBootstrap {
     // the other Phase 1 repairs so the data-integrity work is one block.
     await this.consolidateMappings();
     await this.runFipsImpactMigration();
+    await this.runDriftLedgerMigration();
     await this.syncFrameworkPosture();
     await this.recordScoreSnapshots();
     await this.seedCommonRisks();
@@ -1269,6 +1271,23 @@ export class StartupService implements OnApplicationBootstrap {
       this.logger.warn(
         'FIPS199_COLUMN_MISSING ' + String(err) +
           '. FISMA scoping will report "not categorised" until this succeeds.',
+      );
+    }
+  }
+
+  /**
+   * The durable drift ledger. Additive, idempotent, and non-fatal: without the
+   * table the observer logs a write failure and the in-memory report continues,
+   * which is the behaviour that existed before this table did.
+   */
+  private async runDriftLedgerMigration() {
+    try {
+      await runPostureDriftLedgerMigration(db);
+      this.logger.log('Posture drift ledger table present.');
+    } catch (err) {
+      this.logger.warn(
+        'DRIFT_LEDGER_MISSING ' + String(err) +
+          '. Drift will be logged and held in memory but not persisted.',
       );
     }
   }

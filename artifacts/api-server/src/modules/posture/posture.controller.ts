@@ -8,7 +8,11 @@ import {
   diffPosture,
   legacyArithmeticNotes,
 } from "../../lib/posture";
-import { getPostureDriftReport, recordPostureDrift } from "../../lib/posture-drift";
+import {
+  getPersistedDriftLedger,
+  getPostureDriftReport,
+  recordPostureDrift,
+} from "../../lib/posture-drift";
 
 interface OrgCtx {
   orgId: number;
@@ -72,6 +76,11 @@ export class PostureController {
         orphanedResults: posture.orphanedResults,
       },
       history: getPostureDriftReport(ctx.orgId),
+      // The durable half. history is what this process has seen since it
+      // started; ledger is what has ever been seen. Before this existed, the
+      // answer to "has this ever drifted" was lost on every deploy - the moment
+      // drift is most likely to appear.
+      ledger: await getPersistedDriftLedger(ctx.orgId),
       // The two numbers a reader most often wants side by side, spelled out so
       // nobody has to reconstruct which denominator produced which figure.
       summary: {

@@ -21,10 +21,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { db, complianceScoreHistoryTable, orgIntegrationsTable } from "@workspace/db";
-import { and, eq, gte, lt } from "drizzle-orm";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { CIPHERTEXT_PREFIX, findCredentialLeaks } from "../src/lib/integration-redaction";
 import { readScoreHistory, recordScoreSnapshot, utcDayBounds } from "../src/lib/score-history";
 import { computePosture } from "../src/lib/posture";
+import { getPersistedDriftLedger, recordPostureDrift } from "../src/lib/posture-drift";
 import { MonitoringService } from "../src/modules/monitoring/monitoring.service";
 
 const ORG = 1;
@@ -276,6 +277,55 @@ async function main() {
     !dashboardSource.includes("90-day history") && !dashboardSource.includes("pts over 90d"),
     "The header labelled every series as ninety days of history regardless of " +
       "what was recorded.",
+  );
+
+  // ── 8. The drift ledger survives the process that wrote it ──────────────
+  //
+  // Phase 1's exit criterion was a dashboard rather than a memory, and what
+  // shipped was a memory. These assertions read the table directly, so they
+  // cannot be satisfied by the in-process ring buffer.
+  const ledgerPosture = await computePosture(ORG);
+  recordPostureDrift(ledgerPosture);
+  // The write is fire-and-forget by design; give it a moment to land.
+  await new Promise((resolve) => setTimeout(resolve, 250));
+
+  const ledger = await getPersistedDriftLedger(ORG);
+  check(
+    "the durable drift ledger is readable",
+    ledger.available === true && ledger.source === "posture_drift_observations",
+    "ledger=" + JSON.stringify(ledger) +
+      ". Without the table this reports unavailable and drift stops surviving a " +
+      "restart, which is the defect this replaced.",
+  );
+
+  const rows: any = await db.execute(
+    sql`SELECT count(*)::int AS n FROM posture_drift_observations WHERE org_id = ${ORG}`,
+  );
+  const rowList = (rows?.rows ?? rows) as Array<Record<string, unknown>>;
+  const persistedCount = Number((Array.isArray(rowList) ? rowList[0] : undefined)?.n ?? 0);
+  check(
+    "at least one observation reached the table",
+    persistedCount > 0,
+    "Found " + persistedCount + " row(s). Recording is fire-and-forget, so a " +
+      "silent write failure would otherwise look identical to success.",
+  );
+
+  // Recording repeatedly must not write a row per call while posture is clean.
+  recordPostureDrift(ledgerPosture);
+  recordPostureDrift(ledgerPosture);
+  recordPostureDrift(ledgerPosture);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+
+  const after: any = await db.execute(
+    sql`SELECT count(*)::int AS n FROM posture_drift_observations WHERE org_id = ${ORG}`,
+  );
+  const afterList = (after?.rows ?? after) as Array<Record<string, unknown>>;
+  const afterCount = Number((Array.isArray(afterList) ? afterList[0] : undefined)?.n ?? 0);
+  check(
+    "clean observations are sampled, not written per call",
+    afterCount === persistedCount,
+    "before=" + persistedCount + " after=" + afterCount +
+      ". A row per call would make the ledger a traffic counter.",
   );
 
   if (failures > 0) {
