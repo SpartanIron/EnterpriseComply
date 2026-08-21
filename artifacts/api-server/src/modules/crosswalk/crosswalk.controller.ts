@@ -8,7 +8,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ClerkAuthGuard, OrgContextGuard, ClerkUserId } from "../../guards/clerk-auth.guard";
-import { db, controlCrosswalkTable } from "@workspace/db";
+import { db, controlCrosswalkTable, ucoControlsTable } from "@workspace/db";
+import { getResolvedMappings } from "../../lib/framework-mappings";
 import { eq } from "drizzle-orm";
 import { assertPlatformAccess } from "../../lib/platform-admin";
 
@@ -20,7 +21,9 @@ import { assertPlatformAccess } from "../../lib/platform-admin";
  * Updates a single row. Platform administrators only, and only while elevated.
  *
  * GET /api/crosswalk/controls
- * Returns all rows for authenticated org members (falls back to [] if empty).
+ * Derived from uco_framework_mappings for authenticated org members. Any row an
+ * administrator wrote into control_crosswalk overrides the derived value for the
+ * fields it populates.
  */
 @Controller()
 export class CrosswalkController {
@@ -122,13 +125,104 @@ export class CrosswalkController {
 
   /**
    * GET /api/crosswalk/controls
-   * Auth-guarded (any org member). Returns DB crosswalk rows; empty array if none.
+   *
+   * Phase 1b. This used to select straight out of control_crosswalk, which has
+   * never had a row in it, so the endpoint returned [] every time it was called
+   * and the Crosswalk page had nothing to render. That empty table was the third
+   * of the three competing answers to "which requirements does this objective
+   * satisfy": not a wrong answer, an absent one.
+   *
+   * It is now derived from uco_framework_mappings, the same table the posture
+   * SSOT and the SPRS scorer read. Derived, not copied: there is no write path
+   * here and nothing to fall out of step, which is the only way a crosswalk view
+   * stays true without somebody remembering to reconcile it.
+   *
+   * The response keeps the shape the frontend already expects - one row per
+   * objective with a column per framework - so this is a data fix rather than a
+   * contract change. Where an objective maps to several requirements in one
+   * framework they are joined with ", " in the order the identifiers sort,
+   * because a stable string is diffable and an arbitrary one is not.
+   *
+   * Rows still present in control_crosswalk, if an administrator ever wrote any
+   * through the admin route below, take precedence for the fields they populate.
+   * That keeps a manual override meaningful without letting an empty table erase
+   * a derived answer.
    */
   @Get("crosswalk/controls")
   @UseGuards(OrgContextGuard)
   async listCrosswalkControls() {
-    const rows = await db.select().from(controlCrosswalkTable);
-    // Return array directly — consistent with REST convention for list endpoints.
-    return rows;
+    const DERIVED_FRAMEWORKS: Array<{ column: string; frameworkKey: string }> = [
+      { column: "nist80053", frameworkKey: "nist-800-53" },
+      { column: "cmmc", frameworkKey: "cmmc-l2" },
+      { column: "nist800171", frameworkKey: "nist-800-171" },
+      { column: "soc2", frameworkKey: "soc2" },
+      { column: "iso27001", frameworkKey: "iso27001" },
+      { column: "fedramp", frameworkKey: "fedramp" },
+      { column: "hipaa", frameworkKey: "hipaa" },
+    ];
+
+    const [ucoControls, overrides, ...mappingSets] = await Promise.all([
+      db.select().from(ucoControlsTable),
+      db.select().from(controlCrosswalkTable),
+      ...DERIVED_FRAMEWORKS.map((f) => getResolvedMappings(f.frameworkKey)),
+    ]);
+
+    // objective -> column -> sorted requirement identifiers
+    const byObjective = new Map<string, Record<string, string[]>>();
+
+    DERIVED_FRAMEWORKS.forEach((framework, index) => {
+      for (const mapping of mappingSets[index] ?? []) {
+        let columns = byObjective.get(mapping.ucoControlId);
+        if (!columns) {
+          columns = {};
+          byObjective.set(mapping.ucoControlId, columns);
+        }
+        const bucket = columns[framework.column] ?? (columns[framework.column] = []);
+        if (!bucket.includes(mapping.frameworkControlId)) {
+          bucket.push(mapping.frameworkControlId);
+        }
+      }
+    });
+
+    const overrideByObjective = new Map(
+      overrides.map((row: Record<string, unknown>) => [String(row.ucoControlId), row]),
+    );
+
+    return ucoControls
+      .map((control: Record<string, unknown>) => {
+        const controlId = String(control.controlId);
+        const columns = byObjective.get(controlId) ?? {};
+        const override = overrideByObjective.get(controlId) as
+          | Record<string, unknown>
+          | undefined;
+
+        const derived: Record<string, string | null> = {};
+        for (const framework of DERIVED_FRAMEWORKS) {
+          const identifiers = columns[framework.column];
+          derived[framework.column] = identifiers?.length
+            ? [...identifiers].sort().join(", ")
+            : null;
+        }
+
+        return {
+          ucoControlId: controlId,
+          title: (override?.title as string) ?? String(control.name),
+          domain: (override?.domain as string) ?? String(control.domain),
+          nist80053: (override?.nist80053 as string) ?? derived.nist80053,
+          cmmc: (override?.cmmc as string) ?? derived.cmmc,
+          nist800171: (override?.nist800171 as string) ?? derived.nist800171,
+          soc2: (override?.soc2 as string) ?? derived.soc2,
+          iso27001: (override?.iso27001 as string) ?? derived.iso27001,
+          fedramp: (override?.fedramp as string) ?? derived.fedramp,
+          hipaa: (override?.hipaa as string) ?? derived.hipaa,
+          remediationSteps:
+            (override?.remediationSteps as string) ??
+            (control.remediationGuidance as string | null) ??
+            null,
+          mappedFrameworkCount: Object.values(derived).filter(Boolean).length,
+          source: override ? "override" : "derived",
+        };
+      })
+      .sort((a, b) => a.ucoControlId.localeCompare(b.ucoControlId));
   }
 }
