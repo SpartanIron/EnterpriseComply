@@ -637,16 +637,21 @@ export default function Integrations() {
     },
   });
 
-  const demoConnectMutation = useMutation({
-    mutationFn: (integrationKey: string) =>
-      apiFetch(`/orgs/${orgId}/integrations/${integrationKey}/demo-connect`, { method: "POST" }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["org-integrations"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["org-controls"] });
-      qc.invalidateQueries({ queryKey: ["evidence"] });
-    },
+  // The connector catalogue, fetched rather than hardcoded. Which credentials a
+  // tool needs, which of them are secret, and - for the ones that cannot be
+  // connected yet - the reason, all come from the same declaration the server
+  // verifies against. A copy of that here would go stale.
+  const { data: specData } = useQuery<{ specs: any[]; summary: any }>({
+    queryKey: ["connector-specs"],
+    queryFn: () => apiFetch("/integrations/connector-specs"),
+    enabled: !!orgId,
   });
+  const specByKey = new Map<string, any>((specData?.specs ?? []).map((sp: any) => [sp.key, sp]));
+
+  // Replaces demoConnectMutation, which POSTed to /demo-connect and had the
+  // server invent control results. There is no equivalent now: a connection is
+  // a credential the vendor accepted, so it needs a form.
+  const [credentialSpec, setCredentialSpec] = useState<any | null>(null);
 
   const disconnectMutation = useMutation({
     mutationFn: (integrationKey: string) =>
@@ -660,8 +665,6 @@ export default function Integrations() {
       qc.invalidateQueries({ queryKey: ["evidence"] });
     },
   });
-
-  const [demoConnecting, setDemoConnecting] = useState<string | null>(null);
 
   const handleConnect = async (key: string) => {
     if (key === "github") {
@@ -680,11 +683,14 @@ export default function Integrations() {
     if (key === "replit") { setShowReplitModal(true); return; }
     if (key === "betterauth") { setShowBetterAuthModal(true); return; }
     if (key === "cloudflare") { setShowCloudflareModal(true); return; }
-    setDemoConnecting(key);
-    try {
-      await demoConnectMutation.mutateAsync(key);
-    } finally {
-      setDemoConnecting(null);
+    // Everything else is driven by its spec. A connector the engine cannot
+    // reach has a disabled button and its reason on the card, so this is only
+    // called for one it can.
+    const spec = specByKey.get(key);
+    if (spec && spec.state === "live") {
+      const name =
+        (data?.integrations ?? []).find((i: any) => i.key === key)?.name ?? key;
+      setCredentialSpec({ ...spec, name });
     }
   };
 
@@ -719,6 +725,17 @@ export default function Integrations() {
 
   return (
     <div className="p-6 max-w-screen-xl">
+      {credentialSpec && orgId && (
+        <CredentialConnectModal
+          orgId={orgId}
+          spec={credentialSpec}
+          onClose={() => setCredentialSpec(null)}
+          onConnected={() => {
+            setCredentialSpec(null);
+            qc.invalidateQueries({ queryKey: ["org-integrations"] });
+          }}
+        />
+      )}
       {showAWSModal && orgId && (
         <AWSConnectModal orgId={orgId} onClose={() => setShowAWSModal(false)} onSuccess={handleCredentialConnectSuccess} />
       )}
@@ -908,8 +925,8 @@ export default function Integrations() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {availableList.map((i: any) => (
               <AvailableCard key={i.key} integration={i} orgId={orgId}
-                onConnect={() => handleConnect(i.key)}
-                connecting={demoConnecting === i.key} />
+                spec={specByKey.get(i.key)}
+                onConnect={() => handleConnect(i.key)} />
             ))}
           </div>
         </div>
@@ -1076,8 +1093,8 @@ function ConnectedCard({ integration, onSync, syncing, orgId, onReconnect, onDis
   );
 }
 
-function AvailableCard({ integration, orgId, onConnect, connecting }: {
-  integration: any; orgId: number; onConnect: () => void; connecting: boolean;
+function AvailableCard({ integration, orgId, onConnect, spec }: {
+  integration: any; orgId: number; onConnect: () => void; spec?: any;
 }) {
   const BASE_PATH = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
   const isGitHub = integration.key === "github";
@@ -1088,9 +1105,17 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
     cloudflare: "Connect Cloudflare", railway: "Connect Railway",
     replit: "Connect Replit", betterauth: "Connect BetterAuth",
   };
+
+  // The label used to be "Connect (Demo)" for everything without a hand-written
+  // connector, and pressing it fabricated control results. There are now three
+  // honest states and the button says which one this is.
+  const state: string = spec?.state ?? (isCredentials ? "native" : "unavailable");
+  const unavailable = state === "unavailable";
   const btnLabel = isCredentials
-    ? (credentialLabels[integration.key] ?? `Connect ${integration.name}`)
-    : connecting ? "Connecting..." : "Connect (Demo)";
+    ? (credentialLabels[integration.key] ?? "Connect " + integration.name)
+    : unavailable
+      ? "Not available yet"
+      : "Connect " + integration.name;
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-200 hover:shadow-sm transition-all">
@@ -1101,6 +1126,16 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
             <p className="font-semibold text-slate-900">{integration.name}</p>
             {isCredentials && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded ring-1 ring-blue-200">Live checks</span>
+            )}
+            {!isCredentials && state === "live" && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded ring-1 ring-emerald-200">
+                Real connection
+              </span>
+            )}
+            {unavailable && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 text-xs font-semibold rounded ring-1 ring-slate-200">
+                Not available
+              </span>
             )}
           </div>
         </div>
@@ -1116,6 +1151,17 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
           )}
         </div>
       )}
+      {unavailable && spec?.unavailableReason && (
+        <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2.5 mb-3 leading-relaxed">
+          {spec.unavailableReason}
+        </p>
+      )}
+      {!unavailable && !isCredentials && spec?.collects === "connection-only" && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3 leading-relaxed">
+          Connecting stores and verifies your credentials against {integration.name}. Automated control
+          testing for this tool is not implemented yet, so no evidence is collected and no control results change.
+        </p>
+      )}
       <div className="flex gap-2">
         {isGitHub ? (
           <a href={`${BASE_PATH}/api/integrations/github/connect?orgId=${orgId}`}
@@ -1123,12 +1169,12 @@ function AvailableCard({ integration, orgId, onConnect, connecting }: {
             Connect with GitHub
           </a>
         ) : (
-          <button onClick={onConnect} disabled={connecting}
-            className={`flex-1 px-3 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-60 transition-colors ${
-              isCredentials
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}>
+          <button onClick={onConnect} disabled={unavailable}
+            title={unavailable ? (spec?.unavailableReason ?? "") : undefined}
+            className={"flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors " +
+              (unavailable
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed ring-1 ring-slate-200"
+                : "bg-blue-600 text-white hover:bg-blue-700")}>
             {btnLabel}
           </button>
         )}
@@ -1176,6 +1222,144 @@ function IntegrationLogo({ name, size = "md" }: { name: string; size?: "sm" | "m
   return (
     <div className={`${sz} ${colors[name] ?? "bg-slate-100 text-slate-600"} rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${textSz}`}>
       {labels[name] ?? name.slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
+
+/**
+ * Connect any spec-driven integration.
+ *
+ * One form for every connector, built from the declaration the server verifies
+ * against. There is no per-vendor component to keep in step, and no client-side
+ * copy of which fields are required or which are secret.
+ *
+ * Secret fields render as password inputs. That is not security - the value is
+ * about to be sent to the server either way - it is so a screen share or a
+ * support screenshot during setup does not capture a live API token.
+ */
+function CredentialConnectModal({ orgId, spec, onClose, onConnected }: {
+  orgId: number; spec: any; onClose: () => void; onConnected: () => void;
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [problems, setProblems] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<any | null>(null);
+
+  const required = (spec.fields ?? []).filter((f: any) => f.required);
+  const ready = required.every((f: any) => (values[f.key] ?? "").trim().length > 0);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    setProblems({});
+    try {
+      const res = await fetch(apiUrl("/orgs/" + orgId + "/integrations/" + spec.key + "/connect-credentials"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        // Field-level problems are shown against the field. Everything else is
+        // the vendor's own answer, shown verbatim: "the credentials were
+        // rejected" and "the tenant identifier is wrong" need different fixes.
+        if (body?.problems) {
+          const map: Record<string, string> = {};
+          for (const p of body.problems) map[p.field] = p.message;
+          setProblems(map);
+          setError("Check the highlighted fields.");
+        } else {
+          setError(body?.message ?? "Could not connect (HTTP " + res.status + ").");
+        }
+        return;
+      }
+      setResult(body);
+    } catch (err) {
+      setError((err as Error).message || "Could not connect.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (result) {
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <h3 className="font-bold text-slate-900 mb-1">{spec.name} connected</h3>
+          <p className="text-sm text-slate-600 mb-4">{result.message}</p>
+          <p className="text-xs text-slate-500 mb-5">
+            Credentials were verified against {spec.name} and stored encrypted. Controls updated:{" "}
+            {result.controlsUpdated ?? 0}. Evidence collected: {result.evidenceCollected ?? 0}.
+          </p>
+          <button onClick={onConnected}
+            className="w-full py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="font-bold text-slate-900 mb-1">Connect {spec.name}</h3>
+        <p className="text-sm text-slate-500 mb-4">
+          These credentials are checked against {spec.name} before anything is saved. Nothing is stored if the
+          check fails.
+        </p>
+
+        {(spec.fields ?? []).map((f: any) => (
+          <div key={f.key} className="mb-3">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              {f.label}
+              {!f.required && <span className="font-normal text-slate-400"> (optional)</span>}
+            </label>
+            <input
+              type={f.secret ? "password" : "text"}
+              autoComplete="off"
+              value={values[f.key] ?? ""}
+              placeholder={f.placeholder ?? ""}
+              onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+              className={"w-full px-3 py-2 border rounded-lg text-sm " +
+                (problems[f.key] ? "border-red-300 bg-red-50" : "border-slate-200")}
+            />
+            {f.help && !problems[f.key] && <p className="text-[11px] text-slate-400 mt-1">{f.help}</p>}
+            {problems[f.key] && <p className="text-[11px] text-red-600 mt-1">{problems[f.key]}</p>}
+          </div>
+        ))}
+
+        {spec.collects === "connection-only" && (
+          <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3">
+            Automated control testing for {spec.name} is not implemented yet. Connecting proves the credentials
+            work and stores them; it does not collect evidence and does not change any control result.
+          </p>
+        )}
+
+        {spec.docsUrl && (
+          <a href={spec.docsUrl} target="_blank" rel="noreferrer"
+            className="text-xs text-blue-600 hover:text-blue-700 inline-block mb-3">
+            Where to create this credential
+          </a>
+        )}
+
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5 mb-3">{error}</p>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-2 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={!ready || busy}
+            className="flex-1 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+            {busy ? "Verifying..." : "Verify and connect"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
