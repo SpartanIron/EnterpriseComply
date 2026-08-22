@@ -127,6 +127,20 @@ jobs:
         # StartupService silently skipped or failed part of the migration.
         run: node artifacts/api-server/scripts/verify-schema.mjs
 
+      # ── Google assertion signing guard ───────────────────────────────────────
+      #
+      # The Google Workspace provider used to assemble its JWT as the header,
+      # the claim set, and the literal string "signature", and no test noticed,
+      # because no test could reach Google. This one does not need to: it
+      # generates a throwaway RSA keypair, signs an assertion, verifies it with
+      # the matching public key, and proves the check is not vacuous by showing
+      # an unrelated key rejects the same signature. It also fails the build if
+      # the provider ever hand-assembles a fake third segment again, or asks for
+      # an Admin SDK scope that is not read-only.
+      - name: Google assertion signing guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/google-jwt.test.ts
+
       # ── Phase 1: the risk seed must be idempotent across boots ───────────────
       #
       # seedCommonRisks() used to re-insert twenty rows per org on every single
