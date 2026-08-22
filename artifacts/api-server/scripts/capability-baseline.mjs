@@ -45,7 +45,15 @@ const MIGRATIONS_DIR = join(API_SRC, "migrations");
 const LIB_DIR = join(API_SRC, "lib");
 const DB_SRC = join(REPO_ROOT, "lib", "db", "src");
 const SCHEMA_DIR = join(DB_SRC, "schema");
-const ROADMAP_PATH = join(REPO_ROOT, "docs", "ROADMAP.md");
+// The roadmap path is overridable so the checker can be aimed at a fixture.
+// scripts/capability-baseline-negative.test.mjs uses that to prove the check
+// rejects a false claim. A check that has only ever been observed passing is
+// not evidence that it works.
+const roadmapFlagAt = process.argv.indexOf("--roadmap");
+const ROADMAP_PATH =
+  roadmapFlagAt >= 0 && process.argv[roadmapFlagAt + 1]
+    ? process.argv[roadmapFlagAt + 1]
+    : join(REPO_ROOT, "docs", "ROADMAP.md");
 const VERIFY_SCHEMA_PATH = join(API_SCRIPTS, "verify-schema.mjs");
 
 /**
