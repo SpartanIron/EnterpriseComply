@@ -178,6 +178,28 @@ export function getDerivedKeyBuffer(): Buffer {
 }
 
 /**
+ * How the live credential key is being sourced. Deliberately non-secret: a
+ * mode name plus a one-way fingerprint is enough to prove which key is in use
+ * without ever exposing key material.
+ *
+ *   "dedicated"     INTEGRATION_CREDENTIAL_KEY is set and is a valid 32-byte
+ *                   hex string, so credential confidentiality stands on its own
+ *                   key with its own rotation history.
+ *   "derived"       No dedicated key is set, so the key is an HMAC of
+ *                   SESSION_SECRET / BETTER_AUTH_SECRET. It works, but it ties
+ *                   every stored credential to the session signing secret:
+ *                   rotating that secret silently destroys them.
+ *   "dev-fallback"  No key material at all. Only reachable in development,
+ *                   because startup validation throws elsewhere.
+ */
+export function credentialKeyMode(): "dedicated" | "derived" | "dev-fallback" {
+  const keyHex = process.env.INTEGRATION_CREDENTIAL_KEY;
+  if (keyHex && Buffer.from(keyHex, "hex").length === 32) return "dedicated";
+  if (process.env.SESSION_SECRET || process.env.BETTER_AUTH_SECRET) return "derived";
+  return "dev-fallback";
+}
+
+/**
  * Encrypt credential sub-keys within a JSONB config object.
  * Only encrypts the listed fields; other fields are left unchanged.
  */

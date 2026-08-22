@@ -30,6 +30,9 @@ import {
   rotateCredentialValue,
   getDerivedKeyBuffer,
   keyFingerprint,
+  credentialKeyMode,
+  isEncryptedCredential,
+  decryptCredential,
 } from "../../lib/credential-crypto.js";
 import { readOriginTrustPosture } from "../../middleware/origin-trust.middleware.js";
 import { assertPlatformAccess, platformAdminEmail } from "../../lib/platform-admin.js";
@@ -47,6 +50,23 @@ async function assertPlatformOperation(userId: string, operation: string, orgId?
   await assertPlatformAccess(userId, operation, orgId ?? null);
   return { email: await platformAdminEmail(userId) };
 }
+
+/**
+ * Raw SQL results arrive either as a plain array or as { rows: [...] }
+ * depending on the driver, so every raw read in this file goes through here.
+ */
+function resultRows<T = Record<string, unknown>>(result: unknown): T[] {
+  if (!result) return [];
+  if (Array.isArray(result)) return result as T[];
+  const rows = (result as { rows?: unknown }).rows;
+  return Array.isArray(rows) ? (rows as T[]) : [];
+}
+
+/** The two places an authenticator secret lives, both sealed with the credential key. */
+type MfaStore = "two_factor" | "mfa_enrollment";
+
+/** One sealed authenticator secret, as read by raw SQL. */
+type MfaSecretRow = { user_id: string; secret: string | null };
 
 @Controller("admin")
 @UseGuards(ClerkAuthGuard)
@@ -325,6 +345,66 @@ export class AdminController {
       rotateLog.error(`Row id=${f.id} (${f.integrationKey}): ${f.reason}`);
     }
 
+    // MFA secrets are sealed with this same key.
+    //
+    // mfa.service.ts calls encryptCredential() for TOTP secrets, so the
+    // authenticator secrets in two_factor and the pending setups in
+    // mfa_enrollment are encrypted with exactly the key being rotated here.
+    // A rotation that stopped at org_integrations would leave every enrolled
+    // member unable to pass second-factor verification the moment the new key
+    // went live, and where org-wide MFA is enforced, unable to sign in at all.
+    // Backup codes are hashed rather than encrypted, so they are untouched.
+    type MfaOutcome = { store: MfaStore; userId: string; next: string };
+    const mfaRotations: MfaOutcome[] = [];
+    const mfaFailures: { store: MfaStore; userId: string; reason: string }[] = [];
+    let mfaAlreadyOnNewKey = 0;
+    let mfaRotated = 0;
+
+    const mfaSources: Array<{ store: MfaStore; rows: MfaSecretRow[] }> = [
+      {
+        store: "two_factor",
+        rows: resultRows<MfaSecretRow>(
+          await db.execute(
+            sql`SELECT "userId" AS user_id, secret FROM two_factor WHERE secret IS NOT NULL`,
+          ),
+        ),
+      },
+      {
+        store: "mfa_enrollment",
+        rows: resultRows<MfaSecretRow>(
+          await db.execute(
+            sql`SELECT user_id, secret FROM mfa_enrollment WHERE secret IS NOT NULL`,
+          ),
+        ),
+      },
+    ];
+
+    for (const source of mfaSources) {
+      for (const row of source.rows) {
+        const result = rotateCredentialValue(row.secret, oldKeyBuf, newKeyBuf);
+        if (result === null) continue;
+        if (result.status === "failed") {
+          mfaFailures.push({
+            store: source.store,
+            userId: String(row.user_id),
+            reason: result.reason,
+          });
+        } else if (result.status === "skipped_already_new_key") {
+          mfaAlreadyOnNewKey++;
+        } else {
+          mfaRotations.push({
+            store: source.store,
+            userId: String(row.user_id),
+            next: result.newValue,
+          });
+        }
+      }
+    }
+
+    for (const f of mfaFailures) {
+      rotateLog.error(`MFA secret for user ${f.userId} in ${f.store}: ${f.reason}`);
+    }
+
     if (body.dryRun) {
       return {
         ok: true,
@@ -334,13 +414,21 @@ export class AdminController {
           alreadyOnNewKey: alreadyDone.length,
           noCredentials: noCredentials.length,
           failures: failures.length,
+        mfaSecretsWouldRotate: mfaRotations.length,
+        mfaSecretsAlreadyOnNewKey: mfaAlreadyOnNewKey,
+        mfaFailures: mfaFailures.length,
         },
         failureDetails: failures.map(f => ({ id: f.id, integrationKey: f.integrationKey, reason: f.reason })),
+      mfaFailureDetails: mfaFailures,
         message:
           `Dry run complete. ${toRotate.length} row(s) would be re-encrypted, ` +
           `${alreadyDone.length} already on new key (skipped), ` +
           `${failures.length} failure(s). ` +
-          (failures.length > 0 ? 'Resolve failures before applying. ' : '') +
+          (failures.length + mfaFailures.length > 0
+            ? 'Resolve failures before applying. '
+            : '') +
+          `${mfaRotations.length} authenticator secret(s) would be re-keyed, ` +
+          `${mfaFailures.length} of them failing. ` +
           'Run without dryRun:true to apply.',
       };
     }
@@ -358,6 +446,18 @@ export class AdminController {
           })
           .where(eq(orgIntegrationsTable.id, outcome.id));
         rotated++;
+      }
+      for (const m of mfaRotations) {
+        if (m.store === "two_factor") {
+          await tx.execute(
+            sql`UPDATE two_factor SET secret = ${m.next} WHERE "userId" = ${m.userId}`,
+          );
+        } else {
+          await tx.execute(
+            sql`UPDATE mfa_enrollment SET secret = ${m.next} WHERE user_id = ${m.userId}`,
+          );
+        }
+        mfaRotated++;
       }
     });
 
@@ -407,6 +507,33 @@ export class AdminController {
       );
     }
 
+    // MFA secrets carry no org column, so their trail is written against each
+    // affected member organisation, found through org_members.
+    if (mfaRotated > 0) {
+      const mfaByOrg = new Map<number, number>();
+      for (const m of mfaRotations) {
+        const row = resultRows<{ org_id: number }>(
+          await db.execute(
+            sql`SELECT org_id FROM org_members WHERE clerk_user_id = ${m.userId} LIMIT 1`,
+          ),
+        )[0];
+        if (!row) continue;
+        const oid = Number(row.org_id);
+        mfaByOrg.set(oid, (mfaByOrg.get(oid) ?? 0) + 1);
+      }
+      for (const [oid, count] of mfaByOrg) {
+        await writeAuditLog(
+          oid,
+          "credential_key.rotated",
+          "mfa_secrets",
+          null,
+          { oldKeyFingerprint, newKeyFingerprint, secretsRotated: count },
+          userId,
+          actorEmail,
+        );
+      }
+    }
+
     rotateLog.log(
       `Key rotation complete: ${rotated} rotated, ` +
       `${alreadyDone.length} skipped (already new key), ` +
@@ -414,22 +541,101 @@ export class AdminController {
     );
 
     return {
-      ok: failures.length === 0,
+      ok: failures.length === 0 && mfaFailures.length === 0,
       dryRun: false,
       summary: {
         rotated,
         alreadyOnNewKey: alreadyDone.length,
         noCredentials: noCredentials.length,
         failures: failures.length,
+        mfaSecretsRotated: mfaRotated,
+        mfaSecretsAlreadyOnNewKey: mfaAlreadyOnNewKey,
+        mfaFailures: mfaFailures.length,
       },
       failureDetails: failures.map(f => ({ id: f.id, integrationKey: f.integrationKey, reason: f.reason })),
+      mfaFailureDetails: mfaFailures,
       message:
         `Re-encryption complete. ${rotated} row(s) rotated, ` +
         `${alreadyDone.length} already on new key (skipped), ` +
         `${failures.length} failure(s). ` +
-        (failures.length === 0
+        (failures.length === 0 && mfaFailures.length === 0
           ? 'Now update INTEGRATION_CREDENTIAL_KEY env var to your new key and redeploy.'
           : `${failures.length} row(s) could not be decrypted with the old key — check failureDetails. Do NOT update the env var until all rows are rotated.`),
+    };
+  }
+
+  /**
+   * GET /api/admin/credentials/key-status
+   *
+   * Proves which credential key is actually live, and whether every stored
+   * secret can still be opened with it, without exposing key material. This is
+   * what makes the move from a derived key to a dedicated
+   * INTEGRATION_CREDENTIAL_KEY verifiable after a deploy instead of assumed: if
+   * the variable is set without running the rotation first, undecryptable will
+   * be non-zero and healthy will be false.
+   *
+   * Super-admin only. Read-only. Returns no plaintext and no key bytes.
+   */
+  @Get("credentials/key-status")
+  async getCredentialKeyStatus(@ClerkUserId() userId: string) {
+    await assertPlatformOperation(userId, "credentials.key_status");
+
+    let sealed = 0;
+    let plaintext = 0;
+    let undecryptable = 0;
+
+    /** Counts a column that is always a credential. */
+    const countCredential = (value: unknown) => {
+      if (typeof value !== "string" || value.length === 0) return;
+      if (!isEncryptedCredential(value)) {
+        plaintext++;
+        return;
+      }
+      sealed++;
+      if (decryptCredential(value) === null) undecryptable++;
+    };
+
+    /**
+     * Counts a JSONB member only when it is already sealed, so an ordinary
+     * config string such as a hostname is not reported as a bare credential.
+     */
+    const countIfSealed = (value: unknown) => {
+      if (typeof value !== "string" || !isEncryptedCredential(value)) return;
+      sealed++;
+      if (decryptCredential(value) === null) undecryptable++;
+    };
+
+    const integrationRows = await db.select().from(orgIntegrationsTable);
+    for (const row of integrationRows) {
+      countCredential(row.accessToken);
+      countCredential(row.refreshToken);
+      const config = (row.config ?? null) as Record<string, unknown> | null;
+      if (config) for (const value of Object.values(config)) countIfSealed(value);
+    }
+
+    const mfaRows = [
+      ...resultRows<MfaSecretRow>(
+        await db.execute(sql`SELECT secret FROM two_factor WHERE secret IS NOT NULL`),
+      ),
+      ...resultRows<MfaSecretRow>(
+        await db.execute(sql`SELECT secret FROM mfa_enrollment WHERE secret IS NOT NULL`),
+      ),
+    ];
+    for (const row of mfaRows) countCredential(row.secret);
+
+    const mode = credentialKeyMode();
+    return {
+      mode,
+      dedicated: mode === "dedicated",
+      keyFingerprint: keyFingerprint(getDerivedKeyBuffer()),
+      secrets: { sealed, plaintext, undecryptable },
+      healthy: undecryptable === 0,
+      message:
+        undecryptable === 0
+          ? `${sealed} stored secret(s) open with the live key (mode: ${mode}).`
+          : `${undecryptable} of ${sealed} stored secret(s) cannot be opened with the live key. ` +
+            `The key was changed without running POST /api/admin/credentials/rotate-key first.`,
+      control: "NIST SP 800-53 SC-12 / SC-28, CMMC SC.L2-3.13.16",
     };
   }
 
