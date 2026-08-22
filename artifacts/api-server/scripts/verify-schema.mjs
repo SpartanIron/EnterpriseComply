@@ -41,6 +41,7 @@ const EXPECTED_TABLES = [
   "org_poam_items",
   "org_access_reviews",
   "org_audit_engagements",
+  "org_audit_shares",
   // ── UCO catalog ──────────────────────────────────────────────────────────
   "uco_controls",
   "uco_framework_mappings",
