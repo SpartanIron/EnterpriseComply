@@ -441,7 +441,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       url: "https://api.${site|datadoghq.com}/api/v1/monitor?with_downtimes=false",
       headers: { "DD-API-KEY": "${apiKey}", "DD-APPLICATION-KEY": "${appKey}" },
     },
-    collects: "connection-only",
+    collects: "automated-checks,
   },
   {
     key: "splunk",
