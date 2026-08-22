@@ -4,6 +4,19 @@ import { eq } from 'drizzle-orm';
 
 // SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
 import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
+import {
+  buildServiceAccountAssertion,
+  buildTokenRequestBody,
+  GOOGLE_TOKEN_ENDPOINT,
+  parseServiceAccountKey,
+} from "../../../lib/google-jwt.js";
+
+// Read-only Admin SDK scopes. Listed here rather than inline so the scope set
+// is reviewable in one place: this connector must never request a write scope.
+const ADMIN_DIRECTORY_READ_SCOPES = [
+  "https://www.googleapis.com/auth/admin.directory.user.readonly",
+  "https://www.googleapis.com/auth/admin.directory.group.readonly",
+].join(" ");
 
 interface GoogleWorkspaceConfig { serviceAccountKey: string; adminEmail: string; customerId?: string; }
 
@@ -20,19 +33,33 @@ export class GoogleWorkspaceProvider {
     const errors: string[] = [];
     let collected = 0;
     try {
-      // Get OAuth2 token using service account
-      const key = JSON.parse(config.serviceAccountKey);
-      const now = Math.floor(Date.now() / 1000);
-      const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-      const claim = btoa(JSON.stringify({ iss: key.client_email, scope: 'https://www.googleapis.com/auth/admin.directory.user.readonly https://www.googleapis.com/auth/admin.directory.group.readonly', aud: 'https://oauth2.googleapis.com/token', sub: config.adminEmail, exp: now + 3600, iat: now }));
-      // Note: In production, sign with RSA private key. Here we simulate the API call structure.
-      const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+      // A real RS256 assertion. The previous implementation put the literal
+      // string "signature" in the third JWT segment and encoded the first two
+      // with btoa(), so this exchange could never have succeeded. It carried a
+      // comment saying it was simulating the call structure.
+      const key = parseServiceAccountKey(config.serviceAccountKey);
+      const assertion = buildServiceAccountAssertion({
+        key,
+        scope: ADMIN_DIRECTORY_READ_SCOPES,
+        subject: config.adminEmail,
+      });
+      const tokenResp = await fetch(GOOGLE_TOKEN_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${header}.${claim}.signature` }),
+        body: buildTokenRequestBody(assertion),
       });
       const tokenData = await tokenResp.json() as any; // typed below
-      if (!tokenData.access_token) throw new Error('Google Workspace OAuth failed');
+      if (!tokenData.access_token) {
+        // Quote Google rather than inventing a reason. 'invalid_grant' here
+        // almost always means domain-wide delegation was never granted for
+        // these scopes, and a generic message sends the customer to the wrong
+        // screen.
+        const reason =
+          tokenData?.error_description ||
+          tokenData?.error ||
+          'no access_token in the response';
+        throw new Error('Google Workspace token exchange failed: ' + reason);
+      }
       
       const authHeaders = { 'Authorization': `Bearer ${tokenData.access_token}` };
       
