@@ -13,6 +13,7 @@ import { runSlackChecks } from "./providers/slack.provider";
 import { runBambooHRChecks } from "./providers/bamboohr.provider";
 import { runCrowdStrikeChecks } from "./providers/crowdstrike.provider";
 import { runDatadogChecks } from "./providers/datadog.provider";
+import { runHashiCorpVaultChecks } from "./providers/hashicorp-vault.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
@@ -1306,6 +1307,22 @@ export class IntegrationsService {
           await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "datadog", integration.id);
           return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
     }
+
+  async syncOrgHashiCorpVault(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "hashicorp-vault")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("HashiCorp Vault integration not connected");
+    // Decrypt the Vault token from config
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["token"],
+      ) as { vaultAddr?: string; token?: string; namespace?: string } | null;
+    if (!cfg?.vaultAddr || !cfg?.token) throw new BadRequestException("HashiCorp Vault credentials not configured");
+    const syncResult = await runHashiCorpVaultChecks(cfg.vaultAddr, cfg.token, cfg.namespace);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "hashicorp-vault", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
 
   private async _persistSyncResults(
     orgId: number,
