@@ -490,7 +490,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       headers: { "X-Vault-Token": "${token}" },
     },
     note: "A Vault reachable only on a private network is refused by the outbound SSRF guard, not by Vault.",
-    collects: "connection-only",
+    collects: "automated-checks",
   },
 
   // ── Identity ──────────────────────────────────────────────────────────────
