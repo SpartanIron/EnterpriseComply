@@ -749,8 +749,36 @@ export class IntegrationsService {
   private readonly githubClientId = process.env.GITHUB_CLIENT_ID!;
   private readonly githubClientSecret = process.env.GITHUB_CLIENT_SECRET!;
 
+  /**
+   * The catalogue carried its own availability flag while connector-specs
+   * carried a state, and they disagreed: all sixty-five catalogue entries said
+   * available while twenty-two specs said unavailable. Two endpoints answered
+   * the same question two different ways, and the answer customers saw was the
+   * wrong one for Google Workspace, which had already shipped its own module.
+   *
+   * The spec wins, because the spec is what the connect path enforces. A feature
+   * flag may still switch a connector off, but it cannot switch on a connector
+   * the platform has no way to reach.
+   */
+  private withConnectorState<T extends { key: string; available?: boolean }>(
+    item: T,
+  ) {
+    const spec = connectorSpec(item.key);
+    const state = spec?.state ?? "unavailable";
+    return {
+      ...item,
+      state,
+      available: state !== "unavailable" && item.available !== false,
+      ...(spec?.unavailableReason
+        ? { unavailableReason: spec.unavailableReason }
+        : {}),
+    };
+  }
+
   getCatalog() {
-    return { integrations: INTEGRATION_CATALOG };
+    return {
+      integrations: INTEGRATION_CATALOG.map((c) => this.withConnectorState(c)),
+    };
   }
 
   /**
@@ -766,7 +794,7 @@ export class IntegrationsService {
       (flags.rows ?? flags).map((r: any) => [r.flag_key, r.enabled])
     );
 
-    const integrations = INTEGRATION_CATALOG.map(item => ({
+    const integrations = INTEGRATION_CATALOG.map(item => this.withConnectorState({
       ...item,
       // Feature flag override: if flag exists in DB, use it; otherwise fall back to hardcoded
       available: flagMap.has(`integration:${item.key}`)
@@ -822,7 +850,7 @@ export class IntegrationsService {
     const catalog = INTEGRATION_CATALOG.map((c) => {
       const conn = connected.find((i) => i.integrationKey === c.key) ?? null;
       return {
-        ...c,
+        ...this.withConnectorState(c),
         connection: conn
           ? {
               ...redactConnectionCredentials(conn),
