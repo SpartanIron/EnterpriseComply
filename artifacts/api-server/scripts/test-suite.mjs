@@ -1287,52 +1287,46 @@ section("SECTION 12 — SYNC LOG: all provider paths write history + thrown fail
     );
   }
 
-  // ── Test 7b: Demo-connect integration → sync log written + GET /test-runs shows it ──
-  // connectDemo() uses the standard catalog path for integrations without a live
-  // provider (SOC 2, NIST, etc.).  Verify it now writes a sync log row so Test
-  // Run History reports "No syncs recorded yet" only when nothing has run.
+  // ── Test 7b: the demo-connect route is gone, and its replacement refuses ──
+  //
+  // This block used to assert that POST .../slack/demo-connect returned 200.
+  // That endpoint called connectDemo(), which set every control the catalogue
+  // claimed Slack covered to passing or failing from Math.random() and wrote the
+  // result into org_control_results. The assertion was green the whole time it
+  // was true, which is the point: a test can pin a defect in place.
+  //
+  // It is replaced rather than deleted, and with a stronger claim: the route is
+  // unreachable, and the route that replaced it refuses an unverifiable
+  // connector instead of inventing an answer.
   {
-    const demoIntegKey = "slack"; // A catalog integration that goes through connectDemo
-    const beforeDemo = new Date();
-    const demoConnectRes = await req(
+    const goneRes = await req(
       "POST",
-      `/orgs/${org12Id}/integrations/${demoIntegKey}/demo-connect`,
+      `/orgs/${org12Id}/integrations/slack/demo-connect`,
       cookie12,
       {},
     );
-    check(
-      "Demo-connect (soc2): returns 200/201",
-      demoConnectRes,
-      200, 201,
+    check("Demo-connect route no longer exists", goneRes, 404);
+
+    // Credentials that cannot be verified must not produce a connection. Slack
+     // is a live connector, so an obviously wrong token reaches the vendor and
+    // comes back refused; either way the answer must not be success.
+    const badRes = await req(
+      "POST",
+      `/orgs/${org12Id}/integrations/slack/connect-credentials`,
+      cookie12,
+      { botToken: "xoxb-not-a-real-token" },
     );
+    check("connect-credentials refuses an unverifiable credential", badRes >= 400, true);
 
-    if (demoConnectRes === 200 || demoConnectRes === 201) {
-      const demoLogRows = await db.query(
-        `SELECT id, status FROM integration_sync_log
-         WHERE org_id = $1 AND integration_key = $2 AND synced_at >= $3::timestamptz`,
-        [org12Id, demoIntegKey, beforeDemo.toISOString()],
-      ).catch(() => ({ rows: [] }));
-      check(
-        "Demo-connect: sync log row written to integration_sync_log",
-        demoLogRows.rows.length > 0 ? 200 : 404,
-        200,
-      );
-
-      // GET /test-runs must include the demo sync row
-      const demoHistory = await fetch(
-        `${BASE}/orgs/${org12Id}/test-runs`,
-        { headers: { Cookie: cookie12 } },
-      ).then(r => r.json()).catch(() => null);
-      check(
-        "Demo-connect: GET /test-runs shows the demo sync in history",
-        demoHistory?.runs?.some((r) =>
-          r.integrationName?.toLowerCase?.().includes("slack") ||
-          r.integrationKey === demoIntegKey ||
-          demoLogRows.rows.some((lr) => lr.id != null),
-        ) ? 200 : 422,
-        200,
-      );
-    }
+    // An unavailable connector answers 501, because the customer did nothing
+    // wrong - the connector does not exist yet.
+    const unavailableRes = await req(
+      "POST",
+      `/orgs/${org12Id}/integrations/duo/connect-credentials`,
+      cookie12,
+      {},
+    );
+    check("an unavailable connector answers 501", unavailableRes, 501);
   }
 
   // ── Test 7: Scheduler dispatch path (runDueForOrg) failure → sync log ──
@@ -5031,7 +5025,10 @@ section("39. Connector integrity, evidence attribution, and client-side roles");
   const evInserts = svc.split("insert(orgEvidenceTable).values({").slice(1);
   const missingKey = evInserts.filter((seg) => !seg.slice(0, seg.indexOf("})")).includes("integrationKey"));
   check("39.1 every evidence insert stamps its integrationKey", evInserts.length > 0 && missingKey.length === 0, true);
-  check("39.2 evidence insert sites found", evInserts.length, 7);
+    // Was 7. connectDemo() held one of those insert sites and it wrote evidence
+  // rows describing scans that had never run, so the count going down by one is
+  // the removal landing rather than a regression.
+  check("39.2 evidence insert sites found", evInserts.length, 6);
   check("39.3 live evidence counts ignore soft-deleted rows", svc.includes("isNull(orgEvidenceTable.deletedAt)"), true);
 
   const notCredentials = liveKeys.filter((k) => {

@@ -22,6 +22,23 @@
  * Config keys whose values are credential material. Compared lower-cased,
  * because provider config is written by hand in several places.
  */
+import { secretFieldKeys } from "../modules/integrations/connector-specs";
+
+/**
+ * Credential key names written by hand.
+ *
+ * This list was the whole rule until the connector registry existed, and it was
+ * incomplete in a way only measurement showed: "bottoken", "secretkey",
+ * "appkey", "clientsecret" and "refreshtoken" were all absent while provider
+ * modules in this repository were storing exactly those field names in
+ * org_integrations.config. Every one of them would have been serialised to a
+ * browser by any endpoint that spread a row.
+ *
+ * It is kept rather than replaced, for two reasons. It covers legacy rows
+ * written before the registry existed, whose config keys no spec declares. And
+ * it is a floor: a connector removed from the registry does not quietly stop
+ * having its stored secret protected.
+ */
 export const CREDENTIAL_CONFIG_KEYS = new Set([
   "apitoken",
   "apikey",
@@ -35,6 +52,21 @@ export const CREDENTIAL_CONFIG_KEYS = new Set([
   "adminkey",
   "personalaccesstoken",
   "credential",
+]);
+
+/**
+ * The set actually used: the hand-written floor above, plus every field any
+ * connector spec marks secret.
+ *
+ * Derived rather than duplicated. Adding a connector declares its secret fields
+ * once, and that single declaration both builds the form the customer fills in
+ * and protects the value they type into it. There is no second list to forget.
+ *
+ * Computed once at module load. The specs are static.
+ */
+export const REDACTED_CONFIG_KEYS: Set<string> = new Set([
+  ...CREDENTIAL_CONFIG_KEYS,
+  ...secretFieldKeys(),
 ]);
 
 /**
@@ -64,7 +96,7 @@ export function redactConnectionCredentials(
   const safeConfig: Record<string, unknown> = {};
   let configHasCredential = false;
   for (const [k, v] of Object.entries(rawConfig)) {
-    if (CREDENTIAL_CONFIG_KEYS.has(k.toLowerCase())) {
+    if (REDACTED_CONFIG_KEYS.has(k.toLowerCase())) {
       configHasCredential = true;
       continue;
     }
@@ -114,7 +146,7 @@ export function findCredentialLeaks(value: unknown, path = "$"): string[] {
     for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
       const here = at + "." + k;
       const empty = v === null || v === undefined || v === "";
-      if (CREDENTIAL_CONFIG_KEYS.has(k.toLowerCase()) && !empty) {
+      if (REDACTED_CONFIG_KEYS.has(k.toLowerCase()) && !empty) {
         leaks.push(here + " (credential property)");
         continue;
       }

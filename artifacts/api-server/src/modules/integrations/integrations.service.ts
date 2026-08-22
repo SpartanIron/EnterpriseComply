@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException, NotImplementedException } from "@nestjs/common";
 import { db, orgIntegrationsTable, orgControlResultsTable, orgEvidenceTable, integrationSyncLogTable, notificationsTable } from "@workspace/db";
 import { eq, and, sql, isNotNull, isNull } from "drizzle-orm";
 import { runAwsChecks } from "./providers/aws.provider";
@@ -9,6 +9,14 @@ import { runCloudflareChecks } from "./providers/cloudflare.provider";
 import { runRailwayChecks } from "./providers/railway.provider";
 import { runReplitChecks } from "./providers/replit.provider";
 import { runBetterAuthChecks } from "./providers/betterauth.provider";
+import {
+  CONNECTOR_SPECS,
+  connectorSpec,
+  connectorSummary,
+  publicSpec,
+  secretFieldsFor,
+} from "./connector-specs";
+import { validateSubmittedFields, verifyConnector } from "./connector-engine";
 import { validatePublicHttpsUrl, SsrfBlockedError } from "../../lib/ssrf-guard.js";
 import {
   encryptCredential,
@@ -1285,89 +1293,188 @@ export class IntegrationsService {
     }).catch(() => {/* non-fatal: sync log is best-effort */});
   }
 
-  async connectDemo(orgId: number, integrationKey: string) {
-    const catalogItem = INTEGRATION_CATALOG.find((c) => c.key === integrationKey);
-    if (!catalogItem) throw new BadRequestException("Unknown integration");
+  /**
+   * Connect an integration with credentials the customer supplied.
+   *
+   * This method replaced connectDemo(), which is worth describing because the
+   * shape of what was removed is the point of what is here.
+   *
+   * connectDemo() took an integration key, looked up the controls the catalogue
+   * said that tool covered, and wrote a result row for each one with
+   *
+   *     status: Math.random() > 0.15 ? "passing" : "failing"
+   *
+   * into org_control_results, plus evidence rows describing scans that had not
+   * happened, plus a sync log entry so Test Run History would show it. Nothing
+   * was labelled as a demo in the database. The compliance score, the framework
+   * coverage figures and the Board report all read those rows as measurements.
+   *
+   * So this method writes no control results and no evidence at all. Connecting
+   * proves a credential works; it does not assess anything. Evidence collection
+   * is a per-provider job and where it does not exist yet the honest number is
+   * zero, not a plausible one.
+   *
+   * The credential is verified against the vendor before anything is stored, and
+   * stored encrypted afterwards. A failed verification stores nothing: a row
+   * saying "connected" that was never proved is the thing being removed here.
+   */
+  async connectWithSpec(
+    orgId: number,
+    integrationKey: string,
+    body: Record<string, unknown>,
+    actor: { userId?: string; email?: string; ip?: string },
+  ) {
+    const spec = connectorSpec(integrationKey);
+    if (!spec) throw new BadRequestException("Unknown integration");
+
+    if (spec.state === "native") {
+      throw new BadRequestException({
+        error: "use_native_connector",
+        message:
+          "This integration has its own connect flow with checks specific to it. Use that rather than the " +
+          "generic credential form.",
+      });
+    }
+
+    if (spec.state === "unavailable") {
+      // 501, not 400. The customer did nothing wrong; the connector does not
+      // exist yet, and the reason is the vendor's authentication scheme.
+      throw new NotImplementedException({
+        error: "connector_unavailable",
+        message: spec.unavailableReason ?? "This connector is not available yet.",
+      });
+    }
+
+    const validated = validateSubmittedFields(spec, body);
+    if (!validated.ok) {
+      throw new BadRequestException({ error: "invalid_fields", problems: validated.problems });
+    }
+
+    const outcome = await verifyConnector(spec, validated.values);
+    if (!outcome.ok) {
+      // Nothing is stored on a failed verification, and the failure is recorded
+      // in the audit log without the credential.
+      await writeAuditLog(orgId, "integration.connect_failed", "integration", integrationKey, {
+        stage: outcome.stage,
+        status: outcome.status,
+        detail: outcome.detail,
+        actorEmail: actor.email ?? null,
+      }).catch(() => {});
+      throw new BadRequestException({
+        error: "verification_failed",
+        stage: outcome.stage,
+        status: outcome.status,
+        message: outcome.detail,
+      });
+    }
+
+    // Encrypt the declared secret fields, leave the rest as configuration. The
+    // field list comes from the same spec that built the form, so a new
+    // connector cannot store a secret it forgot to mark.
+    const secretFields = secretFieldsFor(integrationKey);
+    const encryptedConfig = encryptConfigCredentials(validated.values, secretFields);
 
     const existing = await db.query.orgIntegrationsTable.findFirst({
       where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, integrationKey)),
     });
 
-    const demoControlResults = catalogItem.controls.map((controlId) => ({
-      ucoControlId: controlId,
-      status: Math.random() > 0.15 ? "passing" : "failing",
-      result: `${catalogItem.name}: control verified via automated scan`,
-      integrationKey,
-    }));
-
-    for (const cr of demoControlResults) {
-      const existingResult = await db.query.orgControlResultsTable.findFirst({
-        where: and(eq(orgControlResultsTable.orgId, orgId), eq(orgControlResultsTable.ucoControlId, cr.ucoControlId)),
-      });
-      if (existingResult) {
-        await db.update(orgControlResultsTable)
-          .set({ ...cr, lastTestedAt: new Date() })
-          .where(eq(orgControlResultsTable.id, existingResult.id));
-      } else {
-        await db.insert(orgControlResultsTable).values({ orgId, ...cr, lastTestedAt: new Date() });
-      }
-    }
-
-    const evidenceTemplates = INTEGRATION_EVIDENCE_MAP[integrationKey] ?? [];
-    const evidenceItems = evidenceTemplates.length > 0
-      ? evidenceTemplates
-      : catalogItem.controls.slice(0, 3).map((controlId, i) => ({
-          title: `${catalogItem.name} -- ${["Compliance Report", "Access Audit", "Configuration Export"][i % 3]}`,
-          description: `Automatically collected from ${catalogItem.name} integration. Control coverage verified.`,
-          ucoControlId: controlId,
-        }));
-
-    for (const ev of evidenceItems) {
-      await db.insert(orgEvidenceTable).values({
-        orgId,
-        title: ev.title,
-        description: ev.description,
-        ucoControlId: ev.ucoControlId ?? null,
-        type: "auto",
-        integrationKey,
-        source: integrationKey,
-        collectedAt: new Date(),
-      });
-    }
-
-    const evidenceCount = evidenceItems.length;
-
-    // Derive actual status from control outcomes — demo syncs can have partial/failed results
-    const demoFailCount = demoControlResults.filter((r) => r.status === "failing").length;
-    const demoPassCount = demoControlResults.filter((r) => r.status === "passing").length;
-    const demoSyncStatus = demoFailCount === 0 ? "success" : demoPassCount > 0 ? "partial" : "failed";
+    const now = new Date();
+    const row = {
+      status: "connected",
+      config: encryptedConfig as any,
+      // No evidence was collected, so lastSyncStatus is not "success". It says
+      // what actually happened.
+      lastSyncStatus: "verified",
+      lastSyncAt: now,
+      lastSyncError: null,
+      updatedAt: now,
+    };
 
     if (existing) {
-      await db.update(orgIntegrationsTable)
-        .set({ status: "connected", lastSyncAt: new Date(), lastSyncStatus: demoSyncStatus, evidenceCollected: evidenceCount })
-        .where(eq(orgIntegrationsTable.id, existing.id));
+      await db.update(orgIntegrationsTable).set(row).where(eq(orgIntegrationsTable.id, existing.id));
     } else {
       await db.insert(orgIntegrationsTable).values({
         orgId,
         integrationKey,
-        name: catalogItem.name,
-        status: "connected",
-        lastSyncAt: new Date(),
-        lastSyncStatus: demoSyncStatus,
-        evidenceCollected: evidenceCount,
-      });
+        name: INTEGRATION_CATALOG.find((c) => c.key === integrationKey)?.name ?? integrationKey,
+        evidenceCollected: 0,
+        ...row,
+      } as any);
     }
 
-    // Write a sync log row so Test Run History shows demo-connected integrations
-    await db.insert(integrationSyncLogTable).values({
-      orgId,
-      integrationKey,
-      status:          demoSyncStatus,
-      evidenceCount:   evidenceCount,
-      controlsUpdated: demoControlResults.length,
-    }).catch(() => {/* non-fatal: sync log is best-effort */});
+    await writeAuditLog(orgId, "integration.connected", "integration", integrationKey, {
+      verifiedStatus: outcome.status,
+      // Which fields were supplied, never their values.
+      fieldsSupplied: Object.keys(validated.values),
+      secretFieldCount: secretFields.length,
+      collects: spec.collects,
+      actorEmail: actor.email ?? null,
+      ip: actor.ip ?? null,
+    }).catch(() => {});
 
-    return { success: true, evidenceCollected: evidenceCount, controlsUpdated: demoControlResults.length };
+    return {
+      success: true,
+      verified: true,
+      status: outcome.status,
+      /**
+       * Said plainly in the response so no caller can present a verified
+       * connection as an assessment. The Integrations page prints this.
+       */
+      collects: spec.collects,
+      controlsUpdated: 0,
+      evidenceCollected: 0,
+      message:
+        spec.collects === "automated-checks"
+          ? "Connected and verified. Automated checks will run on the next sync."
+          : "Connected and verified. Automated control testing for this tool is not implemented yet, so no " +
+            "evidence has been collected and no control results have changed.",
+    };
+  }
+
+  /**
+   * Re-run a stored connector's verification without changing anything.
+   *
+   * Reads the stored config, decrypts the declared secret fields, and makes the
+   * same call connect made. Answers "does this credential still work" - which
+   * is a different question from "did it work when someone pasted it in", and
+   * the one that matters after a token expires or a scope is revoked.
+   */
+  async verifySpecConnection(orgId: number, integrationKey: string) {
+    const spec = connectorSpec(integrationKey);
+    if (!spec || spec.state !== "live") {
+      throw new BadRequestException("No credential-based connector for " + integrationKey);
+    }
+    const existing = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, integrationKey)),
+    });
+    if (!existing?.config) throw new BadRequestException(integrationKey + " is not connected");
+
+    const values = decryptConfigCredentials(
+      existing.config as Record<string, unknown>,
+      secretFieldsFor(integrationKey),
+    ) as Record<string, string>;
+
+    const outcome = await verifyConnector(spec, values);
+
+    await db
+      .update(orgIntegrationsTable)
+      .set({
+        status: outcome.ok ? "connected" : "degraded",
+        lastSyncStatus: outcome.ok ? "verified" : "error",
+        lastSyncError: outcome.ok ? null : outcome.detail,
+        updatedAt: new Date(),
+      })
+      .where(eq(orgIntegrationsTable.id, existing.id));
+
+    return { ok: outcome.ok, status: outcome.status, detail: outcome.detail, stage: outcome.stage };
+  }
+
+  /** The catalogue as the browser may see it: fields and labels, not the verification request. */
+  getConnectorSpecs() {
+    return {
+      specs: CONNECTOR_SPECS.map(publicSpec),
+      summary: connectorSummary(),
+    };
   }
 
   async syncOrgGitHub(orgId: number) {
