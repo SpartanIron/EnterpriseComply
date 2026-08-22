@@ -9,11 +9,12 @@ import { runCloudflareChecks } from "./providers/cloudflare.provider";
 import { runRailwayChecks } from "./providers/railway.provider";
 import { runReplitChecks } from "./providers/replit.provider";
 import { runBetterAuthChecks } from "./providers/betterauth.provider";
+import { runSlackChecks } from "./providers/slack.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
   connectorSummary,
-  publicSpec,
+    publicSpec,
   secretFieldsFor,
 } from "./connector-specs";
 import { validateSubmittedFields, verifyConnector } from "./connector-engine";
@@ -1238,6 +1239,22 @@ export class IntegrationsService {
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "cloudflare", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
   }
+
+    async syncOrgSlack(orgId: number) {
+          const integration = await db.query.orgIntegrationsTable.findFirst({
+                  where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "slack")),
+          });
+          if (!integration || integration.status !== "connected") throw new BadRequestException("Slack integration not connected");
+          // Decrypt the bot token from config
+          const cfg = decryptConfigCredentials(
+                  integration.config as Record<string, unknown> | null,
+                  ["botToken"],
+                ) as { botToken?: string } | null;
+          if (!cfg?.botToken) throw new BadRequestException("Slack credentials not configured");
+          const syncResult = await runSlackChecks(cfg.botToken);
+          await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "slack", integration.id);
+          return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+    }
 
   private async _persistSyncResults(
     orgId: number,
