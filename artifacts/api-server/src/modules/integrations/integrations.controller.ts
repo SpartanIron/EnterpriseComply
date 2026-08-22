@@ -259,6 +259,7 @@ export class IntegrationsController {
     if (key === "railway") return this.integrationsService.syncOrgRailway(ctx.orgId);
     if (key === "replit") return this.integrationsService.syncOrgReplit(ctx.orgId);
     if (key === "betterauth") return this.integrationsService.syncOrgBetterAuth(ctx.orgId);
+        if (key === "slack") return this.integrationsService.syncOrgSlack(ctx.orgId);
     // Was: "use demo-connect to simulate". There is nothing to simulate any
     // more. A connector whose credentials verify but whose evidence collection
     // is not built reports success: false with the reason, so a caller cannot

@@ -155,7 +155,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       requireJsonTrue: "ok",
     },
     docsUrl: "https://api.slack.com/authentication/token-types",
-    collects: "connection-only",
+    collects: "automated-checks",
   },
   {
     key: "zoom",
