@@ -24,7 +24,7 @@ export interface HashiCorpVaultSyncResult {
 }
 
 export async function runHashiCorpVaultChecks(vaultAddr: string, token: string, namespace?: string): Promise<HashiCorpVaultSyncResult> {
-  controlResults: HashiCorpVaultCheckResult[] = [];
+  const controlResults: HashiCorpVaultCheckResult[] = [];
   const evidenceItems: HashiCorpVaultEvidenceItem[] = [];
   const headers: Record<string, string> = { "X-Vault-Token": token };
   if (namespace) headers["X-Vault-Namespace"] = namespace;
