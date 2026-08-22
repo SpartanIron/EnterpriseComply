@@ -1,0 +1,48 @@
+# Holds the roadmap to the code.
+#
+# Every open item in docs/ROADMAP.md must carry a claim about the repository,
+# and this job evaluates those claims. An item asserting that something is
+# absent when it already exists fails here, which is the specific failure this
+# project kept repeating.
+#
+# The same job enforces two structural invariants that have each already caused
+# a production 500: a table declared in the Drizzle schema must be created by a
+# boot path something actually executes, and every file in src/migrations must
+# be referenced by something.
+#
+# No database and no network. It reads files, so it is fast and cannot flake.
+name: Capability Baseline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege, declared explicitly. This job only needs to read the tree it
+# was handed; it writes nothing, comments on nothing, and touches no package
+# registry. Saying so keeps a future step from silently inheriting a write token.
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    name: Roadmap claims and schema reachability
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Capability baseline check
+        working-directory: artifacts/api-server
+        run: node scripts/capability-baseline.mjs --check
+
+      - name: Inventory for the log
+        if: always()
+        working-directory: artifacts/api-server
+        run: node scripts/capability-baseline.mjs --report
