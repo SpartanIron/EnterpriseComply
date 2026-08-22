@@ -40,6 +40,7 @@ const EXPECTED_TABLES = [
   "org_questionnaire_items",
   "org_poam_items",
   "org_access_reviews",
+  "org_remediation_tasks",
   "org_audit_engagements",
   "org_audit_shares",
   // ── UCO catalog ──────────────────────────────────────────────────────────
