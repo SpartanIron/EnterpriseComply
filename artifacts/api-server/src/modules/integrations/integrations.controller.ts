@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { IntegrationsService } from "./integrations.service";
 import { ClerkAuthGuard, OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
+import { connectorSpec } from "./connector-specs";
 
 interface OrgCtx { orgId: number; org: Record<string, unknown>; member: Record<string, unknown>; }
 
@@ -191,11 +192,60 @@ export class IntegrationsController {
     });
   }
 
-  // ── Demo connect for all other integrations ───────────────────────────────────
-  @Post("orgs/:orgId/integrations/:key/demo-connect")
+  // ── Credential-based connectors ───────────────────────────────────────────────
+  //
+  // What used to be here was POST .../:key/demo-connect, which called
+  // connectDemo() and wrote fabricated control results into the tenant. The
+  // route is deleted rather than deprecated: leaving it reachable would leave
+  // the fabrication one HTTP call away.
+
+  /**
+   * The connector catalogue as the browser may see it.
+   *
+   * Public within the org context because it is the same information the
+   * Integrations page needs to render a form: field names, labels, which fields
+   * are secret, and - for the ones that are not available - the reason. The
+   * verification request itself is not included; see publicSpec.
+   */
+  @Get("integrations/connector-specs")
+  @UseGuards(OrgContextGuard)
+  getConnectorSpecs() {
+    return this.integrationsService.getConnectorSpecs();
+  }
+
+  /**
+   * Connect with credentials the customer supplied.
+   *
+   * owner, matching every other connect route in this controller. Storing a
+   * third-party credential that can read the customer's identity provider or
+   * their cloud account is the most consequential thing this API does, and it
+   * is not an operational action.
+   */
+  @Post("orgs/:orgId/integrations/:key/connect-credentials")
   @UseGuards(OrgContextGuard, RequireRole("owner"))
-  demoConnect(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
-    return this.integrationsService.connectDemo(ctx.orgId, key);
+  connectWithCredentials(
+    @OrgContext() ctx: OrgCtx,
+    @Param("key") key: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: Request,
+  ) {
+    return this.integrationsService.connectWithSpec(ctx.orgId, key, body, {
+      userId: ctx.member?.clerkUserId as string | undefined,
+      email: ctx.member?.email as string | undefined,
+      ip: req.ip,
+    });
+  }
+
+  /**
+   * Re-run the stored credential's verification.
+   *
+   * admin rather than owner: this reads a stored credential and changes nothing
+   * except the recorded health of the connection, which is a monitoring action.
+   */
+  @Post("orgs/:orgId/integrations/:key/verify-credentials")
+  @UseGuards(OrgContextGuard, RequireRole("admin"))
+  verifyCredentials(@OrgContext() ctx: OrgCtx, @Param("key") key: string) {
+    return this.integrationsService.verifySpecConnection(ctx.orgId, key);
   }
 
   // ── Generic sync router ────────────────────────────────────────────────────────
@@ -209,6 +259,19 @@ export class IntegrationsController {
     if (key === "railway") return this.integrationsService.syncOrgRailway(ctx.orgId);
     if (key === "replit") return this.integrationsService.syncOrgReplit(ctx.orgId);
     if (key === "betterauth") return this.integrationsService.syncOrgBetterAuth(ctx.orgId);
-    return { success: true, message: "No live sync available for this integration — use demo-connect to simulate." };
+    // Was: "use demo-connect to simulate". There is nothing to simulate any
+    // more. A connector whose credentials verify but whose evidence collection
+    // is not built reports success: false with the reason, so a caller cannot
+    // read a no-op as a completed sync.
+    const spec = connectorSpec(key);
+    return {
+      success: false,
+      collects: spec?.collects ?? "connection-only",
+      message:
+        spec?.state === "unavailable"
+          ? (spec.unavailableReason ?? "This connector is not available yet.")
+          : "Credentials for this integration are stored and verified, but automated control testing for it " +
+            "is not implemented yet. Nothing was collected and no control results changed.",
+    };
   }
 }
