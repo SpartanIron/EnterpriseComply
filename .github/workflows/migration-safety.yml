@@ -282,6 +282,22 @@ jobs:
         working-directory: artifacts/api-server
         run: node scripts/rollback-policy-documents.cjs --dry-run
 
+      # ── Real integration connectors ──────────────────────────────────────
+      #
+      # connectDemo() decided each control's status with Math.random() and wrote
+      # the result into org_control_results. A regression would not look like a
+      # crash, it would look like a working feature, so most of this guard is
+      # about absence: no random number generation in the service, no
+      # demo-connect route in the controller, no connector claiming to be live
+      # without a verification request behind it, and no declared secret outside
+      # the redaction set.
+      #
+      # Makes no outbound requests. Verifying a real credential needs a real
+      # credential, which CI does not have.
+      - name: Integration connector guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/integration-connectors.test.ts
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()
