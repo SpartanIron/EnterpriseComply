@@ -19,10 +19,18 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege, declared explicitly. This job only needs to read the tree it
+# was handed; it writes nothing, comments on nothing, and touches no package
+# registry. Saying so keeps a future step from silently inheriting a write token.
+permissions:
+  contents: read
+
 jobs:
   baseline:
     name: Roadmap claims and schema reachability
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
