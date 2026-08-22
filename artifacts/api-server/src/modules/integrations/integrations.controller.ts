@@ -266,6 +266,7 @@ export class IntegrationsController {
     // read a no-op as a completed sync.
             if (key === "bamboohr") return this.integrationsService.syncOrgBambooHR(ctx.orgId);
         if (key === "crowdstrike") return this.integrationsService.syncOrgCrowdStrike(ctx.orgId);
+    if (key === "datadog") return this.integrationsService.syncOrgDatadog(ctx.orgId);
     const spec = connectorSpec(key);
     return {
       success: false,
