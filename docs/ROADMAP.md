@@ -108,8 +108,22 @@ vendor documents a credential-verification endpoint, are not roadmap items. A
 guessed endpoint fails in a way the customer reads as their own mistake, which is
 worse than an honest refusal.
 
+### E. Wiring, which is where this platform actually loses capability
+
+The pattern is now measured three times over: something is written, nothing
+imports it, and the platform reports the capability as missing. It is cheaper to
+find these than to build replacements for them, so they are listed before any new
+vendor work.
+
+- [ ] **R-17** Register the fifteen provider classes that nothing imports, one at a time, each with its own decrypt call and its own proof. They were written against real vendor APIs and are dead: POST orgs/:orgId/integrations/:key/sync still answers connection-only for every one of them. The baseline now fails if a provider file is neither imported under src nor listed with a reason, so this list can only shrink. `absent:file:artifacts/api-server/src/modules/integrations/providers/registry.ts` `absent:symbol:providerRegistry`
+- [ ] **R-18** Make the Google Workspace sync write evidence rows. The module authenticates, calls the Admin SDK for users and groups, and stores nothing in org_evidence, so connecting it moves no control result. The dead provider file it superseded did write evidence, which is where the shape should come from. `absent:symbol:recordGoogleWorkspaceEvidence`
+- [ ] **R-19** Promote Duo out of unavailable. Its spec says HMAC request signing cannot be done by the engine, while providers/duo.provider.ts already does HMAC request signing. Either the reason is wrong or the provider is wrong, and both readings are a defect. `absent:route:integrations/duo`
+
 ## Closed by measurement
 
+- The Google Workspace connector was declared unavailable in connector-specs.ts, with a reason saying the engine cannot build an RS256 service-account assertion, while modules/google-workspace had already shipped connect, sync, status and disconnect routes and built that assertion itself. This roadmap had already recorded `present:module:google-workspace`; the catalogue had not. Customers were shown a disabled button on a connector that worked. The spec now declares it native, and an invariant fails the build if any connector is declared unavailable while a module of that name exists.
+- The catalogue and the connector specs answered availability separately and disagreed: all sixty-five catalogue entries said available while twenty-two specs said unavailable. Availability is now derived from the spec, because the spec is what the connect path enforces. `present:symbol:withConnectorState`
+- The baseline check had only ever been observed passing. It now has a negative control that requires it to reject a false absent claim, a false present claim, and an open item carrying no claim at all. `present:file:artifacts/api-server/scripts/capability-baseline-negative.test.mjs`
 - Auditor share links returned 500 because `org_audit_shares` was never created. Fixed, and the table is now expected by the fresh-database check.
 - The Google Workspace connector built its assertion with the literal word "signature". Replaced with real RS256 signing.
 - Remediation returned 500 because `org_remediation_tasks` was never created. Fixed in the same change that added this file, which is also the change that made the defect class visible.
