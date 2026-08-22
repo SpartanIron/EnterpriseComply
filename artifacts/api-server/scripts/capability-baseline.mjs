@@ -115,6 +115,7 @@ const UNWIRED_PROVIDERS = new Map([
   ["crowdstrike.provider", UNWIRED_PROVIDER_REASON],
   ["datadog.provider", UNWIRED_PROVIDER_REASON],
   ["hashicorp-vault.provider", UNWIRED_PROVIDER_REASON],
+  ["jira.provider", UNWIRED_PROVIDER_REASON],
   ["knowbe4.provider", UNWIRED_PROVIDER_REASON],
   ["microsoft-365.provider", UNWIRED_PROVIDER_REASON],
   ["qualys.provider", UNWIRED_PROVIDER_REASON],
