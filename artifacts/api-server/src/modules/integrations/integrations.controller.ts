@@ -265,6 +265,7 @@ export class IntegrationsController {
     // is not built reports success: false with the reason, so a caller cannot
     // read a no-op as a completed sync.
             if (key === "bamboohr") return this.integrationsService.syncOrgBambooHR(ctx.orgId);
+        if (key === "crowdstrike") return this.integrationsService.syncOrgCrowdStrike(ctx.orgId);
     const spec = connectorSpec(key);
     return {
       success: false,
