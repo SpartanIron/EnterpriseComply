@@ -298,6 +298,19 @@ jobs:
         working-directory: artifacts/api-server
         run: node --import @swc-node/register/esm-register scripts/integration-connectors.test.ts
 
+      # Guard: retracting a connector-written control result.
+      #
+      # The two rows the old demo-connect path fabricated could not be
+      # withdrawn by any endpoint, so retraction is now a first-class
+      # operation. The property that matters most here is negative: the write
+      # must not carry manualOverride, because a row that carries it tells an
+      # assessor that a named person attested to a control nothing tested.
+      #
+      # Pure function plus source assertions. No database, no network.
+      - name: Control result retraction guard
+        working-directory: artifacts/api-server
+        run: node --import @swc-node/register/esm-register scripts/control-result-clear.test.ts
+
 
       - name: Print migration log excerpt (always — useful for debugging)
         if: always()
