@@ -11,6 +11,7 @@ import { runReplitChecks } from "./providers/replit.provider";
 import { runBetterAuthChecks } from "./providers/betterauth.provider";
 import { runSlackChecks } from "./providers/slack.provider";
 import { runBambooHRChecks } from "./providers/bamboohr.provider";
+import { runCrowdStrikeChecks } from "./providers/crowdstrike.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
@@ -1270,6 +1271,22 @@ export class IntegrationsService {
           if (!cfg?.apiKey || !cfg?.subdomain) throw new BadRequestException("BambooHR credentials not configured");
           const syncResult = await runBambooHRChecks(cfg.apiKey, cfg.subdomain);
           await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "bamboohr", integration.id);
+          return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+    }
+
+    async syncOrgCrowdStrike(orgId: number) {
+          const integration = await db.query.orgIntegrationsTable.findFirst({
+                  where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "crowdstrike")),
+          });
+          if (!integration || integration.status !== "connected") throw new BadRequestException("CrowdStrike integration not connected");
+          // Decrypt the client secret from config
+          const cfg = decryptConfigCredentials(
+                  integration.config as Record<string, unknown> | null,
+                  ["clientSecret"],
+                ) as { clientId?: string; clientSecret?: string; baseUrl?: string } | null;
+          if (!cfg?.clientId || !cfg?.clientSecret) throw new BadRequestException("CrowdStrike credentials not configured");
+          const syncResult = await runCrowdStrikeChecks(cfg.clientId, cfg.clientSecret, cfg.baseUrl);
+          await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "crowdstrike", integration.id);
           return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
     }
 

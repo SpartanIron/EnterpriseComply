@@ -348,7 +348,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       url: "${baseUrl|https://api.crowdstrike.com}/policy/combined/prevention/v1?limit=1",
       headers: { Authorization: "Bearer ${accessToken}" },
     },
-    collects: "connection-only",
+    collects: "automated-checks",
   },
   {
     key: "sentinelone",

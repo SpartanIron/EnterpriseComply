@@ -1,85 +1,153 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
-import { eq } from 'drizzle-orm';
-
 // SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
 import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
 
-interface CrowdStrikeConfig { clientId: string; clientSecret: string; baseUrl?: string; }
+export interface CrowdStrikeCheckResult {
+    ucoControlId: string;
+    status: "passing" | "failing" | "warning";
+    result: string;
+    integrationKey: "crowdstrike";
+}
 
-@Injectable()
-export class CrowdStrikeProvider {
-  private readonly logger = new Logger(CrowdStrikeProvider.name);
+export interface CrowdStrikeEvidenceItem {
+    ucoControlId: string;
+    title: string;
+    description: string;
+    type: "auto";
+    source: "crowdstrike";
+}
 
-  private async getOAuthToken(config: CrowdStrikeConfig): Promise<string> {
-    const base = config.baseUrl || 'https://api.crowdstrike.com';
+export interface CrowdStrikeSyncResult {
+    controlResults: CrowdStrikeCheckResult[];
+    evidenceItems: CrowdStrikeEvidenceItem[];
+    checksRun: number;
+    checksPassed: number;
+}
+
+async function getOAuthToken(base: string, clientId: string, clientSecret: string): Promise<string> {
     const resp = await fetch(`${base}/oauth2/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret }),
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret }),
     });
-    const data = await resp.json() as any; // typed below
-    if (!data.access_token) throw new Error(`CrowdStrike OAuth failed: ${data.message}`);
-    return data.access_token;
-  }
-
-  async syncOrgCrowdStrike(orgId: number): Promise<{ collected: number; errors: string[] }> {
-    const integration = await db.query.orgIntegrationsTable.findFirst({
-      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.integrationKey, 'crowdstrike'), eq(t.status, 'connected'))
-    });
-    if (!integration?.config) return { collected: 0, errors: ['CrowdStrike not connected'] };
-
-    const config = (integration.config ?? {}) as unknown as CrowdStrikeConfig;
-    const base = config.baseUrl || 'https://api.crowdstrike.com';
-    const errors: string[] = [];
-    let collected = 0;
-
-    try {
-      const token = await this.getOAuthToken(config);
-      const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-
-      // 1. Get device compliance status
-      const devicesResp = await fetch(`${base}/devices/queries/devices/v1?limit=100&filter=status%3A%27normal%27`, { headers });
-      const devicesData = await devicesResp.json() as any; // typed below
-      const compliantCount = devicesData.resources?.length || 0;
-
-      await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: 'UCO-VM-001', source: 'crowdstrike', title: 'CrowdStrike Device Compliance', collectedAt: new Date(),
-        description: `CrowdStrike Falcon: ${compliantCount} endpoints with sensor deployed and normal status`,
-        metadata: { contentHash: '', compliantDevices: compliantCount, deviceIds: devicesData.resources?.slice(0, 5) },
-      });
-      collected++;
-
-      // 2. Get prevention policy compliance
-      const policiesResp = await fetch(`${base}/policy/combined/prevention/v1?limit=10`, { headers });
-      const policiesData = await policiesResp.json() as any; // typed below
-      const policies = policiesData.resources || [];
-
-      await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: 'UCO-VM-002', source: 'crowdstrike', title: 'CrowdStrike Prevention Policies', collectedAt: new Date(),
-        description: `CrowdStrike: ${policies.length} prevention policies active. Enforcement: ${policies.filter((p: any) => p.enabled).length} enabled`,
-        metadata: { contentHash: '', totalPolicies: policies.length, enabledPolicies: policies.filter((p: any) => p.enabled).length },
-      });
-      collected++;
-
-      // 3. Get recent detections (critical/high)
-      const detectResp = await fetch(`${base}/detects/queries/detects/v1?limit=50&filter=max_severity_displayname%3A%5B%27Critical%27%2C%27High%27%5D`, { headers });
-      const detectData = await detectResp.json() as any; // typed below
-      const highSeverity = detectData.resources?.length || 0;
-
-      await db.insert(orgEvidenceTable).values({
-        orgId, ucoControlId: 'UCO-IR-001', source: 'crowdstrike', title: 'CrowdStrike High Severity Detections', collectedAt: new Date(),
-        description: `CrowdStrike: ${highSeverity} Critical/High detections in current period. ${highSeverity === 0 ? 'Clean posture.' : 'Requires review.'}`,
-        metadata: { contentHash: '', highSeverityDetections: highSeverity },
-      });
-      collected++;
-
-    } catch (e: any) {
-      errors.push(`CrowdStrike sync error: ${e.message}`);
+    const data = (await resp.json()) as any;
+    if (!resp.ok || !data.access_token) {
+          throw new Error(`CrowdStrike OAuth failed: ${data.message ?? resp.statusText}`);
     }
+    return data.access_token;
+}
 
-    await db.update(orgIntegrationsTable).set({ lastSyncAt: new Date() }).where(eq(orgIntegrationsTable.id, integration.id));
-    this.logger.log(`CrowdStrike sync org ${orgId}: ${collected} evidence items`);
-    return { collected, errors };
+export async function runCrowdStrikeChecks(clientId: string, clientSecret: string, baseUrl?: string): Promise<CrowdStrikeSyncResult> {
+    const controlResults: CrowdStrikeCheckResult[] = [];
+    const evidenceItems: CrowdStrikeEvidenceItem[] = [];
+    const base = baseUrl || "https://api.crowdstrike.com";
+
+  let token: string;
+    try {
+          token = await getOAuthToken(base, clientId, clientSecret);
+    } catch (err) {
+          // All three checks depend on this token; without it none of them can run.
+      const failMsg = `CrowdStrike OAuth token request failed: ${String(err)}`;
+          controlResults.push({ ucoControlId: "UCO-VM-001", status: "failing", result: failMsg, integrationKey: "crowdstrike" });
+          controlResults.push({ ucoControlId: "UCO-VM-002", status: "failing", result: failMsg, integrationKey: "crowdstrike" });
+          controlResults.push({ ucoControlId: "UCO-IR-001", status: "failing", result: failMsg, integrationKey: "crowdstrike" });
+          return { controlResults, evidenceItems, checksRun: controlResults.length, checksPassed: 0 };
+    }
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  // --- Device compliance: endpoint sensor coverage (UCO-VM-001) ---
+  try {
+        const devicesResp = await fetch(`${base}/devices/queries/devices/v1?limit=100&filter=status%3A%27normal%27`, { headers });
+        if (devicesResp.ok) {
+                const devicesData = (await devicesResp.json()) as any;
+                const compliantCount = devicesData.resources?.length || 0;
+                controlResults.push({
+                          ucoControlId: "UCO-VM-001",
+                          status: "passing",
+                          result: `CrowdStrike Falcon: ${compliantCount} endpoint(s) with sensor deployed and normal status.`,
+                          integrationKey: "crowdstrike",
+                });
+                evidenceItems.push({
+                          ucoControlId: "UCO-VM-001",
+                          title: "CrowdStrike Falcon -- Device Compliance",
+                          description: `CrowdStrike Falcon: ${compliantCount} endpoints with sensor deployed and normal status.`,
+                          type: "auto",
+                          source: "crowdstrike",
+                });
+        } else {
+                controlResults.push({
+                          ucoControlId: "UCO-VM-001",
+                          status: "failing",
+                          result: `CrowdStrike device query failed: ${devicesResp.status} ${devicesResp.statusText}`,
+                          integrationKey: "crowdstrike",
+                });
+        }
+  } catch (err) {
+        controlResults.push({ ucoControlId: "UCO-VM-001", status: "failing", result: `CrowdStrike device compliance check failed: ${String(err)}`, integrationKey: "crowdstrike" });
   }
+
+  // --- Prevention policy enforcement (UCO-VM-002) ---
+  try {
+        const policiesResp = await fetch(`${base}/policy/combined/prevention/v1?limit=10`, { headers });
+        if (policiesResp.ok) {
+                const policiesData = (await policiesResp.json()) as any;
+                const policies = policiesData.resources || [];
+                const enabledCount = policies.filter((p: any) => p.enabled).length;
+                controlResults.push({
+                          ucoControlId: "UCO-VM-002",
+                          status: "passing",
+                          result: `CrowdStrike: ${policies.length} prevention policies configured, ${enabledCount} enabled.`,
+                          integrationKey: "crowdstrike",
+                });
+                evidenceItems.push({
+                          ucoControlId: "UCO-VM-002",
+                          title: "CrowdStrike Falcon -- Prevention Policies",
+                          description: `CrowdStrike: ${policies.length} prevention policies active. Enforcement: ${enabledCount} enabled.`,
+                          type: "auto",
+                          source: "crowdstrike",
+                });
+        } else {
+                controlResults.push({
+                          ucoControlId: "UCO-VM-002",
+                          status: "failing",
+                          result: `CrowdStrike prevention policy query failed: ${policiesResp.status} ${policiesResp.statusText}`,
+                          integrationKey: "crowdstrike",
+                });
+        }
+  } catch (err) {
+        controlResults.push({ ucoControlId: "UCO-VM-002", status: "failing", result: `CrowdStrike prevention policy check failed: ${String(err)}`, integrationKey: "crowdstrike" });
+  }
+
+  // --- High severity detections: incident response signal (UCO-IR-001) ---
+  try {
+        const detectResp = await fetch(`${base}/detects/queries/detects/v1?limit=50&filter=max_severity_displayname%3A%5B%27Critical%27%2C%27High%27%5D`, { headers });
+        if (detectResp.ok) {
+                const detectData = (await detectResp.json()) as any;
+                const highSeverity = detectData.resources?.length || 0;
+                controlResults.push({
+                          ucoControlId: "UCO-IR-001",
+                          status: "passing",
+                          result: `CrowdStrike: ${highSeverity} Critical/High severity detection(s) in current query window. ${highSeverity === 0 ? "Clean posture." : "Under active review."}`,
+                          integrationKey: "crowdstrike",
+                });
+                evidenceItems.push({
+                          ucoControlId: "UCO-IR-001",
+                          title: "CrowdStrike Falcon -- High Severity Detections",
+                          description: `CrowdStrike: ${highSeverity} Critical/High detections in current period. ${highSeverity === 0 ? "Clean posture." : "Requires review."}`,
+                          type: "auto",
+                          source: "crowdstrike",
+                });
+        } else {
+                controlResults.push({
+                          ucoControlId: "UCO-IR-001",
+                          status: "failing",
+                          result: `CrowdStrike detections query failed: ${detectResp.status} ${detectResp.statusText}`,
+                          integrationKey: "crowdstrike",
+                });
+        }
+  } catch (err) {
+        controlResults.push({ ucoControlId: "UCO-IR-001", status: "failing", result: `CrowdStrike detections check failed: ${String(err)}`, integrationKey: "crowdstrike" });
+  }
+
+  const checksPassed = controlResults.filter((r) => r.status === "passing").length;
+    return { controlResults, evidenceItems, checksRun: controlResults.length, checksPassed };
 }
