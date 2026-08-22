@@ -264,6 +264,7 @@ export class IntegrationsController {
     // more. A connector whose credentials verify but whose evidence collection
     // is not built reports success: false with the reason, so a caller cannot
     // read a no-op as a completed sync.
+            if (key === "bamboohr") return this.integrationsService.syncOrgBambooHR(ctx.orgId);
     const spec = connectorSpec(key);
     return {
       success: false,

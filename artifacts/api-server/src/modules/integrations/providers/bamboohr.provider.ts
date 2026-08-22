@@ -1,44 +1,115 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
-import { eq } from 'drizzle-orm';
-
 // SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
 import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
 
-interface BambooHRConfig { apiKey: string; subdomain: string; }
+export interface BambooHRCheckResult {
+    ucoControlId: string;
+    status: "passing" | "failing" | "warning";
+    result: string;
+    integrationKey: "bamboohr";
+}
 
-@Injectable()
-export class BambooHRProvider {
-  async syncOrgBambooHR(orgId: number): Promise<{ collected: number; errors: string[] }> {
-    const integration = await db.query.orgIntegrationsTable.findFirst({
-      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.integrationKey, 'bamboohr'), eq(t.status, 'connected'))
-    });
-    if (!integration?.config) return { collected: 0, errors: ['BambooHR not connected'] };
-    const config = (integration.config ?? {}) as unknown as BambooHRConfig;
-    const auth = Buffer.from(`${config.apiKey}:x`).toString('base64');
-    const base = `https://api.bamboohr.com/api/gateway.php/${config.subdomain}/v1`;
-    const headers = { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' };
-    const errors: string[] = [];
-    let collected = 0;
-    try {
-      // Employee list for offboarding tracking (SOC 2 CC6.2)
-      const empResp = await fetch(`${base}/employees/directory`, { headers });
-      if (empResp.ok) {
-        const empData = await empResp.json() as any; // typed below
-        const employees = empData.employees || [];
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-ST-001', source: 'bamboohr', title: 'BambooHR Employee Directory', collectedAt: new Date(), description: `BambooHR: ${employees.length} employees in directory. Workforce roster maintained for access review.`, metadata: { contentHash: '', employeeCount: employees.length } });
-        collected++;
-      }
-      // Time-off for access review scheduling
-      const termResp = await fetch(`${base}/reports/custom?format=JSON`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Recent Terminations', filters: { lastChanged: { includeNull: false, value: '30daysAgo' } }, fields: ['id', 'displayName', 'terminationDate', 'employmentHistoryStatus'] }) });
-      if (termResp.ok) {
-        const termData = await termResp.json() as any; // typed below
-        const terminated = termData.employees?.filter((e: any) => e.terminationDate)?.length || 0;
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-AC-005', source: 'bamboohr', title: 'BambooHR Recent Terminations', collectedAt: new Date(), description: `BambooHR: ${terminated} employee terminations in last 30 days. Offboarding access revocation trigger active.`, metadata: { contentHash: '', recentTerminations: terminated } });
-        collected++;
-      }
-    } catch (e: any) { errors.push(`BambooHR: ${e.message}`); }
-    await db.update(orgIntegrationsTable).set({ lastSyncAt: new Date() }).where(eq(orgIntegrationsTable.id, integration.id));
-    return { collected, errors };
+export interface BambooHREvidenceItem {
+    ucoControlId: string;
+    title: string;
+    description: string;
+    type: "auto";
+    source: "bamboohr";
+}
+
+export interface BambooHRSyncResult {
+    controlResults: BambooHRCheckResult[];
+    evidenceItems: BambooHREvidenceItem[];
+    checksRun: number;
+    checksPassed: number;
+}
+
+export async function runBambooHRChecks(apiKey: string, subdomain: string): Promise<BambooHRSyncResult> {
+    const controlResults: BambooHRCheckResult[] = [];
+    const evidenceItems: BambooHREvidenceItem[] = [];
+    const auth = Buffer.from(`${apiKey}:x`).toString("base64");
+    const base = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1`;
+    const headers = { Authorization: `Basic ${auth}`, Accept: "application/json" };
+
+  // --- Employee directory: workforce roster maintained for access review (SOC 2 CC6.2) ---
+  try {
+        const empResp = await fetch(`${base}/employees/directory`, { headers });
+        if (empResp.ok) {
+                const empData = (await empResp.json()) as any;
+                const employees = empData.employees || [];
+                controlResults.push({
+                          ucoControlId: "UCO-ST-001",
+                          status: "passing",
+                          result: `BambooHR employee directory retrieved: ${employees.length} employees on the active roster.`,
+                          integrationKey: "bamboohr",
+                });
+                evidenceItems.push({
+                          ucoControlId: "UCO-ST-001",
+                          title: "BambooHR -- Employee Directory",
+                          description: `BambooHR: ${employees.length} employees in directory. Workforce roster maintained for access review.`,
+                          type: "auto",
+                          source: "bamboohr",
+                });
+        } else {
+                controlResults.push({
+                          ucoControlId: "UCO-ST-001",
+                          status: "failing",
+                          result: `BambooHR employee directory request failed: ${empResp.status} ${empResp.statusText}`,
+                          integrationKey: "bamboohr",
+                });
+        }
+  } catch (err) {
+        controlResults.push({
+                ucoControlId: "UCO-ST-001",
+                status: "failing",
+                result: `BambooHR employee directory check failed: ${String(err)}`,
+                integrationKey: "bamboohr",
+        });
   }
+
+  // --- Recent terminations: offboarding access revocation trigger (UCO-AC-005) ---
+  try {
+        const termResp = await fetch(`${base}/reports/custom?format=JSON`, {
+                method: "POST",
+                headers: { ...headers, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                          title: "Recent Terminations",
+                          filters: { lastChanged: { includeNull: false, value: "30daysAgo" } },
+                          fields: ["id", "displayName", "terminationDate", "employmentHistoryStatus"],
+                }),
+        });
+        if (termResp.ok) {
+                const termData = (await termResp.json()) as any;
+                const terminated = termData.employees?.filter((e: any) => e.terminationDate)?.length || 0;
+                controlResults.push({
+                          ucoControlId: "UCO-AC-005",
+                          status: "passing",
+                          result: `BambooHR reports ${terminated} employee termination(s) in the past 30 days, tracked for offboarding access revocation.`,
+                          integrationKey: "bamboohr",
+                });
+                evidenceItems.push({
+                          ucoControlId: "UCO-AC-005",
+                          title: "BambooHR -- Recent Terminations",
+                          description: `BambooHR: ${terminated} employee terminations in last 30 days. Offboarding access revocation trigger active.`,
+                          type: "auto",
+                          source: "bamboohr",
+                });
+        } else {
+                controlResults.push({
+                          ucoControlId: "UCO-AC-005",
+                          status: "failing",
+                          result: `BambooHR terminations report request failed: ${termResp.status} ${termResp.statusText}`,
+                          integrationKey: "bamboohr",
+                });
+        }
+  } catch (err) {
+        controlResults.push({
+                ucoControlId: "UCO-AC-005",
+                status: "failing",
+                result: `BambooHR terminations check failed: ${String(err)}`,
+                integrationKey: "bamboohr",
+        });
+  }
+
+  const checksPassed = controlResults.filter((r) => r.status === "passing").length;
+    return { controlResults, evidenceItems, checksRun: controlResults.length, checksPassed };
 }

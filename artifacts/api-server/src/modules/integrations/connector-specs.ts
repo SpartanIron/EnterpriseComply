@@ -723,7 +723,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       url: "https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory",
       headers: { Authorization: "Basic ${basic:apiKey:x}", Accept: "application/json" },
     },
-    collects: "connection-only",
+    collects: "automated-checks",
   },
   {
     key: "knowbe4",

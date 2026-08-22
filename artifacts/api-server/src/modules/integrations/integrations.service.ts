@@ -10,6 +10,7 @@ import { runRailwayChecks } from "./providers/railway.provider";
 import { runReplitChecks } from "./providers/replit.provider";
 import { runBetterAuthChecks } from "./providers/betterauth.provider";
 import { runSlackChecks } from "./providers/slack.provider";
+import { runBambooHRChecks } from "./providers/bamboohr.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
@@ -1253,6 +1254,22 @@ export class IntegrationsService {
           if (!cfg?.botToken) throw new BadRequestException("Slack credentials not configured");
           const syncResult = await runSlackChecks(cfg.botToken);
           await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "slack", integration.id);
+          return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+    }
+
+    async syncOrgBambooHR(orgId: number) {
+          const integration = await db.query.orgIntegrationsTable.findFirst({
+                  where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "bamboohr")),
+          });
+          if (!integration || integration.status !== "connected") throw new BadRequestException("BambooHR integration not connected");
+          // Decrypt the API key from config
+          const cfg = decryptConfigCredentials(
+                  integration.config as Record<string, unknown> | null,
+                  ["apiKey"],
+                ) as { apiKey?: string; subdomain?: string } | null;
+          if (!cfg?.apiKey || !cfg?.subdomain) throw new BadRequestException("BambooHR credentials not configured");
+          const syncResult = await runBambooHRChecks(cfg.apiKey, cfg.subdomain);
+          await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "bamboohr", integration.id);
           return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
     }
 

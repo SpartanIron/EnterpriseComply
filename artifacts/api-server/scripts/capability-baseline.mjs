@@ -112,7 +112,6 @@ const UNWIRED_PROVIDERS = new Map([
     "Implements Duo HMAC request signing, which is the exact thing the spec " +
       "says cannot be done. Neither registered nor promoted out of unavailable.",
   ],
-  ["bamboohr.provider", UNWIRED_PROVIDER_REASON],
   ["crowdstrike.provider", UNWIRED_PROVIDER_REASON],
   ["datadog.provider", UNWIRED_PROVIDER_REASON],
   ["hashicorp-vault.provider", UNWIRED_PROVIDER_REASON],
@@ -122,7 +121,6 @@ const UNWIRED_PROVIDERS = new Map([
   ["qualys.provider", UNWIRED_PROVIDER_REASON],
   ["sentinelone.provider", UNWIRED_PROVIDER_REASON],
   ["servicenow.provider", UNWIRED_PROVIDER_REASON],
-  ["slack.provider", UNWIRED_PROVIDER_REASON],
   ["tenable.provider", UNWIRED_PROVIDER_REASON],
   ["wiz.provider", UNWIRED_PROVIDER_REASON],
   ["workday.provider", UNWIRED_PROVIDER_REASON],
