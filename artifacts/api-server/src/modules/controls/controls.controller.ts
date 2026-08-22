@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Param, UseGuards } from "@nestjs/common";
+import { Controller, Get, Patch, Post, Body, Param, UseGuards } from "@nestjs/common";
 import { ControlsService } from "./controls.service";
 import { ClerkAuthGuard, OrgContextGuard, OrgContext, ClerkUserId } from "../../guards/clerk-auth.guard";
 import { RequireRole } from "../../guards/roles.guard";
@@ -36,5 +36,22 @@ export class ControlsController {
     @Body() body: { status: string; remediationNotes?: string },
   ) {
     return this.controlsService.patchControlResult(ctx.orgId, controlId, userId, body);
+  }
+  /**
+   * Withdraw a result that an integration wrote.
+   *
+   * owner, where the patch route above is analyst. Recording an assessment is
+   * an analyst's job; removing a recorded assertion from the compliance
+   * history is not, and the audit entry the service writes names whoever did
+   * it.
+   */
+  @Post("orgs/:orgId/controls/:controlId/clear-automated-result")
+  @UseGuards(OrgContextGuard, RequireRole("owner"))
+  clearAutomatedResult(
+    @OrgContext() ctx: OrgCtx,
+    @ClerkUserId() userId: string,
+    @Param("controlId") controlId: string,
+  ) {
+    return this.controlsService.clearAutomatedResult(ctx.orgId, controlId, userId);
   }
 }

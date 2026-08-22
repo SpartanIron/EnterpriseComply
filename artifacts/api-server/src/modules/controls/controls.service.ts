@@ -1,4 +1,10 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import {
   db,
   ucoControlsTable,
@@ -8,6 +14,8 @@ import {
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { computePosture, syncStoredFrameworkPosture } from "../../lib/posture";
+import { planAutomatedResultClear } from "../../lib/control-result-clear";
+import { writeAuditLog } from "../../lib/audit-log.js";
 
 @Injectable()
 export class ControlsService {
@@ -138,6 +146,99 @@ export class ControlsService {
       );
     }
     return { result };
+  }
+
+  /**
+   * Retract a control result that an integration wrote.
+   *
+   * The reasoning, and the incident that forced it, are in
+   * lib/control-result-clear.ts. This method applies that decision and
+   * records it; it does not repeat it.
+   *
+   * The audit entry carries the previous values because they are not
+   * recoverable from the row once overwritten. An assessor is entitled to see
+   * that a status was withdrawn, by whom, and what it had claimed.
+   */
+  async clearAutomatedResult(orgId: number, controlId: string, clerkUserId?: string) {
+    const control = await db.query.ucoControlsTable.findFirst({
+      where: eq(ucoControlsTable.controlId, controlId),
+    });
+    if (!control) {
+      throw new NotFoundException("Unknown control " + controlId + ".");
+    }
+
+    const existing = await db.query.orgControlResultsTable.findFirst({
+      where: and(
+        eq(orgControlResultsTable.orgId, orgId),
+        eq(orgControlResultsTable.ucoControlId, controlId),
+      ),
+    });
+
+    const plan = planAutomatedResultClear(existing as any);
+
+    if (!plan.ok) {
+      // A refusal is logged too. Someone attempting to erase a human
+      // attestation is exactly the event an audit log is for.
+      await writeAuditLog(
+        orgId,
+        "control_result.retraction_refused",
+        "control",
+        controlId,
+        { reason: plan.reason },
+        clerkUserId,
+      );
+      if (plan.reason === "manual_override") {
+        throw new ForbiddenException(plan.message);
+      }
+      throw new BadRequestException(plan.message);
+    }
+
+    const [updated] = await db
+      .update(orgControlResultsTable)
+      .set(plan.updates as any)
+      .where(
+        and(
+          eq(orgControlResultsTable.orgId, orgId),
+          eq(orgControlResultsTable.ucoControlId, controlId),
+        ),
+      )
+      .returning();
+
+    await writeAuditLog(
+      orgId,
+      "control_result.automated_retracted",
+      "control",
+      controlId,
+      {
+        previous: plan.previous,
+        newStatus: plan.updates.status,
+        note:
+          "Automated result withdrawn. The status recorded above is what the " +
+          "row asserted before retraction; it is kept here because the row " +
+          "itself cannot carry it.",
+      },
+      clerkUserId,
+    );
+
+    // The per-framework columns are a cache of the SSOT, refreshed here for
+    // the same reason patchControlResult refreshes them.
+    const sync = await syncStoredFrameworkPosture(orgId);
+    if (sync.failed > 0) {
+      this.logger.warn(
+        "Stored framework posture refresh failed for " + sync.failed +
+          " framework row(s) on org " + orgId +
+          " after retracting " + controlId + ".",
+      );
+    }
+
+    const posture = await computePosture(orgId);
+    return {
+      success: true,
+      controlId,
+      retracted: plan.previous,
+      result: updated,
+      counts: posture.counts,
+    };
   }
 
   async getFrameworkImpact(orgId: number, controlId: string) {
