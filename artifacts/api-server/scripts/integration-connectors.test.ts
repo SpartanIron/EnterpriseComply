@@ -246,12 +246,29 @@ async function main() {
   );
 
   // -- 7. The browser never receives the verification request ---------------
-  const published = JSON.stringify(CONNECTOR_SPECS.map(publicSpec));
+  const publishedList = CONNECTOR_SPECS.map(publicSpec);
+  const published = JSON.stringify(publishedList);
+  // The first version of this asserted that no "https://api." substring appeared
+  // anywhere in the published JSON, and CI was right to fail it: docsUrl is
+  // published on purpose - it is the link telling the customer where to create
+  // the credential - and several of those are on api.* hosts. Substring matching
+  // could not tell an intended link from a leaked one. Now the two things that
+  // actually matter are checked directly.
   check(
-    "published specs carry no request URLs",
-    !published.includes("https://api."),
-    "A verification URL reached the public spec. It is not itself a secret, but publishing the exact call " +
-      "the server makes with a customer's token is free reconnaissance for no product benefit.",
+    "published specs expose no verify or grant object",
+    publishedList.every((p) => !("verify" in p) && !("grant" in p)),
+    "The request objects reached the public spec.",
+  );
+  const leakedUrls = CONNECTOR_SPECS.filter((s) => {
+    const v = s.verify?.url;
+    const g = s.grant?.url;
+    return (v && published.includes(v)) || (g && published.includes(g));
+  }).map((s) => s.key);
+  check(
+    "no verification or token URL appears in a published spec",
+    leakedUrls.length === 0,
+    "Leaked for: " + leakedUrls.join(", ") + ". Not itself a secret, but publishing the exact call the " +
+      "server makes with a customer's token is free reconnaissance for no product benefit.",
   );
   check(
     "published specs carry no header templates",
