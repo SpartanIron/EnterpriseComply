@@ -36,7 +36,7 @@
  * On what is deliberately NOT here
  * -------------------------------------------------------------------------
  * Several vendors cannot be reached with any of the three shapes above. AWS
- * needs SigV4. Google needs an RS256-signed JWT assertion. Duo, Veracode and
+ * needs SigV4. Duo, Veracode and
  * NetSuite sign every individual request. ADP requires mutual TLS.
  *
  * Those are marked "unavailable" with the reason stated in the spec and shown
@@ -842,11 +842,48 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
   // consent flow the platform does not host. They are listed with the reason
   // rather than removed, because "why can I not connect this" is a question the
   // catalogue should answer.
-  unavailable(
-    "google-workspace",
-    "Google service accounts authenticate with an RS256-signed JWT assertion, which this connector engine " +
-      "cannot construct. A Google-specific connector is needed.",
-  ),
+  // Google Workspace is not engine-reachable, and does not need to be. It has
+  // its own module - modules/google-workspace - with connect, sync, status and
+  // disconnect routes, and it builds the RS256 service-account assertion itself.
+  // Declaring it unavailable here outlived that module, so the catalogue kept
+  // telling customers it was not available yet about a connector that already
+  // worked. That is the class of error the capability baseline exists to catch,
+  // and there is now an invariant that fails the build if it recurs.
+  {
+    key: "google-workspace",
+    state: "native",
+    collects: "automated-checks",
+    docsUrl: "https://developers.google.com/workspace/guides/create-credentials",
+    note:
+      "Use the Google Workspace connect route rather than the generic credential " +
+      "form. It needs a service account with domain-wide delegation and the " +
+      "read-only admin.directory.user and admin.directory.group scopes.",
+    fields: [
+      {
+        key: "serviceAccountKey",
+        label: "Service account JSON key",
+        secret: true,
+        required: true,
+        help:
+          "The JSON key file for a service account with domain-wide delegation. " +
+          "Marking it secret is what places it in the redaction set.",
+      },
+      {
+        key: "domain",
+        label: "Primary domain",
+        secret: false,
+        required: true,
+        placeholder: "example.com",
+      },
+      {
+        key: "adminEmail",
+        label: "Delegated admin email",
+        secret: false,
+        required: true,
+        help: "A super administrator the service account impersonates.",
+      },
+    ],
+  },
   unavailable(
     "gcp",
     "Google Cloud authenticates with an RS256-signed JWT assertion from a service account key. Needs a " +

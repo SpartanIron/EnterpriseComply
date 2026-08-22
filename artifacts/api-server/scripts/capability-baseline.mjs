@@ -45,7 +45,15 @@ const MIGRATIONS_DIR = join(API_SRC, "migrations");
 const LIB_DIR = join(API_SRC, "lib");
 const DB_SRC = join(REPO_ROOT, "lib", "db", "src");
 const SCHEMA_DIR = join(DB_SRC, "schema");
-const ROADMAP_PATH = join(REPO_ROOT, "docs", "ROADMAP.md");
+// The roadmap path is overridable so the checker can be aimed at a fixture.
+// scripts/capability-baseline-negative.test.mjs uses that to prove the check
+// rejects a false claim. A check that has only ever been observed passing is
+// not evidence that it works.
+const roadmapFlagAt = process.argv.indexOf("--roadmap");
+const ROADMAP_PATH =
+  roadmapFlagAt >= 0 && process.argv[roadmapFlagAt + 1]
+    ? process.argv[roadmapFlagAt + 1]
+    : join(REPO_ROOT, "docs", "ROADMAP.md");
 const VERIFY_SCHEMA_PATH = join(API_SCRIPTS, "verify-schema.mjs");
 
 /**
@@ -73,6 +81,51 @@ const EXTERNALLY_EXECUTED = new Map([
     "artifacts/api-server/scripts/migrate.cjs",
     "railway.toml preDeployCommand",
   ],
+]);
+
+/**
+ * Provider files that nothing under src imports.
+ *
+ * Sixteen provider classes were written and not one of them was imported by
+ * the application. A provider nothing imports never runs, so the connector it
+ * was written for reports connection-only for ever. It is the same defect as a
+ * table that is declared and never created, one layer up, and it was found the
+ * same way: by asking what refers to what instead of reading the code and
+ * believing it.
+ *
+ * An entry here is a debt that has been looked at, not a debt that is allowed.
+ * The list may shrink without ceremony. Adding to it requires a reason.
+ */
+const UNWIRED_PROVIDER_REASON =
+  "Written against the vendor API but registered on no sync path, so POST " +
+    "orgs/:orgId/integrations/:key/sync still answers connection-only for it.";
+
+const UNWIRED_PROVIDERS = new Map([
+  [
+    "google-workspace.provider",
+    "Superseded by modules/google-workspace, which is wired, exposes connect, " +
+      "sync, status and disconnect, and builds its own RS256 assertion. This " +
+      "file is kept because scripts/google-jwt.test.ts asserts against it.",
+  ],
+  [
+    "duo.provider",
+    "Implements Duo HMAC request signing, which is the exact thing the spec " +
+      "says cannot be done. Neither registered nor promoted out of unavailable.",
+  ],
+  ["bamboohr.provider", UNWIRED_PROVIDER_REASON],
+  ["crowdstrike.provider", UNWIRED_PROVIDER_REASON],
+  ["datadog.provider", UNWIRED_PROVIDER_REASON],
+  ["hashicorp-vault.provider", UNWIRED_PROVIDER_REASON],
+  ["jira.provider", UNWIRED_PROVIDER_REASON],
+  ["knowbe4.provider", UNWIRED_PROVIDER_REASON],
+  ["microsoft-365.provider", UNWIRED_PROVIDER_REASON],
+  ["qualys.provider", UNWIRED_PROVIDER_REASON],
+  ["sentinelone.provider", UNWIRED_PROVIDER_REASON],
+  ["servicenow.provider", UNWIRED_PROVIDER_REASON],
+  ["slack.provider", UNWIRED_PROVIDER_REASON],
+  ["tenable.provider", UNWIRED_PROVIDER_REASON],
+  ["wiz.provider", UNWIRED_PROVIDER_REASON],
+  ["workday.provider", UNWIRED_PROVIDER_REASON],
 ]);
 
 function walk(dir, extensions, found = []) {
@@ -347,6 +400,61 @@ function runCheck(inventory) {
   }
 
   checkRoadmap(inventory, violations);
+
+  // Every connector provider file must be imported by the application.
+  //
+  // A provider that only a test imports does not run in production. The
+  // referrer therefore has to be under src, not under scripts.
+  const providersDir = join(MODULES_DIR, "integrations", "providers");
+  if (existsSync(providersDir)) {
+    const sources = loadSources();
+    for (const entry of readdirSync(providersDir)) {
+      if (!entry.endsWith(".ts")) continue;
+      const stem = entry.replace(/\.ts$/, "");
+      const importedBySrc = sources.some(
+        (s) =>
+          s.path.includes("api-server" + sep + "src") &&
+          !s.path.endsWith(entry) &&
+          s.text.includes("providers/" + stem),
+      );
+      if (importedBySrc) continue;
+      if (UNWIRED_PROVIDERS.has(stem)) continue;
+      violations.push(
+        "Provider " +
+          entry +
+          " is imported by nothing under src and is not listed in " +
+          "UNWIRED_PROVIDERS with a reason. Wire it, or record why it is not " +
+          "wired. A provider nothing imports collects nothing.",
+      );
+    }
+  }
+
+  // A connector declared unavailable must not already be implemented.
+  //
+  // google-workspace was declared unavailable in connector-specs.ts while
+  // modules/google-workspace shipped connect, sync, status and disconnect
+  // routes and its own RS256 assertion. The catalogue therefore told customers
+  // a working connector was not available yet, and nothing in the build
+  // noticed. Both readings of a clash here are defects: either the module is
+  // dead code, or the connector is not unavailable.
+  const specsPath = join(MODULES_DIR, "integrations", "connector-specs.ts");
+  if (existsSync(specsPath)) {
+    const specsText = readFileSync(specsPath, "utf8");
+    const declaredUnavailable = [
+      ...specsText.matchAll(/unavailable\(\s*"([a-z0-9-]+)"/g),
+    ].map((m) => m[1]);
+    for (const key of declaredUnavailable) {
+      if (!existsSync(join(MODULES_DIR, key))) continue;
+      violations.push(
+        "Connector " +
+          key +
+          " is declared unavailable in connector-specs.ts, but " +
+          "src/modules/" +
+          key +
+          " exists. Either that module is dead or the connector is reachable.",
+      );
+    }
+  }
 
   if (violations.length === 0) {
     console.log("capability baseline: OK");

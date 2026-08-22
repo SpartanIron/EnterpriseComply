@@ -42,6 +42,13 @@ jobs:
         working-directory: artifacts/api-server
         run: node scripts/capability-baseline.mjs --check
 
+      # A check that has only been seen passing is not evidence. This runs the
+      # checker against roadmap fixtures that are deliberately wrong and fails
+      # if any of them is accepted.
+      - name: Negative control for the baseline check
+        working-directory: artifacts/api-server
+        run: node scripts/capability-baseline-negative.test.mjs
+
       - name: Inventory for the log
         if: always()
         working-directory: artifacts/api-server
