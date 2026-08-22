@@ -112,7 +112,6 @@ const UNWIRED_PROVIDERS = new Map([
     "Implements Duo HMAC request signing, which is the exact thing the spec " +
       "says cannot be done. Neither registered nor promoted out of unavailable.",
   ],
-  ["datadog.provider", UNWIRED_PROVIDER_REASON],
   ["hashicorp-vault.provider", UNWIRED_PROVIDER_REASON],
   ["jira.provider", UNWIRED_PROVIDER_REASON],
   ["knowbe4.provider", UNWIRED_PROVIDER_REASON],
