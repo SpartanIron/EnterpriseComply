@@ -17,6 +17,7 @@ import { runHashiCorpVaultChecks } from "./providers/hashicorp-vault.provider";
 import { runJiraChecks } from "./providers/jira.provider";
 import { runKnowBe4Checks } from "./providers/knowbe4.provider";
 import { runMicrosoft365Checks } from "./providers/microsoft-365.provider";
+import { runQualysChecks } from "./providers/qualys.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
@@ -1372,6 +1373,22 @@ export class IntegrationsService {
           if (!cfg?.tenantId || !cfg?.clientId || !cfg?.clientSecret) throw new BadRequestException("Microsoft 365 credentials not configured");
           const syncResult = await runMicrosoft365Checks(cfg.tenantId, cfg.clientId, cfg.clientSecret);
           await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "microsoft-365", integration.id);
+          return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+    }
+
+    async syncOrgQualys(orgId: number) {
+          const integration = await db.query.orgIntegrationsTable.findFirst({
+                  where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "qualys")),
+          });
+          if (!integration || integration.status !== "connected") throw new BadRequestException("Qualys integration not connected");
+          // Decrypt the password from config
+          const cfg = decryptConfigCredentials(
+                  integration.config as Record<string, unknown> | null,
+                  ["password"],
+                ) as { baseUrl?: string; username?: string; password?: string } | null;
+          if (!cfg?.baseUrl || !cfg?.username || !cfg?.password) throw new BadRequestException("Qualys credentials not configured");
+          const syncResult = await runQualysChecks(cfg.baseUrl, cfg.username, cfg.password);
+          await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "qualys", integration.id);
           return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
     }
 

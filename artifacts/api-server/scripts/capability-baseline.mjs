@@ -112,7 +112,6 @@ const UNWIRED_PROVIDERS = new Map([
     "Implements Duo HMAC request signing, which is the exact thing the spec " +
       "says cannot be done. Neither registered nor promoted out of unavailable.",
   ],
-  ["qualys.provider", UNWIRED_PROVIDER_REASON],
   ["sentinelone.provider", UNWIRED_PROVIDER_REASON],
   ["servicenow.provider", UNWIRED_PROVIDER_REASON],
   ["tenable.provider", UNWIRED_PROVIDER_REASON],

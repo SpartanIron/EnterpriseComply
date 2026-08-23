@@ -326,7 +326,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       url: "${baseUrl}/api/2.0/fo/report/?action=list",
       headers: { Authorization: "Basic ${basic:username:password}", "X-Requested-With": "EnterpriseComply" },
     },
-    collects: "connection-only",
+        collects: "automated-checks",
   },
   {
     key: "crowdstrike",
