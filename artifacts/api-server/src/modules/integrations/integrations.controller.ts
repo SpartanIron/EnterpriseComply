@@ -269,6 +269,7 @@ export class IntegrationsController {
     if (key === "datadog") return this.integrationsService.syncOrgDatadog(ctx.orgId);
     if (key === "hashicorp-vault") return this.integrationsService.syncOrgHashiCorpVault(ctx.orgId);
     if (key === "jira") return this.integrationsService.syncOrgJira(ctx.orgId);
+    if (key === "knowbe4") return this.integrationsService.syncOrgKnowBe4(ctx.orgId);
     const spec = connectorSpec(key);
     return {
       success: false,
