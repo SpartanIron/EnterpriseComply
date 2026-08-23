@@ -589,7 +589,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       headers: { Authorization: "Bearer ${accessToken}" },
     },
     note: "Needs Organization.Read.All as an application permission, with admin consent granted.",
-    collects: "connection-only",
+        collects: "automated-checks",
   },
   {
     key: "azure-ad",
