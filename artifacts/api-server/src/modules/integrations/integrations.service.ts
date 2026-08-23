@@ -14,11 +14,12 @@ import { runBambooHRChecks } from "./providers/bamboohr.provider";
 import { runCrowdStrikeChecks } from "./providers/crowdstrike.provider";
 import { runDatadogChecks } from "./providers/datadog.provider";
 import { runHashiCorpVaultChecks } from "./providers/hashicorp-vault.provider";
+import { runJiraChecks } from "./providers/jira.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
   connectorSummary,
-    publicSpec,
+     publicSpec,
   secretFieldsFor,
 } from "./connector-specs";
 import { validateSubmittedFields, verifyConnector } from "./connector-engine";
@@ -1321,6 +1322,22 @@ export class IntegrationsService {
     if (!cfg?.vaultAddr || !cfg?.token) throw new BadRequestException("HashiCorp Vault credentials not configured");
     const syncResult = await runHashiCorpVaultChecks(cfg.vaultAddr, cfg.token, cfg.namespace);
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "hashicorp-vault", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  async syncOrgJira(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "jira")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("Jira integration not connected");
+    // Decrypt the API token from config
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["apiToken"],
+      ) as { domain?: string; email?: string; apiToken?: string; projectKey?: string } | null;
+    if (!cfg?.domain || !cfg?.email || !cfg?.apiToken) throw new BadRequestException("Jira credentials not configured");
+    const syncResult = await runJiraChecks(cfg.domain, cfg.email, cfg.apiToken, cfg.projectKey);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "jira", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
   }
 
