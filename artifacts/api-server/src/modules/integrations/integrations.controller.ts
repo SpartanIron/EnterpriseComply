@@ -268,6 +268,7 @@ export class IntegrationsController {
         if (key === "crowdstrike") return this.integrationsService.syncOrgCrowdStrike(ctx.orgId);
     if (key === "datadog") return this.integrationsService.syncOrgDatadog(ctx.orgId);
     if (key === "hashicorp-vault") return this.integrationsService.syncOrgHashiCorpVault(ctx.orgId);
+    if (key === "jira") return this.integrationsService.syncOrgJira(ctx.orgId);
     const spec = connectorSpec(key);
     return {
       success: false,
