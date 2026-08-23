@@ -198,7 +198,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       headers: { Authorization: "Basic ${basic:email:apiToken}" },
     },
     docsUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
-    collects: "connection-only",
+      collects: "automated-checks",
   },
   {
     key: "servicenow",

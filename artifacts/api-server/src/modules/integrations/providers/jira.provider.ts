@@ -1,47 +1,99 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
-import { eq } from 'drizzle-orm';
-
 // SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
 import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
 
-interface JiraConfig { domain: string; email: string; apiToken: string; projectKey?: string; }
+export interface JiraCheckResult {
+    ucoControlId: string;
+    status: "passing" | "failing" | "warning";
+    result: string;
+    integrationKey: "jira";
+}
 
-@Injectable()
-export class JiraProvider {
-  private readonly logger = new Logger(JiraProvider.name);
+export interface JiraEvidenceItem {
+    ucoControlId: string;
+    title: string;
+    description: string;
+    type: "auto";
+    source: "jira";
+}
 
-  async syncOrgJira(orgId: number): Promise<{ collected: number; errors: string[] }> {
-    const integration = await db.query.orgIntegrationsTable.findFirst({
-      where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.integrationKey, 'jira'), eq(t.status, 'connected'))
-    });
-    if (!integration?.config) return { collected: 0, errors: ['Jira not connected'] };
-    const config = (integration.config ?? {}) as unknown as JiraConfig;
-    const auth = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
-    const base = `https://${config.domain}.atlassian.net`;
-    const headers = { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' };
-    const errors: string[] = [];
-    let collected = 0;
-    try {
-      // Security vulnerability tickets
-      const jql = config.projectKey ? `project=${config.projectKey} AND labels=security AND status!=Done ORDER BY created DESC` : `labels=security AND status!=Done ORDER BY created DESC`;
-      const issuesResp = await fetch(`${base}/rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=50`, { headers });
-      if (issuesResp.ok) {
-        const issuesData = await issuesResp.json() as any; // typed below
-        const secIssues = issuesData.total || 0;
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-VM-001', source: 'jira', title: 'Jira Security Tickets', collectedAt: new Date(), description: `Jira: ${secIssues} open security tickets. Vulnerability remediation tracking active.`, metadata: { contentHash: '', openSecurityTickets: secIssues } });
-        collected++;
-      }
-      // Change management tickets
-      const changeJql = `type=Change AND status=Done ORDER BY resolved DESC`;
-      const changeResp = await fetch(`${base}/rest/api/3/search?jql=${encodeURIComponent(changeJql)}&maxResults=50`, { headers });
-      if (changeResp.ok) {
-        const changeData = await changeResp.json() as any; // typed below
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-CM-003', source: 'jira', title: 'Jira Change Management', collectedAt: new Date(), description: `Jira: Change management workflow active. ${changeData.total || 0} completed change tickets.`, metadata: { contentHash: '', completedChanges: changeData.total || 0 } });
-        collected++;
-      }
-    } catch (e: any) { errors.push(`Jira: ${e.message}`); }
-    await db.update(orgIntegrationsTable).set({ lastSyncAt: new Date() }).where(eq(orgIntegrationsTable.id, integration.id));
-    return { collected, errors };
+export interface JiraSyncResult {
+    controlResults: JiraCheckResult[];
+    evidenceItems: JiraEvidenceItem[];
+    checksRun: number;
+    checksPassed: number;
+}
+
+export async function runJiraChecks(domain: string, email: string, apiToken: string, projectKey?: string): Promise<JiraSyncResult> {
+    const controlResults: JiraCheckResult[] = [];
+    const evidenceItems: JiraEvidenceItem[] = [];
+    const auth = Buffer.from(`${email}:${apiToken}`).toString('base64');
+    const base = `https://${domain}.atlassian.net`;
+    const headers = { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' };
+
+  // --- Security vulnerability tickets (UCO-VM-001) ---
+  try {
+        const jql = projectKey ? `project=${projectKey} AND labels=security AND status!=Done ORDER BY created DESC` : `labels=security AND status!=Done ORDER BY created DESC`;
+        const issuesResp = await fetch(`${base}/rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=50`, { headers });
+        if (issuesResp.ok) {
+                const issuesData = (await issuesResp.json()) as any;
+                const secIssues = issuesData.total || 0;
+                controlResults.push({
+                          ucoControlId: "UCO-VM-001",
+                          status: "passing",
+                          result: `Jira: ${secIssues} open security tickets. Vulnerability remediation tracking active.`,
+                          integrationKey: "jira",
+                });
+                evidenceItems.push({
+                          ucoControlId: "UCO-VM-001",
+                          title: "Jira -- Security Tickets",
+                          description: `Jira: ${secIssues} open security tickets. Vulnerability remediation tracking active.`,
+                          type: "auto",
+                          source: "jira",
+                });
+        } else {
+                controlResults.push({
+                          ucoControlId: "UCO-VM-001",
+                          status: "failing",
+                          result: `Jira security ticket query failed: ${issuesResp.status} ${issuesResp.statusText}`,
+                          integrationKey: "jira",
+                });
+        }
+  } catch (err) {
+        controlResults.push({ ucoControlId: "UCO-VM-001", status: "failing", result: `Jira security ticket check failed: ${String(err)}`, integrationKey: "jira" });
   }
+
+  // --- Change management tickets (UCO-CM-003) ---
+  try {
+        const changeJql = `type=Change AND status=Done ORDER BY resolved DESC`;
+        const changeResp = await fetch(`${base}/rest/api/3/search?jql=${encodeURIComponent(changeJql)}&maxResults=50`, { headers });
+        if (changeResp.ok) {
+                const changeData = (await changeResp.json()) as any;
+                const completedChanges = changeData.total || 0;
+                controlResults.push({
+                          ucoControlId: "UCO-CM-003",
+                          status: "passing",
+                          result: `Jira: Change management workflow active. ${completedChanges} completed change tickets.`,
+                          integrationKey: "jira",
+                });
+                evidenceItems.push({
+                          ucoControlId: "UCO-CM-003",
+                          title: "Jira -- Change Management",
+                          description: `Jira: Change management workflow active. ${completedChanges} completed change tickets.`,
+                          type: "auto",
+                          source: "jira",
+                });
+        } else {
+                controlResults.push({
+                          ucoControlId: "UCO-CM-003",
+                          status: "failing",
+                          result: `Jira change management query failed: ${changeResp.status} ${changeResp.statusText}`,
+                          integrationKey: "jira",
+                });
+        }
+  } catch (err) {
+        controlResults.push({ ucoControlId: "UCO-CM-003", status: "failing", result: `Jira change management check failed: ${String(err)}`, integrationKey: "jira" });
+  }
+
+  const checksPassed = controlResults.filter((r) => r.status === "passing").length;
+    return { controlResults, evidenceItems, checksRun: controlResults.length, checksPassed };
 }
