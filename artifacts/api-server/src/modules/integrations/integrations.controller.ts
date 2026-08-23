@@ -270,6 +270,7 @@ export class IntegrationsController {
     if (key === "hashicorp-vault") return this.integrationsService.syncOrgHashiCorpVault(ctx.orgId);
     if (key === "jira") return this.integrationsService.syncOrgJira(ctx.orgId);
     if (key === "knowbe4") return this.integrationsService.syncOrgKnowBe4(ctx.orgId);
+        if (key === "microsoft-365") return this.integrationsService.syncOrgMicrosoft365(ctx.orgId);
     const spec = connectorSpec(key);
     return {
       success: false,
