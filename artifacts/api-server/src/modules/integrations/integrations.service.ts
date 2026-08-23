@@ -16,6 +16,7 @@ import { runDatadogChecks } from "./providers/datadog.provider";
 import { runHashiCorpVaultChecks } from "./providers/hashicorp-vault.provider";
 import { runJiraChecks } from "./providers/jira.provider";
 import { runKnowBe4Checks } from "./providers/knowbe4.provider";
+import { runMicrosoft365Checks } from "./providers/microsoft-365.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
@@ -1357,6 +1358,22 @@ export class IntegrationsService {
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "knowbe4", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
   }
+
+    async syncOrgMicrosoft365(orgId: number) {
+          const integration = await db.query.orgIntegrationsTable.findFirst({
+                  where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "microsoft-365")),
+          });
+          if (!integration || integration.status !== "connected") throw new BadRequestException("Microsoft 365 integration not connected");
+          // Decrypt the client secret from config
+          const cfg = decryptConfigCredentials(
+                  integration.config as Record<string, unknown> | null,
+                  ["clientSecret"],
+                ) as { tenantId?: string; clientId?: string; clientSecret?: string } | null;
+          if (!cfg?.tenantId || !cfg?.clientId || !cfg?.clientSecret) throw new BadRequestException("Microsoft 365 credentials not configured");
+          const syncResult = await runMicrosoft365Checks(cfg.tenantId, cfg.clientId, cfg.clientSecret);
+          await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "microsoft-365", integration.id);
+          return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+    }
 
   private async _persistSyncResults(
     orgId: number,
