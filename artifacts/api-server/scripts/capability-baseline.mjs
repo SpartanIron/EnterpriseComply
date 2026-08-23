@@ -115,6 +115,7 @@ const UNWIRED_PROVIDERS = new Map([
   ["jira.provider", UNWIRED_PROVIDER_REASON],
   ["knowbe4.provider", UNWIRED_PROVIDER_REASON],
   ["microsoft-365.provider", UNWIRED_PROVIDER_REASON],
+  ["qualys.provider", UNWIRED_PROVIDER_REASON],
   ["sentinelone.provider", UNWIRED_PROVIDER_REASON],
   ["servicenow.provider", UNWIRED_PROVIDER_REASON],
   ["tenable.provider", UNWIRED_PROVIDER_REASON],
