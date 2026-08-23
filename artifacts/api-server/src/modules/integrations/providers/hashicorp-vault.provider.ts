@@ -1,38 +1,95 @@
-import { Injectable } from '@nestjs/common';
-import { db, orgEvidenceTable, orgIntegrationsTable } from '@workspace/db';
-import { eq } from 'drizzle-orm';
-
 // SSRF: outbound URLs are tenant-configurable, so `fetch` here is the guarded client.
 import { guardedFetch as fetch } from "../../../lib/guarded-fetch.js";
 
-interface VaultConfig { vaultAddr: string; token: string; namespace?: string; }
+export interface HashiCorpVaultCheckResult {
+    ucoControlId: string;
+    status: "passing" | "failing" | "warning";
+    result: string;
+    integrationKey: "hashicorp-vault";
+}
 
-@Injectable()
-export class HashiCorpVaultProvider {
-  async syncOrgHashiCorpVault(orgId: number): Promise<{ collected: number; errors: string[] }> {
-    const integration = await db.query.orgIntegrationsTable.findFirst({ where: (t, { and }) => and(eq(t.orgId, orgId), eq(t.integrationKey, 'hashicorp-vault'), eq(t.status, 'connected')) });
-    if (!integration?.config) return { collected: 0, errors: ['Vault not connected'] };
-    const config = (integration.config ?? {}) as unknown as VaultConfig;
-    const headers: Record<string,string> = { 'X-Vault-Token': config.token };
-    if (config.namespace) headers['X-Vault-Namespace'] = config.namespace;
-    const errors: string[] = [];
-    let collected = 0;
-    try {
-      const healthResp = await fetch(`${config.vaultAddr}/v1/sys/health`, { headers });
-      if (healthResp.ok) {
-        const h = await healthResp.json() as any; // typed below
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-CM-002', source: 'hashicorp-vault', title: 'HashiCorp Vault Health Status', collectedAt: new Date(), description: `Vault: ${h.initialized ? 'initialized' : 'NOT initialized'}, ${h.sealed ? 'SEALED' : 'unsealed'}. v${h.version}.`, metadata: { contentHash: '', initialized: h.initialized, sealed: h.sealed, version: h.version } });
-        collected++;
-      }
-      const auditResp = await fetch(`${config.vaultAddr}/v1/sys/audit`, { headers });
-      if (auditResp.ok) {
-        const a = await auditResp.json() as any; // typed below
-        const devices = Object.keys(a || {}).length;
-        await db.insert(orgEvidenceTable).values({ orgId, ucoControlId: 'UCO-AL-001', source: 'hashicorp-vault', title: 'HashiCorp Vault Audit Devices', collectedAt: new Date(), description: `Vault: ${devices} audit devices configured. ${devices === 0 ? 'WARNING: No audit logging active' : 'All secret access logged'}.`, metadata: { contentHash: '', auditDevices: devices } });
-        collected++;
-      }
-    } catch (e: any) { errors.push(`Vault: ${e.message}`); }
-    await db.update(orgIntegrationsTable).set({ lastSyncAt: new Date() }).where(eq(orgIntegrationsTable.id, integration.id));
-    return { collected, errors };
+export interface HashiCorpVaultEvidenceItem {
+    ucoControlId: string;
+    title: string;
+    description: string;
+    type: "auto";
+    source: "hashicorp-vault";
+}
+
+export interface HashiCorpVaultSyncResult {
+    controlResults: HashiCorpVaultCheckResult[];
+    evidenceItems: HashiCorpVaultEvidenceItem[];
+    checksRun: number;
+    checksPassed: number;
+}
+
+export async function runHashiCorpVaultChecks(vaultAddr: string, token: string, namespace?: string): Promise<HashiCorpVaultSyncResult> {
+  const controlResults: HashiCorpVaultCheckResult[] = [];
+  const evidenceItems: HashiCorpVaultEvidenceItem[] = [];
+  const headers: Record<string, string> = { "X-Vault-Token": token };
+  if (namespace) headers["X-Vault-Namespace"] = namespace;
+
+// --- Vault health: initialization and seal status (UCO-CM-002) ---
+try {
+  const healthResp = await fetch(`${vaultAddr}/v1/sys/health`, { headers });
+  if (healthResp.ok) {
+    const h = (await healthResp.json()) as any;
+    controlResults.push({
+      ucoControlId: "UCO-CM-002",
+      status: "passing",
+      result: `Vault: ${h.initialized ? "initialized" : "NOT initialized"}, ${h.sealed ? "SEALED" : "unsealed"}. v${h.version ?? "unknown"}.`,
+      integrationKey: "hashicorp-vault",
+    });
+    evidenceItems.push({
+      ucoControlId: "UCO-CM-002",
+      title: "HashiCorp Vault -- Health Status",
+      description: `Vault: ${h.initialized ? "initialized" : "NOT initialized"}, ${h.sealed ? "SEALED" : "unsealed"}. v${h.version ?? "unknown"}.`,
+      type: "auto",
+      source: "hashicorp-vault",
+    });
+  } else {
+    controlResults.push({
+      ucoControlId: "UCO-CM-002",
+      status: "failing",
+      result: `Vault health check failed: ${healthResp.status} ${healthResp.statusText}`,
+      integrationKey: "hashicorp-vault",
+    });
   }
+} catch (err) {
+  controlResults.push({ ucoControlId: "UCO-CM-002", status: "failing", result: `Vault health check failed: ${String(err)}`, integrationKey: "hashicorp-vault" });
+}
+
+// --- Audit devices: secrets access logging coverage (UCO-AL-001) ---
+try {
+  const auditResp = await fetch(`${vaultAddr}/v1/sys/audit`, { headers });
+  if (auditResp.ok) {
+    const a = (await auditResp.json()) as any;
+    const devices = Object.keys(a || {}).length;
+    controlResults.push({
+      ucoControlId: "UCO-AL-001",
+      status: "passing",
+      result: `Vault: ${devices} audit device(s) configured. ${devices === 0 ? "WARNING: No audit logging active." : "All secret access logged."}`,
+      integrationKey: "hashicorp-vault",
+    });
+    evidenceItems.push({
+      ucoControlId: "UCO-AL-001",
+      title: "HashiCorp Vault -- Audit Devices",
+      description: `Vault: ${devices} audit devices configured. ${devices === 0 ? "WARNING: No audit logging active." : "All secret access logged."}`,
+      type: "auto",
+      source: "hashicorp-vault",
+    });
+  } else {
+    controlResults.push({
+      ucoControlId: "UCO-AL-001",
+      status: "failing",
+      result: `Vault audit device query failed: ${auditResp.status} ${auditResp.statusText}`,
+      integrationKey: "hashicorp-vault",
+    });
+  }
+} catch (err) {
+  controlResults.push({ ucoControlId: "UCO-AL-001", status: "failing", result: `Vault audit device check failed: ${String(err)}`, integrationKey: "hashicorp-vault" });
+}
+
+const checksPassed = controlResults.filter((r) => r.status === "passing").length;
+  return { controlResults, evidenceItems, checksRun: controlResults.length, checksPassed };
 }
