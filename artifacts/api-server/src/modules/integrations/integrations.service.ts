@@ -15,6 +15,7 @@ import { runCrowdStrikeChecks } from "./providers/crowdstrike.provider";
 import { runDatadogChecks } from "./providers/datadog.provider";
 import { runHashiCorpVaultChecks } from "./providers/hashicorp-vault.provider";
 import { runJiraChecks } from "./providers/jira.provider";
+import { runKnowBe4Checks } from "./providers/knowbe4.provider";
 import {
   CONNECTOR_SPECS,
   connectorSpec,
@@ -1338,6 +1339,22 @@ export class IntegrationsService {
     if (!cfg?.domain || !cfg?.email || !cfg?.apiToken) throw new BadRequestException("Jira credentials not configured");
     const syncResult = await runJiraChecks(cfg.domain, cfg.email, cfg.apiToken, cfg.projectKey);
     await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "jira", integration.id);
+    return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
+  }
+
+  async syncOrgKnowBe4(orgId: number) {
+    const integration = await db.query.orgIntegrationsTable.findFirst({
+      where: and(eq(orgIntegrationsTable.orgId, orgId), eq(orgIntegrationsTable.integrationKey, "knowbe4")),
+    });
+    if (!integration || integration.status !== "connected") throw new BadRequestException("KnowBe4 integration not connected");
+    // Decrypt the API key from config
+    const cfg = decryptConfigCredentials(
+      integration.config as Record<string, unknown> | null,
+      ["apiKey"],
+      ) as { apiKey?: string; region?: string } | null;
+    if (!cfg?.apiKey) throw new BadRequestException("KnowBe4 credentials not configured");
+    const syncResult = await runKnowBe4Checks(cfg.apiKey, cfg.region);
+    await this._persistSyncResults(orgId, syncResult.controlResults, syncResult.evidenceItems, "knowbe4", integration.id);
     return { success: true, checksRun: syncResult.checksRun, checksPassed: syncResult.checksPassed };
   }
 
