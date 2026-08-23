@@ -738,7 +738,7 @@ export const CONNECTOR_SPECS: ConnectorSpec[] = [
       url: "https://${region|us}.api.knowbe4.com/v1/training/campaigns?per_page=1",
       headers: { Authorization: "Bearer ${apiKey}" },
     },
-    collects: "connection-only",
+    collects: "automated-checks",
   },
   {
     key: "greenhouse",
