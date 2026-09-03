@@ -3,10 +3,10 @@ import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/queryClient";
 import { useOrg } from "@/hooks/useOrg";
 
-const FRAMEWORKS = ["fedramp", "cmmc-l2", "nist-800-53", "soc2", "iso27001", "hipaa"];
+const FRAMEWORKS = ["fedramp", "cmmc-l2", "cmmc-l1", "nist-800-53", "soc2", "iso27001", "hipaa"];
 const FRAMEWORK_LABELS: Record<string, string> = {
   fedramp: "FedRAMP Moderate",
-  "cmmc-l2": "CMMC Level 2",
+  "cmmc-l2": "CMMC Level 2", "cmmc-l1": "CMMC Level 1",
   "nist-800-53": "NIST SP 800-53 Rev 5",
   soc2: "SOC 2 Type II",
   iso27001: "ISO 27001:2022",
@@ -38,7 +38,7 @@ const LAWS_BY_FRAMEWORK: Record<string, string[]> = {
     "Federal Information Security Modernization Act (FISMA) 2014",
     "National Defense Authorization Act (NDAA)",
   ],
-  soc2: [],
+  "cmmc-l1": ["FAR 52.204-21 (Basic Safeguarding of Covered Contractor Information Systems)", "32 CFR Part 170 (CMMC Program Rule)"], soc2: [],
   iso27001: [],
   hipaa: [
     "HIPAA Security Rule (45 CFR Part 164, Subpart C)",
