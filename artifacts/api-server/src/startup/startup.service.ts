@@ -1239,7 +1239,7 @@ export class StartupService implements OnApplicationBootstrap {
   private async recordScoreSnapshots() {
     try {
       const orgs = await db.execute(sql`SELECT id FROM organizations`);
-      const rows = (orgs as { rows?: Array<{ id: number }> }).rows ?? (orgs as Array<{ id: number }>);
+      const rows = (orgs as unknown as { rows?: Array<{ id: number }> }).rows ?? (orgs as unknown as Array<{ id: number }>);
       const ids = (Array.isArray(rows) ? rows : []).map((r) => Number(r.id));
 
       const sweep = await recordScoreSnapshotSweep(ids, (orgId, err) => {
@@ -1932,7 +1932,7 @@ This Incident Response Plan (IRP) operationalizes the Incident Response Policy b
   private async syncFrameworkPosture() {
     try {
       const orgs = await db.execute(sql`SELECT id FROM organizations`);
-      const rows = (orgs as { rows?: Array<{ id: number }> }).rows ?? (orgs as Array<{ id: number }>);
+      const rows = (orgs as unknown as { rows?: Array<{ id: number }> }).rows ?? (orgs as unknown as Array<{ id: number }>);
 
       let updated = 0;
       let failed = 0;
