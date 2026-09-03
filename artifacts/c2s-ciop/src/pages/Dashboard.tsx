@@ -145,7 +145,7 @@ export default function Dashboard() {
     {
       id: "corp-email",
       label: "Use a corporate email address for admin login",
-      desc: "CMMC IA.3.058 | FedRAMP AC-2 | SOC 2 CC6.2",
+      desc: "CMMC IA.L1-3.5.1 | FedRAMP AC-2 | SOC 2 CC6.2",
       done: isCorporateEmail,
       urgency: "emergency",
       href: "/settings",
