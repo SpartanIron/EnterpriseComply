@@ -25,6 +25,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { ROLE_HIERARCHY } from "../../guards/roles.guard";
 import { writeAuditLog } from "../../lib/audit-log.js";
 import { classifyInvite } from "../../lib/invite-outcome";
+import { isBlockedAdminEmailDomain } from "../../lib/admin-email-policy";
 import { sendTeamInviteEmail } from "../../lib/email";
 import { logger } from "../../lib/logger";
 import { getRateLimitPool } from "../../lib/pg-pool";
@@ -124,6 +125,13 @@ export class InvitesService {
     }
     if (this.level(role) > this.level(actor.role)) {
       throw new ForbiddenException("You cannot invite someone at a higher role than your own.");
+    }
+    // Task 1.5 guardrail: personal-email domains cannot be granted the admin
+    // role going forward. Existing admin accounts are untouched.
+    if (role === "admin" && isBlockedAdminEmailDomain(email)) {
+      throw new BadRequestException(
+        "Personal email domains cannot be granted the admin role. Use a corporate email address, or ask an existing owner/admin to override this in Settings.",
+        );
     }
 
     const existing = await db.query.orgMembersTable.findFirst({
