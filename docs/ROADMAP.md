@@ -64,6 +64,7 @@ present in the repository and the claim is verified by CI.
 - [x] Google Workspace connector module - `present:module:google-workspace`
 - [x] Platform admin with time-boxed elevation - `present:module:platform`
 - [x] Remediation task persistence - `present:table:org_remediation_tasks` and `present:route:orgs/:orgId/remediation`
+- [ ] - [x] The frontend served at the production hostname is in this repository, at artifacts/c2s-ciop, and railway.toml's buildCommand builds it (`pnpm --filter @workspace/c2s-ciop run build`) before building the API. This contradicts the "Out of scope for this repository" section directly below and CAPABILITY-BASELINE.md's claim that "the Railway build command builds only the API." Flagging rather than deleting that section, since I can't tell from this pass whether it's simply stale or whether it is protecting against a different, more subtle distinction (e.g. a separate production bundle that supersedes this directory) -- a maintainer should reconcile this before the next UI item is scoped. `present:file:artifacts/c2s-ciop/src/pages/Frameworks.tsx` `present:file:railway.toml`
 
 ## Out of scope for this repository
 
@@ -131,3 +132,7 @@ vendor work.
 - The Google Workspace connector built its assertion with the literal word "signature". Replaced with real RS256 signing.
 - Remediation returned 500 because `org_remediation_tasks` was never created. Fixed in the same change that added this file, which is also the change that made the defect class visible.
 
+
+
+- The Frameworks page rendered available.slice(0,9).map(...) in the "Available to add" grid, so any catalog entry past the 9th (including cmmc-l1, already present in the catalog) never rendered a card even though the heading above the grid showed the correct full count. Fixed by removing the slice; regression coverage added in tests/e2e/frameworks-catalog-add-all.spec.ts. `present:file:artifacts/c2s-ciop/src/pages/Frameworks.tsx` `present:file:tests/e2e/frameworks-catalog-add-all.spec.ts`
+- - SSP.tsx and Onboarding.tsx enumerated cmmc-l2 as a hardcoded framework key but omitted cmmc-l1, even though cmmc-l1 is a real catalog key (frameworks.service.ts) and Frameworks.tsx's own FRAMEWORK_INFO already had a cmmc-l1 entry. Added cmmc-l1 to both hardcoded lists. Other hardcoded framework-key lists in artifacts/c2s-ciop were not exhaustively audited in this pass; see PR description. `present:symbol:cmmc-l1`
