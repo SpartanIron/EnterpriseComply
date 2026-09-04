@@ -1138,7 +1138,7 @@ function SecurityTab() {
                                 <p className="text-xs text-slate-600 pt-2 border-t border-slate-200">Certificate Expiration Monitoring: {certNotAfter ? `expires ${new Date(certNotAfter).toLocaleDateString()}` : "save a certificate to see its expiration date"}{certExpiresInDays !== null ? ` (${certExpiresInDays} days)` : ""}</p>
                                 <p className="text-xs text-slate-400">Certificate Rotation: re-upload or re-fetch IdP metadata above to rotate the signing certificate.</p>
                                 <p className="text-xs text-slate-400">Replay Protection: not enabled -- SAML InResponseTo validation is currently disabled at the SP.</p>
-                    </div></div>
+                    </div>
 
             {ssoError && (
               <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{ssoError}</div>
