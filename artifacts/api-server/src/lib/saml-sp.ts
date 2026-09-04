@@ -178,10 +178,10 @@ export function parseIdpMetadataXml(xml: string): ParsedIdpMetadata {
     const sloAny = xml.match(/<(?:\w+:)?SingleLogoutService\b[^>]*\bLocation="([^"]+)"/i);
 
   const signingKeyBlock = xml.match(
-        /<(?:\w+:)?KeyDescriptor\b[^>]*\buse="signing"[^>]*>([\s\S]*?)<\/(?:\w+:)?KeyDescriptor>/i,
+        /<(?:\w+:)?KeyDescriptor\b[^>]*\buse="signing"[^>]*>([\s\S]{0,20000}?)<\/(?:\w+:)?KeyDescriptor>/i,
       );
     const certSource = signingKeyBlock ? signingKeyBlock[1] : xml;
-    const certMatch = certSource.match(/<(?:\w+:)?X509Certificate>([\s\S]*?)<\/(?:\w+:)?X509Certificate>/i);
+    const certMatch = certSource.match(/<(?:\w+:)?X509Certificate>([\s\S]{0,20000}?)<\/(?:\w+:)?X509Certificate>/i);
 
   const idpCertificate = certMatch
       ? `-----BEGIN CERTIFICATE-----\n${certMatch[1].replace(/\s+/g, "").replace(/(.{64})/g, "$1\n")}\n-----END CERTIFICATE-----`
