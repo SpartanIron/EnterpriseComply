@@ -1,4 +1,4 @@
-—————————/**
+/**
  * saml-sp.ts — SAML Service Provider utilities for EnterpriseComply
  *
  * Provides:
