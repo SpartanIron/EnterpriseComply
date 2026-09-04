@@ -32,6 +32,7 @@
 // SSRF: every URL here is built partly from tenant configuration.
 import { guardedFetch } from "../../lib/guarded-fetch.js";
 import type { ConnectorSpec, Verification } from "./connector-specs";
+import type { PinnedResponse } from "../../lib/ssrf-guard.js";
 
 /** Field names whose value must be a complete https URL. */
 const URL_FIELD = /(url|addr|endpoint)$/i;
@@ -198,7 +199,7 @@ function scrub(text: string, spec: ConnectorSpec, values: Record<string, string>
   return out;
 }
 
-async function readExcerpt(response: Response, spec: ConnectorSpec, values: Record<string, string>): Promise<string> {
+async function readExcerpt(response: PinnedResponse, spec: ConnectorSpec, values: Record<string, string>): Promise<string> {
   try {
     const text = (await response.text()).slice(0, 300);
     return scrub(text, spec, values).replace(/\s+/g, " ").trim();
@@ -230,7 +231,7 @@ async function runGrant(
   headers["Content-Type"] = grant.encoding === "json" ? "application/json" : "application/x-www-form-urlencoded";
   headers["Accept"] = "application/json";
 
-  let response: Response;
+  let response: PinnedResponse;
   try {
     response = await guardedFetch(url, { method: "POST", headers, body });
   } catch (err) {
@@ -309,7 +310,7 @@ export async function verifyConnector(
   headers["Accept"] = headers["Accept"] ?? "application/json";
   if (verify.contentType) headers["Content-Type"] = verify.contentType;
 
-  let response: Response;
+  let response: PinnedResponse;
   try {
     response = await guardedFetch(url, {
       method: verify.method,
