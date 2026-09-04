@@ -926,7 +926,7 @@ function SecurityTab() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5"Identity Provider (IdP)label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Identity Provider (IdP)</label>
                 <select value={ssoProvider} onChange={e => setSsoProvider(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
                               <option value="azure_ad">Microsoft Entra ID</option>
                             <option value="okta">Okta</option>
@@ -934,7 +934,7 @@ function SecurityTab() {
                             <option value="google">Google Workspace</option>
                             <option value="authentik">Authentik</option>
                             <option value="keycloak">Keycloak</option>
-                            <option value="saml">Generic SSAML 2.0</option>
+                            <option value="saml">Generic SAML 2.0</option>
                 </select>
               </div>
               <div>
@@ -951,12 +951,12 @@ function SecurityTab() {
                                     </div>
                           {configMethod === "upload" && (
                       <div>
-                                      <input type="file" accept=".xml,text/xml,application/xml" onChange={handleMetadataFileUpload} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white" /></div>
-        {metadataFetching && <p className="text-xs text-slate-400 mt-1">Parsing metadata...</p>
+                                      <input type="file" accept=".xml,text/xml,application/xml" onChange={handleMetadataFileUpload} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white" />
+        {metadataFetching && <p className="text-xs text-slate-400 mt-1">Parsing metadata...</p>}
                         </div>
                       )}
                           {configMethod === "url" && (
-                      <div className="flex items-center gap-2"></div>
+                      <div className="flex items-center gap-2">
                         <input type="url" value={metadataUrl} onChange={e => setMetadataUrl(e.target.value)} placeholder="https://your-idp.com/metadata.xml" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" />
                                           <button type="button" onClick={handleMetadataUrlFetch} disabled={metadataFetching || !metadataUrl.trim()} className="px-3 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">{metadataFetching ? "Fetching..." : "Fetch metadata"}</button>
             </div>
