@@ -1135,6 +1135,21 @@ CREATE TABLE IF NOT EXISTS org_sso_config (
 );
 CREATE INDEX IF NOT EXISTS idx_org_sso_config_org_id ON org_sso_config (org_id);
 ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS saml_group_mappings JSONB DEFAULT NULL;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS config_method TEXT NOT NULL DEFAULT 'manual';
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS metadata_url TEXT;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS idp_slo_url TEXT;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS name_id_format TEXT NOT NULL DEFAULT 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress';
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS requested_authn_context TEXT;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS want_assertions_signed BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS want_authn_response_signed BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS jit_provisioning_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS scim_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS disable_local_password_login BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS attribute_mapping JSONB;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS clock_skew_tolerance_ms INTEGER NOT NULL DEFAULT 5000;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS session_lifetime_minutes INTEGER NOT NULL DEFAULT 480;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS cert_not_before TIMESTAMPTZ;
+ALTER TABLE org_sso_config ADD COLUMN IF NOT EXISTS cert_not_after TIMESTAMPTZ;
 `;
 
 const MIGRATION_SQL_V4 = `
