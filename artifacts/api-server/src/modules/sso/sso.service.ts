@@ -4,19 +4,50 @@ import { eq, sql } from "drizzle-orm";
 import { createHmac, randomBytes } from "crypto";
 import { logger } from "../../lib/logger.js";
 import {
-  buildSamlInstance,
-  generateSpMetadataXml,
-  getAcsUrl,
-  getSpEntityId,
+    buildSamlInstance,
+    generateSpMetadataXml,
+    getAcsUrl,
+    getSpEntityId,
+    parseIdpMetadataXml,
+    getCertValidity,
 } from "../../lib/saml-sp.js";
+import { guardedFetch } from "../../lib/guarded-fetch.js";
 
 export interface SaveSsoConfigDto {
-  provider:          string;
-  domain?:           string;
-  idpEntityId:       string;
-  idpSsoUrl:         string;
-  idpCertificate:    string;
-  samlGroupMappings?: Record<string, string>;
+  provider: string;
+    domain?: string;
+    idpEntityId: string;
+    idpSsoUrl: string;
+    idpCertificate: string;
+    samlGroupMappings?: Record<string, string>;
+    // Configuration method
+    configMethod?: "upload" | "url" | "manual";
+    metadataUrl?: string;
+    // Core SAML settings
+    idpSloUrl?: string;
+    nameIdFormat?: string;
+    requestedAuthnContext?: string;
+    wantAssertionsSigned?: boolean;
+    wantAuthnResponseSigned?: boolean;
+    // User provisioning
+    jitProvisioningEnabled?: boolean;
+    scimEnabled?: boolean;
+    disableLocalPasswordLogin?: boolean;
+    // Attribute mapping (field name -> SAML attribute name)
+    attributeMapping?: Record<string, string>;
+    // Security
+    clockSkewToleranceMs?: number;
+    sessionLifetimeMinutes?: number;
+}
+
+// Fields extracted from an IdP metadata XML document, returned by the
+// "Upload IdP Metadata XML" / "Metadata URL" configuration methods so the
+// frontend can pre-fill the manual SAML settings fields. Provide either
+// `xml` (file contents / pasted text) or `url` (fetched via the SSRF-guarded
+// client), not both.
+export interface ParseMetadataDto {
+    xml?: string;
+    url?: string;
 }
 
 const ROLE_HIERARCHY = ['member', 'compliance_manager', 'admin'];
@@ -56,6 +87,24 @@ export class SsoService {
             idpCertificate:    configRow.idpCertificate,
             enabled:           configRow.enabled,
             samlGroupMappings: (configRow as any).samlGroupMappings ?? {},
+                      configMethod: (configRow as any).configMethod ?? "manual",
+                      metadataUrl: (configRow as any).metadataUrl ?? null,
+                      idpSloUrl: (configRow as any).idpSloUrl ?? null,
+                      nameIdFormat: (configRow as any).nameIdFormat ?? "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+                      requestedAuthnContext: (configRow as any).requestedAuthnContext ?? null,
+                      wantAssertionsSigned: (configRow as any).wantAssertionsSigned ?? true,
+                      wantAuthnResponseSigned: (configRow as any).wantAuthnResponseSigned ?? false,
+                      jitProvisioningEnabled: (configRow as any).jitProvisioningEnabled ?? true,
+                      scimEnabled: (configRow as any).scimEnabled ?? false,
+                      disableLocalPasswordLogin: (configRow as any).disableLocalPasswordLogin ?? false,
+                      attributeMapping: (configRow as any).attributeMapping ?? {},
+                      clockSkewToleranceMs: (configRow as any).clockSkewToleranceMs ?? 5000,
+                      sessionLifetimeMinutes: (configRow as any).sessionLifetimeMinutes ?? 480,
+                      certNotBefore: (configRow as any).certNotBefore ?? null,
+                      certNotAfter: (configRow as any).certNotAfter ?? null,
+                      certExpiresInDays: (configRow as any).certNotAfter
+                        ? Math.round((new Date((configRow as any).certNotAfter).getTime() - Date.now()) / 86400000)
+                                      : null,
           }
         : null,
       sp: { entityId, acsUrl },
@@ -72,6 +121,11 @@ export class SsoService {
       throw new BadRequestException("idpSsoUrl must be a valid URL");
     }
 
+        // Cert Expiration Monitoring (Security section): parse the validity
+        // window once at save time so the UI can show it without re-parsing the
+        // PEM on every read.
+        const certValidity = getCertValidity(dto.idpCertificate);
+
     await db
       .insert(orgSsoConfigTable)
       .values({
@@ -83,6 +137,21 @@ export class SsoService {
         idpCertificate:    dto.idpCertificate,
         enabled:           true,
         samlGroupMappings: dto.samlGroupMappings ?? null,
+                configMethod: dto.configMethod || "manual",
+                metadataUrl: dto.metadataUrl || null,
+                idpSloUrl: dto.idpSloUrl || null,
+                nameIdFormat: dto.nameIdFormat || "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+                requestedAuthnContext: dto.requestedAuthnContext || null,
+                wantAssertionsSigned: dto.wantAssertionsSigned ?? true,
+                wantAuthnResponseSigned: dto.wantAuthnResponseSigned ?? false,
+                jitProvisioningEnabled: dto.jitProvisioningEnabled ?? true,
+                scimEnabled: dto.scimEnabled ?? false,
+                disableLocalPasswordLogin: dto.disableLocalPasswordLogin ?? false,
+                attributeMapping: dto.attributeMapping ?? null,
+                clockSkewToleranceMs: dto.clockSkewToleranceMs ?? 5000,
+                sessionLifetimeMinutes: dto.sessionLifetimeMinutes ?? 480,
+                certNotBefore: certValidity?.notBefore ?? null,
+                certNotAfter: certValidity?.notAfter ?? null,
       } as any)
       .onConflictDoUpdate({
         target: orgSsoConfigTable.orgId,
@@ -94,6 +163,21 @@ export class SsoService {
           idpCertificate:    dto.idpCertificate,
           enabled:           true,
           samlGroupMappings: dto.samlGroupMappings ?? null,
+                  configMethod: dto.configMethod || "manual",
+                  metadataUrl: dto.metadataUrl || null,
+                  idpSloUrl: dto.idpSloUrl || null,
+                  nameIdFormat: dto.nameIdFormat || "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+                  requestedAuthnContext: dto.requestedAuthnContext || null,
+                  wantAssertionsSigned: dto.wantAssertionsSigned ?? true,
+                  wantAuthnResponseSigned: dto.wantAuthnResponseSigned ?? false,
+                  jitProvisioningEnabled: dto.jitProvisioningEnabled ?? true,
+                  scimEnabled: dto.scimEnabled ?? false,
+                  disableLocalPasswordLogin: dto.disableLocalPasswordLogin ?? false,
+                  attributeMapping: dto.attributeMapping ?? null,
+                  clockSkewToleranceMs: dto.clockSkewToleranceMs ?? 5000,
+                  sessionLifetimeMinutes: dto.sessionLifetimeMinutes ?? 480,
+                  certNotBefore: certValidity?.notBefore ?? null,
+                  certNotAfter: certValidity?.notAfter ?? null,
           updatedAt:         new Date(),
         } as any,
       });
@@ -111,6 +195,44 @@ export class SsoService {
     return { ok: true };
   }
 
+    // -- Metadata parsing -- "Upload IdP Metadata XML" / "Metadata URL" --------
+    // Does not save anything; returns extracted fields for the frontend to
+    // pre-fill the manual SAML settings fields with, and lets the admin review
+    // before clicking Save.
+    async parseMetadata(dto: ParseMetadataDto) {
+          if (!dto.xml && !dto.url) {
+                  throw new BadRequestException("Provide either xml or url");
+          }
+          if (dto.xml && dto.url) {
+                  throw new BadRequestException("Provide only one of xml or url, not both");
+          }
+
+          let xml = dto.xml ?? "";
+          if (dto.url) {
+                  try {
+                            const res = await guardedFetch(dto.url);
+                            if (!res.ok) {
+                                        throw new BadRequestException(`Metadata URL returned HTTP ${res.status}`);
+                            }
+                            xml = await res.text();
+                  } catch (err) {
+                            logger.warn({ err, url: dto.url }, "[sso] metadata URL fetch failed");
+                            throw new BadRequestException(
+                                        "Could not fetch metadata from that URL. Check the URL is reachable over HTTPS and publicly resolvable.",
+                                      );
+                  }
+          }
+
+          const parsed = parseIdpMetadataXml(xml);
+          if (!parsed.idpEntityId && !parsed.idpSsoUrl && !parsed.idpCertificate) {
+                  throw new BadRequestException(
+                            "Could not find EntityDescriptor / SingleSignOnService / X509Certificate in this metadata. Paste the fields in manually instead.",
+                          );
+          }
+
+          return parsed;
+    }
+
   // ── SAML auth flow ───────────────────────────────────────────────────────────
 
   async createLoginUrl(orgSlug: string): Promise<string> {
@@ -121,6 +243,12 @@ export class SsoService {
       idpEntityId:    config.idpEntityId,
       idpSsoUrl:      config.idpSsoUrl,
       idpCertificate: config.idpCertificate,
+            idpSloUrl: (config as any).idpSloUrl,
+            nameIdFormat: (config as any).nameIdFormat,
+            requestedAuthnContext: (config as any).requestedAuthnContext,
+            wantAssertionsSigned: (config as any).wantAssertionsSigned,
+            wantAuthnResponseSigned: (config as any).wantAuthnResponseSigned,
+            acceptedClockSkewMs: (config as any).clockSkewToleranceMs,
     });
 
     const url = await saml.getAuthorizeUrlAsync("", undefined, {});
@@ -140,6 +268,12 @@ export class SsoService {
       idpEntityId:    config.idpEntityId,
       idpSsoUrl:      config.idpSsoUrl,
       idpCertificate: config.idpCertificate,
+            idpSloUrl: (config as any).idpSloUrl,
+            nameIdFormat: (config as any).nameIdFormat,
+            requestedAuthnContext: (config as any).requestedAuthnContext,
+            wantAssertionsSigned: (config as any).wantAssertionsSigned,
+            wantAuthnResponseSigned: (config as any).wantAuthnResponseSigned,
+            acceptedClockSkewMs: (config as any).clockSkewToleranceMs,
     });
 
     let profile: Record<string, unknown>;
@@ -152,19 +286,41 @@ export class SsoService {
       throw new BadRequestException("SAML assertion validation failed");
     }
 
-    const email = (profile.email || profile.mail || profile.nameID) as string | undefined;
-    if (!email || !email.includes("@")) {
-      throw new BadRequestException("SAML assertion did not contain a valid email");
-    }
+        // Attribute mapping (Attribute Mapping section): if the admin configured
+        // a custom SAML attribute name for a field, look it up under that name
+        // first; otherwise fall back to the pre-existing hardcoded heuristics so
+        // orgs configured before this feature keep working unchanged.
+        const attrMap = ((config as any).attributeMapping ?? {}) as Record<string, string>;
+        const attr = (field: string): unknown =>
+                attrMap[field] ? profile[attrMap[field]] : undefined;
 
-    const name = (profile.displayName || profile.cn || profile.name || email.split("@")[0]) as string;
+        const email = (attr("email") ?? profile.email ?? profile.mail ?? profile.nameID) as string | undefined;
+        if (!email || !email.includes("@")) {
+                throw new BadRequestException("SAML assertion did not contain a valid email");
+        }
 
-    // Extract IdP groups from SAML assertion attributes
-    const rawGroups = (profile.groups ?? profile.memberOf ??
-      profile['http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'] ?? []) as string | string[];
-    const groups: string[] = Array.isArray(rawGroups)
-      ? rawGroups.map(String)
-      : String(rawGroups).split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+        const firstName = attr("firstName") as string | undefined;
+        const lastName = attr("lastName") as string | undefined;
+        const name = (
+                attr("displayName") ??
+                profile.displayName ??
+                (firstName && lastName ? `${firstName} ${lastName}` : undefined) ??
+                profile.cn ??
+                profile.name ??
+                email.split("@")[0]
+              ) as string;
+
+        // department is captured for completeness but not yet persisted anywhere --
+        // there is no org_people/user column for it on the SSO-provisioned path.
+        const department = attr("department") as string | undefined;
+        void department;
+
+        // Extract IdP groups from SAML assertion attributes
+        const rawGroups = (attr("groups") ?? profile.groups ?? profile.memberOf ??
+                                 profile['http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'] ?? []) as string | string[];
+        const groups: string[] = Array.isArray(rawGroups)
+          ? rawGroups.map(String)
+                : String(rawGroups).split(/[,;]+/).map(s => s.trim()).filter(Boolean);
 
     // Determine role from group mappings (config already loaded above)
     const groupMappings = ((config as any).samlGroupMappings ?? {}) as Record<string, string>;
@@ -186,6 +342,7 @@ export class SsoService {
       ipAddress,
       userAgent,
       assignedRole,
+            (config as any).sessionLifetimeMinutes ?? 480,
     );
 
     logger.info({ email, orgSlug }, "[sso] SAML login successful");
@@ -231,6 +388,7 @@ export class SsoService {
     ipAddress?: string,
     userAgent?: string,
     role: string = 'member',
+        sessionLifetimeMinutes: number = 480,
   ): Promise<{ signedToken: string; expiresAt: Date }> {
     const client = await pool.connect();
     try {
@@ -278,7 +436,7 @@ export class SsoService {
       // 3. Create session
       const token      = randomBytes(32).toString("hex");
       const sessionId  = randomBytes(16).toString("hex");
-      const expiresAt  = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8h
+          const expiresAt = new Date(Date.now() + sessionLifetimeMinutes * 60 * 1000); // Security section: Session Lifetime, default 8h
 
       await client.query(
         `INSERT INTO session (id, "expiresAt", token, "createdAt", "updatedAt", "ipAddress", "userAgent", "userId")

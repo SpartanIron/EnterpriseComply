@@ -7,9 +7,12 @@
  *  - getAcsUrl()       — Assertion Consumer Service URL for an org slug
  *  - buildSamlInstance() — creates a configured @node-saml/node-saml instance
  *  - generateSpMetadataXml() — generates the SP metadata XML for admin to paste into IdP
+  * - parseIdpMetadataXml() -- extracts fields from IdP metadata XML
+   * - getCertValidity() -- reads notBefore/notAfter off an X.509 PEM certificate
  */
 
 import { SAML } from "@node-saml/node-saml";
+import { X509Certificate } from "node:crypto";
 
 export function getAppBaseUrl(): string {
   return (
@@ -31,8 +34,14 @@ export function getAcsUrl(orgSlug: string): string {
 
 export interface IdpConfig {
   idpEntityId:    string;
-  idpSsoUrl:      string;
-  idpCertificate: string; // PEM — strip headers for @node-saml if needed
+    idpSsoUrl:      string;
+    idpCertificate: string; // PEM -- strip headers for @node-saml if needed
+    idpSloUrl?: string | null;
+    nameIdFormat?: string | null;
+    requestedAuthnContext?: string | null;
+    wantAssertionsSigned?: boolean;
+    wantAuthnResponseSigned?: boolean;
+    acceptedClockSkewMs?: number;
 }
 
 /**
@@ -60,27 +69,29 @@ export function buildSamlInstance(orgSlug: string, idp: IdpConfig): SAML {
     // Most enterprise IdPs (Okta, Entra ID, Google Workspace) sign the Assertion.
     // wantAuthnResponseSigned remains false: some IdPs sign only the Assertion, not
     // the outer Response envelope, and that is safe when the Assertion is signed.
-    wantAssertionsSigned:     true,
-    wantAuthnResponseSigned:  false,
-    disableRequestedAuthnContext: true,
-    identifierFormat:         "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
-    signatureAlgorithm:       "sha256",
-    acceptedClockSkewMs:      5000,
-    // Required fields with defaults
-    additionalParams:              {},
-    additionalAuthorizeParams:     {},
-    allowCreate:                   true,
-    racComparison:                 "exact",
-    forceAuthn:                    false,
-    passive:                       false,
-    skipRequestCompression:        false,
-    authnContext:                  ["urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified"],
+        wantAssertionsSigned:     idp.wantAssertionsSigned ?? true,
+        wantAuthnResponseSigned:  idp.wantAuthnResponseSigned ?? false,
+        disableRequestedAuthnContext: !idp.requestedAuthnContext,
+        identifierFormat:   idp.nameIdFormat || "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+        signatureAlgorithm: "sha256",
+        acceptedClockSkewMs: idp.acceptedClockSkewMs ?? 5000,
+        // Required fields with defaults
+        additionalParams: {},
+        additionalAuthorizeParams: {},
+        allowCreate: true,
+        racComparison: "exact",
+        forceAuthn: false,
+        passive: false,
+        skipRequestCompression: false,
+        authnContext: idp.requestedAuthnContext ? [idp.requestedAuthnContext] : ["urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified"],
     validateInResponseTo:          "never" as any,
     requestIdExpirationPeriodMs:   28800000,
     maxAssertionAgeMs:             28800000,
     signMetadata:                  false,
     disableRequestAcsUrl:          false,
-    logoutUrl:                     "",
+    // idp.idpSloUrl is stored and surfaced in the UI, but SP-initiated logout
+        // is not wired to any route yet -- see PR description follow-ups.
+        logoutUrl: idp.idpSloUrl || "",
     additionalLogoutParams:        {},
     generateUniqueId:              () => `_${Math.random().toString(36).slice(2)}`,
     cacheProvider: {
@@ -124,4 +135,81 @@ function escapeXml(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+
+export interface ParsedIdpMetadata {
+    idpEntityId: string | null;
+    idpSsoUrl: string | null;
+    idpSloUrl: string | null;
+    idpCertificate: string | null;
+}
+
+/**
+ * Extracts the fields an admin would otherwise copy-paste by hand out of a
+ * standard SAML 2.0 IdP metadata XML document (EntityDescriptor /
+ * IDPSSODescriptor). Works against metadata published by Entra ID, Okta,
+ * Ping Identity, Google Workspace, Authentik, Keycloak, and any other
+ * standards-compliant IdP -- the elements this reads are mandated by the
+ * SAML 2.0 metadata schema, not vendor-specific.
+ *
+ * Implementation note: this is a deliberately narrow regex-based extractor,
+ * not a full XML/DOM parser. The repo has no XML parsing library as a direct
+ * dependency (node-saml only uses one internally), and adding one requires a
+ * pnpm install + lockfile regeneration this environment cannot run. Regex
+ * extraction is tolerant of attribute-order and namespace-prefix variation
+ * (xmlns prefix may or may not be "md:"), which covers every real-world IdP
+ * metadata file this was tested against, but it is not a substitute for a
+ * real XML parser and will not handle deliberately malformed/adversarial XML
+ * as safely as one would. Recommend swapping this for a real parser (e.g.
+ * fast-xml-parser) in a follow-up once a dependency can be added properly.
+ */
+export function parseIdpMetadataXml(xml: string): ParsedIdpMetadata {
+    const entityIdMatch = xml.match(/<(?:\w+:)?EntityDescriptor\b[^>]*\bentityID="([^"]+)"/i);
+
+  const ssoRedirect = xml.match(
+        /<(?:\w+:)?SingleSignOnService\b[^>]*\bBinding="[^"]*HTTP-Redirect"[^>]*\bLocation="([^"]+)"/i,
+      );
+    const ssoAny = xml.match(/<(?:\w+:)?SingleSignOnService\b[^>]*\bLocation="([^"]+)"/i);
+
+  const sloRedirect = xml.match(
+        /<(?:\w+:)?SingleLogoutService\b[^>]*\bBinding="[^"]*HTTP-Redirect"[^>]*\bLocation="([^"]+)"/i,
+      );
+    const sloAny = xml.match(/<(?:\w+:)?SingleLogoutService\b[^>]*\bLocation="([^"]+)"/i);
+
+  const signingKeyBlock = xml.match(
+        /<(?:\w+:)?KeyDescriptor\b[^>]*\buse="signing"[^>]*>([\s\S]{0,20000}?)<\/(?:\w+:)?KeyDescriptor>/i,
+      );
+    const certSource = signingKeyBlock ? signingKeyBlock[1] : xml;
+    const certMatch = certSource.match(/<(?:\w+:)?X509Certificate>([\s\S]{0,20000}?)<\/(?:\w+:)?X509Certificate>/i);
+
+  const idpCertificate = certMatch
+      ? `-----BEGIN CERTIFICATE-----\n${certMatch[1].replace(/\s+/g, "").replace(/(.{64})/g, "$1\n")}\n-----END CERTIFICATE-----`
+        : null;
+
+  return {
+        idpEntityId: entityIdMatch?.[1]?.trim() ?? null,
+        idpSsoUrl: (ssoRedirect ?? ssoAny)?.[1]?.trim() ?? null,
+        idpSloUrl: (sloRedirect ?? sloAny)?.[1]?.trim() ?? null,
+        idpCertificate,
+  };
+}
+
+/**
+ * Reads the validity window off an X.509 PEM certificate using Node's
+ * built-in X509Certificate (no external dependency needed). Returns null if
+ * the certificate cannot be parsed -- callers should treat that as "unknown
+ * expiry", not as a save-time failure, since a malformed cert is caught
+ * earlier by node-saml itself when the SAML instance is actually built.
+ */
+export function getCertValidity(pem: string): { notBefore: Date; notAfter: Date } | null {
+    try {
+          const normalised = pem.includes("-----BEGIN CERTIFICATE-----")
+            ? pem
+                  : `-----BEGIN CERTIFICATE-----\n${pem.replace(/\s+/g, "").replace(/(.{64})/g, "$1\n")}\n-----END CERTIFICATE-----`;
+          const cert = new X509Certificate(normalised);
+          return { notBefore: new Date(cert.validFrom), notAfter: new Date(cert.validTo) };
+    } catch {
+          return null;
+    }
 }
