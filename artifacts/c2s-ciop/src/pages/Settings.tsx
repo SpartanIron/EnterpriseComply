@@ -270,6 +270,34 @@ function SecurityTab() {
   const [idpEntityId,       setIdpEntityId]       = useState("");
   const [idpSsoUrl,         setIdpSsoUrl]         = useState("");
   const [idpCertificate,    setIdpCertificate]    = useState("");
+    // Configuration method (Enterprise SSO upgrade)
+    const [configMethod, setConfigMethod] = useState<"manual" | "upload" | "url">("manual");
+    const [metadataUrl, setMetadataUrl] = useState("");
+    const [metadataFetching, setMetadataFetching] = useState(false);
+    const [metadataError, setMetadataError] = useState("");
+    const [metadataNote, setMetadataNote] = useState("");
+    // SAML settings additions
+    const [idpSloUrl, setIdpSloUrl] = useState("");
+    const [nameIdFormat, setNameIdFormat] = useState("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress");
+    const [requestedAuthnContext, setRequestedAuthnContext] = useState("");
+    const [wantAssertionsSigned, setWantAssertionsSigned] = useState(true);
+    const [wantAuthnResponseSigned, setWantAuthnResponseSigned] = useState(false);
+    // User provisioning
+    const [jitProvisioningEnabled, setJitProvisioningEnabled] = useState(true);
+    const [scimEnabled, setScimEnabled] = useState(false);
+    const [disableLocalPasswordLogin, setDisableLocalPasswordLogin] = useState(false);
+    // Attribute mapping
+    const [attrEmail, setAttrEmail] = useState("");
+    const [attrFirstName, setAttrFirstName] = useState("");
+    const [attrLastName, setAttrLastName] = useState("");
+    const [attrDisplayName, setAttrDisplayName] = useState("");
+    const [attrGroups, setAttrGroups] = useState("");
+    const [attrDepartment, setAttrDepartment] = useState("");
+    // Security
+    const [clockSkewToleranceMs, setClockSkewToleranceMs] = useState(5000);
+    const [sessionLifetimeMinutes, setSessionLifetimeMinutes] = useState(480);
+    const [certNotAfter, setCertNotAfter] = useState<string | null>(null);
+    const [certExpiresInDays, setCertExpiresInDays] = useState<number | null>(null);
   const [ssoSaved,          setSsoSaved]          = useState(false);
   const [ssoError,          setSsoError]          = useState("");
   const [ssoInitialized,    setSsoInitialized]    = useState(false);
@@ -295,6 +323,28 @@ function SecurityTab() {
       setIdpEntityId(ssoConfigData.config.idpEntityId ?? "");
       setIdpSsoUrl(ssoConfigData.config.idpSsoUrl ?? "");
       setIdpCertificate(ssoConfigData.config.idpCertificate ?? "");
+            const c: any = ssoConfigData.config;
+            setConfigMethod((c.configMethod as "manual" | "upload" | "url") ?? "manual");
+            setMetadataUrl(c.metadataUrl ?? "");
+            setIdpSloUrl(c.idpSloUrl ?? "");
+            setNameIdFormat(c.nameIdFormat ?? "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress");
+            setRequestedAuthnContext(c.requestedAuthnContext ?? "");
+            setWantAssertionsSigned(c.wantAssertionsSigned ?? true);
+            setWantAuthnResponseSigned(c.wantAuthnResponseSigned ?? false);
+            setJitProvisioningEnabled(c.jitProvisioningEnabled ?? true);
+            setScimEnabled(c.scimEnabled ?? false);
+            setDisableLocalPasswordLogin(c.disableLocalPasswordLogin ?? false);
+            const am = c.attributeMapping ?? {};
+            setAttrEmail(am.email ?? "");
+            setAttrFirstName(am.firstName ?? "");
+            setAttrLastName(am.lastName ?? "");
+            setAttrDisplayName(am.displayName ?? "");
+            setAttrGroups(am.groups ?? "");
+            setAttrDepartment(am.department ?? "");
+            setClockSkewToleranceMs(c.clockSkewToleranceMs ?? 5000);
+            setSessionLifetimeMinutes(c.sessionLifetimeMinutes ?? 480);
+            setCertNotAfter(c.certNotAfter ?? null);
+            setCertExpiresInDays(typeof c.certExpiresInDays === "number" ? c.certExpiresInDays : null);
       const mappings = ssoConfigData.config.samlGroupMappings ?? {};
       setGroupMappings(
         Object.entries(mappings).map(([group, role]) => ({ group, role: role as string }))
@@ -311,7 +361,22 @@ function SecurityTab() {
       }, {});
       return apiFetch(`/orgs/${orgId}/sso/config`, {
         method: "POST",
-        body: JSON.stringify({ provider: ssoProvider, domain: ssoDomain, idpEntityId, idpSsoUrl, idpCertificate, samlGroupMappings }),
+                body: JSON.stringify({
+                            provider: ssoProvider, domain: ssoDomain, idpEntityId, idpSsoUrl, idpCertificate, samlGroupMappings,
+                            configMethod, metadataUrl: metadataUrl || undefined,
+                            idpSloUrl: idpSloUrl || undefined, nameIdFormat, requestedAuthnContext: requestedAuthnContext || undefined,
+                            wantAssertionsSigned, wantAuthnResponseSigned,
+                            jitProvisioningEnabled, scimEnabled, disableLocalPasswordLogin,
+                            attributeMapping: {
+                                          ...(attrEmail.trim() ? { email: attrEmail.trim() } : {}),
+                                          ...(attrFirstName.trim() ? { firstName: attrFirstName.trim() } : {}),
+                                          ...(attrLastName.trim() ? { lastName: attrLastName.trim() } : {}),
+                                          ...(attrDisplayName.trim() ? { displayName: attrDisplayName.trim() } : {}),
+                                          ...(attrGroups.trim() ? { groups: attrGroups.trim() } : {}),
+                                          ...(attrDepartment.trim() ? { department: attrDepartment.trim() } : {}),
+                            },
+                            clockSkewToleranceMs, sessionLifetimeMinutes,
+                }),
       });
     },
     onSuccess: () => {
@@ -324,6 +389,55 @@ function SecurityTab() {
       setSsoError(err?.message ?? "Failed to save SSO configuration");
     },
   });
+
+    // -- Configuration Method: "Upload IdP Metadata XML" / "Metadata URL" ------
+    // Calls the parse-metadata endpoint and pre-fills the manual SAML fields.
+    // Does not save anything by itself -- the admin still reviews and clicks
+    // "Save SSO Configuration".
+    const parseMetadataMutation = useMutation({
+          mutationFn: (input: { xml?: string; url?: string }) =>
+                  apiFetch(`/orgs/${orgId}/sso/parse-metadata`, {
+                            method: "POST",
+                            body: JSON.stringify(input),
+                  }),
+          onSuccess: (data: { idpEntityId: string | null; idpSsoUrl: string | null; idpSloUrl: string | null; idpCertificate: string | null }) => {
+                  if (data.idpEntityId) setIdpEntityId(data.idpEntityId);
+                  if (data.idpSsoUrl) setIdpSsoUrl(data.idpSsoUrl);
+                  if (data.idpSloUrl) setIdpSloUrl(data.idpSloUrl);
+                  if (data.idpCertificate) setIdpCertificate(data.idpCertificate);
+                  setMetadataError("");
+                  setMetadataNote("Metadata parsed -- review the fields below, then save.");
+          },
+          onError: (err: any) => {
+                  setMetadataError(err?.message ?? "Could not parse that metadata");
+                  setMetadataNote("");
+          },
+    });
+
+      function handleMetadataFileUpload(e: { target: { files: FileList | null } }) {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setMetadataFetching(true);
+          const reader = new FileReader();
+          reader.onload = () => {
+                  setMetadataFetching(false);
+                  parseMetadataMutation.mutate({ xml: String(reader.result ?? "") });
+          };
+          reader.onerror = () => {
+                  setMetadataFetching(false);
+                  setMetadataError("Could not read that file");
+          };
+          reader.readAsText(file);
+    }
+
+    function handleMetadataUrlFetch() {
+          if (!metadataUrl.trim()) return;
+          setMetadataFetching(true);
+          parseMetadataMutation.mutate(
+            { url: metadataUrl.trim() },
+            { onSettled: () => setMetadataFetching(false) },
+                );
+    }
 
   // ── SSO test: check query params on mount ───────────────────────────────────
   useEffect(() => {
@@ -812,19 +926,44 @@ function SecurityTab() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Provider</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5"Identity Provider (IdP)label>
                 <select value={ssoProvider} onChange={e => setSsoProvider(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
-                  <option value="">Select provider…</option>
-                  <option value="okta">Okta</option>
-                  <option value="azure_ad">Microsoft Entra ID (Azure AD)</option>
-                  <option value="google">Google Workspace</option>
-                  <option value="saml">Generic SAML 2.0</option>
+                              <option value="azure_ad">Microsoft Entra ID</option>
+                            <option value="okta">Okta</option>
+                            <option value="ping">Ping Identity</option>
+                            <option value="google">Google Workspace</option>
+                            <option value="authentik">Authentik</option>
+                            <option value="keycloak">Keycloak</option>
+                            <option value="saml">Generic SSAML 2.0</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">SSO Domain</label>
                 <input type="text" value={ssoDomain} onChange={e => setSsoDomain(e.target.value)} placeholder="company.com" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
               </div>
+
+                        <div className="mb-2 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                                    <p className="text-xs font-semibold text-slate-700">Configuration Method</p>
+                                    <div className="flex flex-wrap gap-2">
+                                                  <button type="button" onClick={() => setConfigMethod("upload")} className={"px-3 py-1.5 rounded-lg text-xs font-semibold border " + (configMethod === "upload" ? "bg-purple-600 text-white border-purple-600" : "bg-white text-slate-600 border-slate-200")}>Upload IdP Metadata XML</button>
+                                                  <button type="button" onClick={() => setConfigMethod("url")} className={"px-3 py-1.5 rounded-lg text-xs font-semibold border " + (configMethod === "url" ? "bg-purple-600 text-white border-purple-600" : "bg-white text-slate-600 border-slate-200")}>Metadata URL</button>
+                                                  <button type="button" onClick={() => setConfigMethod("manual")} className={"px-3 py-1.5 rounded-lg text-xs font-semibold border " + (configMethod === "manual" ? "bg-purple-600 text-white border-purple-600" : "bg-white text-slate-600 border-slate-200")}>Manual Configuration</button>
+                                    </div>
+                          {configMethod === "upload" && (
+                      <div>
+                                      <input type="file" accept=".xml,text/xml,application/xml" onChange={handleMetadataFileUpload} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white" /></div>
+        {metadataFetching && <p className="text-xs text-slate-400 mt-1">Parsing metadata...</p>
+                        </div>
+                      )}
+                          {configMethod === "url" && (
+                      <div className="flex items-center gap-2"></div>
+                        <input type="url" value={metadataUrl} onChange={e => setMetadataUrl(e.target.value)} placeholder="https://your-idp.com/metadata.xml" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" />
+                                          <button type="button" onClick={handleMetadataUrlFetch} disabled={metadataFetching || !metadataUrl.trim()} className="px-3 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">{metadataFetching ? "Fetching..." : "Fetch metadata"}</button>
+            </div>
+                          )}
+              {metadataError && <p className="text-xs text-red-600">{metadataError}</p>}
+              {metadataNote && <p className="text-xs text-green-700">{metadataNote}</p>}
+                          <p className="text-xs text-slate-400">Uploading or fetching metadata pre-fills the Entity ID, SSO URL, and certificate fields below -- review before saving.</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">IdP Entity ID</label>
@@ -845,6 +984,35 @@ function SecurityTab() {
               />
               <p className="text-xs text-slate-400 mt-1">Paste the X.509 certificate from your IdP's metadata (with or without PEM headers)</p>
             </div>
+
+                      <div>
+                                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">IdP SLO URL (Single Logout, optional)</label>
+                                    <input type="url" value={idpSloUrl} onChange={e => setIdpSloUrl(e.target.value)} placeholder="https://your-idp.com/saml2/slo" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">NameID Format</label>
+                                                  <select value={nameIdFormat} onChange={e => setNameIdFormat(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                                                                  <option value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">Email address</option>
+                                                                    <option value="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">Persistent</option>
+                                                                    <option value="urn:oasis:names:tc:SAML:2.0:nameid-format:transient">Transient</option>
+                                                                    <option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">Unspecified</option>
+                                                  </select>
+                                  </div>
+                                    <div>
+                                                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">RequestedAuthnContext (optional)</label>
+                                                    <input type="text" value={requestedAuthnContext} onChange={e => setRequestedAuthnContext(e.target.value)} placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" />
+                                    </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-6">
+                                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                                <input type="checkbox" checked={wantAssertionsSigned} onChange={e => setWantAssertionsSigned(e.target.checked)} />
+                                                Signed Assertions Required
+                                  </label>
+                                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                                  <input type="checkbox" checked={wantAuthnResponseSigned} onChange={e => setWantAuthnResponseSigned(e.target.checked)} />
+                                                  Signed Responses Required</label>
+                      </div>
 
             {/* ── Group-to-Role Mapping ── */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
@@ -903,6 +1071,74 @@ function SecurityTab() {
                 </div>
               ))}
             </div>
+
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                                  <div>
+                                                <p className="text-xs font-semibold text-slate-700">User Provisioning</p>
+                                  </div>
+                                    <label className="flex items-center justify-between gap-4 text-xs text-slate-700">
+                                                  <span>JIT Provisioning -- create a platform account automatically on first SSO login</span>s
+                                                    <input type="checkbox" checked={jitProvisioningEnabled} onChange={e => setJitProvisioningEnabled(e.target.checked)} />
+                                    </label>
+                                    <label className="flex items-center justify-between gap-4 text-xs text-slate-700">
+                                                  <span>SCIM 2.0 -- stored for admin intent; automated sync is not yet implemented</span>s
+                                                    <input type="checkbox" checked={scimEnabled} onChange={e => setScimEnabled(e.target.checked)} />
+                                    </label>
+                                    <label className="flex items-center justify-between gap-4 text-xs text-slate-700">
+                                                  <span>Disable Local Password Login -- stored for admin intent; sign-in enforcement is not yet wired up</span>s
+                                                    <input type="checkbox" checked={disableLocalPasswordLogin} onChange={e => setDisableLocalPasswordLogin(e.target.checked)} />
+                                    </label>
+                      </div>
+
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                                  <div>
+                                                <p className="text-xs font-semibold text-slate-700">Attribute Mapping</p>
+                                                  <p className="text-xs text-slate-500 mt-0.5">Map each field to the SAML attribute name your IdP sends it under. Leave blank to use the built-in defaults.</p>
+                                  </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                  <div>
+                                                                  <label className="block text-xs text-slate-600 mb-1">Email</label>
+                                                                    <input type="text" value={attrEmail} onChange={e => setAttrEmail(e.target.value)} placeholder="email" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono" />
+                                                  </div>
+                                                    <div>
+                                                                    <label className="block text-xs text-slate-600 mb-1">First Name</label>
+                                                                      <input type="text" value={attrFirstName} onChange={e => setAttrFirstName(e.target.value)} placeholder="givenName" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono" />
+                                                    </div>
+                                                    <div>
+                                                                    <label className="block text-xs text-slate-600 mb-1">Last Name</label>
+                                                                    <input type="text" value={attrLastName} onChange={e => setAttrLastName(e.target.value)} placeholder="surname" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono" />
+                                                    </div>
+                                                  <div>
+                                                                  <label className="block text-xs text-slate-600 mb-1">Display Name</label>
+                                                                  <input type="text" value={attrDisplayName} onChange={e => setAttrDisplayName(e.target.value)} placeholder="displayName" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono" />
+                                                  </div>
+                                                  <div>
+                                                                  <label className="block text-xs text-slate-600 mb-1">Groups</label>
+                                                                  <input type="text" value={attrGroups} onChange={e => setAttrGroups(e.target.value)} placeholder="groups" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono" />
+                                                  </div>
+                                                  <div>
+                                                                  <label className="block text-xs text-slate-600 mb-1">Department</label>
+                                                                  <input type="text" value={attrDepartment} onChange={e => setAttrDepartment(e.target.value)} placeholder="department" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono" />
+                                                  </div>
+                                    </div>
+                      </div></div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                                <p className="text-xs font-semibold text-slate-700">Security</p>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                                <label className="block text-xs text-slate-600 mb-1">Clock Skew Tolerance (ms)</label>
+                                                                  <input type="number" value={clockSkewToleranceMs} onChange={e => setClockSkewToleranceMs(Number(e.target.value) || 0)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+                                                </div>
+                                                  <div>
+                                                                  <label className="block text-xs text-slate-600 mb-1">Session Lifetime (minutes)</label>
+                                                                  <input type="number" value={sessionLifetimeMinutes} onChange={e => setSessionLifetimeMinutes(Number(e.target.value) || 0)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+                                                  </div>
+                                  </div>
+                                <p className="text-xs text-slate-600 pt-2 border-t border-slate-200">Certificate Expiration Monitoring: {certNotAfter ? `expires ${new Date(certNotAfter).toLocaleDateString()}` : "save a certificate to see its expiration date"}{certExpiresInDays !== null ? ` (${certExpiresInDays} days)` : ""}</p>
+                                <p className="text-xs text-slate-400">Certificate Rotation: re-upload or re-fetch IdP metadata above to rotate the signing certificate.</p>
+                                <p className="text-xs text-slate-400">Replay Protection: not enabled -- SAML InResponseTo validation is currently disabled at the SP.</p>
+                    </div></div>
 
             {ssoError && (
               <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{ssoError}</div>
