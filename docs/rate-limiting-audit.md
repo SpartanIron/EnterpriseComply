@@ -74,7 +74,7 @@ Authenticated by `X-Webhook-Secret` header; separate from the auth throttle.
 | `GET /api/status/*` | Public status page; cached; no auth cost |
 | `GET /api/healthz` | Health check; no auth cost |
 | `GET /api/auth-providers` | Returns boolean flags only; no auth cost |
-| `GET /api/orgs/:orgId/sso/metadata` | Authenticated (admin+enterprise); XML metadata |
+| `GET /api/orgs/:orgId/sso/metadata` | Public; SAML SP metadata only (entity ID / ACS URL / public signing cert, no secrets); `@SkipThrottle()` matches sibling public routes; `Cache-Control: max-age=600` (see PR #64) |
 
 ---
 
